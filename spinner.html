@@ -94,6 +94,11 @@
       word-wrap: break-word;
       text-align: center;
       transition: transform 0.3s;
+      cursor: pointer;  /* Add cursor pointer */
+      pointer-events: none;  /* Disable clicks by default */
+    }
+    .spinner:not([disabled]) {
+      pointer-events: auto;  /* Enable clicks when not disabled */
     }
     .spinner.spinning {
       animation: spin 0.5s linear infinite;
@@ -249,7 +254,9 @@
     }
 
     function updateSpinButton() {
-      elements.spinBtn.disabled = state.names.length === 0 || state.isSpinning;
+      const isDisabled = state.names.length === 0 || state.isSpinning || state.names.length === 1;
+      elements.spinBtn.disabled = isDisabled;
+      elements.spinner.toggleAttribute('disabled', isDisabled);
     }
 
     function updateResults() {
@@ -268,12 +275,40 @@
       
       state.results.push(selectedName);
       elements.spinner.textContent = selectedName;
-      
+
       updateNameList();
       updateResults();
       
       state.isSpinning = false;
       updateSpinButton();
+
+      // If there's only one name left, do the final reveal automatically
+      if (state.names.length === 1) {
+        const finalContestant = state.names[0];
+
+        // Pause to show the second-to-last contestant
+        setTimeout(() => {
+          // Start rapid spinning with just the final name
+          state.isSpinning = true;
+          elements.spinner.classList.add('spinning');
+          elements.spinner.textContent = finalContestant;
+
+          // After the spinning duration, show final contestant
+          setTimeout(() => {
+            elements.spinner.classList.remove('spinning');
+            elements.spinner.textContent = finalContestant;
+
+            // Add final contestant to results
+            state.results.push(finalContestant);
+            state.names = [];
+            updateNameList();
+            updateResults();
+
+            state.isSpinning = false;
+            updateSpinButton();
+          }, 1500); // Spin duration - 1.5 seconds
+        }, 750); // Pause duration
+      }
     }
 
     // Event Listeners
@@ -281,6 +316,7 @@
     elements.nameInput.addEventListener('keypress', handleKeyPress);
     elements.spinBtn.addEventListener('click', handleSpin);
     elements.resetBtn.addEventListener('click', handleReset);
+    elements.spinner.addEventListener('click', handleSpin);  // Add spinner click handler
   </script>
 </body>
 </html>
