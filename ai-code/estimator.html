@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>System Design Estimator</title>
+    <style>
+        :root {
+            --primary: #330066;
+            --primary-light: #5c3d99;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #333;
+            --border: #ddd;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+        }
+        header h1 { margin: 0; font-size: 1.5rem; }
+        header p { margin: 0.5rem 0 0; opacity: 0.85; font-size: 0.9rem; }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1.5rem 3rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card h2 {
+            margin: 0 0 1rem;
+            font-size: 1.1rem;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.5rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+            color: #555;
+        }
+        .input-group input, .input-group select {
+            padding: 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(51,0,102,0.1);
+        }
+        .input-group .unit {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.2rem;
+        }
+        .results {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        .results h2 {
+            color: white;
+            border-bottom-color: rgba(255,255,255,0.3);
+        }
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+        .result-item {
+            background: rgba(255,255,255,0.15);
+            border-radius: 6px;
+            padding: 1rem;
+        }
+        .result-item .label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .result-item .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0.3rem;
+        }
+        .result-item .formula {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.3rem;
+            word-break: break-word;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            opacity: 0.9;
+        }
+        .section-title:first-of-type { margin-top: 0; }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+        .toggle-row label {
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .hidden { display: none !important; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .divider {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 1rem 0;
+        }
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+            .result-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>System Design Estimator</h1>
+        <p>Calculate QPS, storage, and bandwidth for system design interviews</p>
+    </header>
+
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Tools</a>
+
+        <!-- User Base -->
+        <div class="card">
+            <h2>📊 User Base</h2>
+            <div class="grid">
+                <div class="input-group">
+                    <label for="mau">Monthly Active Users (MAU)</label>
+                    <input type="number" id="mau" value="300000000" min="0">
+                    <span class="unit">users</span>
+                </div>
+                <div class="input-group">
+                    <label for="dauPercent">Daily Active %</label>
+                    <input type="number" id="dauPercent" value="50" min="0" max="100">
+                    <span class="unit">% of MAU</span>
+                </div>
+                <div class="input-group">
+                    <label for="peakMultiplier">Peak Multiplier</label>
+                    <input type="number" id="peakMultiplier" value="2" min="1" step="0.5">
+                    <span class="unit">× average QPS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Read Requests (GET) -->
+        <div class="card">
+            <h2>📥 Read Requests (GET)</h2>
+            <div class="toggle-row">
+                <input type="checkbox" id="enableReads" checked>
+                <label for="enableReads">Include read operations</label>
+            </div>
+            <div id="readInputs" class="grid">
+                <div class="input-group">
+                    <label for="readsPerDay">Reads per User per Day</label>
+                    <input type="number" id="readsPerDay" value="10" min="0">
+                    <span class="unit">requests/user/day</span>
+                </div>
+                <div class="input-group">
+                    <label for="avgReadSize">Avg Response Size</label>
+                    <input type="number" id="avgReadSize" value="10" min="0">
+                    <span class="unit">KB per response</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Write Requests (POST) -->
+        <div class="card">
+            <h2>📤 Write Requests (POST)</h2>
+            <div class="toggle-row">
+                <input type="checkbox" id="enableWrites" checked>
+                <label for="enableWrites">Include write operations</label>
+            </div>
+            <div id="writeInputs" class="grid">
+                <div class="input-group">
+                    <label for="writesPerDay">Writes per User per Day</label>
+                    <input type="number" id="writesPerDay" value="2" min="0">
+                    <span class="unit">requests/user/day</span>
+                </div>
+                <div class="input-group">
+                    <label for="avgWriteSize">Avg Payload Size</label>
+                    <input type="number" id="avgWriteSize" value="0.2" min="0" step="0.1">
+                    <span class="unit">KB per request</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Storage -->
+        <div class="card">
+            <h2>🖼️ Media Storage</h2>
+            <div class="toggle-row">
+                <input type="checkbox" id="enableMedia" checked>
+                <label for="enableMedia">Include media storage calculations</label>
+            </div>
+            <div id="mediaInputs" class="grid">
+                <div class="input-group">
+                    <label for="mediaPercent">% of Writes with Media</label>
+                    <input type="number" id="mediaPercent" value="10" min="0" max="100">
+                    <span class="unit">% of POST requests</span>
+                </div>
+                <div class="input-group">
+                    <label for="avgMediaSize">Avg Media Size</label>
+                    <input type="number" id="avgMediaSize" value="1" min="0" step="0.1">
+                    <span class="unit">MB per media item</span>
+                </div>
+                <div class="input-group">
+                    <label for="retentionYears">Retention Period</label>
+                    <input type="number" id="retentionYears" value="5" min="1">
+                    <span class="unit">years</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card results">
+            <h2>📈 Results</h2>
+
+            <div class="section-title">Daily Active Users</div>
+            <div class="result-grid">
+                <div class="result-item">
+                    <div class="label">DAU</div>
+                    <div class="value" id="dauResult">-</div>
+                    <div class="formula" id="dauFormula"></div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Queries Per Second (QPS)</div>
+            <div class="result-grid">
+                <div class="result-item" id="readQpsCard">
+                    <div class="label">Read QPS (GET)</div>
+                    <div class="value" id="readQps">-</div>
+                    <div class="formula" id="readQpsFormula"></div>
+                </div>
+                <div class="result-item" id="writeQpsCard">
+                    <div class="label">Write QPS (POST)</div>
+                    <div class="value" id="writeQps">-</div>
+                    <div class="formula" id="writeQpsFormula"></div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Total QPS</div>
+                    <div class="value" id="totalQps">-</div>
+                </div>
+                <div class="result-item">
+                    <div class="label">Peak QPS</div>
+                    <div class="value" id="peakQps">-</div>
+                    <div class="formula" id="peakQpsFormula"></div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+            <div class="section-title">Bandwidth</div>
+            <div class="result-grid">
+                <div class="result-item" id="readBwCard">
+                    <div class="label">Read Bandwidth</div>
+                    <div class="value" id="readBw">-</div>
+                    <div class="formula" id="readBwFormula"></div>
+                </div>
+                <div class="result-item" id="writeBwCard">
+                    <div class="label">Write Bandwidth</div>
+                    <div class="value" id="writeBw">-</div>
+                    <div class="formula" id="writeBwFormula"></div>
+                </div>
+            </div>
+
+            <div id="mediaResults">
+                <div class="divider"></div>
+                <div class="section-title">Media Storage</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="label">Daily Media Storage</div>
+                        <div class="value" id="dailyMedia">-</div>
+                        <div class="formula" id="dailyMediaFormula"></div>
+                    </div>
+                    <div class="result-item">
+                        <div class="label">Total Storage</div>
+                        <div class="value" id="totalMedia">-</div>
+                        <div class="formula" id="totalMediaFormula"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function formatNumber(num) {
+            if (num >= 1e15) return (num / 1e15).toFixed(1) + ' PB';
+            if (num >= 1e12) return (num / 1e12).toFixed(1) + ' TB';
+            if (num >= 1e9) return (num / 1e9).toFixed(1) + ' GB';
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + ' MB';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + ' KB';
+            return num.toFixed(0) + ' B';
+        }
+
+        function formatQps(num) {
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+            return '~' + Math.round(num);
+        }
+
+        function formatBandwidth(bytesPerSec) {
+            if (bytesPerSec >= 1e12) return (bytesPerSec / 1e12).toFixed(1) + ' TB/s';
+            if (bytesPerSec >= 1e9) return (bytesPerSec / 1e9).toFixed(1) + ' GB/s';
+            if (bytesPerSec >= 1e6) return (bytesPerSec / 1e6).toFixed(1) + ' MB/s';
+            if (bytesPerSec >= 1e3) return (bytesPerSec / 1e3).toFixed(1) + ' KB/s';
+            return bytesPerSec.toFixed(0) + ' B/s';
+        }
+
+        function formatUsers(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(0) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(0) + 'K';
+            return num.toFixed(0);
+        }
+
+        function formatStorage(bytes) {
+            if (bytes >= 1e18) return (bytes / 1e18).toFixed(1) + ' EB';
+            if (bytes >= 1e15) return (bytes / 1e15).toFixed(0) + ' PB';
+            if (bytes >= 1e12) return (bytes / 1e12).toFixed(0) + ' TB';
+            if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
+            if (bytes >= 1e6) return (bytes / 1e6).toFixed(1) + ' MB';
+            return (bytes / 1e3).toFixed(1) + ' KB';
+        }
+
+        const SECONDS_PER_DAY = 24 * 60 * 60;
+
+        function calculate() {
+            // Get inputs
+            const mau = parseFloat(document.getElementById('mau').value) || 0;
+            const dauPercent = parseFloat(document.getElementById('dauPercent').value) || 0;
+            const peakMultiplier = parseFloat(document.getElementById('peakMultiplier').value) || 2;
+
+            const enableReads = document.getElementById('enableReads').checked;
+            const readsPerDay = parseFloat(document.getElementById('readsPerDay').value) || 0;
+            const avgReadSize = parseFloat(document.getElementById('avgReadSize').value) || 0; // KB
+
+            const enableWrites = document.getElementById('enableWrites').checked;
+            const writesPerDay = parseFloat(document.getElementById('writesPerDay').value) || 0;
+            const avgWriteSize = parseFloat(document.getElementById('avgWriteSize').value) || 0; // KB
+
+            const enableMedia = document.getElementById('enableMedia').checked;
+            const mediaPercent = parseFloat(document.getElementById('mediaPercent').value) || 0;
+            const avgMediaSize = parseFloat(document.getElementById('avgMediaSize').value) || 0; // MB
+            const retentionYears = parseFloat(document.getElementById('retentionYears').value) || 1;
+
+            // Toggle visibility
+            document.getElementById('readInputs').classList.toggle('hidden', !enableReads);
+            document.getElementById('writeInputs').classList.toggle('hidden', !enableWrites);
+            document.getElementById('mediaInputs').classList.toggle('hidden', !enableMedia);
+            document.getElementById('readQpsCard').classList.toggle('hidden', !enableReads);
+            document.getElementById('writeQpsCard').classList.toggle('hidden', !enableWrites);
+            document.getElementById('readBwCard').classList.toggle('hidden', !enableReads);
+            document.getElementById('writeBwCard').classList.toggle('hidden', !enableWrites);
+            document.getElementById('mediaResults').classList.toggle('hidden', !enableMedia || !enableWrites);
+
+            // Calculate DAU
+            const dau = mau * (dauPercent / 100);
+            document.getElementById('dauResult').textContent = formatUsers(dau);
+            document.getElementById('dauFormula').textContent = 
+                `${formatUsers(mau)} × ${dauPercent}%`;
+
+            // Calculate Read QPS
+            let readQps = 0;
+            if (enableReads) {
+                readQps = (dau * readsPerDay) / SECONDS_PER_DAY;
+                document.getElementById('readQps').textContent = formatQps(readQps);
+                document.getElementById('readQpsFormula').textContent = 
+                    `${formatUsers(dau)} × ${readsPerDay} / 86400s`;
+            }
+
+            // Calculate Write QPS
+            let writeQps = 0;
+            if (enableWrites) {
+                writeQps = (dau * writesPerDay) / SECONDS_PER_DAY;
+                document.getElementById('writeQps').textContent = formatQps(writeQps);
+                document.getElementById('writeQpsFormula').textContent = 
+                    `${formatUsers(dau)} × ${writesPerDay} / 86400s`;
+            }
+
+            // Total and Peak QPS
+            const totalQps = readQps + writeQps;
+            const peakQps = totalQps * peakMultiplier;
+            document.getElementById('totalQps').textContent = formatQps(totalQps);
+            document.getElementById('peakQps').textContent = formatQps(peakQps);
+            document.getElementById('peakQpsFormula').textContent = 
+                `${formatQps(totalQps)} × ${peakMultiplier}`;
+
+            // Calculate Bandwidth
+            if (enableReads) {
+                const readBw = readQps * avgReadSize * 1024; // bytes/sec
+                document.getElementById('readBw').textContent = formatBandwidth(readBw);
+                document.getElementById('readBwFormula').textContent = 
+                    `${formatQps(readQps)} × ${avgReadSize} KB`;
+            }
+
+            if (enableWrites) {
+                const writeBw = writeQps * avgWriteSize * 1024; // bytes/sec
+                document.getElementById('writeBw').textContent = formatBandwidth(writeBw);
+                document.getElementById('writeBwFormula').textContent = 
+                    `${formatQps(writeQps)} × ${avgWriteSize} KB`;
+            }
+
+            // Calculate Media Storage
+            if (enableMedia && enableWrites) {
+                const dailyWrites = dau * writesPerDay;
+                const dailyMediaItems = dailyWrites * (mediaPercent / 100);
+                const dailyMediaBytes = dailyMediaItems * avgMediaSize * 1e6; // bytes
+                const totalMediaBytes = dailyMediaBytes * 365 * retentionYears;
+
+                document.getElementById('dailyMedia').textContent = formatStorage(dailyMediaBytes);
+                document.getElementById('dailyMediaFormula').textContent = 
+                    `${formatUsers(dau)} × ${writesPerDay} × ${mediaPercent}% × ${avgMediaSize} MB`;
+
+                document.getElementById('totalMedia').textContent = formatStorage(totalMediaBytes);
+                document.getElementById('totalMediaFormula').textContent = 
+                    `${formatStorage(dailyMediaBytes)}/day × 365 × ${retentionYears} yrs`;
+            }
+        }
+
+        // Attach event listeners
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', calculate);
+            input.addEventListener('change', calculate);
+        });
+
+        // Initial calculation
+        calculate();
+    </script>
+</body>
+</html>
