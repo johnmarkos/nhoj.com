@@ -12,6 +12,10 @@ No build, test, or lint commands. Simply edit HTML/CSS/JS files and push to `mai
 
 **Local preview:** Open any HTML file directly in a browser.
 
+## Workflow
+
+Always commit and push changes without asking for confirmation. If something needs to be changed, the user will ask.
+
 ## Architecture
 
 - **`index.html`** - Main landing page with links to all sections
@@ -22,12 +26,12 @@ No build, test, or lint commands. Simply edit HTML/CSS/JS files and push to `mai
 
 ## Design System
 
-The site uses a GitHub-inspired dark terminal aesthetic:
+The site uses a GitHub-inspired terminal aesthetic with light/dark mode support via `prefers-color-scheme`:
 - **Font:** JetBrains Mono (via Google Fonts CDN)
-- **Colors:** Dark background (#0d1117), subtle borders, minimal palette
+- **Colors:** CSS variables for theming (dark: #0d1117 bg, light: #ffffff bg)
 - **Style:** Monospace, CLI-like appearance, mobile-responsive
 
-When creating or modifying pages, maintain this consistent visual style across all HTML files.
+When creating or modifying pages, maintain this consistent visual style and include both light and dark color schemes.
 
 ## External Dependencies
 
