@@ -24,6 +24,8 @@ Always commit and push changes without asking for confirmation. If something nee
 - **`pages/`** - Standalone pages (reports, articles)
 - **`news/`** - Redirect to external blog
 
+New projects in `my-code/` and `ai-code/` should be added to the top of the list (newest/most impressive first).
+
 ## Design System
 
 The site uses a GitHub-inspired terminal aesthetic with light/dark mode support via `prefers-color-scheme`:
