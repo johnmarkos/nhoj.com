@@ -17,8 +17,11 @@
       --text: #c9d1d9;
       --text-muted: #8b949e;
       --accent: #58a6ff;
+      --accent-alpha: rgba(88, 166, 255, 0.1);
       --success: #3fb950;
+      --success-alpha: rgba(63, 185, 80, 0.1);
       --error: #f85149;
+      --error-alpha: rgba(248, 81, 73, 0.1);
     }
 
     @media (prefers-color-scheme: light) {
@@ -29,8 +32,11 @@
         --text: #1f2328;
         --text-muted: #656d76;
         --accent: #0969da;
+        --accent-alpha: rgba(9, 105, 218, 0.1);
         --success: #1a7f37;
+        --success-alpha: rgba(26, 127, 55, 0.1);
         --error: #cf222e;
+        --error-alpha: rgba(207, 34, 46, 0.1);
       }
     }
 
@@ -130,8 +136,13 @@
       transition: border-color 0.15s;
     }
 
-    .chapter-btn:hover {
+    .chapter-btn:hover:not(:disabled) {
       border-color: var(--accent);
+    }
+
+    .chapter-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .chapter-btn:disabled {
@@ -139,8 +150,9 @@
       cursor: not-allowed;
     }
 
-    .chapter-btn:disabled:hover {
-      border-color: var(--border);
+    .chapter-btn.loading {
+      opacity: 0.7;
+      cursor: wait;
     }
 
     /* Practice view */
@@ -193,23 +205,23 @@
       border-color: var(--accent);
     }
 
+    .option-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     .option-btn:disabled {
       cursor: default;
     }
 
-    .option-btn.selected {
-      border-color: var(--accent);
-      background: rgba(88, 166, 255, 0.1);
-    }
-
     .option-btn.correct {
       border-color: var(--success);
-      background: rgba(63, 185, 80, 0.1);
+      background: var(--success-alpha);
     }
 
     .option-btn.incorrect {
       border-color: var(--error);
-      background: rgba(248, 81, 73, 0.1);
+      background: var(--error-alpha);
     }
 
     /* Feedback */
@@ -227,12 +239,12 @@
     }
 
     .feedback.correct {
-      background: rgba(63, 185, 80, 0.1);
+      background: var(--success-alpha);
       border: 1px solid var(--success);
     }
 
     .feedback.incorrect {
-      background: rgba(248, 81, 73, 0.1);
+      background: var(--error-alpha);
       border: 1px solid var(--error);
     }
 
@@ -247,6 +259,22 @@
 
     .feedback.incorrect .feedback-title {
       color: var(--error);
+    }
+
+    /* Error message */
+    .error-msg {
+      display: none;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      background: var(--error-alpha);
+      border: 1px solid var(--error);
+      color: var(--error);
+    }
+
+    .error-msg.visible {
+      display: block;
     }
 
     /* Navigation */
@@ -268,6 +296,11 @@
       opacity: 0.9;
     }
 
+    .nav-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     .nav-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -277,6 +310,10 @@
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       color: var(--text);
+    }
+
+    .nav-btn.hidden {
+      display: none;
     }
 
     .nav-row {
@@ -327,22 +364,30 @@
       color: var(--accent);
     }
 
-    @media (prefers-color-scheme: light) {
-      .option-btn.selected {
-        background: rgba(9, 105, 218, 0.1);
-      }
-      .option-btn.correct {
-        background: rgba(26, 127, 55, 0.1);
-      }
-      .option-btn.incorrect {
-        background: rgba(207, 34, 46, 0.1);
-      }
-      .feedback.correct {
-        background: rgba(26, 127, 55, 0.1);
-      }
-      .feedback.incorrect {
-        background: rgba(207, 34, 46, 0.1);
-      }
+    .back-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* Quit link in practice mode */
+    .quit-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: inherit;
+      padding: 0;
+    }
+
+    .quit-link:hover {
+      color: var(--error);
+    }
+
+    .quit-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
   </style>
 </head>
@@ -354,6 +399,8 @@
     <div id="landing" class="landing">
       <h2>System Design Practice</h2>
       <p>Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.</p>
+
+      <div id="error-msg" class="error-msg"></div>
 
       <ul class="unit-list">
         <li class="unit-item">
@@ -376,14 +423,17 @@
     <div id="practice" class="practice">
       <header class="header">
         <h1 id="practice-title">Time Math</h1>
-        <span class="progress"><span id="current">1</span>/<span id="total">15</span></span>
+        <div>
+          <span class="progress"><span id="current">1</span>/<span id="total">15</span></span>
+          <button class="quit-link" id="quit-btn">&times; Quit</button>
+        </div>
       </header>
 
       <div class="chapter-header" id="chapter-desc"></div>
 
       <div id="question-container">
         <p class="question" id="question-text"></p>
-        <ul class="options" id="options"></ul>
+        <ul class="options" id="options" role="list"></ul>
 
         <div class="feedback" id="feedback">
           <div class="feedback-title" id="feedback-title"></div>
@@ -391,14 +441,14 @@
         </div>
 
         <div class="nav-row">
-          <button class="nav-btn" id="next-btn" style="display: none;">Next</button>
+          <button class="nav-btn hidden" id="next-btn">Next</button>
         </div>
       </div>
     </div>
 
     <!-- Results View -->
     <div id="results" class="results">
-      <h2>Complete!</h2>
+      <h2>Session Complete</h2>
       <div class="score" id="score">0%</div>
       <div class="score-label"><span id="correct-count">0</span> of <span id="total-count">0</span> correct</div>
       <div class="nav-row" style="justify-content: center;">
@@ -436,11 +486,30 @@
     const totalCountEl = document.getElementById('total-count');
     const retryBtn = document.getElementById('retry-btn');
     const backBtn = document.getElementById('back-btn');
+    const quitBtn = document.getElementById('quit-btn');
+    const errorMsg = document.getElementById('error-msg');
 
-    // Load chapter
-    async function loadChapter(chapterId) {
+    function showError(message) {
+      errorMsg.textContent = message;
+      errorMsg.classList.add('visible');
+    }
+
+    function hideError() {
+      errorMsg.classList.remove('visible');
+    }
+
+    async function loadChapter(chapterId, buttonEl) {
+      hideError();
+      buttonEl.classList.add('loading');
+      buttonEl.textContent = 'Loading...';
+      const originalText = buttonEl.dataset.originalText || buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
+
       try {
         const response = await fetch(`content/${chapterId}.json`);
+        if (!response.ok) {
+          throw new Error(`Failed to load (${response.status})`);
+        }
         const data = await response.json();
         state.chapter = data;
         state.problems = shuffleArray([...data.problems]);
@@ -450,7 +519,10 @@
         startPractice();
       } catch (err) {
         console.error('Failed to load chapter:', err);
-        alert('Failed to load chapter. Please try again.');
+        showError('Failed to load chapter. Please try again.');
+        buttonEl.textContent = originalText;
+      } finally {
+        buttonEl.classList.remove('loading');
       }
     }
 
@@ -488,14 +560,17 @@
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = option;
-        btn.addEventListener('click', () => selectAnswer(index));
+        btn.dataset.index = index;
         li.appendChild(btn);
         optionsEl.appendChild(li);
       });
 
       // Hide feedback and next button
       feedback.classList.remove('visible', 'correct', 'incorrect');
-      nextBtn.style.display = 'none';
+      nextBtn.classList.add('hidden');
+
+      // Scroll to top for new question
+      window.scrollTo(0, 0);
     }
 
     function selectAnswer(index) {
@@ -524,8 +599,9 @@
       feedbackExplanation.textContent = problem.explanation;
 
       // Show next button
-      nextBtn.style.display = 'inline-block';
+      nextBtn.classList.remove('hidden');
       nextBtn.textContent = state.currentIndex < state.problems.length - 1 ? 'Next' : 'See Results';
+      nextBtn.focus();
     }
 
     function nextQuestion() {
@@ -543,11 +619,13 @@
 
       const correctCount = state.answers.filter(a => a.correct).length;
       const total = state.answers.length;
-      const percentage = Math.round((correctCount / total) * 100);
+      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
 
       scoreEl.textContent = percentage + '%';
       correctCountEl.textContent = correctCount;
       totalCountEl.textContent = total;
+
+      window.scrollTo(0, 0);
     }
 
     function retry() {
@@ -567,19 +645,35 @@
       landing.classList.remove('hidden');
       state.chapter = null;
       state.problems = [];
+
+      // Reset chapter button text in case it was left in loading state
+      document.querySelectorAll('.chapter-btn[data-original-text]').forEach(btn => {
+        btn.textContent = btn.dataset.originalText;
+      });
+
+      window.scrollTo(0, 0);
     }
 
-    // Event listeners
+    // Event delegation for options (instead of creating listeners per question)
+    optionsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.option-btn');
+      if (btn && !btn.disabled) {
+        selectAnswer(parseInt(btn.dataset.index, 10));
+      }
+    });
+
+    // Chapter buttons
     document.querySelectorAll('.chapter-btn[data-chapter]').forEach(btn => {
       btn.addEventListener('click', () => {
         const chapterId = btn.dataset.chapter;
-        loadChapter(chapterId);
+        loadChapter(chapterId, btn);
       });
     });
 
     nextBtn.addEventListener('click', nextQuestion);
     retryBtn.addEventListener('click', retry);
     backBtn.addEventListener('click', backToMenu);
+    quitBtn.addEventListener('click', backToMenu);
   </script>
 </body>
 </html>
