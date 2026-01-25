@@ -510,11 +510,12 @@
     }
 
     async function loadChapter(chapterId, buttonEl) {
-      if (buttonEl.classList.contains('loading')) return; // Prevent double-click
+      if (buttonEl.disabled) return; // Prevent double-click
 
       hideError();
       const originalText = buttonEl.textContent;
       buttonEl.dataset.originalText = originalText;
+      buttonEl.disabled = true; // Immediately disable to prevent race condition
       buttonEl.classList.add('loading');
       buttonEl.textContent = 'Loading...';
 
@@ -534,6 +535,7 @@
         console.error('Failed to load chapter:', err);
         showError('Failed to load chapter. Please try again.');
         buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
       } finally {
         buttonEl.classList.remove('loading');
       }
@@ -658,12 +660,19 @@
       practice.classList.remove('active');
       results.classList.remove('active');
       landing.classList.remove('hidden');
+
+      // Full state reset
       state.chapter = null;
       state.problems = [];
+      state.currentIndex = 0;
+      state.answers = [];
+      state.answered = false;
 
-      // Reset chapter button text in case it was left in loading state
+      // Reset chapter buttons in case they were left in loading state
       document.querySelectorAll('.chapter-btn[data-original-text]').forEach(btn => {
         btn.textContent = btn.dataset.originalText;
+        btn.disabled = false;
+        btn.classList.remove('loading');
       });
 
       window.scrollTo(0, 0);
