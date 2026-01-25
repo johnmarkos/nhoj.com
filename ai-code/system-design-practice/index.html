@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Design Practice</title>
+  <meta name="description" content="Practice system design interview problems on your phone.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-secondary: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --error: #f85149;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --border: #d0d7de;
+        --text: #1f2328;
+        --text-muted: #656d76;
+        --accent: #0969da;
+        --success: #1a7f37;
+        --error: #cf222e;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.6;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 1rem;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+
+    .header h1 {
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .progress {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Landing view */
+    .landing {
+      padding: 1rem 0;
+    }
+
+    .landing h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .landing p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .unit-list {
+      list-style: none;
+    }
+
+    .unit-item {
+      margin-bottom: 1rem;
+    }
+
+    .unit-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .chapter-list {
+      list-style: none;
+    }
+
+    .chapter-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.15s;
+    }
+
+    .chapter-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .chapter-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .chapter-btn:disabled:hover {
+      border-color: var(--border);
+    }
+
+    /* Practice view */
+    .practice {
+      display: none;
+    }
+
+    .practice.active {
+      display: block;
+    }
+
+    .landing.hidden {
+      display: none;
+    }
+
+    .chapter-header {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .question {
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .options {
+      list-style: none;
+      margin-bottom: 1rem;
+    }
+
+    .option-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.875rem 1rem;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+    }
+
+    .option-btn.selected {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+    }
+
+    .option-btn.correct {
+      border-color: var(--success);
+      background: rgba(63, 185, 80, 0.1);
+    }
+
+    .option-btn.incorrect {
+      border-color: var(--error);
+      background: rgba(248, 81, 73, 0.1);
+    }
+
+    /* Feedback */
+    .feedback {
+      display: none;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .feedback.visible {
+      display: block;
+    }
+
+    .feedback.correct {
+      background: rgba(63, 185, 80, 0.1);
+      border: 1px solid var(--success);
+    }
+
+    .feedback.incorrect {
+      background: rgba(248, 81, 73, 0.1);
+      border: 1px solid var(--error);
+    }
+
+    .feedback-title {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feedback.correct .feedback-title {
+      color: var(--success);
+    }
+
+    .feedback.incorrect .feedback-title {
+      color: var(--error);
+    }
+
+    /* Navigation */
+    .nav-btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .nav-btn:hover {
+      opacity: 0.9;
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .nav-btn.secondary {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .nav-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    /* Results view */
+    .results {
+      display: none;
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .results.active {
+      display: block;
+    }
+
+    .results h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .score {
+      font-size: 3rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .score-label {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Back link */
+    .back-link {
+      display: inline-block;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    @media (prefers-color-scheme: light) {
+      .option-btn.selected {
+        background: rgba(9, 105, 218, 0.1);
+      }
+      .option-btn.correct {
+        background: rgba(26, 127, 55, 0.1);
+      }
+      .option-btn.incorrect {
+        background: rgba(207, 34, 46, 0.1);
+      }
+      .feedback.correct {
+        background: rgba(26, 127, 55, 0.1);
+      }
+      .feedback.incorrect {
+        background: rgba(207, 34, 46, 0.1);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../" class="back-link">&larr; Back to AI Code</a>
+
+    <!-- Landing View -->
+    <div id="landing" class="landing">
+      <h2>System Design Practice</h2>
+      <p>Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.</p>
+
+      <ul class="unit-list">
+        <li class="unit-item">
+          <div class="unit-title">Unit 1: Estimation</div>
+          <ul class="chapter-list">
+            <li><button class="chapter-btn" disabled>1. Reference Numbers (coming soon)</button></li>
+            <li><button class="chapter-btn" data-chapter="unit-1-chapter-2">2. Time Math</button></li>
+            <li><button class="chapter-btn" disabled>3. Storage Math (coming soon)</button></li>
+            <li><button class="chapter-btn" disabled>4. Bandwidth Math (coming soon)</button></li>
+            <li><button class="chapter-btn" disabled>5. QPS & Load (coming soon)</button></li>
+            <li><button class="chapter-btn" disabled>6. Growth Projections (coming soon)</button></li>
+            <li><button class="chapter-btn" disabled>7. Sanity Checks (coming soon)</button></li>
+            <li><button class="chapter-btn" disabled>8. Compound Scenarios (coming soon)</button></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Practice View -->
+    <div id="practice" class="practice">
+      <header class="header">
+        <h1 id="practice-title">Time Math</h1>
+        <span class="progress"><span id="current">1</span>/<span id="total">15</span></span>
+      </header>
+
+      <div class="chapter-header" id="chapter-desc"></div>
+
+      <div id="question-container">
+        <p class="question" id="question-text"></p>
+        <ul class="options" id="options"></ul>
+
+        <div class="feedback" id="feedback">
+          <div class="feedback-title" id="feedback-title"></div>
+          <div id="feedback-explanation"></div>
+        </div>
+
+        <div class="nav-row">
+          <button class="nav-btn" id="next-btn" style="display: none;">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results View -->
+    <div id="results" class="results">
+      <h2>Complete!</h2>
+      <div class="score" id="score">0%</div>
+      <div class="score-label"><span id="correct-count">0</span> of <span id="total-count">0</span> correct</div>
+      <div class="nav-row" style="justify-content: center;">
+        <button class="nav-btn secondary" id="retry-btn">Try Again</button>
+        <button class="nav-btn" id="back-btn">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      chapter: null,
+      problems: [],
+      currentIndex: 0,
+      answers: [],
+      answered: false
+    };
+
+    // DOM elements
+    const landing = document.getElementById('landing');
+    const practice = document.getElementById('practice');
+    const results = document.getElementById('results');
+    const practiceTitle = document.getElementById('practice-title');
+    const chapterDesc = document.getElementById('chapter-desc');
+    const currentEl = document.getElementById('current');
+    const totalEl = document.getElementById('total');
+    const questionText = document.getElementById('question-text');
+    const optionsEl = document.getElementById('options');
+    const feedback = document.getElementById('feedback');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const feedbackExplanation = document.getElementById('feedback-explanation');
+    const nextBtn = document.getElementById('next-btn');
+    const scoreEl = document.getElementById('score');
+    const correctCountEl = document.getElementById('correct-count');
+    const totalCountEl = document.getElementById('total-count');
+    const retryBtn = document.getElementById('retry-btn');
+    const backBtn = document.getElementById('back-btn');
+
+    // Load chapter
+    async function loadChapter(chapterId) {
+      try {
+        const response = await fetch(`content/${chapterId}.json`);
+        const data = await response.json();
+        state.chapter = data;
+        state.problems = shuffleArray([...data.problems]);
+        state.currentIndex = 0;
+        state.answers = [];
+        state.answered = false;
+        startPractice();
+      } catch (err) {
+        console.error('Failed to load chapter:', err);
+        alert('Failed to load chapter. Please try again.');
+      }
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function startPractice() {
+      landing.classList.add('hidden');
+      results.classList.remove('active');
+      practice.classList.add('active');
+
+      practiceTitle.textContent = state.chapter.chapterTitle;
+      chapterDesc.textContent = state.chapter.chapterDescription;
+      totalEl.textContent = state.problems.length;
+
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const problem = state.problems[state.currentIndex];
+      state.answered = false;
+
+      currentEl.textContent = state.currentIndex + 1;
+      questionText.textContent = problem.question;
+
+      // Clear and rebuild options
+      optionsEl.innerHTML = '';
+      problem.options.forEach((option, index) => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = option;
+        btn.addEventListener('click', () => selectAnswer(index));
+        li.appendChild(btn);
+        optionsEl.appendChild(li);
+      });
+
+      // Hide feedback and next button
+      feedback.classList.remove('visible', 'correct', 'incorrect');
+      nextBtn.style.display = 'none';
+    }
+
+    function selectAnswer(index) {
+      if (state.answered) return;
+      state.answered = true;
+
+      const problem = state.problems[state.currentIndex];
+      const isCorrect = index === problem.correct;
+      state.answers.push({ problemId: problem.id, selected: index, correct: isCorrect });
+
+      // Update button states
+      const buttons = optionsEl.querySelectorAll('.option-btn');
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === problem.correct) {
+          btn.classList.add('correct');
+        } else if (i === index && !isCorrect) {
+          btn.classList.add('incorrect');
+        }
+      });
+
+      // Show feedback
+      feedback.classList.add('visible');
+      feedback.classList.add(isCorrect ? 'correct' : 'incorrect');
+      feedbackTitle.textContent = isCorrect ? 'Correct!' : 'Incorrect';
+      feedbackExplanation.textContent = problem.explanation;
+
+      // Show next button
+      nextBtn.style.display = 'inline-block';
+      nextBtn.textContent = state.currentIndex < state.problems.length - 1 ? 'Next' : 'See Results';
+    }
+
+    function nextQuestion() {
+      if (state.currentIndex < state.problems.length - 1) {
+        state.currentIndex++;
+        showQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    function showResults() {
+      practice.classList.remove('active');
+      results.classList.add('active');
+
+      const correctCount = state.answers.filter(a => a.correct).length;
+      const total = state.answers.length;
+      const percentage = Math.round((correctCount / total) * 100);
+
+      scoreEl.textContent = percentage + '%';
+      correctCountEl.textContent = correctCount;
+      totalCountEl.textContent = total;
+    }
+
+    function retry() {
+      state.problems = shuffleArray([...state.chapter.problems]);
+      state.currentIndex = 0;
+      state.answers = [];
+      state.answered = false;
+
+      results.classList.remove('active');
+      practice.classList.add('active');
+      showQuestion();
+    }
+
+    function backToMenu() {
+      practice.classList.remove('active');
+      results.classList.remove('active');
+      landing.classList.remove('hidden');
+      state.chapter = null;
+      state.problems = [];
+    }
+
+    // Event listeners
+    document.querySelectorAll('.chapter-btn[data-chapter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const chapterId = btn.dataset.chapter;
+        loadChapter(chapterId);
+      });
+    });
+
+    nextBtn.addEventListener('click', nextQuestion);
+    retryBtn.addEventListener('click', retry);
+    backBtn.addEventListener('click', backToMenu);
+  </script>
+</body>
+</html>
