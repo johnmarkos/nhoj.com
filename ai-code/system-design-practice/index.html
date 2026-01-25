@@ -80,6 +80,12 @@
       font-weight: 600;
     }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
     .progress {
       font-size: 0.75rem;
       color: var(--text-muted);
@@ -322,6 +328,10 @@
       margin-top: 1rem;
     }
 
+    .nav-row.results-nav {
+      justify-content: center;
+    }
+
     /* Results view */
     .results {
       display: none;
@@ -423,9 +433,9 @@
     <div id="practice" class="practice">
       <header class="header">
         <h1 id="practice-title">Time Math</h1>
-        <div>
-          <span class="progress"><span id="current">1</span>/<span id="total">15</span></span>
-          <button class="quit-link" id="quit-btn">&times; Quit</button>
+        <div class="header-right">
+          <span class="progress" id="progress" aria-label="Question 1 of 15"><span id="current">1</span>/<span id="total">15</span></span>
+          <button class="quit-link" id="quit-btn" aria-label="Quit session">&times; Quit</button>
         </div>
       </header>
 
@@ -433,7 +443,7 @@
 
       <div id="question-container">
         <p class="question" id="question-text"></p>
-        <ul class="options" id="options" role="list"></ul>
+        <ul class="options" id="options"></ul>
 
         <div class="feedback" id="feedback">
           <div class="feedback-title" id="feedback-title"></div>
@@ -451,7 +461,7 @@
       <h2>Session Complete</h2>
       <div class="score" id="score">0%</div>
       <div class="score-label"><span id="correct-count">0</span> of <span id="total-count">0</span> correct</div>
-      <div class="nav-row" style="justify-content: center;">
+      <div class="nav-row results-nav">
         <button class="nav-btn secondary" id="retry-btn">Try Again</button>
         <button class="nav-btn" id="back-btn">Back to Menu</button>
       </div>
@@ -488,6 +498,7 @@
     const backBtn = document.getElementById('back-btn');
     const quitBtn = document.getElementById('quit-btn');
     const errorMsg = document.getElementById('error-msg');
+    const progressEl = document.getElementById('progress');
 
     function showError(message) {
       errorMsg.textContent = message;
@@ -499,11 +510,13 @@
     }
 
     async function loadChapter(chapterId, buttonEl) {
+      if (buttonEl.classList.contains('loading')) return; // Prevent double-click
+
       hideError();
+      const originalText = buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
       buttonEl.classList.add('loading');
       buttonEl.textContent = 'Loading...';
-      const originalText = buttonEl.dataset.originalText || buttonEl.textContent;
-      buttonEl.dataset.originalText = originalText;
 
       try {
         const response = await fetch(`content/${chapterId}.json`);
@@ -550,7 +563,9 @@
       const problem = state.problems[state.currentIndex];
       state.answered = false;
 
-      currentEl.textContent = state.currentIndex + 1;
+      const questionNum = state.currentIndex + 1;
+      currentEl.textContent = questionNum;
+      progressEl.setAttribute('aria-label', `Question ${questionNum} of ${state.problems.length}`);
       questionText.textContent = problem.question;
 
       // Clear and rebuild options
