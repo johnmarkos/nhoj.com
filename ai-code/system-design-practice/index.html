@@ -161,6 +161,12 @@
       cursor: wait;
     }
 
+    .chapter-btn.practice-all-btn {
+      background: var(--accent-alpha);
+      border-color: var(--accent);
+      font-weight: 500;
+    }
+
     /* Practice view */
     .practice {
       display: none;
@@ -412,21 +418,7 @@
 
       <div id="error-msg" class="error-msg"></div>
 
-      <ul class="unit-list">
-        <li class="unit-item">
-          <div class="unit-title">Unit 1: Estimation</div>
-          <ul class="chapter-list">
-            <li><button class="chapter-btn" disabled>1. Reference Numbers (coming soon)</button></li>
-            <li><button class="chapter-btn" data-chapter="unit-1-chapter-2">2. Time Math</button></li>
-            <li><button class="chapter-btn" data-chapter="unit-1-chapter-3">3. Storage Math</button></li>
-            <li><button class="chapter-btn" data-chapter="unit-1-chapter-4">4. Bandwidth Math</button></li>
-            <li><button class="chapter-btn" disabled>5. QPS & Load (coming soon)</button></li>
-            <li><button class="chapter-btn" disabled>6. Growth Projections (coming soon)</button></li>
-            <li><button class="chapter-btn" disabled>7. Sanity Checks (coming soon)</button></li>
-            <li><button class="chapter-btn" disabled>8. Compound Scenarios (coming soon)</button></li>
-          </ul>
-        </li>
-      </ul>
+      <div id="unit-list"></div>
     </div>
 
     <!-- Practice View -->
@@ -469,12 +461,32 @@
   </div>
 
   <script>
+    // Unit and chapter definitions - add new chapters here
+    const UNITS = [
+      {
+        id: 1,
+        title: 'Estimation',
+        chapters: [
+          { num: 1, title: 'Reference Numbers', ready: false },
+          { num: 2, title: 'Time Math', ready: true },
+          { num: 3, title: 'Storage Math', ready: true },
+          { num: 4, title: 'Bandwidth Math', ready: true },
+          { num: 5, title: 'QPS & Load', ready: false },
+          { num: 6, title: 'Growth Projections', ready: false },
+          { num: 7, title: 'Sanity Checks', ready: false },
+          { num: 8, title: 'Compound Scenarios', ready: false }
+        ]
+      }
+    ];
+
     const state = {
       chapter: null,
       problems: [],
+      allProblems: [], // Unshuffled copy for retry
       currentIndex: 0,
       answers: [],
-      answered: false
+      answered: false,
+      mode: 'chapter' // 'chapter' or 'unit'
     };
 
     // DOM elements
@@ -509,6 +521,114 @@
       errorMsg.classList.remove('visible');
     }
 
+    // Render the unit list dynamically
+    function renderUnitList() {
+      const container = document.getElementById('unit-list');
+      const ul = document.createElement('ul');
+      ul.className = 'unit-list';
+
+      UNITS.forEach(unit => {
+        const li = document.createElement('li');
+        li.className = 'unit-item';
+
+        const title = document.createElement('div');
+        title.className = 'unit-title';
+        title.textContent = `Unit ${unit.id}: ${unit.title}`;
+        li.appendChild(title);
+
+        const chapterUl = document.createElement('ul');
+        chapterUl.className = 'chapter-list';
+
+        // Add "Practice All" button if unit has ready chapters
+        const readyChapters = unit.chapters.filter(c => c.ready);
+        if (readyChapters.length > 1) {
+          const allLi = document.createElement('li');
+          const allBtn = document.createElement('button');
+          allBtn.className = 'chapter-btn practice-all-btn';
+          allBtn.dataset.unit = unit.id;
+          allBtn.textContent = `▶ Practice All ${unit.title} (${readyChapters.length} chapters)`;
+          allBtn.addEventListener('click', () => loadUnit(unit.id, allBtn));
+          allLi.appendChild(allBtn);
+          chapterUl.appendChild(allLi);
+        }
+
+        // Add individual chapter buttons
+        unit.chapters.forEach(chapter => {
+          const chapterLi = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.className = 'chapter-btn';
+
+          if (chapter.ready) {
+            btn.dataset.chapter = `unit-${unit.id}-chapter-${chapter.num}`;
+            btn.textContent = `${chapter.num}. ${chapter.title}`;
+            btn.addEventListener('click', () => loadChapter(btn.dataset.chapter, btn));
+          } else {
+            btn.disabled = true;
+            btn.textContent = `${chapter.num}. ${chapter.title} (coming soon)`;
+          }
+
+          chapterLi.appendChild(btn);
+          chapterUl.appendChild(chapterLi);
+        });
+
+        li.appendChild(chapterUl);
+        ul.appendChild(li);
+      });
+
+      container.appendChild(ul);
+    }
+
+    // Load all chapters for a unit
+    async function loadUnit(unitId, buttonEl) {
+      if (buttonEl.disabled) return;
+
+      hideError();
+      const originalText = buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
+      buttonEl.disabled = true;
+      buttonEl.classList.add('loading');
+      buttonEl.textContent = 'Loading...';
+
+      const unit = UNITS.find(u => u.id === unitId);
+      const readyChapters = unit.chapters.filter(c => c.ready);
+
+      try {
+        // Load all chapter JSONs in parallel
+        const chapterPromises = readyChapters.map(c =>
+          fetch(`content/unit-${unitId}-chapter-${c.num}.json`).then(r => {
+            if (!r.ok) throw new Error(`Failed to load chapter ${c.num}`);
+            return r.json();
+          })
+        );
+
+        const chapters = await Promise.all(chapterPromises);
+
+        // Combine all problems
+        const allProblems = chapters.flatMap(ch => ch.problems);
+
+        state.chapter = {
+          unitTitle: unit.title,
+          chapterTitle: `All ${unit.title}`,
+          chapterDescription: `${allProblems.length} problems from ${readyChapters.length} chapters`
+        };
+        state.allProblems = allProblems;
+        state.problems = shuffleArray([...allProblems]);
+        state.currentIndex = 0;
+        state.answers = [];
+        state.answered = false;
+        state.mode = 'unit';
+
+        startPractice();
+      } catch (err) {
+        console.error('Failed to load unit:', err);
+        showError('Failed to load unit. Please try again.');
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+      } finally {
+        buttonEl.classList.remove('loading');
+      }
+    }
+
     async function loadChapter(chapterId, buttonEl) {
       if (buttonEl.disabled) return; // Prevent double-click
 
@@ -526,10 +646,12 @@
         }
         const data = await response.json();
         state.chapter = data;
+        state.allProblems = data.problems;
         state.problems = shuffleArray([...data.problems]);
         state.currentIndex = 0;
         state.answers = [];
         state.answered = false;
+        state.mode = 'chapter';
         startPractice();
       } catch (err) {
         console.error('Failed to load chapter:', err);
@@ -646,7 +768,7 @@
     }
 
     function retry() {
-      state.problems = shuffleArray([...state.chapter.problems]);
+      state.problems = shuffleArray([...state.allProblems]);
       state.currentIndex = 0;
       state.answers = [];
       state.answered = false;
@@ -664,9 +786,11 @@
       // Full state reset
       state.chapter = null;
       state.problems = [];
+      state.allProblems = [];
       state.currentIndex = 0;
       state.answers = [];
       state.answered = false;
+      state.mode = 'chapter';
 
       // Reset chapter buttons in case they were left in loading state
       document.querySelectorAll('.chapter-btn[data-original-text]').forEach(btn => {
@@ -686,13 +810,8 @@
       }
     });
 
-    // Chapter buttons
-    document.querySelectorAll('.chapter-btn[data-chapter]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const chapterId = btn.dataset.chapter;
-        loadChapter(chapterId, btn);
-      });
-    });
+    // Initialize
+    renderUnitList();
 
     nextBtn.addEventListener('click', nextQuestion);
     retryBtn.addEventListener('click', retry);
