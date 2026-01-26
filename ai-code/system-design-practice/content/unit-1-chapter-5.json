@@ -1,0 +1,809 @@
+{
+  "unit": 1,
+  "unitTitle": "Estimation",
+  "chapter": 5,
+  "chapterTitle": "QPS & Load",
+  "chapterDescription": "Request rates, server capacity, load balancing, throughput calculations",
+  "problems": [
+    {
+      "id": "qps-001",
+      "type": "multiple-choice",
+      "question": "Your service has 10 million DAU. Each user makes 50 requests per day on average. What's your average QPS?",
+      "options": ["~580 QPS", "~5,800 QPS", "~58,000 QPS", "~580,000 QPS"],
+      "correct": 1,
+      "explanation": "10M × 50 = 500M requests/day. 500M ÷ 86,400 sec = 5,787 QPS ≈ 5,800 QPS."
+    },
+    {
+      "id": "qps-002",
+      "type": "multiple-choice",
+      "question": "A server handles 500 requests/second. Each request takes 20ms average. How many concurrent requests?",
+      "options": ["~10", "~100", "~1,000", "~10,000"],
+      "correct": 0,
+      "explanation": "Little's Law: L = λ × W. Concurrent = 500 req/s × 0.02s = 10 concurrent requests."
+    },
+    {
+      "id": "qps-003",
+      "type": "multiple-choice",
+      "question": "Your peak traffic is 5× your average. Average is 10,000 QPS. How many servers if each handles 2,000 QPS?",
+      "options": ["5 servers", "13 servers", "25 servers", "50 servers"],
+      "correct": 2,
+      "explanation": "Peak = 5 × 10,000 = 50,000 QPS. Servers needed = 50,000 ÷ 2,000 = 25 servers."
+    },
+    {
+      "id": "qps-004",
+      "type": "multiple-choice",
+      "question": "A database connection takes 5ms to establish. Your app needs 1,000 connections/second. Why use connection pooling?",
+      "options": ["Save 5 seconds/second of CPU", "Save 5 seconds/second of latency", "Avoid TCP port exhaustion", "All of the above"],
+      "correct": 3,
+      "explanation": "Connection pooling saves 5ms × 1,000 = 5 seconds of latency per second, reduces CPU overhead, and prevents port exhaustion from rapid connect/disconnect."
+    },
+    {
+      "id": "qps-005",
+      "type": "multiple-choice",
+      "question": "Your API has P50=10ms, P99=100ms. At 1,000 QPS, how many requests/second exceed 100ms?",
+      "options": ["~1", "~10", "~100", "~500"],
+      "correct": 1,
+      "explanation": "P99 means 99% are under 100ms, so 1% exceed it. 1% of 1,000 = 10 requests/second."
+    },
+    {
+      "id": "qps-006",
+      "type": "multiple-choice",
+      "question": "A rate limiter allows 100 requests per minute per user. 10,000 users are active. Max theoretical QPS?",
+      "options": ["~167 QPS", "~1,670 QPS", "~16,700 QPS", "~167,000 QPS"],
+      "correct": 2,
+      "explanation": "10,000 users × 100 req/min = 1M req/min = 16,667 req/sec ≈ 16,700 QPS."
+    },
+    {
+      "id": "qps-007",
+      "type": "multiple-choice",
+      "question": "Your load balancer distributes traffic to 8 servers. One server fails. Load increase per remaining server?",
+      "options": ["~12.5%", "~14.3%", "~16.7%", "~25%"],
+      "correct": 1,
+      "explanation": "Before: each handles 1/8 = 12.5%. After: each handles 1/7 = 14.3%. Increase = 14.3% - 12.5% = 1.8% absolute, or 14.3% relative increase."
+    },
+    {
+      "id": "qps-008",
+      "type": "multiple-choice",
+      "question": "A cache has 90% hit rate. Backend handles 1,000 QPS at capacity. Total QPS the system can handle?",
+      "options": ["~1,000 QPS", "~9,000 QPS", "~10,000 QPS", "~100,000 QPS"],
+      "correct": 2,
+      "explanation": "10% of requests hit backend. If backend max is 1,000 QPS, that's 10% of total. Total = 1,000 ÷ 0.1 = 10,000 QPS."
+    },
+    {
+      "id": "qps-009",
+      "type": "multiple-choice",
+      "question": "Each API request triggers 3 database queries. API is at 5,000 QPS. Database QPS?",
+      "options": ["~1,700 QPS", "~5,000 QPS", "~15,000 QPS", "~25,000 QPS"],
+      "correct": 2,
+      "explanation": "5,000 API calls × 3 DB queries = 15,000 database QPS."
+    },
+    {
+      "id": "qps-010",
+      "type": "multiple-choice",
+      "question": "Your server has 100 worker threads. Each request takes 50ms. Maximum throughput?",
+      "options": ["~200 QPS", "~2,000 QPS", "~20,000 QPS", "~200,000 QPS"],
+      "correct": 1,
+      "explanation": "Each thread handles 1/0.05 = 20 requests/sec. 100 threads × 20 = 2,000 QPS max."
+    },
+    {
+      "id": "qps-011",
+      "type": "multiple-choice",
+      "question": "A microservice has 200ms timeout. Downstream service P99 is 150ms. What happens at 99.9th percentile?",
+      "options": ["Request succeeds", "Request times out", "Depends on retry config", "Cannot determine"],
+      "correct": 2,
+      "explanation": "P99 is 150ms but P99.9 could be higher than 200ms. Without knowing P99.9 or the latency distribution, we can't determine if it times out."
+    },
+    {
+      "id": "qps-012",
+      "type": "multiple-choice",
+      "question": "Your service auto-scales at 70% CPU. Each server handles 1,000 QPS at 70% CPU. Traffic grows from 5,000 to 15,000 QPS. Servers after scaling?",
+      "options": ["5 → 15 servers", "5 → 21 servers", "7 → 15 servers", "7 → 21 servers"],
+      "correct": 0,
+      "explanation": "At 70% CPU = 1,000 QPS per server. 5,000 QPS needs 5 servers. 15,000 QPS needs 15 servers."
+    },
+    {
+      "id": "qps-013",
+      "type": "multiple-choice",
+      "question": "A queue processes 100 messages/second. Messages arrive at 120/second. Queue depth after 1 minute?",
+      "options": ["~200 messages", "~1,200 messages", "~6,000 messages", "~7,200 messages"],
+      "correct": 1,
+      "explanation": "Backlog rate = 120 - 100 = 20 messages/second. After 60 seconds: 20 × 60 = 1,200 messages queued."
+    },
+    {
+      "id": "qps-014",
+      "type": "multiple-choice",
+      "question": "Database has 100 max connections. Each query takes 10ms. Max query throughput?",
+      "options": ["~1,000 QPS", "~10,000 QPS", "~100,000 QPS", "~1,000,000 QPS"],
+      "correct": 1,
+      "explanation": "Each connection handles 1/0.01 = 100 queries/sec. 100 connections × 100 = 10,000 QPS."
+    },
+    {
+      "id": "qps-015",
+      "type": "multiple-choice",
+      "question": "Your CDN absorbs 95% of traffic. Origin handles 500 QPS max. Peak traffic the CDN can support?",
+      "options": ["~500 QPS", "~5,000 QPS", "~10,000 QPS", "~50,000 QPS"],
+      "correct": 2,
+      "explanation": "5% hits origin. If origin max is 500, total = 500 ÷ 0.05 = 10,000 QPS."
+    },
+    {
+      "id": "qps-016",
+      "type": "multiple-choice",
+      "question": "An endpoint has 100ms latency. You add 2 sequential downstream calls of 30ms each. New latency?",
+      "options": ["~130ms", "~160ms", "~200ms", "~300ms"],
+      "correct": 1,
+      "explanation": "100ms + 30ms + 30ms = 160ms (sequential calls add their latencies)."
+    },
+    {
+      "id": "qps-017",
+      "type": "multiple-choice",
+      "question": "You parallelize 2 calls of 50ms each instead of running them sequentially. Time saved?",
+      "options": ["0ms", "~25ms", "~50ms", "~100ms"],
+      "correct": 2,
+      "explanation": "Sequential: 50 + 50 = 100ms. Parallel: max(50, 50) = 50ms. Saved: 50ms."
+    },
+    {
+      "id": "qps-018",
+      "type": "multiple-choice",
+      "question": "A service handles 10,000 QPS. You add a circuit breaker that trips at 50% error rate. At 60% errors, effective QPS?",
+      "options": ["0 QPS (circuit open)", "~4,000 QPS", "~6,000 QPS", "~10,000 QPS"],
+      "correct": 0,
+      "explanation": "Circuit breaker trips at 50% errors. At 60%, the circuit is open, rejecting all requests (0 effective QPS until it recovers)."
+    },
+    {
+      "id": "qps-019",
+      "type": "multiple-choice",
+      "question": "Your Redis cache handles 100,000 ops/sec. Each API request needs 5 cache operations. Max API QPS limited by cache?",
+      "options": ["~5,000 QPS", "~20,000 QPS", "~100,000 QPS", "~500,000 QPS"],
+      "correct": 1,
+      "explanation": "100,000 cache ops ÷ 5 ops per request = 20,000 API QPS."
+    },
+    {
+      "id": "qps-020",
+      "type": "multiple-choice",
+      "question": "Health checks run every 5 seconds. 50 services, 10 instances each. Health check QPS?",
+      "options": ["~10 QPS", "~100 QPS", "~500 QPS", "~5,000 QPS"],
+      "correct": 1,
+      "explanation": "50 services × 10 instances = 500 health checks per 5 seconds = 100 QPS."
+    },
+    {
+      "id": "qps-021",
+      "type": "multiple-choice",
+      "question": "Your API Gateway has 10ms overhead per request. Backend latency is 40ms. Total latency and throughput impact?",
+      "options": ["50ms latency, 20% throughput loss", "50ms latency, no throughput impact", "40ms latency, 10ms async", "Depends on gateway architecture"],
+      "correct": 0,
+      "explanation": "Gateway adds 10ms to the request path. Total = 40 + 10 = 50ms. Throughput per worker drops from 1/0.04 to 1/0.05 = 20% reduction."
+    },
+    {
+      "id": "qps-022",
+      "type": "multiple-choice",
+      "question": "A retry policy retries failed requests 3 times with 1-second backoff. Base failure rate is 1%. Worst-case QPS amplification?",
+      "options": ["~1%", "~3%", "~4%", "~1.03×"],
+      "correct": 2,
+      "explanation": "1% fail × up to 3 retries = 3% extra requests. Total = 100% + 3% = 103%, or ~4% amplification (1.03× is the same as ~3% increase)."
+    },
+    {
+      "id": "qps-023",
+      "type": "multiple-choice",
+      "question": "You shard by user_id across 16 database shards. Hot user generates 10% of all queries. That shard's load vs. even distribution?",
+      "options": ["~1.6× average", "~2.5× average", "~10× average", "~16× average"],
+      "correct": 1,
+      "explanation": "Even distribution = 100%/16 = 6.25% per shard. Hot shard gets 10% (hot user) + 90%/16 (fair share of rest) = 10% + 5.6% = 15.6%. Ratio = 15.6/6.25 = 2.5×."
+    },
+    {
+      "id": "qps-024",
+      "type": "multiple-choice",
+      "question": "Your batch job processes 1 million records. Single-threaded takes 10 hours. With 100 workers, theoretical time?",
+      "options": ["~6 minutes", "~1 hour", "~6 hours", "Depends on coordination overhead"],
+      "correct": 0,
+      "explanation": "Ideal speedup: 10 hours ÷ 100 = 0.1 hours = 6 minutes. (Real-world has coordination overhead.)"
+    },
+    {
+      "id": "qps-025",
+      "type": "multiple-choice",
+      "question": "Token bucket rate limiter: 100 tokens/second, bucket size 500. After idle period, how many burst requests allowed?",
+      "options": ["100 requests", "500 requests", "600 requests", "Unlimited until 100/s sustained"],
+      "correct": 1,
+      "explanation": "Bucket fills to max capacity (500) when idle. Burst capacity = bucket size = 500 requests."
+    },
+    {
+      "id": "qps-026",
+      "type": "multiple-choice",
+      "question": "Leaky bucket rate limiter: 100 requests/second outflow. Burst of 500 requests arrives. Time to drain?",
+      "options": ["~0.5 seconds", "~5 seconds", "~50 seconds", "Depends on bucket size"],
+      "correct": 1,
+      "explanation": "500 requests ÷ 100/second = 5 seconds to drain (assuming bucket is large enough to hold 500)."
+    },
+    {
+      "id": "qps-027",
+      "type": "multiple-choice",
+      "question": "WebSocket server holds 100,000 connections. Each connection receives 1 message/minute. Message processing QPS?",
+      "options": ["~167 QPS", "~1,667 QPS", "~16,667 QPS", "~100,000 QPS"],
+      "correct": 1,
+      "explanation": "100,000 connections × 1 msg/min ÷ 60 sec = 1,667 messages/second."
+    },
+    {
+      "id": "qps-028",
+      "type": "multiple-choice",
+      "question": "Your service has 99.9% availability. It handles 1 million requests/day. Expected failed requests per day?",
+      "options": ["~100", "~1,000", "~10,000", "~100,000"],
+      "correct": 1,
+      "explanation": "0.1% failure rate × 1M = 1,000 failed requests per day."
+    },
+    {
+      "id": "qps-029",
+      "type": "multiple-choice",
+      "question": "A GraphQL query fans out to 5 backend services in parallel. Each service has P95=50ms. Query P95?",
+      "options": ["~50ms", "~100ms", "~250ms", "Higher than any individual P95"],
+      "correct": 3,
+      "explanation": "When calling N services in parallel, the total P95 is worse than any individual P95 because you wait for the slowest. With 5 services, probability all are under P95 is 0.95^5 = 77%, so query P95 is higher."
+    },
+    {
+      "id": "qps-030",
+      "type": "multiple-choice",
+      "question": "Database read replicas handle 80% of reads. Primary handles writes + 20% of reads. Primary write QPS is 1,000. Read:write ratio is 10:1. Primary total QPS?",
+      "options": ["~1,000 QPS", "~3,000 QPS", "~10,000 QPS", "~11,000 QPS"],
+      "correct": 1,
+      "explanation": "Writes: 1,000. Total reads: 1,000 × 10 = 10,000. Primary reads: 20% of 10,000 = 2,000. Primary total: 1,000 + 2,000 = 3,000 QPS."
+    },
+    {
+      "id": "qps-031",
+      "type": "multiple-choice",
+      "question": "You implement request coalescing for identical requests. 100 duplicate requests in a 10ms window become 1 backend call. Reduction factor?",
+      "options": ["~10×", "~100×", "Depends on dedup rate", "~1,000×"],
+      "correct": 1,
+      "explanation": "100 requests become 1. Reduction = 100×."
+    },
+    {
+      "id": "qps-032",
+      "type": "multiple-choice",
+      "question": "Your API serves 50,000 QPS. Each request costs $0.00001 in compute. Annual API cost?",
+      "options": ["~$1,500", "~$15,000", "~$150,000", "~$1.5M"],
+      "correct": 1,
+      "explanation": "50,000 QPS × 86,400 sec/day × 365 days × $0.00001 = $15,768 ≈ $15,000/year."
+    },
+    {
+      "id": "qps-033",
+      "type": "multiple-choice",
+      "question": "Thundering herd: cache key expires, 1,000 concurrent requests hit empty cache. Without protection, backend receives?",
+      "options": ["1 request", "~100 requests", "~1,000 requests", "Depends on cache implementation"],
+      "correct": 2,
+      "explanation": "Without protection (like request coalescing or locking), all 1,000 requests see cache miss and hit backend simultaneously."
+    },
+    {
+      "id": "qps-034",
+      "type": "multiple-choice",
+      "question": "Your service mesh adds sidecar proxies. Each request passes through 2 sidecars (client + server). Sidecar latency is 1ms each. Impact on P50 if base P50 is 20ms?",
+      "options": ["20ms (no change)", "21ms", "22ms", "24ms"],
+      "correct": 2,
+      "explanation": "2 sidecars × 1ms = 2ms added. New P50 = 20 + 2 = 22ms."
+    },
+    {
+      "id": "qps-035",
+      "type": "multiple-choice",
+      "question": "Event-driven architecture: producer emits 10,000 events/second. 5 consumers each process all events. Total event processing rate?",
+      "options": ["~10,000/sec", "~50,000/sec", "~2,000/sec", "Depends on partitioning"],
+      "correct": 1,
+      "explanation": "Fan-out: each consumer processes all 10,000 events. Total = 5 × 10,000 = 50,000 event processings/second."
+    },
+    {
+      "id": "qps-036",
+      "type": "multiple-choice",
+      "question": "Kafka partition has 1 consumer. Consumer processes at 1,000 messages/second. Producer writes 1,500/second. Consumer lag after 1 hour?",
+      "options": ["~500 messages", "~30,000 messages", "~1.8 million messages", "~3.6 million messages"],
+      "correct": 2,
+      "explanation": "Lag rate = 1,500 - 1,000 = 500/second. After 1 hour: 500 × 3,600 = 1.8 million messages behind."
+    },
+    {
+      "id": "qps-037",
+      "type": "multiple-choice",
+      "question": "Auto-scaling cooldown is 5 minutes. Traffic spikes take 2 minutes to detect. Minimum time from traffic spike to scaled capacity?",
+      "options": ["~2 minutes", "~5 minutes", "~7 minutes", "Depends on instance boot time"],
+      "correct": 3,
+      "explanation": "Time = detection (2 min) + instance launch (varies) + health check. Cooldown doesn't affect scale-up, only prevents rapid scale-down. Total depends on how long instances take to boot and become healthy."
+    },
+    {
+      "id": "qps-038",
+      "type": "multiple-choice",
+      "question": "Your database has 50ms average query time. You add an index that reduces it to 10ms. Throughput improvement?",
+      "options": ["~5× faster queries", "~5× more throughput", "Both", "Neither—depends on whether CPU or IO bound"],
+      "correct": 2,
+      "explanation": "Queries are 5× faster (50ms → 10ms). With fixed resources (connections, CPU), throughput also increases ~5× since each query uses resources for 1/5 the time."
+    },
+    {
+      "id": "qps-039",
+      "type": "multiple-choice",
+      "question": "Connection pool has 10 connections. Query takes 100ms. Target throughput is 200 QPS. Pool size needed?",
+      "options": ["10 connections", "20 connections", "100 connections", "200 connections"],
+      "correct": 1,
+      "explanation": "Each connection handles 10 QPS (1/0.1s). For 200 QPS: 200 ÷ 10 = 20 connections needed."
+    },
+    {
+      "id": "qps-040",
+      "type": "multiple-choice",
+      "question": "gRPC streaming: client opens 1 stream, sends 1,000 messages/second. Compared to 1,000 unary calls/second, connection overhead?",
+      "options": ["Same overhead", "~1,000× less connection overhead", "~10× less overhead", "Depends on message size"],
+      "correct": 1,
+      "explanation": "Streaming: 1 connection setup for 1,000 messages. Unary: potentially 1,000 connection setups (though HTTP/2 multiplexes). Streaming eliminates per-request connection overhead ≈ 1,000× reduction."
+    },
+    {
+      "id": "qps-041",
+      "type": "multiple-choice",
+      "question": "DNS TTL is 60 seconds. You deploy new servers. Worst-case time for all clients to reach new servers?",
+      "options": ["~60 seconds", "~120 seconds", "~180 seconds", "Depends on client caching behavior"],
+      "correct": 3,
+      "explanation": "DNS TTL is a hint, not enforced. Browsers, OS, and intermediate resolvers may cache longer. Some clients ignore TTL entirely. Worst case is unpredictable."
+    },
+    {
+      "id": "qps-042",
+      "type": "multiple-choice",
+      "question": "Read-through cache: miss penalty is 50ms (DB query). Hit latency is 1ms. At 95% hit rate, average latency?",
+      "options": ["~1ms", "~3.5ms", "~25ms", "~47.5ms"],
+      "correct": 1,
+      "explanation": "Avg = (0.95 × 1ms) + (0.05 × 50ms) = 0.95 + 2.5 = 3.45ms ≈ 3.5ms."
+    },
+    {
+      "id": "qps-043",
+      "type": "multiple-choice",
+      "question": "Server processes requests in FIFO order. Queue has 100 requests, each takes 10ms. Wait time for new request?",
+      "options": ["~10ms", "~100ms", "~1 second", "~10 seconds"],
+      "correct": 2,
+      "explanation": "New request waits for 100 requests × 10ms = 1,000ms = 1 second."
+    },
+    {
+      "id": "qps-044",
+      "type": "multiple-choice",
+      "question": "You implement priority queues: high (10%), medium (30%), low (60%). High-priority latency vs. single queue?",
+      "options": ["Same latency", "~10× lower latency", "Lower, but depends on implementation", "Higher due to priority checking overhead"],
+      "correct": 2,
+      "explanation": "High-priority requests skip ahead of 90% of the queue, but actual improvement depends on queue depth, arrival rates, and priority algorithm overhead."
+    },
+    {
+      "id": "qps-045",
+      "type": "multiple-choice",
+      "question": "Exponential backoff: initial delay 100ms, multiplier 2×, max 5 retries. Total time if all retries fail?",
+      "options": ["~1.5 seconds", "~3.1 seconds", "~6.3 seconds", "~12.6 seconds"],
+      "correct": 1,
+      "explanation": "Delays: 100 + 200 + 400 + 800 + 1600 = 3,100ms = 3.1 seconds total backoff time."
+    },
+    {
+      "id": "qps-046",
+      "type": "multiple-choice",
+      "question": "Your SLO is P99 < 200ms. Current P99 is 180ms. How much headroom as a percentage?",
+      "options": ["~10%", "~11%", "~20%", "~90%"],
+      "correct": 1,
+      "explanation": "Headroom = (200 - 180) / 180 = 20/180 = 11.1%. (Or 20/200 = 10% of SLO budget remaining.)"
+    },
+    {
+      "id": "qps-047",
+      "type": "multiple-choice",
+      "question": "You add request hedging: send duplicate request after 50ms if no response. At 10,000 QPS with 5% requests > 50ms, hedged QPS?",
+      "options": ["~10,000 QPS", "~10,500 QPS", "~15,000 QPS", "~20,000 QPS"],
+      "correct": 1,
+      "explanation": "5% of requests trigger hedge = 500 extra requests. Total = 10,000 + 500 = 10,500 QPS."
+    },
+    {
+      "id": "qps-048",
+      "type": "multiple-choice",
+      "question": "Microservice A calls B, B calls C. A timeout is 500ms, B timeout is 400ms, C timeout is 300ms. What's wrong?",
+      "options": ["Nothing, timeouts cascade correctly", "A's timeout should be > B + C", "C's timeout should be lowest", "B's timeout should equal C's"],
+      "correct": 0,
+      "explanation": "A (500ms) > B (400ms) > C (300ms) is correct cascading. Each service has time for its downstream plus processing. This allows proper timeout propagation."
+    },
+    {
+      "id": "qps-049",
+      "type": "multiple-choice",
+      "question": "Your service has 4 nines availability (99.99%). Max downtime per month?",
+      "options": ["~4.3 minutes", "~43 minutes", "~4.3 hours", "~43 hours"],
+      "correct": 0,
+      "explanation": "99.99% uptime = 0.01% downtime. 30 days × 24 hours × 60 min × 0.0001 = 4.32 minutes/month."
+    },
+    {
+      "id": "qps-050",
+      "type": "multiple-choice",
+      "question": "Consistent hashing ring with 100 virtual nodes per server. 1 of 10 servers fails. How much traffic rehashes?",
+      "options": ["~1%", "~10%", "~50%", "~100%"],
+      "correct": 1,
+      "explanation": "With consistent hashing, only the failed server's traffic rehashes ≈ 1/10 = 10% of total traffic moves to other servers."
+    },
+    {
+      "id": "qps-051",
+      "type": "multiple-choice",
+      "question": "Blue-green deployment: 100% traffic on blue, 0% on green. You shift 10% to green. Green errors spike. Blast radius?",
+      "options": ["~10% of users affected", "~100% of users affected", "~0% (errors caught in green)", "Depends on error type"],
+      "correct": 0,
+      "explanation": "Only 10% of traffic goes to green, so only 10% of users are affected by green's errors."
+    },
+    {
+      "id": "qps-052",
+      "type": "multiple-choice",
+      "question": "Request has 100ms budget. It makes 3 sequential calls. Even split gives each call how much time?",
+      "options": ["~33ms each", "~100ms each", "Less than 33ms (need buffer)", "Depends on call criticality"],
+      "correct": 2,
+      "explanation": "100ms ÷ 3 = 33ms, but you need buffer for processing between calls. Each call should get less than 33ms to leave room for overhead."
+    },
+    {
+      "id": "qps-053",
+      "type": "multiple-choice",
+      "question": "Your API has 1,000 QPS. You add authentication that rejects 20% as unauthorized. Backend sees?",
+      "options": ["~800 QPS", "~1,000 QPS", "~1,200 QPS", "Depends on where auth happens"],
+      "correct": 3,
+      "explanation": "If auth happens at API gateway, backend sees 800 QPS. If auth happens at backend, it sees 1,000 QPS. Location matters."
+    },
+    {
+      "id": "qps-054",
+      "type": "multiple-choice",
+      "question": "Write-behind cache batches 100 writes, flushes every second. Incoming write rate is 500/second. Flush frequency?",
+      "options": ["Every 200ms", "Every second", "Every 5 seconds", "Depends on batch size or time, whichever first"],
+      "correct": 0,
+      "explanation": "At 500 writes/second, batch of 100 fills in 200ms. Batch flushes when full (every 200ms) rather than waiting for 1-second timer."
+    },
+    {
+      "id": "qps-055",
+      "type": "multiple-choice",
+      "question": "Load shedding kicks in at 80% capacity. Current load is 10,000 QPS. Capacity is 12,000 QPS. Requests shed?",
+      "options": ["0 (under threshold)", "~400 QPS", "~2,000 QPS", "~10,000 QPS"],
+      "correct": 1,
+      "explanation": "80% of 12,000 = 9,600 QPS threshold. Current 10,000 > 9,600, so shedding activates. Shed = 10,000 - 9,600 = 400 QPS."
+    },
+    {
+      "id": "qps-056",
+      "type": "multiple-choice",
+      "question": "Service mesh rate limit: 1,000 req/min per service. 10 instances of client service. Effective limit to backend?",
+      "options": ["~1,000 req/min total", "~10,000 req/min total", "~100 req/min per instance", "Depends on rate limit scope"],
+      "correct": 3,
+      "explanation": "Rate limit could be per-source-instance, per-source-service, or global. Without knowing the scope, we can't determine the effective limit."
+    },
+    {
+      "id": "qps-057",
+      "type": "multiple-choice",
+      "question": "Amdahl's Law: 90% of code is parallelizable. Max speedup with infinite processors?",
+      "options": ["~9×", "~10×", "~90×", "Infinite"],
+      "correct": 1,
+      "explanation": "Speedup = 1 / (1 - P) where P is parallel fraction. 1 / (1 - 0.9) = 1 / 0.1 = 10× maximum."
+    },
+    {
+      "id": "qps-058",
+      "type": "multiple-choice",
+      "question": "Request tracing shows: API (10ms) → Auth (20ms) → DB (30ms) → Cache write (5ms). Critical path?",
+      "options": ["~10ms", "~30ms", "~65ms", "Depends on parallelism"],
+      "correct": 3,
+      "explanation": "If calls are sequential, total = 65ms. If some are parallel (e.g., cache write async), critical path is shorter. Need to know the execution graph."
+    },
+    {
+      "id": "qps-059",
+      "type": "multiple-choice",
+      "question": "Bulkhead pattern: 10 threads for Service A, 10 for Service B. A is slow (100ms), B is fast (10ms). A's impact on B?",
+      "options": ["B is unaffected", "B slows down 10×", "B loses half its throughput", "Both degrade equally"],
+      "correct": 0,
+      "explanation": "Bulkhead isolates resources. A's threads are separate from B's. A being slow doesn't consume B's threads, so B is unaffected."
+    },
+    {
+      "id": "qps-060",
+      "type": "multiple-choice",
+      "question": "Your CDN has 50 PoPs. Request routing adds 5ms. Without CDN, origin latency is 200ms. CDN latency improvement?",
+      "options": ["~5ms worse (routing overhead)", "~195ms better (local PoP)", "Depends on cache hit rate", "Depends on user location"],
+      "correct": 2,
+      "explanation": "If cache hits, latency ≈ 5ms (routing only). If cache misses, latency = 5ms + 200ms = 205ms (worse than direct). Improvement depends on hit rate."
+    },
+    {
+      "id": "qps-061",
+      "type": "multiple-choice",
+      "question": "gRPC keepalive ping every 30 seconds. 100,000 connections. Keepalive QPS?",
+      "options": ["~33 QPS", "~333 QPS", "~3,333 QPS", "~33,333 QPS"],
+      "correct": 2,
+      "explanation": "100,000 connections ÷ 30 seconds = 3,333 pings/second."
+    },
+    {
+      "id": "qps-062",
+      "type": "multiple-choice",
+      "question": "Database connection overhead is 50ms. Query is 5ms. Connection pooling speedup for single query?",
+      "options": ["~1.1× faster", "~10× faster", "~11× faster", "No speedup for single query"],
+      "correct": 2,
+      "explanation": "Without pool: 50ms + 5ms = 55ms. With pool: 5ms (connection already established). Speedup = 55/5 = 11×."
+    },
+    {
+      "id": "qps-063",
+      "type": "multiple-choice",
+      "question": "Your service has 3 dependencies, each with 99% availability (independent failures). Service availability?",
+      "options": ["~97%", "~99%", "~99.9%", "~99.97%"],
+      "correct": 0,
+      "explanation": "All must be up: 0.99 × 0.99 × 0.99 = 0.97 = 97%."
+    },
+    {
+      "id": "qps-064",
+      "type": "multiple-choice",
+      "question": "Request queuing time is 50ms. Processing time is 50ms. Server utilization?",
+      "options": ["~25%", "~50%", "~75%", "~100%"],
+      "correct": 1,
+      "explanation": "Response time = queue + processing. If queue = processing, system is at 50% utilization (queuing theory: at 100% utilization, queue time → infinity)."
+    },
+    {
+      "id": "qps-065",
+      "type": "multiple-choice",
+      "question": "You increase server count from 10 to 15. Traffic is unchanged. Per-server load change?",
+      "options": ["~33% decrease", "~50% decrease", "~33% increase", "~50% increase"],
+      "correct": 0,
+      "explanation": "Load per server: 1/10 → 1/15. Change = (1/15 - 1/10) / (1/10) = (0.067 - 0.1) / 0.1 = -33%."
+    },
+    {
+      "id": "qps-066",
+      "type": "multiple-choice",
+      "question": "Canary deployment: 5% traffic to canary. Canary latency is 2× baseline. Overall latency impact?",
+      "options": ["~2× slower", "~5% slower", "~10% slower", "Negligible"],
+      "correct": 1,
+      "explanation": "5% of requests take 2× time. Average = 95% × 1 + 5% × 2 = 0.95 + 0.10 = 1.05 = 5% slower overall."
+    },
+    {
+      "id": "qps-067",
+      "type": "multiple-choice",
+      "question": "TCP connection takes 3 round trips to establish (SYN, SYN-ACK, ACK + request). RTT is 50ms. Connection overhead?",
+      "options": ["~50ms", "~100ms", "~150ms", "~200ms"],
+      "correct": 2,
+      "explanation": "3 round trips × 50ms RTT = 150ms connection overhead."
+    },
+    {
+      "id": "qps-068",
+      "type": "multiple-choice",
+      "question": "Your API returns paginated results, 100 items per page. Client needs all 10,000 items. Sequential requests at 50ms each. Total time?",
+      "options": ["~0.5 seconds", "~5 seconds", "~50 seconds", "~500 seconds"],
+      "correct": 1,
+      "explanation": "10,000 ÷ 100 = 100 pages. 100 × 50ms = 5,000ms = 5 seconds."
+    },
+    {
+      "id": "qps-069",
+      "type": "multiple-choice",
+      "question": "Semaphore limits concurrent requests to downstream service to 50. Each request takes 100ms. Max throughput to downstream?",
+      "options": ["~50 QPS", "~500 QPS", "~5,000 QPS", "Unlimited (semaphore doesn't limit throughput)"],
+      "correct": 1,
+      "explanation": "50 concurrent × 10 requests/second per slot (1/0.1s) = 500 QPS max."
+    },
+    {
+      "id": "qps-070",
+      "type": "multiple-choice",
+      "question": "Your read replica lags primary by 100ms. Read-after-write consistency required. Options?",
+      "options": ["Read from primary", "Wait 100ms then read replica", "Use session affinity to primary", "All are valid approaches"],
+      "correct": 3,
+      "explanation": "All are valid: read from primary (guaranteed fresh), wait for lag (eventually consistent), or session affinity (user's writes always visible to them)."
+    },
+    {
+      "id": "qps-071",
+      "type": "multiple-choice",
+      "question": "Global load balancer routes by latency. US users: 50ms to US region, 200ms to EU. EU users: 200ms to US, 50ms to EU. Cross-region traffic?",
+      "options": ["0% (optimal routing)", "~50%", "~100%", "Depends on load balancing algorithm"],
+      "correct": 0,
+      "explanation": "Latency-based routing sends US users to US (50ms < 200ms) and EU users to EU (50ms < 200ms). No cross-region traffic needed."
+    },
+    {
+      "id": "qps-072",
+      "type": "multiple-choice",
+      "question": "Write-ahead log (WAL) flush every 10ms. Crash occurs. Maximum data loss?",
+      "options": ["0 (WAL protects all data)", "~10ms of writes", "~20ms of writes", "Depends on flush timing"],
+      "correct": 1,
+      "explanation": "WAL flushes every 10ms. Crash loses unflushed writes since last flush = up to 10ms of writes."
+    },
+    {
+      "id": "qps-073",
+      "type": "multiple-choice",
+      "question": "Your API has 100ms SLO. Database adds 40ms, network adds 20ms. Processing budget?",
+      "options": ["~40ms", "~60ms", "~100ms", "~160ms"],
+      "correct": 0,
+      "explanation": "100ms SLO - 40ms DB - 20ms network = 40ms for processing."
+    },
+    {
+      "id": "qps-074",
+      "type": "multiple-choice",
+      "question": "Fan-in pattern: 10 upstream services each send 100 req/sec to your service. Your inbound QPS?",
+      "options": ["~100 QPS", "~1,000 QPS", "~10,000 QPS", "Depends on request timing"],
+      "correct": 1,
+      "explanation": "Fan-in: 10 services × 100 req/sec = 1,000 QPS total inbound."
+    },
+    {
+      "id": "qps-075",
+      "type": "multiple-choice",
+      "question": "Fan-out pattern: your service sends to 10 downstream services per request. Inbound is 100 QPS. Outbound QPS?",
+      "options": ["~100 QPS", "~1,000 QPS", "~10,000 QPS", "Depends on parallelism"],
+      "correct": 1,
+      "explanation": "Fan-out: 100 inbound × 10 downstream calls = 1,000 QPS outbound."
+    },
+    {
+      "id": "qps-076",
+      "type": "multiple-choice",
+      "question": "Server GC pauses 100ms every 10 seconds. Impact on P99 latency?",
+      "options": ["P99 increases by ~1ms", "P99 increases by ~10ms", "P99 ≥ 100ms", "Depends on request duration"],
+      "correct": 2,
+      "explanation": "GC pause affects 100ms/10s = 1% of time. If P99 includes GC pause, P99 ≥ 100ms (the pause duration)."
+    },
+    {
+      "id": "qps-077",
+      "type": "multiple-choice",
+      "question": "Async processing: request enqueues job, returns immediately (5ms). Job takes 5 seconds. User-perceived latency?",
+      "options": ["~5ms", "~5 seconds", "~5.005 seconds", "Depends on user's next action"],
+      "correct": 0,
+      "explanation": "User sees 5ms response (job is async). The 5-second processing happens in background."
+    },
+    {
+      "id": "qps-078",
+      "type": "multiple-choice",
+      "question": "CQRS: reads go to read model, writes go to write model. Write model publishes events. Event delay is 500ms. Read-after-write behavior?",
+      "options": ["Always consistent", "~500ms eventual consistency", "Inconsistent forever", "Depends on where read is routed"],
+      "correct": 1,
+      "explanation": "Write publishes event, read model updates in ~500ms. Read-after-write may see stale data for up to 500ms."
+    },
+    {
+      "id": "qps-079",
+      "type": "multiple-choice",
+      "question": "Your service handles 10,000 QPS. You deploy a change that increases latency from 50ms to 100ms. Thread pool is 500. What happens?",
+      "options": ["Latency doubles, throughput unchanged", "Latency doubles, throughput halves", "Service becomes overloaded", "Depends on queue size"],
+      "correct": 2,
+      "explanation": "Old capacity: 500 threads × 20 req/s = 10,000 QPS. New capacity: 500 × 10 = 5,000 QPS. Traffic (10,000) > capacity (5,000) = overload, queuing, and degradation."
+    },
+    {
+      "id": "qps-080",
+      "type": "multiple-choice",
+      "question": "Circuit breaker: closed (normal), open (failing), half-open (testing). Open duration is 30 seconds. Recovery time after errors stop?",
+      "options": ["Immediate", "~30 seconds minimum", "~60 seconds", "Depends on half-open success rate"],
+      "correct": 1,
+      "explanation": "Circuit stays open for 30 seconds before entering half-open state. Minimum 30 seconds before any recovery begins."
+    },
+    {
+      "id": "qps-081",
+      "type": "multiple-choice",
+      "question": "Request batching: 10 requests batched into 1 backend call. Individual request latency was 20ms. Batched request latency?",
+      "options": ["~2ms per request", "~20ms per request", "~200ms per request", "Depends on batch processing time"],
+      "correct": 3,
+      "explanation": "Batch latency depends on: batch wait time + backend processing for batch + response distribution. Could be faster (amortized) or slower (wait for batch to fill)."
+    },
+    {
+      "id": "qps-082",
+      "type": "multiple-choice",
+      "question": "You add distributed tracing. Trace context is 100 bytes per request. At 100,000 QPS, trace overhead bandwidth?",
+      "options": ["~1 MB/s", "~10 MB/s", "~100 MB/s", "~1 GB/s"],
+      "correct": 1,
+      "explanation": "100 bytes × 100,000 req/s = 10 MB/s bandwidth for trace context."
+    },
+    {
+      "id": "qps-083",
+      "type": "multiple-choice",
+      "question": "Service discovery refreshes every 30 seconds. New server deployed. Max time until all clients discover it?",
+      "options": ["~30 seconds", "~60 seconds", "~90 seconds", "Depends on health check timing"],
+      "correct": 0,
+      "explanation": "Clients refresh every 30 seconds. New server appears on next refresh = max 30 seconds."
+    },
+    {
+      "id": "qps-084",
+      "type": "multiple-choice",
+      "question": "Your database supports 10,000 QPS. You add a caching layer with 80% hit rate. New effective capacity?",
+      "options": ["~12,500 QPS", "~50,000 QPS", "~80,000 QPS", "~100,000 QPS"],
+      "correct": 1,
+      "explanation": "20% of requests hit DB. If DB max is 10,000, that's 20% of total. Total capacity = 10,000 ÷ 0.2 = 50,000 QPS."
+    },
+    {
+      "id": "qps-085",
+      "type": "multiple-choice",
+      "question": "Synchronous microservice call: 50ms. Converting to async (message queue): enqueue 5ms, dequeue+process 50ms. Latency comparison for caller?",
+      "options": ["Same latency", "~5ms latency (async)", "~55ms latency", "~105ms latency"],
+      "correct": 1,
+      "explanation": "Caller only waits for enqueue (5ms), not processing. Caller latency drops from 50ms to 5ms."
+    },
+    {
+      "id": "qps-086",
+      "type": "multiple-choice",
+      "question": "Request coalescing window is 5ms. Identical requests arrive at 0ms, 3ms, 7ms. How many backend calls?",
+      "options": ["1 call", "2 calls", "3 calls", "Depends on implementation"],
+      "correct": 1,
+      "explanation": "0ms and 3ms are within 5ms window → 1 call. 7ms starts new window → 1 call. Total: 2 backend calls."
+    },
+    {
+      "id": "qps-087",
+      "type": "multiple-choice",
+      "question": "Your service P50=10ms, P99=100ms. Which has more impact on user experience at scale?",
+      "options": ["P50 (affects most users)", "P99 (affects power users)", "Equal impact", "Depends on business context"],
+      "correct": 3,
+      "explanation": "Impact depends on context. P50 affects 50% of requests. P99 affects 1% but may be critical paths, power users, or cascade into retries. Business context matters."
+    },
+    {
+      "id": "qps-088",
+      "type": "multiple-choice",
+      "question": "Database transaction takes 50ms. Lock contention under high load. At 1,000 TPS, concurrent transactions holding locks?",
+      "options": ["~5", "~50", "~500", "~5,000"],
+      "correct": 1,
+      "explanation": "Little's Law: concurrent = rate × duration. 1,000 TPS × 0.05s = 50 concurrent transactions."
+    },
+    {
+      "id": "qps-089",
+      "type": "multiple-choice",
+      "question": "Horizontal scaling: 1 server handles 1,000 QPS at 70% CPU. To handle 10,000 QPS with 50% headroom (capacity = 2× load), servers needed?",
+      "options": ["10 servers", "14 servers", "20 servers", "28 servers"],
+      "correct": 2,
+      "explanation": "50% headroom means capacity = 2× needed load. Need 20,000 QPS capacity for 10,000 QPS load. At 1,000 QPS per server: 20,000 ÷ 1,000 = 20 servers."
+    },
+    {
+      "id": "qps-090",
+      "type": "multiple-choice",
+      "question": "You add request validation (2ms). Previously: API (10ms) → DB (40ms). New total latency?",
+      "options": ["~42ms", "~50ms", "~52ms", "~54ms"],
+      "correct": 2,
+      "explanation": "Validation (2ms) + API (10ms) + DB (40ms) = 52ms."
+    },
+    {
+      "id": "qps-091",
+      "type": "multiple-choice",
+      "question": "Idempotency check adds 5ms per request (cache lookup). At 10,000 QPS, additional latency budget consumed?",
+      "options": ["5ms per request", "50 seconds per second", "~50,000ms per second", "5ms per request, 0.5% of typical budget"],
+      "correct": 0,
+      "explanation": "Each request adds 5ms latency. At 10,000 QPS, that's 50,000ms of total latency added per second, but each individual request only sees 5ms increase."
+    },
+    {
+      "id": "qps-092",
+      "type": "multiple-choice",
+      "question": "Service mesh sidecar crashes. Main application container is healthy. What happens to traffic?",
+      "options": ["Traffic flows normally", "Traffic fails (no proxy)", "Traffic bypasses sidecar", "Depends on mesh configuration"],
+      "correct": 3,
+      "explanation": "Behavior depends on configuration. Some meshes fail closed (no traffic), others fail open (bypass proxy), some have automatic recovery. Check your mesh settings."
+    },
+    {
+      "id": "qps-093",
+      "type": "multiple-choice",
+      "question": "Request retry policy: 3 retries, jitter up to 100ms. Two clients retry simultaneously. Collision probability?",
+      "options": ["~100%", "~50%", "~10%", "Very low (jitter spreads retries)"],
+      "correct": 3,
+      "explanation": "Jitter randomizes retry timing across 100ms window. Probability of exact collision is very low (retries spread across time)."
+    },
+    {
+      "id": "qps-094",
+      "type": "multiple-choice",
+      "question": "Load balancer health check: 3 consecutive failures to mark unhealthy, 5 second interval. Minimum detection time?",
+      "options": ["~5 seconds", "~10 seconds", "~15 seconds", "~20 seconds"],
+      "correct": 1,
+      "explanation": "Need 3 consecutive failures. First check fails at t=0, second at t=5, third at t=10. Marked unhealthy at 10 seconds."
+    },
+    {
+      "id": "qps-095",
+      "type": "multiple-choice",
+      "question": "Your API serves both mobile (slow networks, high latency tolerance) and web (fast networks, low latency expectation). Same SLO for both?",
+      "options": ["Yes, simplifies monitoring", "No, different SLOs per client type", "Yes, design for worst case", "No, but same backend limits apply"],
+      "correct": 1,
+      "explanation": "Different clients have different expectations. Mobile users tolerate higher latency than web users. SLOs should reflect user expectations per platform."
+    },
+    {
+      "id": "qps-096",
+      "type": "multiple-choice",
+      "question": "Pre-warming: load 1 million cache entries at startup. Each entry takes 1ms to load. Startup time impact?",
+      "options": ["~1 second", "~17 minutes", "~1.7 hours", "~17 hours"],
+      "correct": 1,
+      "explanation": "1M entries × 1ms = 1,000,000ms = 1,000 seconds = 16.7 minutes."
+    },
+    {
+      "id": "qps-097",
+      "type": "multiple-choice",
+      "question": "A/B test: 50% traffic to variant A (100ms latency), 50% to variant B (50ms latency). Median user latency?",
+      "options": ["~50ms", "~75ms", "~100ms", "Either 50ms or 100ms (bimodal)"],
+      "correct": 3,
+      "explanation": "50% see 50ms, 50% see 100ms. Median is the middle value. With bimodal distribution, median depends on exact split—could be either 50ms or 100ms, distribution is bimodal not normal."
+    },
+    {
+      "id": "qps-098",
+      "type": "multiple-choice",
+      "question": "Daily traffic pattern: 10× spike at noon vs 3am. You provision for peak. Night-time utilization?",
+      "options": ["~10%", "~30%", "~50%", "~90%"],
+      "correct": 0,
+      "explanation": "Peak is 10× trough. If provisioned for peak, trough utilization = 1/10 = 10%."
+    },
+    {
+      "id": "qps-099",
+      "type": "multiple-choice",
+      "question": "Database max connections: 100. Connection pool per app server: 10. Max app servers?",
+      "options": ["10 servers", "100 servers", "1,000 servers", "Depends on connection pooler"],
+      "correct": 0,
+      "explanation": "100 total connections ÷ 10 per server = 10 app servers max before exhausting DB connections."
+    },
+    {
+      "id": "qps-100",
+      "type": "multiple-choice",
+      "question": "Your SLO is 99.9% requests under 200ms. Current P99.9 is 190ms. Error budget remaining?",
+      "options": ["~5%", "~10%", "~50%", "~95%"],
+      "correct": 0,
+      "explanation": "P99.9 of 190ms vs SLO of 200ms. Headroom = (200-190)/200 = 5% of latency budget remaining before SLO breach."
+    }
+  ]
+}
