@@ -1,37 +1,74 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code working on this repository.
 
 ## Project Overview
 
-System Design Practice is a mobile-first quiz app for practicing system design estimation problems. Target audience: L6+ engineers preparing for system design discussions. Part of the nhoj.com static site.
+**System Design Practice** ("L6 in a Box" internally) is a mobile-first, problem-based learning tool for system design interviews.
+
+**Thesis:** Most system design materials are info-dumps expecting osmosis. This app applies the Rocking the Coding Interview model — structured problems with feedback loops — to system design.
+
+**Target user:** Experienced engineers (L5+) who know how to code and have built systems. The gap is articulating architectural reasoning under interview pressure and getting enough reps for fluency.
+
+**The Bus Test:** Every *problem* must be solvable in under a minute on a phone with no prep. Atomic, self-contained, immediate feedback. Session length is user's choice — large problem banks (50-100 per chapter) with randomization provide variety without repeats. Spaced repetition is v2; volume is fake spaced repetition for now.
 
 ## Development
 
-No build system. Edit files directly and push to `main` for deployment.
+No build system. Edit files directly and push to `main` for deployment. Fix forward if anything breaks.
 
-**Local preview:** Open `index.html` in a browser. Content loads from `content/*.json` via fetch, so you'll need a local server (e.g., `python3 -m http.server`) to test content loading.
+**Local preview:** Content loads via `fetch()`, so you need a local server to test (e.g., `python3 -m http.server`). Opening `index.html` directly via `file://` won't load problems.
 
 ## Architecture
 
-Single-page app with three views managed by CSS classes:
-- **Landing** (`#landing`) - Unit/chapter selection
-- **Practice** (`#practice`) - Question, options, feedback
-- **Results** (`#results`) - Score summary
+Single-page app, all HTML/CSS/JS in `index.html`. No external frameworks. Three views managed by CSS classes:
 
-All HTML, CSS, and JS are in `index.html`. No external frameworks.
+- **Landing** (`#landing`) — Unit/chapter selection
+- **Practice** (`#practice`) — Question, options, feedback
+- **Results** (`#results`) — Score summary
+
+Build for extensibility. Adding a unit or chapter should be trivial.
+
+## Design System
+
+Uses the nhoj.com design system (see parent `CLAUDE.md`):
+- **Font:** JetBrains Mono via Google Fonts
+- **Colors:** CSS variables with light/dark mode via `prefers-color-scheme`
+- **Style:** GitHub-inspired terminal aesthetic, mobile-first
 
 ## Content Structure
 
-Problems live in `content/unit-{N}-chapter-{M}.json`:
+**10 units planned:**
 
+1. Estimation ← current focus
+2. Data Modeling
+3. API Design
+4. Storage Selection
+5. Caching
+6. Messaging & Async
+7. Scaling Compute
+8. Consistency & Coordination
+9. Reliability
+10. Classic Designs Decomposed
+
+**Unit 1: Estimation chapters:**
+
+1. Reference Numbers (cheat sheet, not drilled)
+2. Time Math
+3. Storage Math
+4. Bandwidth Math
+5. QPS & Load
+6. Growth Projections
+7. Sanity Checks
+8. Compound Scenarios
+
+Problems live in `content/unit-{N}-chapter-{M}.json`:
 ```json
 {
   "unit": 1,
   "unitTitle": "Estimation",
   "chapter": 2,
   "chapterTitle": "Time Math",
-  "chapterDescription": "Brief description shown during practice",
+  "chapterDescription": "Brief description",
   "problems": [
     {
       "id": "time-001",
@@ -45,12 +82,31 @@ Problems live in `content/unit-{N}-chapter-{M}.json`:
 }
 ```
 
-To add a chapter: create the JSON file, then add a button with `data-chapter="unit-X-chapter-Y"` to `index.html`.
+To add a chapter: create the JSON file, add a button with `data-chapter="unit-X-chapter-Y"` to `index.html`.
 
 ## Content Guidelines
 
-- **Target difficulty:** L6 system design (staff engineer level)
-- **Problem types:** QPS calculations, SLA math, capacity planning, sanity checks
-- **Avoid:** Pure arithmetic with no systems context
-- **Good problems:** Multi-step reasoning, gotcha questions, real-world scenarios
-- **Each problem must pass the "bus test":** Solvable in under a minute on a phone with no prep
+- **Difficulty:** L5/L6 system design level
+- **Volume:** 50-100 problems per chapter for variety
+- **Problem types (implemented):** Multiple choice
+- **Problem types (planned):** Numeric estimation (order of magnitude), spot-the-flaw, "which would you reach for," rank-by-X
+- **Good problems:** Multi-step reasoning, real-world scenarios, genuine tradeoffs
+- **Avoid:** Pure arithmetic with no systems context, trivia, ambiguous answers
+- **Flag problems** where the correct answer is debatable or math is tricky. Expect John to edit/cull during alpha testing.
+
+## Self-Review Loop
+
+After completing each milestone, switch to a **reviewer role** and critique your own work harshly. Look for:
+
+- Problems with ambiguous or incorrect answers
+- UX friction on mobile
+- Code that's not extensible for future units
+- Anything that fails the bus test
+
+Fix issues. Review again. **Iterate until the reviewer finds nothing significant.**
+
+**Escape hatch:** If the same issue recurs or you're uncertain, flag it for human review and move on. Perfect is the enemy of shipped.
+
+## Process
+
+John is alpha testing. Agile: ship minimal, try it, iterate. Don't over-invest in polish before validation.
