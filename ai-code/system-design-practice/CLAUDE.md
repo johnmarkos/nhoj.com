@@ -110,3 +110,31 @@ Fix issues. Review again. **Iterate until the reviewer finds nothing significant
 ## Process
 
 John is alpha testing. Agile: ship minimal, try it, iterate. Don't over-invest in polish before validation.
+
+## Maintaining This File
+
+**This CLAUDE.md is a living document.** At the end of each session or milestone:
+
+1. **Capture insights** — If you learned something reusable (a pattern that worked, a mistake to avoid, a clarification), add it here.
+2. **Trim cruft** — Remove anything that's obvious, outdated, or low-value. Keep it lean.
+3. **Refine structure** — If a section is getting unwieldy, reorganize.
+
+The goal: a future Claude instance should be productive faster because of what we learned.
+
+## Lessons Learned
+
+Insights captured from development:
+
+**Code review:**
+- Use the author/reviewer dialogue pattern — reviewer critiques, author responds, iterate until consensus
+- Check for: inline styles (use CSS classes), proper error handling, accessibility (ARIA labels, focus management), race conditions (disable buttons during async ops)
+
+**Content review:**
+- Verify all math in problems — easy to introduce errors
+- "Cannot determine from this data" is a valid L6 answer (tests understanding of what info is needed) but use sparingly
+- Pure unit conversions (seconds in a day) are too easy for L6 — add systems context or cut them
+- Multi-step problems and "gotcha" questions (where the obvious answer is wrong) are good L6 material
+
+**Process:**
+- The bus test applies to individual problems, not sessions — 100 problems per chapter is fine because users control session length
+- Randomization provides "fake spaced repetition" until real spaced repetition is built
