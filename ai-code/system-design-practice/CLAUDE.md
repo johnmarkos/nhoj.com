@@ -6,7 +6,7 @@ Guidance for Claude Code working on this repository.
 
 **System Design Practice** is a mobile-first, problem-based learning tool for system design.
 
-**Thesis:** Most system design materials are info-dumps expecting osmosis. This app applies the Rocking the Coding Interview model — structured problems with feedback loops — to system design.
+**Thesis:** Most system design materials are info-dumps expecting osmosis. This app applies the Grokking the Coding Interview model — structured problems with feedback loops — to system design.
 
 **Target user:** Experienced engineers (L5+) who know how to code and have built systems. The gap is articulating architectural reasoning under interview pressure and getting enough reps for fluency.
 
