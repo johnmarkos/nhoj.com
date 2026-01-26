@@ -4,7 +4,7 @@ Guidance for Claude Code working on this repository.
 
 ## Project Overview
 
-**System Design Practice** ("L6 in a Box" internally) is a mobile-first, problem-based learning tool for system design interviews.
+**System Design Practice** is a mobile-first, problem-based learning tool for system design.
 
 **Thesis:** Most system design materials are info-dumps expecting osmosis. This app applies the Rocking the Coding Interview model — structured problems with feedback loops — to system design.
 
