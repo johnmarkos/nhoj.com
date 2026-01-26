@@ -24,9 +24,13 @@ Single-page app, all HTML/CSS/JS in `index.html`. No external frameworks. Three 
 
 - **Landing** (`#landing`) — Unit/chapter selection
 - **Practice** (`#practice`) — Question, options, feedback
-- **Results** (`#results`) — Score summary
+- **Results** (`#results`) — Score summary (shown after completing all problems)
 
-Build for extensibility. Adding a unit or chapter should be trivial.
+**Unit/chapter list is dynamic.** The `UNITS` array at the top of the `<script>` block defines all units and chapters. To add a new chapter:
+1. Create the JSON file in `content/`
+2. Set `ready: true` for that chapter in the `UNITS` array
+
+The "Practice All" button appears automatically when a unit has 2+ ready chapters.
 
 ## Design System
 
@@ -82,7 +86,7 @@ Problems live in `content/unit-{N}-chapter-{M}.json`:
 }
 ```
 
-To add a chapter: create the JSON file, add a button with `data-chapter="unit-X-chapter-Y"` to `index.html`.
+To add a chapter: create the JSON file, set `ready: true` in the `UNITS` array in `index.html`.
 
 ## Content Guidelines
 
@@ -128,6 +132,8 @@ Insights captured from development:
 **Code review:**
 - Use the author/reviewer dialogue pattern — reviewer critiques, author responds, iterate until consensus
 - Check for: inline styles (use CSS classes), proper error handling, accessibility (ARIA labels, focus management), race conditions (disable buttons during async ops)
+- Review code with scale in mind — what works for 1 chapter may not work for 10 units × 8 chapters
+- When adding state fields, audit all functions that read/write state (especially reset functions like `backToMenu()` and `retry()`)
 
 **Content review:**
 - Verify all math in problems — easy to introduce errors
