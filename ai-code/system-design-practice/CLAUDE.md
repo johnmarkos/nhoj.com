@@ -135,6 +135,11 @@ Insights captured from development:
 - Pure unit conversions (seconds in a day) are too easy for L6 — add systems context or cut them
 - Multi-step problems and "gotcha" questions (where the obvious answer is wrong) are good L6 material
 
+**Content generation:**
+- Generate more problems than needed, expect to cull 10-20%
+- Run automated checks for uncertainty markers ("Hmm", "Wait", "Let me") in explanations — these often indicate math errors that need fixing
+- "Depends on X" answers are valid L6 content when they test real-world nuance (e.g., "depends on database implementation"), but verify each one
+
 **Process:**
 - The bus test applies to individual problems, not sessions — 100 problems per chapter is fine because users control session length
 - Randomization provides "fake spaced repetition" until real spaced repetition is built
