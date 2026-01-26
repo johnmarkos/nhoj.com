@@ -405,6 +405,51 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
+
+    /* Reference view */
+    .reference {
+      display: none;
+    }
+
+    .reference.active {
+      display: block;
+    }
+
+    .reference-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .reference-section h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .reference-table {
+      width: 100%;
+      font-size: 0.8rem;
+    }
+
+    .reference-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .reference-table td {
+      padding: 0.4rem 0;
+    }
+
+    .reference-table td:first-child {
+      color: var(--text-muted);
+      padding-right: 1rem;
+    }
+
+    .reference-table td:last-child {
+      text-align: right;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -458,6 +503,18 @@
         <button class="nav-btn" id="back-btn">Back to Menu</button>
       </div>
     </div>
+
+    <!-- Reference View -->
+    <div id="reference" class="reference">
+      <header class="header">
+        <h1 id="reference-title">Reference Numbers</h1>
+        <div class="header-right">
+          <button class="quit-link" id="ref-back-btn" aria-label="Back to menu">&times; Close</button>
+        </div>
+      </header>
+      <div class="chapter-header" id="reference-desc"></div>
+      <div id="reference-content"></div>
+    </div>
   </div>
 
   <script>
@@ -467,7 +524,7 @@
         id: 1,
         title: 'Estimation',
         chapters: [
-          { num: 1, title: 'Reference Numbers', ready: false },
+          { num: 1, title: 'Reference Numbers', ready: true, type: 'reference' },
           { num: 2, title: 'Time Math', ready: true },
           { num: 3, title: 'Storage Math', ready: true },
           { num: 4, title: 'Bandwidth Math', ready: true },
@@ -510,6 +567,11 @@
     const backBtn = document.getElementById('back-btn');
     const quitBtn = document.getElementById('quit-btn');
     const errorMsg = document.getElementById('error-msg');
+    const reference = document.getElementById('reference');
+    const referenceTitle = document.getElementById('reference-title');
+    const referenceDesc = document.getElementById('reference-desc');
+    const referenceContent = document.getElementById('reference-content');
+    const refBackBtn = document.getElementById('ref-back-btn');
     const progressEl = document.getElementById('progress');
 
     function showError(message) {
@@ -539,14 +601,14 @@
         const chapterUl = document.createElement('ul');
         chapterUl.className = 'chapter-list';
 
-        // Add "Practice All" button if unit has ready chapters
-        const readyChapters = unit.chapters.filter(c => c.ready);
-        if (readyChapters.length > 1) {
+        // Add "Practice All" button if unit has ready practice chapters (exclude reference)
+        const practiceChapters = unit.chapters.filter(c => c.ready && c.type !== 'reference');
+        if (practiceChapters.length > 1) {
           const allLi = document.createElement('li');
           const allBtn = document.createElement('button');
           allBtn.className = 'chapter-btn practice-all-btn';
           allBtn.dataset.unit = unit.id;
-          allBtn.textContent = `▶ Practice All ${unit.title} (${readyChapters.length} chapters)`;
+          allBtn.textContent = `▶ Practice All ${unit.title} (${practiceChapters.length} chapters)`;
           allBtn.addEventListener('click', () => loadUnit(unit.id, allBtn));
           allLi.appendChild(allBtn);
           chapterUl.appendChild(allLi);
@@ -561,7 +623,12 @@
           if (chapter.ready) {
             btn.dataset.chapter = `unit-${unit.id}-chapter-${chapter.num}`;
             btn.textContent = `${chapter.num}. ${chapter.title}`;
-            btn.addEventListener('click', () => loadChapter(btn.dataset.chapter, btn));
+            if (chapter.type === 'reference') {
+              btn.textContent += ' 📋';
+              btn.addEventListener('click', () => loadReference(btn.dataset.chapter, btn));
+            } else {
+              btn.addEventListener('click', () => loadChapter(btn.dataset.chapter, btn));
+            }
           } else {
             btn.disabled = true;
             btn.textContent = `${chapter.num}. ${chapter.title} (coming soon)`;
@@ -578,6 +645,71 @@
       container.appendChild(ul);
     }
 
+    // Load reference chapter (cheat sheet)
+    async function loadReference(chapterId, buttonEl) {
+      if (buttonEl.disabled) return;
+
+      hideError();
+      const originalText = buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
+      buttonEl.disabled = true;
+      buttonEl.classList.add('loading');
+      buttonEl.textContent = 'Loading...';
+
+      try {
+        const response = await fetch(`content/${chapterId}.json`);
+        if (!response.ok) {
+          throw new Error(`Failed to load (${response.status})`);
+        }
+        const data = await response.json();
+
+        // Render reference content
+        referenceTitle.textContent = data.chapterTitle;
+        referenceDesc.textContent = data.chapterDescription;
+
+        referenceContent.innerHTML = '';
+        data.sections.forEach(section => {
+          const sectionDiv = document.createElement('div');
+          sectionDiv.className = 'reference-section';
+
+          const h3 = document.createElement('h3');
+          h3.textContent = section.title;
+          sectionDiv.appendChild(h3);
+
+          const table = document.createElement('table');
+          table.className = 'reference-table';
+          section.items.forEach(item => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            td1.textContent = item.label;
+            const td2 = document.createElement('td');
+            td2.textContent = item.value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            table.appendChild(tr);
+          });
+          sectionDiv.appendChild(table);
+
+          referenceContent.appendChild(sectionDiv);
+        });
+
+        // Show reference view
+        landing.classList.add('hidden');
+        reference.classList.add('active');
+        window.scrollTo(0, 0);
+
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+      } catch (err) {
+        console.error('Failed to load reference:', err);
+        showError('Failed to load reference. Please try again.');
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+      } finally {
+        buttonEl.classList.remove('loading');
+      }
+    }
+
     // Load all chapters for a unit
     async function loadUnit(unitId, buttonEl) {
       if (buttonEl.disabled) return;
@@ -590,7 +722,7 @@
       buttonEl.textContent = 'Loading...';
 
       const unit = UNITS.find(u => u.id === unitId);
-      const readyChapters = unit.chapters.filter(c => c.ready);
+      const readyChapters = unit.chapters.filter(c => c.ready && c.type !== 'reference');
 
       try {
         // Load all chapter JSONs in parallel
@@ -781,6 +913,7 @@
     function backToMenu() {
       practice.classList.remove('active');
       results.classList.remove('active');
+      reference.classList.remove('active');
       landing.classList.remove('hidden');
 
       // Full state reset
@@ -817,6 +950,7 @@
     retryBtn.addEventListener('click', retry);
     backBtn.addEventListener('click', backToMenu);
     quitBtn.addEventListener('click', backToMenu);
+    refBackBtn.addEventListener('click', backToMenu);
   </script>
 </body>
 </html>
