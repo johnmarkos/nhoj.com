@@ -62,7 +62,7 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 4. Bandwidth Math
 5. QPS & Load
 6. Growth Projections
-7. Sanity Checks
+7. Reasonableness Checks
 8. Compound Scenarios
 
 Problems live in `content/unit-{N}-chapter-{M}.json`:
