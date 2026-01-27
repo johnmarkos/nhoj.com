@@ -16,12 +16,24 @@ Future features and improvements for System Design Practice.
 - Persist progress in localStorage or backend
 - Priority: High (mentioned in project thesis)
 
-## v2: Content Expansion
+## In Progress: Unit 2 Data Modeling
 
-**Unit 2: Data Modeling**
-- Schema design problems
-- Normalization vs denormalization tradeoffs
-- Index selection
+**Completed:**
+1. Entity Identification (100 problems) ✓
+
+**Remaining chapters:**
+2. Relationships — 1:1, 1:N, M:N, how to represent each
+3. Keys & Indexes — primary/foreign/composite keys, when to index
+4. Normalization — 1NF, 2NF, 3NF in plain English
+5. Denormalization — when to break rules, read vs write tradeoffs
+6. Access Patterns — design for queries, not how data "looks"
+7. Schema Evolution — migrations, backward compatibility
+8. Modeling Scenarios — compound problems (booking system, social feed, etc.)
+
+**Question types to use:** MC (bulk), multi-select, numeric, ordering, two-stage
+**Target:** 50-100 problems per chapter
+
+## Future: Content Expansion
 
 **Units 3-10** (see CLAUDE.md for full list)
 
