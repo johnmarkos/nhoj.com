@@ -406,49 +406,9 @@
       outline-offset: 2px;
     }
 
-    /* Reference view */
-    .reference {
-      display: none;
-    }
-
-    .reference.active {
-      display: block;
-    }
-
-    .reference-section {
-      margin-bottom: 1.5rem;
-    }
-
-    .reference-section h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-      padding-bottom: 0.25rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .reference-table {
-      width: 100%;
-      font-size: 0.8rem;
-    }
-
-    .reference-table tr {
-      border-bottom: 1px solid var(--border);
-    }
-
-    .reference-table td {
-      padding: 0.4rem 0;
-    }
-
-    .reference-table td:first-child {
-      color: var(--text-muted);
-      padding-right: 1rem;
-    }
-
-    .reference-table td:last-child {
-      text-align: right;
-      font-weight: 500;
+    /* Hidden utility class */
+    .hidden-container {
+      display: none !important;
     }
 
     /* Numeric input */
@@ -746,8 +706,8 @@
       <div class="chapter-header" id="chapter-desc"></div>
 
       <div id="question-container">
-        <div id="stage-indicator" class="stage-indicator" style="display: none;"></div>
-        <div id="stage-context" class="stage-context" style="display: none;">
+        <div id="stage-indicator" class="stage-indicator hidden-container"></div>
+        <div id="stage-context" class="stage-context hidden-container">
           <div class="stage-context-label">Your previous answer:</div>
           <div id="stage-context-text"></div>
         </div>
@@ -757,31 +717,31 @@
         <ul class="options" id="options"></ul>
 
         <!-- Numeric input -->
-        <div id="numeric-container" class="numeric-input-container" style="display: none;">
+        <div id="numeric-container" class="numeric-input-container hidden-container">
           <div class="numeric-input-row">
             <input type="text" inputmode="decimal" id="numeric-input" class="numeric-input" placeholder="Enter number..." autocomplete="off">
             <span class="numeric-unit" id="numeric-unit"></span>
             <button class="submit-btn" id="numeric-submit">Submit</button>
           </div>
-          <div id="correct-answer-display" class="correct-answer-display" style="display: none;">
+          <div id="correct-answer-display" class="correct-answer-display hidden-container">
             <span class="correct-answer-label">Correct:</span>
             <span id="correct-answer-value"></span>
           </div>
         </div>
 
         <!-- Ordering -->
-        <div id="ordering-container" class="ordering-container" style="display: none;">
+        <div id="ordering-container" class="ordering-container hidden-container">
           <div class="ordering-hint">Tap items in order (first to last)</div>
           <div id="ordering-items"></div>
           <button class="ordering-reset" id="ordering-reset">Reset order</button>
         </div>
 
         <!-- Multi-select submit -->
-        <div id="multi-submit-container" class="multi-submit-row" style="display: none;">
+        <div id="multi-submit-container" class="multi-submit-row hidden-container">
           <button class="submit-btn" id="multi-submit">Submit Selection</button>
         </div>
 
-        <div class="feedback" id="feedback">
+        <div class="feedback" id="feedback" aria-live="polite">
           <div class="feedback-title" id="feedback-title"></div>
           <div id="feedback-explanation"></div>
         </div>
@@ -803,17 +763,6 @@
       </div>
     </div>
 
-    <!-- Reference View -->
-    <div id="reference" class="reference">
-      <header class="header">
-        <h1 id="reference-title">Reference Numbers</h1>
-        <div class="header-right">
-          <button class="quit-link" id="ref-back-btn" aria-label="Back to menu">&times; Close</button>
-        </div>
-      </header>
-      <div class="chapter-header" id="reference-desc"></div>
-      <div id="reference-content"></div>
-    </div>
   </div>
 
   <script>
@@ -843,6 +792,9 @@
       'multi-select': 1.5,
       'two-stage': 2
     };
+
+    // Animation/transition timing constants (ms)
+    const TWO_STAGE_TRANSITION_DELAY = 800;
 
     const state = {
       chapter: null,
@@ -880,11 +832,6 @@
     const backBtn = document.getElementById('back-btn');
     const quitBtn = document.getElementById('quit-btn');
     const errorMsg = document.getElementById('error-msg');
-    const reference = document.getElementById('reference');
-    const referenceTitle = document.getElementById('reference-title');
-    const referenceDesc = document.getElementById('reference-desc');
-    const referenceContent = document.getElementById('reference-content');
-    const refBackBtn = document.getElementById('ref-back-btn');
     const progressEl = document.getElementById('progress');
     // New question type elements
     const numericContainer = document.getElementById('numeric-container');
@@ -966,71 +913,6 @@
       });
 
       container.appendChild(ul);
-    }
-
-    // Load reference chapter (cheat sheet)
-    async function loadReference(chapterId, buttonEl) {
-      if (buttonEl.disabled) return;
-
-      hideError();
-      const originalText = buttonEl.textContent;
-      buttonEl.dataset.originalText = originalText;
-      buttonEl.disabled = true;
-      buttonEl.classList.add('loading');
-      buttonEl.textContent = 'Loading...';
-
-      try {
-        const response = await fetch(`content/${chapterId}.json`);
-        if (!response.ok) {
-          throw new Error(`Failed to load (${response.status})`);
-        }
-        const data = await response.json();
-
-        // Render reference content
-        referenceTitle.textContent = data.chapterTitle;
-        referenceDesc.textContent = data.chapterDescription;
-
-        referenceContent.innerHTML = '';
-        data.sections.forEach(section => {
-          const sectionDiv = document.createElement('div');
-          sectionDiv.className = 'reference-section';
-
-          const h3 = document.createElement('h3');
-          h3.textContent = section.title;
-          sectionDiv.appendChild(h3);
-
-          const table = document.createElement('table');
-          table.className = 'reference-table';
-          section.items.forEach(item => {
-            const tr = document.createElement('tr');
-            const td1 = document.createElement('td');
-            td1.textContent = item.label;
-            const td2 = document.createElement('td');
-            td2.textContent = item.value;
-            tr.appendChild(td1);
-            tr.appendChild(td2);
-            table.appendChild(tr);
-          });
-          sectionDiv.appendChild(table);
-
-          referenceContent.appendChild(sectionDiv);
-        });
-
-        // Show reference view
-        landing.classList.add('hidden');
-        reference.classList.add('active');
-        window.scrollTo(0, 0);
-
-        buttonEl.textContent = originalText;
-        buttonEl.disabled = false;
-      } catch (err) {
-        console.error('Failed to load reference:', err);
-        showError('Failed to load reference. Please try again.');
-        buttonEl.textContent = originalText;
-        buttonEl.disabled = false;
-      } finally {
-        buttonEl.classList.remove('loading');
-      }
     }
 
     // Load all chapters for a unit
@@ -1184,13 +1066,13 @@
     }
 
     function hideAllQuestionTypes() {
-      optionsEl.style.display = 'none';
-      numericContainer.style.display = 'none';
-      orderingContainer.style.display = 'none';
-      multiSubmitContainer.style.display = 'none';
-      stageIndicator.style.display = 'none';
-      stageContext.style.display = 'none';
-      correctAnswerDisplay.style.display = 'none';
+      optionsEl.classList.add('hidden-container');
+      numericContainer.classList.add('hidden-container');
+      orderingContainer.classList.add('hidden-container');
+      multiSubmitContainer.classList.add('hidden-container');
+      stageIndicator.classList.add('hidden-container');
+      stageContext.classList.add('hidden-container');
+      correctAnswerDisplay.classList.add('hidden-container');
     }
 
     function showQuestion() {
@@ -1236,7 +1118,7 @@
 
     function showMultipleChoiceQuestion(problem) {
       questionText.textContent = problem.question;
-      optionsEl.style.display = 'block';
+      optionsEl.classList.remove('hidden-container');
       optionsEl.innerHTML = '';
 
       problem.options.forEach((option, index) => {
@@ -1253,19 +1135,19 @@
 
     function showNumericQuestion(problem) {
       questionText.textContent = problem.question;
-      numericContainer.style.display = 'block';
+      numericContainer.classList.remove('hidden-container');
       numericInput.value = '';
       numericInput.disabled = false;
       numericInput.classList.remove('correct', 'incorrect');
       numericSubmit.disabled = false;
       numericUnit.textContent = problem.unit || '';
-      correctAnswerDisplay.style.display = 'none';
+      correctAnswerDisplay.classList.add('hidden-container');
       numericInput.focus();
     }
 
     function showOrderingQuestion(problem) {
       questionText.textContent = problem.question;
-      orderingContainer.style.display = 'block';
+      orderingContainer.classList.remove('hidden-container');
       orderingReset.disabled = false;
       orderingItems.innerHTML = '';
       state.orderingOrder = [];
@@ -1295,8 +1177,8 @@
 
     function showMultiSelectQuestion(problem) {
       questionText.textContent = problem.question;
-      optionsEl.style.display = 'block';
-      multiSubmitContainer.style.display = 'block';
+      optionsEl.classList.remove('hidden-container');
+      multiSubmitContainer.classList.remove('hidden-container');
       multiSubmit.disabled = false;
       optionsEl.innerHTML = '';
 
@@ -1312,6 +1194,7 @@
         btn.textContent = option;
         btn.dataset.index = index;
         btn.dataset.type = 'multi-select';
+        btn.setAttribute('aria-pressed', 'false');
         li.appendChild(btn);
         optionsEl.appendChild(li);
       });
@@ -1321,20 +1204,20 @@
       const stage = problem.stages[stageIndex];
       state.twoStageIndex = stageIndex;
 
-      stageIndicator.style.display = 'inline-block';
+      stageIndicator.classList.remove('hidden-container');
       stageIndicator.textContent = `Part ${stageIndex + 1} of ${problem.stages.length}`;
 
       if (stageIndex > 0 && state.twoStageAnswers.length > 0) {
-        stageContext.style.display = 'block';
+        stageContext.classList.remove('hidden-container');
         const prevStage = problem.stages[stageIndex - 1];
         const prevAnswer = state.twoStageAnswers[stageIndex - 1];
         stageContextText.textContent = prevStage.options[prevAnswer.selected];
       } else {
-        stageContext.style.display = 'none';
+        stageContext.classList.add('hidden-container');
       }
 
       questionText.textContent = stage.question;
-      optionsEl.style.display = 'block';
+      optionsEl.classList.remove('hidden-container');
       optionsEl.innerHTML = '';
 
       stage.options.forEach((option, index) => {
@@ -1360,9 +1243,11 @@
         } else {
           state.multiSelectSelected.add(index);
         }
-        // Update visual state
+        // Update visual state and accessibility
         const btn = optionsEl.querySelector(`[data-index="${index}"]`);
-        btn.classList.toggle('selected', state.multiSelectSelected.has(index));
+        const isSelected = state.multiSelectSelected.has(index);
+        btn.classList.toggle('selected', isSelected);
+        btn.setAttribute('aria-pressed', isSelected.toString());
         return; // Don't grade yet
       }
 
@@ -1389,7 +1274,7 @@
           // More stages to go
           setTimeout(() => {
             showTwoStageQuestion(problem, stageIndex + 1);
-          }, 800);
+          }, TWO_STAGE_TRANSITION_DELAY);
         } else {
           // All stages complete - show final feedback
           state.answered = true;
@@ -1451,7 +1336,7 @@
       numericInput.classList.add(isCorrect ? 'correct' : 'incorrect');
 
       if (!isCorrect) {
-        correctAnswerDisplay.style.display = 'block';
+        correctAnswerDisplay.classList.remove('hidden-container');
         correctAnswerValue.textContent = formatNumber(problem.answer) + (problem.unit ? ' ' + problem.unit : '');
       }
 
@@ -1494,10 +1379,19 @@
     }
 
     function formatNumber(num) {
-      if (num >= 1e12) return (num / 1e12).toFixed(1) + 'T';
-      if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
-      if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-      if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+      // Handle negative numbers
+      if (num < 0) return '-' + formatNumber(-num);
+
+      // Format with suffix, removing trailing zeros
+      const format = (val, suffix) => {
+        const fixed = (val).toFixed(1);
+        return (fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed) + suffix;
+      };
+
+      if (num >= 1e12) return format(num / 1e12, 'T');
+      if (num >= 1e9) return format(num / 1e9, 'B');
+      if (num >= 1e6) return format(num / 1e6, 'M');
+      if (num >= 1e3) return format(num / 1e3, 'K');
       return num.toString();
     }
 
@@ -1573,7 +1467,7 @@
       });
 
       multiSubmit.disabled = true;
-      multiSubmitContainer.style.display = 'none';
+      multiSubmitContainer.classList.add('hidden-container');
       showFeedback(isCorrect, problem.explanation);
     }
 
@@ -1681,7 +1575,6 @@
     function backToMenu() {
       practice.classList.remove('active');
       results.classList.remove('active');
-      reference.classList.remove('active');
       landing.classList.remove('hidden');
 
       // Full state reset
@@ -1739,7 +1632,6 @@
     retryBtn.addEventListener('click', retry);
     backBtn.addEventListener('click', backToMenu);
     quitBtn.addEventListener('click', backToMenu);
-    refBackBtn.addEventListener('click', backToMenu);
   </script>
 </body>
 </html>
