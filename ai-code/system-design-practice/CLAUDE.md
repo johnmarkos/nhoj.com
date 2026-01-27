@@ -56,7 +56,7 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 
 **Unit 1: Estimation chapters:**
 
-1. Reference Numbers (cheat sheet, not drilled)
+1. Reference Numbers
 2. Time Math
 3. Storage Math
 4. Bandwidth Math
@@ -65,23 +65,26 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 7. Reasonableness Checks
 8. Compound Scenarios
 
-Problems live in `content/unit-{N}-chapter-{M}.json`:
+Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
+
 ```json
-{
-  "unit": 1,
-  "unitTitle": "Estimation",
-  "chapter": 2,
-  "chapterTitle": "Time Math",
-  "chapterDescription": "Brief description",
-  "problems": [
-    {
-      "id": "time-001",
-      "type": "multiple-choice",
-      "question": "Question text",
-      "options": ["A", "B", "C", "D"],
-      "correct": 1,
-      "explanation": "Shown after answering"
-    }
+// Multiple choice (default if type omitted)
+{ "id": "ex-001", "type": "multiple-choice", "question": "...", "options": ["A", "B", "C", "D"], "correct": 1, "explanation": "..." }
+
+// Numeric input (supports K/M/B/T suffixes)
+{ "id": "ex-002", "type": "numeric-input", "question": "...", "answer": 86400, "unit": "seconds", "tolerance": 0.1, "explanation": "..." }
+// tolerance: "order-of-magnitude" (10x), "exact", or decimal (0.1 = 10%)
+
+// Ordering (rank items)
+{ "id": "ex-003", "type": "ordering", "question": "Rank smallest to largest:", "items": ["KB", "MB", "GB"], "correctOrder": [0, 1, 2], "explanation": "..." }
+
+// Multi-select (multiple correct answers)
+{ "id": "ex-004", "type": "multi-select", "question": "Select all that apply:", "options": ["A", "B", "C", "D"], "correctIndices": [0, 2], "explanation": "..." }
+
+// Two-stage (sequential dependent questions)
+{ "id": "ex-005", "type": "two-stage", "stages": [
+    { "question": "Part 1...", "options": ["A", "B"], "correct": 0, "explanation": "..." },
+    { "question": "Part 2...", "options": ["X", "Y"], "correct": 1, "explanation": "..." }
   ]
 }
 ```
@@ -91,12 +94,15 @@ To add a chapter: create the JSON file, set `ready: true` in the `UNITS` array i
 ## Content Guidelines
 
 - **Difficulty:** L5/L6 system design level
-- **Volume:** 50-100 problems per chapter for variety
-- **Problem types (implemented):** Multiple choice
-- **Problem types (planned):** Numeric estimation (order of magnitude), spot-the-flaw, "which would you reach for," rank-by-X
+- **Volume:** 50-150 problems per chapter for variety
+- **Problem types:** multiple-choice, numeric-input, ordering, multi-select, two-stage (all implemented)
 - **Good problems:** Multi-step reasoning, real-world scenarios, genuine tradeoffs
 - **Avoid:** Pure arithmetic with no systems context, trivia, ambiguous answers
 - **Flag problems** where the correct answer is debatable or math is tricky. Expect John to edit/cull during alpha testing.
+
+## Roadmap
+
+Future features are tracked in `ROADMAP.md`. When flagging something for v2, add it there.
 
 ## Self-Review Loop
 
@@ -149,3 +155,17 @@ Insights captured from development:
 **Process:**
 - The bus test applies to individual problems, not sessions — 100 problems per chapter is fine because users control session length
 - Randomization provides "fake spaced repetition" until real spaced repetition is built
+
+**Dead code removal:**
+- When features evolve (e.g., Reference Numbers from static to interactive), old code paths become orphaned
+- Search for unused functions/elements during code review — grep for function names and verify they're called
+- Remove dead code promptly; it confuses future readers and accumulates
+
+**Display toggling:**
+- Prefer CSS classes (`.hidden-container`) over inline `style.display` manipulation
+- More consistent, easier to debug, and keeps styling in CSS where it belongs
+
+**Accessibility basics:**
+- `aria-live="polite"` on dynamic content (feedback messages) for screen reader announcements
+- `aria-pressed` on toggle buttons (multi-select options)
+- Keyboard accessibility for custom interactions (flagged ordering for v2)
