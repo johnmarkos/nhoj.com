@@ -1,0 +1,929 @@
+{
+  "unit": 2,
+  "unitTitle": "Data Modeling",
+  "chapter": 2,
+  "chapterTitle": "Relationships",
+  "chapterDescription": "One-to-one, one-to-many, many-to-many — identify and model each correctly.",
+  "problems": [
+    {
+      "id": "rel-001",
+      "type": "multiple-choice",
+      "question": "A user has one profile. A profile belongs to one user. What type of relationship is this?",
+      "options": ["One-to-one", "One-to-many", "Many-to-many", "Self-referential"],
+      "correct": 0,
+      "explanation": "Each user has exactly one profile, and each profile belongs to exactly one user. This is a one-to-one relationship."
+    },
+    {
+      "id": "rel-002",
+      "type": "multiple-choice",
+      "question": "A user can have many posts. A post belongs to one user. What type of relationship is this?",
+      "options": ["One-to-one", "One-to-many", "Many-to-many", "Polymorphic"],
+      "correct": 1,
+      "explanation": "One user → many posts, but each post has exactly one author. This is one-to-many."
+    },
+    {
+      "id": "rel-003",
+      "type": "multiple-choice",
+      "question": "Students enroll in courses. Courses have many students. What type of relationship?",
+      "options": ["One-to-one", "One-to-many", "Many-to-many", "Hierarchical"],
+      "correct": 2,
+      "explanation": "One student → many courses, one course → many students. This is many-to-many."
+    },
+    {
+      "id": "rel-004",
+      "type": "multiple-choice",
+      "question": "How is a one-to-many relationship typically implemented in SQL?",
+      "options": ["Junction table", "Foreign key on the 'many' side pointing to the 'one' side", "Foreign key on the 'one' side", "JSON array column"],
+      "correct": 1,
+      "explanation": "The 'many' side gets a foreign key. Posts table has user_id pointing to Users. Each post references its one owner."
+    },
+    {
+      "id": "rel-005",
+      "type": "multiple-choice",
+      "question": "How is a many-to-many relationship typically implemented in SQL?",
+      "options": ["Foreign key on either table", "A junction (join) table with foreign keys to both sides", "JSON array on one side", "Two foreign keys on the same table"],
+      "correct": 1,
+      "explanation": "A junction table (e.g., student_courses) with student_id and course_id foreign keys. Each row represents one student enrolled in one course."
+    },
+    {
+      "id": "rel-006",
+      "type": "ordering",
+      "question": "Rank these relationship types by schema complexity (SIMPLEST to MOST COMPLEX):",
+      "items": ["One-to-one", "One-to-many", "Many-to-many"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "1:1 needs just a FK (or shared PK). 1:N needs a FK on the many side. M:N needs a junction table with two FKs."
+    },
+    {
+      "id": "rel-007",
+      "type": "multi-select",
+      "question": "Which are valid ways to implement a one-to-one relationship?",
+      "options": ["FK on either table with a UNIQUE constraint", "Shared primary key", "Junction table", "Same table (merge columns)"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "1:1 can use a FK+UNIQUE on either side, a shared PK (profile.id = user.id), or merging into one table. A junction table is overkill for 1:1."
+    },
+    {
+      "id": "rel-008",
+      "type": "multiple-choice",
+      "question": "An employee has one desk. A desk is assigned to one employee. Where should the foreign key go?",
+      "options": ["On Employee (desk_id)", "On Desk (employee_id)", "Either side works", "Need a junction table"],
+      "correct": 2,
+      "explanation": "For 1:1, the FK can go on either side. Choose based on which entity is more 'dependent'—usually the optional side. If desks can exist unassigned, desk_id on Employee works."
+    },
+    {
+      "id": "rel-009",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A blog post has many comments. What relationship type?",
+          "options": ["One-to-one", "One-to-many", "Many-to-many"],
+          "correct": 1,
+          "explanation": "One post has many comments, each comment belongs to one post. One-to-many."
+        },
+        {
+          "question": "Where does the foreign key go?",
+          "options": ["On Post (comment_id)", "On Comment (post_id)", "Junction table", "Either side"],
+          "correct": 1,
+          "explanation": "In one-to-many, the FK goes on the 'many' side. Comment gets post_id. This lets each comment reference its one parent post."
+        }
+      ]
+    },
+    {
+      "id": "rel-010",
+      "type": "multiple-choice",
+      "question": "A manager manages many employees. An employee has one manager. The manager is also an employee. What is this?",
+      "options": ["One-to-many", "Many-to-many", "Self-referential one-to-many", "Recursive many-to-many"],
+      "correct": 2,
+      "explanation": "This is self-referential 1:N. The Employee table has a manager_id FK pointing back to Employee. One employee (manager) has many direct reports."
+    },
+    {
+      "id": "rel-011",
+      "type": "multi-select",
+      "question": "What columns does a junction table for students-courses typically have?",
+      "options": ["student_id (FK)", "course_id (FK)", "junction_id (auto-increment PK)", "enrolled_at (timestamp)"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "student_id and course_id are required FKs. enrolled_at is useful metadata. A separate auto-increment PK is optional—a composite PK of (student_id, course_id) often suffices."
+    },
+    {
+      "id": "rel-012",
+      "type": "multiple-choice",
+      "question": "What's the main advantage of a junction table over storing an array of IDs?",
+      "options": ["Uses less storage", "Enables indexing, constraints, and metadata on the relationship", "Faster reads", "Required by SQL standard"],
+      "correct": 1,
+      "explanation": "Junction tables let you index both FKs, enforce referential integrity, and add attributes to the relationship (enrolled_at, role, etc.). Arrays can't do this."
+    },
+    {
+      "id": "rel-013",
+      "type": "multiple-choice",
+      "question": "An order contains many products. A product appears in many orders. What models this?",
+      "options": ["FK on Order", "FK on Product", "OrderItem junction table", "JSON array on Order"],
+      "correct": 2,
+      "explanation": "Order-Product is M:N. OrderItem (order_id, product_id, quantity, price) is the junction table. It also captures quantity and price-at-time-of-purchase."
+    },
+    {
+      "id": "rel-014",
+      "type": "numeric-input",
+      "question": "You have Users, Posts, and Tags. Posts can have many tags, tags can be on many posts. How many tables do you need?",
+      "answer": 4,
+      "tolerance": "exact",
+      "explanation": "Four tables: Users, Posts, Tags, PostTags (junction). Users→Posts is 1:N (FK on Posts). Posts↔Tags is M:N (needs junction)."
+    },
+    {
+      "id": "rel-015",
+      "type": "multiple-choice",
+      "question": "When should you consider merging a 1:1 relationship into a single table?",
+      "options": ["Never—always separate tables", "When both sides are always queried together", "When one side has more columns", "Only in NoSQL"],
+      "correct": 1,
+      "explanation": "If you always need both sides (User + Profile), merge them to avoid joins. Separate if one side is optional, large, or infrequently accessed."
+    },
+    {
+      "id": "rel-016",
+      "type": "ordering",
+      "question": "Rank by number of tables needed to implement (FEWEST to MOST):",
+      "items": ["User has one profile", "User has many posts", "Users follow users"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "1:1 can be one table (merged). 1:N needs 2 tables (Users, Posts). Self-referential M:N needs 2 tables (Users, Follows junction), but the junction is additional."
+    },
+    {
+      "id": "rel-017",
+      "type": "multi-select",
+      "question": "A Comment can be on a Post, Photo, or Video. Which patterns handle this?",
+      "options": ["Separate FK columns (post_id, photo_id, video_id)", "Polymorphic association (commentable_type, commentable_id)", "One junction table per type", "Single comments table with a type column"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "All three work. Separate FKs are simplest but have nulls. Polymorphic (type + id) is flexible but loses FK constraints. Separate junction tables preserve constraints."
+    },
+    {
+      "id": "rel-018",
+      "type": "multiple-choice",
+      "question": "What's a polymorphic association?",
+      "options": ["A table that inherits from another", "A relationship where the FK can point to different table types, using a type column", "A many-to-many with attributes", "A self-referential relationship"],
+      "correct": 1,
+      "explanation": "Polymorphic associations use two columns: commentable_type ('Post', 'Photo') and commentable_id. Flexible but the database can't enforce FK constraints across tables."
+    },
+    {
+      "id": "rel-019",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Doctors work at hospitals. A doctor can work at multiple hospitals. A hospital has many doctors. Relationship type?",
+          "options": ["One-to-one", "One-to-many", "Many-to-many"],
+          "correct": 2,
+          "explanation": "Many-to-many. One doctor → many hospitals, one hospital → many doctors."
+        },
+        {
+          "question": "The junction table also needs to store which department the doctor works in at each hospital. What does this junction table look like?",
+          "options": ["doctor_id, hospital_id", "doctor_id, hospital_id, department", "doctor_id, department_id", "hospital_id, department_id"],
+          "correct": 1,
+          "explanation": "The junction table (doctor_hospital) has doctor_id, hospital_id, and department. Relationships can carry their own attributes."
+        }
+      ]
+    },
+    {
+      "id": "rel-020",
+      "type": "multiple-choice",
+      "question": "An employee reports to one manager, but a manager can have many direct reports. All are in the Employee table. What FK is needed?",
+      "options": ["employee.department_id", "employee.manager_id referencing employee.id", "manager.employee_id", "A separate Reports_To table"],
+      "correct": 1,
+      "explanation": "Self-referential 1:N. Employee has manager_id FK pointing to employee.id. NULL for top-level (CEO)."
+    },
+    {
+      "id": "rel-021",
+      "type": "multi-select",
+      "question": "Which are examples of many-to-many relationships?",
+      "options": ["Users and Roles", "Orders and Products", "Posts and Authors (single author)", "Actors and Movies"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Users↔Roles, Orders↔Products, Actors↔Movies are all M:N. Post→Author (single) is 1:N."
+    },
+    {
+      "id": "rel-022",
+      "type": "multiple-choice",
+      "question": "In a tree structure (categories with subcategories), what's the simplest FK approach?",
+      "options": ["Separate Parent and Child tables", "parent_id FK on the same table (adjacency list)", "Junction table for parent-child", "Store the full path as a string"],
+      "correct": 1,
+      "explanation": "Adjacency list: Category has parent_id FK pointing to Category. NULL for root categories. Simple to implement but recursive queries can be slow for deep trees."
+    },
+    {
+      "id": "rel-023",
+      "type": "ordering",
+      "question": "Rank tree representations by query complexity for 'get all descendants' (SIMPLEST to MOST COMPLEX query):",
+      "items": ["Materialized path (/1/3/7/)", "Nested sets (lft, rgt)", "Adjacency list (parent_id)"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Materialized path: LIKE '/1/3/%'. Nested sets: WHERE lft > parent.lft AND rgt < parent.rgt. Adjacency list: needs recursive CTE or multiple queries."
+    },
+    {
+      "id": "rel-024",
+      "type": "multiple-choice",
+      "question": "Users can send messages to each other. What kind of relationship is User-to-User via Message?",
+      "options": ["One-to-one", "One-to-many", "Self-referential many-to-many", "Ternary"],
+      "correct": 2,
+      "explanation": "Any user can message any user. Message acts like a junction with sender_id and receiver_id, both referencing User. This is self-referential M:N."
+    },
+    {
+      "id": "rel-025",
+      "type": "multi-select",
+      "question": "What should a Follow junction table (user-follows-user) contain?",
+      "options": ["follower_id (FK to User)", "followed_id (FK to User)", "follow_id (auto-increment PK)", "created_at"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "follower_id and followed_id are required. created_at is useful (when did they follow). Auto-increment PK is optional—composite PK (follower_id, followed_id) prevents duplicates."
+    },
+    {
+      "id": "rel-026",
+      "type": "multiple-choice",
+      "question": "What constraint prevents a user from following the same person twice?",
+      "options": ["NOT NULL on both FKs", "UNIQUE constraint on (follower_id, followed_id)", "CHECK constraint", "Application-level validation only"],
+      "correct": 1,
+      "explanation": "A UNIQUE constraint (or composite primary key) on (follower_id, followed_id) prevents duplicate follow records at the database level."
+    },
+    {
+      "id": "rel-027",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A product has many reviews. A user can write many reviews. What relationships exist?",
+          "options": ["Two one-to-many", "One many-to-many", "One one-to-many, one many-to-many", "Three one-to-one"],
+          "correct": 0,
+          "explanation": "Two 1:N relationships: User→Reviews (one user, many reviews) and Product→Reviews (one product, many reviews). Review has both user_id and product_id."
+        },
+        {
+          "question": "Is Review a junction table between User and Product?",
+          "options": ["Yes, it makes User-Product many-to-many", "No, it's its own entity that happens to reference both", "Only if reviews have ratings", "Depends on the ORM"],
+          "correct": 1,
+          "explanation": "Review is its own entity with its own attributes (rating, text, date). It references both User and Product, but its primary purpose isn't just linking them."
+        }
+      ]
+    },
+    {
+      "id": "rel-028",
+      "type": "multiple-choice",
+      "question": "What's the difference between a junction table and an associative entity?",
+      "options": ["Junction tables have auto-increment PKs", "Associative entities carry meaningful attributes beyond just the FKs", "They're different names for the same thing", "Junction tables are for M:N only"],
+      "correct": 1,
+      "explanation": "An associative entity (like Enrollment with grade, date) has meaningful attributes. A pure junction table (like post_tags) has only the two FKs. The distinction is about richness of the relationship."
+    },
+    {
+      "id": "rel-029",
+      "type": "numeric-input",
+      "question": "E-commerce with Users, Products, Orders, OrderItems, Categories, and ProductCategories. How many are junction/associative tables?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two: OrderItems (Order↔Product, with quantity/price) and ProductCategories (Product↔Category). OrderItems is an associative entity; ProductCategories is a pure junction."
+    },
+    {
+      "id": "rel-030",
+      "type": "multiple-choice",
+      "question": "A passport belongs to one person. A person has one passport. Where should the FK go?",
+      "options": ["On Person (passport_id)", "On Passport (person_id)", "On the dependent entity (Passport)", "Doesn't matter for 1:1"],
+      "correct": 2,
+      "explanation": "FK goes on the dependent side. Passport depends on Person—a passport can't exist without a person. So Passport gets person_id."
+    },
+    {
+      "id": "rel-031",
+      "type": "multi-select",
+      "question": "Which indicate a many-to-many relationship in requirements?",
+      "options": ["'Users belong to multiple teams'", "'Each order has one customer'", "'Tags can be applied to many posts'", "'An employee has one department'"],
+      "correctIndices": [0, 2],
+      "explanation": "'Multiple teams' per user AND multiple users per team = M:N. 'Many posts' per tag AND many tags per post = M:N. The others are 1:N."
+    },
+    {
+      "id": "rel-032",
+      "type": "multiple-choice",
+      "question": "What's a ternary relationship?",
+      "options": ["A relationship between three entities simultaneously", "A three-table join", "A self-referential relationship", "A relationship with three attributes"],
+      "correct": 0,
+      "explanation": "A ternary relationship involves three entities. Example: Doctor prescribes Medicine to Patient. The junction table has doctor_id, medicine_id, patient_id."
+    },
+    {
+      "id": "rel-033",
+      "type": "ordering",
+      "question": "Rank by how often each needs a junction table (MOST to LEAST often):",
+      "items": ["Many-to-many", "Self-referential many-to-many", "One-to-many", "One-to-one"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "M:N always needs a junction table. Self-referential M:N also does. 1:N uses a FK (no junction). 1:1 never needs a junction."
+    },
+    {
+      "id": "rel-034",
+      "type": "multiple-choice",
+      "question": "A user has many addresses. An address belongs to one user. But two users live at the same physical address. How many Address rows?",
+      "options": ["One shared row", "Two separate rows (one per user)", "Depends on normalization level", "Use a junction table"],
+      "correct": 1,
+      "explanation": "With 1:N (user_id FK on Address), each user gets their own address row even if the physical address is identical. This simplifies ownership and deletion."
+    },
+    {
+      "id": "rel-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An article can have multiple authors. An author can write multiple articles. Relationship type?",
+          "options": ["One-to-many", "Many-to-many", "One-to-one"],
+          "correct": 1,
+          "explanation": "Many-to-many. Multiple authors per article, multiple articles per author."
+        },
+        {
+          "question": "The junction table needs to track author order (first author, second author). What column is needed?",
+          "options": ["author_rank INTEGER", "is_primary BOOLEAN", "Both work but rank is more flexible", "No extra column needed"],
+          "correct": 2,
+          "explanation": "Both work, but author_rank (1, 2, 3...) is more flexible for any number of authors. is_primary only distinguishes primary vs non-primary."
+        }
+      ]
+    },
+    {
+      "id": "rel-036",
+      "type": "multiple-choice",
+      "question": "What does CASCADE on a foreign key mean?",
+      "options": ["The FK is indexed automatically", "Deleting/updating the parent automatically deletes/updates children", "The relationship is optional", "The FK allows NULL values"],
+      "correct": 1,
+      "explanation": "ON DELETE CASCADE means deleting a user also deletes their posts. ON UPDATE CASCADE means updating user.id updates all referencing user_id values."
+    },
+    {
+      "id": "rel-037",
+      "type": "multi-select",
+      "question": "What are valid FK ON DELETE behaviors?",
+      "options": ["CASCADE (delete children)", "SET NULL (set FK to null)", "RESTRICT (prevent parent deletion)", "SET DEFAULT (set FK to default value)"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All four are valid SQL ON DELETE behaviors. CASCADE deletes children. SET NULL nullifies FKs. RESTRICT blocks the delete. SET DEFAULT uses the column's default."
+    },
+    {
+      "id": "rel-038",
+      "type": "multiple-choice",
+      "question": "A user deletes their account. Their posts should remain but show '[deleted user]'. Which ON DELETE?",
+      "options": ["CASCADE", "SET NULL", "RESTRICT", "No FK constraint"],
+      "correct": 1,
+      "explanation": "SET NULL: deleting the user sets post.author_id to NULL. The app shows '[deleted user]' when author_id is NULL. Posts survive."
+    },
+    {
+      "id": "rel-039",
+      "type": "multiple-choice",
+      "question": "A customer can't be deleted if they have open orders. Which ON DELETE?",
+      "options": ["CASCADE", "SET NULL", "RESTRICT", "SET DEFAULT"],
+      "correct": 2,
+      "explanation": "RESTRICT prevents deleting a customer who has orders. The delete fails with an error, protecting data integrity."
+    },
+    {
+      "id": "rel-040",
+      "type": "numeric-input",
+      "question": "You have 5 entities with these relationships: A→B (1:N), A→C (1:N), B↔C (M:N), D→A (1:1), E→B (1:N). How many total tables?",
+      "answer": 6,
+      "tolerance": "exact",
+      "explanation": "Six tables: A, B, C, D, E, and B_C (junction for M:N). The 1:N and 1:1 relationships use FKs on existing tables, no extra tables needed."
+    },
+    {
+      "id": "rel-041",
+      "type": "multi-select",
+      "question": "Which are signs of a hidden many-to-many that's been modeled as one-to-many?",
+      "options": ["Duplicate data across rows", "A column storing comma-separated IDs", "Frequent need to change which 'one' an item belongs to", "Single FK column works perfectly"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Duplicated rows, CSV ID columns, and needing to reassign ownership suggest M:N forced into 1:N. A working single FK means 1:N is correct."
+    },
+    {
+      "id": "rel-042",
+      "type": "multiple-choice",
+      "question": "A company has many departments. Each department has many employees. Each employee is in one department. What's the relationship chain?",
+      "options": ["Company 1:N Department 1:N Employee", "Company M:N Department 1:N Employee", "Company 1:1 Department 1:N Employee", "Company 1:N Department M:N Employee"],
+      "correct": 0,
+      "explanation": "Company 1:N Department (a department belongs to one company), Department 1:N Employee (an employee is in one department). Transitive: Company 1:N Employee through Department."
+    },
+    {
+      "id": "rel-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "E-commerce: Products have Variants (size, color). Each Variant has its own price and stock. What relationship?",
+          "options": ["Product 1:1 Variant", "Product 1:N Variant", "Product M:N Variant"],
+          "correct": 1,
+          "explanation": "One-to-many. A product has many variants (S, M, L in red, blue). Each variant belongs to one product."
+        },
+        {
+          "question": "Now customers add specific Variants to their cart. What's the Cart↔Variant relationship?",
+          "options": ["One-to-one", "One-to-many", "Many-to-many", "One-to-many via CartItem"],
+          "correct": 3,
+          "explanation": "A cart has many items, each item references a variant (with quantity). CartItem is an associative entity: cart_id, variant_id, quantity."
+        }
+      ]
+    },
+    {
+      "id": "rel-044",
+      "type": "multiple-choice",
+      "question": "What's a weak entity in database modeling?",
+      "options": ["An entity with few attributes", "An entity that can't be uniquely identified without its parent's key", "A table without indexes", "A deprecated table"],
+      "correct": 1,
+      "explanation": "A weak entity depends on a strong entity for identification. OrderItem is identified by (order_id, line_number)—it can't exist without its Order."
+    },
+    {
+      "id": "rel-045",
+      "type": "multi-select",
+      "question": "Which are weak entities (dependent on a parent for identification)?",
+      "options": ["OrderItem (identified by order_id + line_number)", "Room (identified by building_id + room_number)", "User (identified by user_id)", "Chapter (identified by book_id + chapter_number)"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "OrderItem, Room, and Chapter all need their parent's key for identification. User has its own independent identity."
+    },
+    {
+      "id": "rel-046",
+      "type": "multiple-choice",
+      "question": "In a social network, 'Friendship' is mutual. How does this differ from 'Follow'?",
+      "options": ["Friendship needs a junction table, Follow doesn't", "Friendship is bidirectional (one row), Follow is directional (two roles)", "They're modeled the same way", "Friendship uses 1:1, Follow uses M:N"],
+      "correct": 1,
+      "explanation": "Follow is directional: follower_id → followed_id (A follows B ≠ B follows A). Friendship is mutual: either store one row and treat both IDs as peers, or store two rows."
+    },
+    {
+      "id": "rel-047",
+      "type": "ordering",
+      "question": "Rank by how much data the junction table typically carries (LEAST to MOST):",
+      "items": ["post_tags (post↔tag)", "enrollments (student↔course)", "order_items (order↔product)"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "post_tags: just two FKs. enrollments: grade, enrolled_at, status. order_items: quantity, price, discount, notes—the richest associative entity."
+    },
+    {
+      "id": "rel-048",
+      "type": "multiple-choice",
+      "question": "A Comment has an author (User) and a post (Post). Is Comment a junction table?",
+      "options": ["Yes, it connects User and Post", "No, it's an independent entity with its own lifecycle", "Only if it has no other attributes", "Depends on the ORM"],
+      "correct": 1,
+      "explanation": "Comment is an independent entity—it has its own content, timestamps, and isn't defined by the User-Post connection. It references both but exists for its own purpose."
+    },
+    {
+      "id": "rel-049",
+      "type": "multi-select",
+      "question": "A recipe has many ingredients. An ingredient appears in many recipes. The relationship also tracks quantity and unit. Which columns are on the junction table?",
+      "options": ["recipe_id", "ingredient_id", "quantity", "unit (cups, grams, etc.)"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All four: the two FKs plus the relationship attributes (quantity and unit). '2 cups flour' is specific to this recipe-ingredient pair."
+    },
+    {
+      "id": "rel-050",
+      "type": "multiple-choice",
+      "question": "What happens if you model a M:N relationship with a FK array instead of a junction table?",
+      "options": ["Nothing—arrays work fine", "You lose referential integrity, indexing, and the ability to add relationship attributes", "It's faster for reads", "Only works in PostgreSQL"],
+      "correct": 1,
+      "explanation": "FK arrays can't enforce referential integrity, aren't efficiently indexable for 'find all X with Y', and can't carry attributes (enrolled_at, quantity)."
+    },
+    {
+      "id": "rel-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Ride-sharing: a Ride has one Driver and one Rider. Both are Users. How do you model this?",
+          "options": ["Two separate User tables", "One User table, two FKs on Ride (driver_id, rider_id)", "Junction table", "Polymorphic association"],
+          "correct": 1,
+          "explanation": "One User table. Ride has driver_id and rider_id, both FK to User. This avoids duplicating user data across driver/rider tables."
+        },
+        {
+          "question": "Now rides can have multiple riders (carpool). How does the model change?",
+          "options": ["Add rider2_id, rider3_id columns", "Change to a RideRider junction table", "Store rider IDs in an array", "Create a RiderGroup entity"],
+          "correct": 1,
+          "explanation": "Ride↔Rider becomes M:N with a RideRider junction (ride_id, user_id, pickup_location). Keeps driver_id as a single FK on Ride since there's one driver."
+        }
+      ]
+    },
+    {
+      "id": "rel-052",
+      "type": "multiple-choice",
+      "question": "What's the cardinality of User→Email if a user can have multiple email addresses?",
+      "options": ["1:1", "1:N", "N:1", "M:N"],
+      "correct": 1,
+      "explanation": "One user has many emails. Each email belongs to one user. This is 1:N. Email table has user_id FK."
+    },
+    {
+      "id": "rel-053",
+      "type": "numeric-input",
+      "question": "A school system has Students, Teachers, Courses, and Classrooms. Students enroll in Courses (M:N). Teachers teach Courses (M:N). Courses meet in Classrooms (M:N by time slot). How many junction tables?",
+      "answer": 3,
+      "tolerance": "exact",
+      "explanation": "Three junctions: StudentCourse, TeacherCourse, CourseClassroom (or Schedule). Each M:N needs its own junction table."
+    },
+    {
+      "id": "rel-054",
+      "type": "multi-select",
+      "question": "Which relationships benefit from ON DELETE CASCADE?",
+      "options": ["User → UserSettings (1:1 dependent)", "User → Posts (1:N, keep posts?)", "Order → OrderItems (1:N, items meaningless without order)", "Post → Tags via junction (M:N, tags exist independently)"],
+      "correctIndices": [0, 2],
+      "explanation": "CASCADE suits dependent entities. UserSettings dies with User. OrderItems die with Order. Posts might survive user deletion. Tags definitely survive post deletion."
+    },
+    {
+      "id": "rel-055",
+      "type": "multiple-choice",
+      "question": "What's an 'exclusive arc' (or exclusive relationship)?",
+      "options": ["A relationship that excludes certain values", "An entity that belongs to exactly one of several possible parents", "A self-referential loop", "A relationship with a UNIQUE constraint"],
+      "correct": 1,
+      "explanation": "Exclusive arc: a Comment belongs to either a Post OR a Photo, never both. Modeled with nullable FKs (post_id, photo_id) and a CHECK constraint, or polymorphic."
+    },
+    {
+      "id": "rel-056",
+      "type": "ordering",
+      "question": "Rank these ON DELETE options by how 'protective' they are of child data (MOST to LEAST protective):",
+      "items": ["RESTRICT", "SET NULL", "CASCADE"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "RESTRICT blocks deletion entirely. SET NULL preserves child rows but loses the link. CASCADE destroys children—least protective."
+    },
+    {
+      "id": "rel-057",
+      "type": "multiple-choice",
+      "question": "A user can be both a Buyer and a Seller. How do you model this?",
+      "options": ["Two separate User tables", "One User table with a role column", "One User table—Orders reference buyer_id and seller_id", "Inheritance with a base User table"],
+      "correct": 2,
+      "explanation": "One User table. Transactions/Orders reference buyer_id and seller_id, both FK to User. No role column needed—the context (buyer vs seller) is determined by the relationship."
+    },
+    {
+      "id": "rel-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A movie has many actors. An actor appears in many movies. Relationship type?",
+          "options": ["One-to-many", "Many-to-many", "One-to-one"],
+          "correct": 1,
+          "explanation": "Many-to-many. Needs a junction table (movie_actors or cast)."
+        },
+        {
+          "question": "The junction also needs to store the character name and billing order. What's the primary key?",
+          "options": ["Auto-increment id", "(movie_id, actor_id)", "(movie_id, actor_id) with character as attribute", "movie_id alone"],
+          "correct": 2,
+          "explanation": "Composite PK (movie_id, actor_id) if an actor plays one role per movie. If an actor can play multiple roles, add role as part of the PK or use auto-increment."
+        }
+      ]
+    },
+    {
+      "id": "rel-059",
+      "type": "multi-select",
+      "question": "Which are self-referential relationships?",
+      "options": ["Employee reports to Manager (both in Employee table)", "User follows User", "Category has parent Category", "Post references Author (in User table)"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Self-referential means the FK points to the same table. Employee→Employee, User→User, Category→Category. Post→User is a regular relationship between different tables."
+    },
+    {
+      "id": "rel-060",
+      "type": "multiple-choice",
+      "question": "What's the problem with circular FK references (A→B→C→A)?",
+      "options": ["Queries become slow", "You can't insert any rows—each table needs the other to exist first", "Databases don't support it", "It violates 3NF"],
+      "correct": 1,
+      "explanation": "Circular FKs create a chicken-and-egg problem. You can't insert into A without B existing, but B needs C, and C needs A. Solved with nullable FKs or deferred constraints."
+    },
+    {
+      "id": "rel-061",
+      "type": "multiple-choice",
+      "question": "An Employee can have 0 or 1 parking spots. A parking spot can be assigned to 0 or 1 employee. What's this?",
+      "options": ["One-to-one (optional on both sides)", "One-to-many", "Many-to-many", "Zero-to-one"],
+      "correct": 0,
+      "explanation": "Optional 1:1. Not every employee has parking, not every spot is assigned. FK with UNIQUE on either table, allowing NULL."
+    },
+    {
+      "id": "rel-062",
+      "type": "numeric-input",
+      "question": "A social app has Users, Posts, Comments, Likes (on posts), Likes (on comments), and Follows. How many of these involve User on at least one side?",
+      "answer": 6,
+      "tolerance": "exact",
+      "explanation": "All six: User creates Posts, User writes Comments, User likes Posts, User likes Comments, User follows User. User is referenced in every relationship."
+    },
+    {
+      "id": "rel-063",
+      "type": "multi-select",
+      "question": "Which statements about foreign keys are TRUE?",
+      "options": ["FKs enforce referential integrity", "FKs automatically create indexes in all databases", "FKs can reference non-primary-key columns if they have UNIQUE", "FKs can be composite (multiple columns)"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "FKs enforce integrity and can reference UNIQUE columns (not just PKs). FKs can be composite. But NOT all databases auto-index FKs—MySQL/InnoDB does, PostgreSQL doesn't."
+    },
+    {
+      "id": "rel-064",
+      "type": "multiple-choice",
+      "question": "What's the 'fan trap' in ER modeling?",
+      "options": ["Too many junction tables", "Two 1:N relationships from the same entity create ambiguous joins", "Circular references", "Self-referential relationships"],
+      "correct": 1,
+      "explanation": "Fan trap: Entity A has 1:N to B and 1:N to C. Joining A-B-C produces a Cartesian product. Example: Department has Employees and Projects—joining gives wrong counts."
+    },
+    {
+      "id": "rel-065",
+      "type": "ordering",
+      "question": "Rank these approaches for modeling 'User has multiple phone numbers' by flexibility (MOST to LEAST flexible):",
+      "items": ["PhoneNumber table (user_id, number, type, is_primary)", "phone_home, phone_work, phone_mobile columns on User", "JSON array of phone objects on User"],
+      "correctOrder": [0, 2, 1],
+      "explanation": "Separate table: unlimited phones, queryable, typed. JSON: flexible but harder to query. Fixed columns: limited to 3, can't add types, many NULLs."
+    },
+    {
+      "id": "rel-066",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A blog allows guest authors (no account). Regular users can also author posts. How do you model authorship?",
+          "options": ["Nullable user_id + guest_name column on Post", "Separate GuestAuthor table", "Require all authors to have accounts", "Polymorphic author reference"],
+          "correct": 0,
+          "explanation": "Simplest: Post has nullable user_id FK (for registered users) and guest_name (for guests). If user_id is NULL, display guest_name."
+        },
+        {
+          "question": "Later, guest authors need full profiles (bio, photo, social links). How does the model change?",
+          "options": ["Add more columns to Post", "Create an Author entity that both Users and Guests can be", "Keep guest_name and add guest_bio, guest_photo to Post", "Force guests to register"],
+          "correct": 1,
+          "explanation": "Author becomes its own entity with bio, photo, links. User has an optional author_id. Guest authors get Author records without User accounts."
+        }
+      ]
+    },
+    {
+      "id": "rel-067",
+      "type": "multiple-choice",
+      "question": "What's 'table inheritance' (e.g., in PostgreSQL)?",
+      "options": ["Tables that reference themselves", "A child table that inherits columns from a parent table", "Tables created from templates", "FK relationships"],
+      "correct": 1,
+      "explanation": "Table inheritance: Child table inherits all columns from Parent. SELECT on Parent includes Child rows. Used for modeling IS-A relationships (Vehicle → Car, Truck)."
+    },
+    {
+      "id": "rel-068",
+      "type": "multi-select",
+      "question": "Which patterns model IS-A relationships (Vehicle → Car, Truck)?",
+      "options": ["Single table with type column and nullable type-specific columns", "One table per type (no shared table)", "Shared base table + type-specific tables joined by PK", "Table inheritance (PostgreSQL feature)"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All four work. Single table (simple, some NULLs). Table-per-type (no shared queries). Shared base + type tables (normalized, needs joins). Native inheritance (PostgreSQL-specific)."
+    },
+    {
+      "id": "rel-069",
+      "type": "ordering",
+      "question": "IS-A patterns: rank by ease of querying 'all vehicles' (EASIEST to HARDEST):",
+      "items": ["Single table with type column", "Shared base table + type tables", "Separate table per type (Car, Truck, no Vehicle table)"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Single table: just SELECT * FROM vehicles. Shared base: SELECT from base, JOIN as needed. Separate tables: need UNION across all type tables."
+    },
+    {
+      "id": "rel-070",
+      "type": "multiple-choice",
+      "question": "A notification can be about a new follower, a new comment, or a new like. How is the source entity referenced?",
+      "options": ["Three nullable FKs (follower_event_id, comment_id, like_id)", "Polymorphic (source_type, source_id)", "One generic FK", "Store as JSON"],
+      "correct": 1,
+      "explanation": "Polymorphic: source_type ('Follow', 'Comment', 'Like') and source_id. Scales to new notification types without schema changes. Trade-off: no FK constraint."
+    },
+    {
+      "id": "rel-071",
+      "type": "numeric-input",
+      "question": "A chat app has Users, Conversations, Messages, and Attachments. Users participate in Conversations (M:N). Conversations have Messages (1:N). Messages have Attachments (1:N). How many total tables?",
+      "answer": 5,
+      "tolerance": "exact",
+      "explanation": "Five: Users, Conversations, ConversationParticipants (junction for M:N), Messages, Attachments. The M:N adds one junction table."
+    },
+    {
+      "id": "rel-072",
+      "type": "multi-select",
+      "question": "What can go wrong with polymorphic associations?",
+      "options": ["No FK constraint enforced by database", "Harder to JOIN (dynamic table name)", "Can't index across types", "All of these"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "All are real drawbacks. DB can't validate source_id refers to a real record. JOINs need CASE or separate queries. Indexes on source_id span multiple logical types."
+    },
+    {
+      "id": "rel-073",
+      "type": "multiple-choice",
+      "question": "Modeling a family tree: Child has two parents. Parents are also Persons in the same table. What relationship?",
+      "options": ["1:N self-referential", "M:N self-referential", "Two self-referential 1:N (mother_id, father_id)", "Ternary relationship"],
+      "correct": 2,
+      "explanation": "Two self-referential FKs: mother_id and father_id, both referencing Person.id. Each person has at most 2 parents (in this simplified model)."
+    },
+    {
+      "id": "rel-074",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Permissions system: Users belong to Roles. Roles have Permissions. What's User→Permission?",
+          "options": ["Direct 1:N", "Direct M:N", "Indirect through Role", "No relationship"],
+          "correct": 2,
+          "explanation": "Users don't directly have Permissions. User M:N Role, Role M:N Permission. User's permissions are derived by traversing through their roles."
+        },
+        {
+          "question": "Now some users need individual permissions beyond their role. How do you extend?",
+          "options": ["Add a direct User↔Permission M:N junction", "Create custom roles per user", "Store extra permissions as JSON", "Use a permission string column"],
+          "correct": 0,
+          "explanation": "Add a UserPermission junction table alongside RolePermission. User's effective permissions = union of role permissions + direct permissions."
+        }
+      ]
+    },
+    {
+      "id": "rel-075",
+      "type": "multiple-choice",
+      "question": "What's 'optional' vs 'mandatory' participation in a relationship?",
+      "options": ["Whether the FK column allows NULL", "Whether the table exists", "Whether the relationship is M:N", "Whether CASCADE is set"],
+      "correct": 0,
+      "explanation": "Mandatory: FK is NOT NULL (every post MUST have an author). Optional: FK allows NULL (a post MAY have a category). This is participation constraint."
+    },
+    {
+      "id": "rel-076",
+      "type": "multi-select",
+      "question": "Airline system: which are many-to-many relationships?",
+      "options": ["Passenger ↔ Flight", "Flight → Plane (one plane per flight)", "Pilot ↔ Route (pilots certified for routes)", "Flight → Departure airport"],
+      "correctIndices": [0, 2],
+      "explanation": "Passenger↔Flight (passengers book multiple flights, flights have many passengers) and Pilot↔Route (pilots certified for multiple routes) are M:N. The others are N:1."
+    },
+    {
+      "id": "rel-077",
+      "type": "multiple-choice",
+      "question": "What's a 'bridge table'?",
+      "options": ["A table connecting two databases", "Another name for a junction/join table in M:N relationships", "A temporary table for ETL", "A table that bridges different schemas"],
+      "correct": 1,
+      "explanation": "Bridge table, junction table, join table, cross-reference table, associative table—all names for the table that implements a M:N relationship."
+    },
+    {
+      "id": "rel-078",
+      "type": "ordering",
+      "question": "Rank by how many FKs the entity typically has (FEWEST to MOST):",
+      "items": ["User (top-level entity)", "Comment (has author and post)", "OrderItem (has order, product, maybe variant)"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "User: typically 0 FKs (referenced BY others). Comment: 2 FKs (user_id, post_id). OrderItem: 2-3 FKs (order_id, product_id, maybe variant_id)."
+    },
+    {
+      "id": "rel-079",
+      "type": "numeric-input",
+      "question": "A project management app: Users, Projects, Tasks, Labels, Comments. Users↔Projects (M:N), Tasks belong to Projects (1:N), Tasks↔Labels (M:N), Comments on Tasks (1:N). How many total tables?",
+      "answer": 7,
+      "tolerance": "exact",
+      "explanation": "Seven: Users, Projects, UserProjects (junction), Tasks, Labels, TaskLabels (junction), Comments. Two M:N relationships = two junction tables."
+    },
+    {
+      "id": "rel-080",
+      "type": "multiple-choice",
+      "question": "When converting an ER diagram to tables, what happens to a relationship diamond with attributes?",
+      "options": ["Attributes go on the entity with more rows", "It becomes its own table (junction/associative entity)", "Attributes are dropped", "Attributes go on both entities"],
+      "correct": 1,
+      "explanation": "A relationship with attributes becomes its own table. The classic example: Enrollment (between Student and Course) has grade and enrollment_date."
+    },
+    {
+      "id": "rel-081",
+      "type": "multi-select",
+      "question": "Which relationships are ALWAYS implemented with a junction table?",
+      "options": ["Many-to-many", "One-to-many with attributes on the relationship", "One-to-one", "Self-referential many-to-many"],
+      "correctIndices": [0, 3],
+      "explanation": "M:N always needs a junction table (both regular and self-referential). 1:N can carry attributes on the 'many' side entity. 1:1 never needs a junction."
+    },
+    {
+      "id": "rel-082",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Event platform: a Ticket is for one Event, purchased by one User. What relationships?",
+          "options": ["Two 1:N (Event→Tickets, User→Tickets)", "One M:N (Event↔User via Ticket)", "One 1:N and one M:N", "Three separate relationships"],
+          "correct": 0,
+          "explanation": "Two 1:N relationships. Ticket has event_id and user_id. Each ticket belongs to one event and one user."
+        },
+        {
+          "question": "Is Ticket a junction table between Event and User?",
+          "options": ["Yes, because it connects both", "No, because a user can buy multiple tickets to the same event", "No, because Ticket has its own meaningful attributes", "Both B and C"],
+          "correct": 3,
+          "explanation": "Both reasons: Ticket isn't a junction because (1) a user can buy multiple tickets to the same event (not unique pair) and (2) Ticket has its own lifecycle (seat, price, status)."
+        }
+      ]
+    },
+    {
+      "id": "rel-083",
+      "type": "multiple-choice",
+      "question": "What's the difference between identifying and non-identifying relationships?",
+      "options": ["Identifying uses CASCADE, non-identifying doesn't", "In identifying, the child's PK includes the parent's FK", "Identifying is 1:1, non-identifying is 1:N", "Identifying means required, non-identifying means optional"],
+      "correct": 1,
+      "explanation": "Identifying: child PK includes parent FK (OrderItem PK = order_id + line_number). Non-identifying: child has its own independent PK and references parent via FK."
+    },
+    {
+      "id": "rel-084",
+      "type": "multi-select",
+      "question": "Which constraints help enforce 1:1 relationships at the database level?",
+      "options": ["UNIQUE constraint on the FK column", "NOT NULL on the FK column", "CHECK constraint", "PRIMARY KEY on the FK column (shared PK)"],
+      "correctIndices": [0, 3],
+      "explanation": "UNIQUE on FK ensures each parent is referenced at most once. Shared PK (profile.id = user.id) also enforces 1:1. NOT NULL makes it mandatory but not 1:1."
+    },
+    {
+      "id": "rel-085",
+      "type": "multiple-choice",
+      "question": "A Message has a sender and a receiver, both Users. How many FKs on Message?",
+      "options": ["0", "1", "2", "3"],
+      "correct": 2,
+      "explanation": "Two FKs: sender_id and receiver_id, both referencing User.id. A single table can have multiple FKs to the same parent table."
+    },
+    {
+      "id": "rel-086",
+      "type": "ordering",
+      "question": "Rank these approaches for modeling 'a post is in one category' by normalization (MOST to LEAST normalized):",
+      "items": ["category_id FK to a Category table", "category_name string column on Post", "category ENUM type on Post"],
+      "correctOrder": [0, 2, 1],
+      "explanation": "FK to Category table: fully normalized, category data in one place. ENUM: constrained values but can't add attributes. String: denormalized, no constraints, inconsistency risk."
+    },
+    {
+      "id": "rel-087",
+      "type": "numeric-input",
+      "question": "Social network: Users, Posts, Comments, Likes, Follows, Groups, GroupMembers. How many tables represent M:N relationships?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two: Follows (User↔User M:N) and GroupMembers (User↔Group M:N). Likes could be considered M:N (User↔Post) but is more commonly modeled as its own entity."
+    },
+    {
+      "id": "rel-088",
+      "type": "multiple-choice",
+      "question": "What's a 'diamond problem' in entity relationships?",
+      "options": ["Two paths between the same entities that might give different results", "An entity with too many FKs", "A circular reference", "An entity inheriting from two parents"],
+      "correct": 0,
+      "explanation": "Diamond: Entity A relates to B and C, both relate to D. Joining A→B→D and A→C→D can give different results. Common in hierarchies (Department→Employee→Project vs Department→Project)."
+    },
+    {
+      "id": "rel-089",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "E-commerce: Product belongs to Category. A Product can only be in ONE category. Relationship?",
+          "options": ["One-to-one", "One-to-many (Category→Products)", "Many-to-many"],
+          "correct": 1,
+          "explanation": "One-to-many: one category has many products, each product has one category. Product gets category_id FK."
+        },
+        {
+          "question": "Requirements change: products can now be in multiple categories. What changes?",
+          "options": ["Add more category_id columns", "Replace FK with a junction table", "Use a comma-separated category field", "No change needed"],
+          "correct": 1,
+          "explanation": "Remove category_id from Product. Create ProductCategory junction table (product_id, category_id). The relationship upgrades from 1:N to M:N."
+        }
+      ]
+    },
+    {
+      "id": "rel-090",
+      "type": "multi-select",
+      "question": "Which are TRUE about composite foreign keys?",
+      "options": ["They reference a composite primary/unique key in the parent", "They use multiple columns", "They're common in junction tables with composite PKs", "They can only reference primary keys"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Composite FKs use multiple columns to reference a composite PK/UNIQUE in the parent. Common when junction tables reference other junction tables. They can reference UNIQUE keys too."
+    },
+    {
+      "id": "rel-091",
+      "type": "multiple-choice",
+      "question": "What's the 'chasm trap' in ER modeling?",
+      "options": ["A missing relationship between entities that should be connected", "Too many relationships", "A relationship without a junction table", "A self-referential loop"],
+      "correct": 0,
+      "explanation": "Chasm trap: a path between entities has an optional step, causing rows to be lost in joins. Example: if not all Departments have Employees, a Department→Employee→Project join loses department-less data."
+    },
+    {
+      "id": "rel-092",
+      "type": "ordering",
+      "question": "Rank these scenarios by total tables needed (FEWEST to MOST):",
+      "items": ["3 entities, all 1:N", "3 entities, one M:N", "3 entities, all M:N"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "All 1:N: 3 tables (FKs only). One M:N: 4 tables (3 + 1 junction). All M:N: 6 tables (3 + 3 junctions)."
+    },
+    {
+      "id": "rel-093",
+      "type": "multiple-choice",
+      "question": "When modeling a 'Follow' where users follow other users, should (A follows B) and (B follows A) be one row or two?",
+      "options": ["One row with smaller ID first", "Two rows (one per direction)", "Either, but two rows is simpler to query", "Depends on the database"],
+      "correct": 2,
+      "explanation": "Two rows is simpler: to check 'does A follow B', query WHERE follower_id=A AND followed_id=B. One-row approach needs WHERE (user1=A AND user2=B) OR (user1=B AND user2=A)."
+    },
+    {
+      "id": "rel-094",
+      "type": "multi-select",
+      "question": "When should a 1:1 relationship be kept as two separate tables (not merged)?",
+      "options": ["When one side has many columns rarely accessed", "When one side is optional (not all users have profiles)", "When different access patterns query each side separately", "When both sides are always fetched together"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Separate tables when: large rarely-accessed data (keeps main table lean), optional side (avoids NULLs), different access patterns. Merge when always fetched together."
+    },
+    {
+      "id": "rel-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A document can have labels AND be in a folder. Labels are M:N. Folder is 1:N. How many junction tables?",
+          "options": ["0", "1", "2"],
+          "correct": 1,
+          "explanation": "One junction: DocumentLabel. Folder is 1:N, so Document just gets folder_id FK."
+        },
+        {
+          "question": "Now documents can be in multiple folders (shortcuts/aliases). What changes?",
+          "options": ["Add more folder_id columns", "Add DocumentFolder junction table", "Use an array of folder IDs", "Nothing changes"],
+          "correct": 1,
+          "explanation": "DocumentFolder junction table (document_id, folder_id). Now you need 2 junction tables total. The relationship upgraded from 1:N to M:N."
+        }
+      ]
+    },
+    {
+      "id": "rel-096",
+      "type": "numeric-input",
+      "question": "An app has these M:N relationships: User↔Role, Role↔Permission, User↔Group, Group↔Permission. How many junction tables?",
+      "answer": 4,
+      "tolerance": "exact",
+      "explanation": "Four junction tables: UserRole, RolePermission, UserGroup, GroupPermission. Each M:N gets its own junction."
+    },
+    {
+      "id": "rel-097",
+      "type": "multiple-choice",
+      "question": "What's the key difference between aggregation and composition in UML/ER modeling?",
+      "options": ["Aggregation uses FK, composition uses junction tables", "In composition, children can't exist without the parent; in aggregation they can", "They're the same thing", "Composition is 1:1, aggregation is 1:N"],
+      "correct": 1,
+      "explanation": "Composition: child dies with parent (OrderItems deleted when Order deleted). Aggregation: child can exist independently (a Student can exist without a Course)."
+    },
+    {
+      "id": "rel-098",
+      "type": "multi-select",
+      "question": "Which are composition relationships (child can't exist without parent)?",
+      "options": ["Order → OrderItem", "User → Post", "Invoice → InvoiceLine", "Department → Employee"],
+      "correctIndices": [0, 2],
+      "explanation": "OrderItem and InvoiceLine have no meaning without their parent. Posts can arguably exist after user deletion. Employees exist independently of departments."
+    },
+    {
+      "id": "rel-099",
+      "type": "ordering",
+      "question": "Rank these approaches for 'a comment can be on a Post, Photo, or Video' by maintainability (BEST to WORST):",
+      "items": ["Separate tables: PostComment, PhotoComment, VideoComment", "Polymorphic: commentable_type + commentable_id", "Nullable FKs: post_id, photo_id, video_id"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Separate tables: strong FK constraints, clear schema. Polymorphic: flexible, one table, but no FK enforcement. Nullable FKs: works for few types but messy with CHECK constraints."
+    },
+    {
+      "id": "rel-100",
+      "type": "multiple-choice",
+      "question": "What question helps you decide between 1:N and M:N?",
+      "options": ["How many rows will there be?", "Can an instance on the 'many' side belong to more than one instance on the 'one' side?", "Does the relationship have attributes?", "Which table is larger?"],
+      "correct": 1,
+      "explanation": "The key question: Can a post be in multiple categories? If yes, M:N. If no, 1:N. This determines whether you need a FK or a junction table."
+    }
+  ]
+}

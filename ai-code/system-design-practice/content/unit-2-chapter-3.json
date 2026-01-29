@@ -1,0 +1,949 @@
+{
+  "unit": 2,
+  "unitTitle": "Data Modeling",
+  "chapter": 3,
+  "chapterTitle": "Keys & Indexes",
+  "chapterDescription": "Primary keys, foreign keys, composite keys, and when to add indexes.",
+  "problems": [
+    {
+      "id": "key-001",
+      "type": "multiple-choice",
+      "question": "What is the primary purpose of a primary key?",
+      "options": ["Speed up queries", "Uniquely identify each row in a table", "Connect tables together", "Sort the data"],
+      "correct": 1,
+      "explanation": "A primary key uniquely identifies each row. It's NOT NULL and UNIQUE. It may also be used for joins and physical ordering, but identification is the core purpose."
+    },
+    {
+      "id": "key-002",
+      "type": "multiple-choice",
+      "question": "What's the difference between a natural key and a surrogate key?",
+      "options": ["Natural keys are faster", "Natural keys come from the data (email, SSN); surrogate keys are generated (auto-increment, UUID)", "Surrogate keys are for NoSQL only", "Natural keys can't be indexed"],
+      "correct": 1,
+      "explanation": "Natural key: meaningful data like email or ISBN. Surrogate key: generated value with no business meaning (auto-increment ID, UUID). Most systems prefer surrogates."
+    },
+    {
+      "id": "key-003",
+      "type": "multi-select",
+      "question": "Which are valid primary key strategies?",
+      "options": ["Auto-incrementing integer", "UUID/ULID", "Composite key (two+ columns)", "Email address"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are technically valid PKs. Auto-increment and UUID are surrogates. Composite keys use multiple columns. Email is a natural key (though fragile—users change emails)."
+    },
+    {
+      "id": "key-004",
+      "type": "ordering",
+      "question": "Rank by storage size per key (SMALLEST to LARGEST):",
+      "items": ["Auto-increment INT (4 bytes)", "Auto-increment BIGINT (8 bytes)", "UUID (16 bytes)", "Email as PK (variable, avg ~30 bytes)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "INT: 4B, BIGINT: 8B, UUID: 16B, Email: variable but typically 20-50 bytes. Key size matters because PKs are repeated in every FK and index."
+    },
+    {
+      "id": "key-005",
+      "type": "multiple-choice",
+      "question": "Why might you choose UUID over auto-increment for primary keys?",
+      "options": ["UUIDs are faster to generate", "UUIDs work in distributed systems without coordination", "UUIDs use less storage", "UUIDs are sequential"],
+      "correct": 1,
+      "explanation": "UUIDs can be generated on any node without checking a central sequence. Auto-increment needs a single source of truth. UUIDs are larger and non-sequential (bad for B-tree locality)."
+    },
+    {
+      "id": "key-006",
+      "type": "multiple-choice",
+      "question": "What problem do ULIDs and UUIDv7 solve compared to UUIDv4?",
+      "options": ["They're shorter", "They're time-ordered, so they maintain B-tree insert locality", "They're more unique", "They work without a clock"],
+      "correct": 1,
+      "explanation": "UUIDv4 is random, causing random B-tree page splits. ULIDs and UUIDv7 are time-prefixed, so new records cluster together, improving insert performance."
+    },
+    {
+      "id": "key-007",
+      "type": "multi-select",
+      "question": "What are downsides of using email as a primary key?",
+      "options": ["Users change their email", "PK is repeated in every FK reference (larger storage)", "Case sensitivity issues", "Exposes PII in FKs and logs"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are real problems. Emails change (cascading updates), are large (FKs bloat), have case issues (John@x.com vs john@x.com), and leak PII in related tables."
+    },
+    {
+      "id": "key-008",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An OrderItem is identified by (order_id, line_number). What kind of key is this?",
+          "options": ["Natural key", "Surrogate key", "Composite key", "Foreign key"],
+          "correct": 2,
+          "explanation": "Composite key: two or more columns together form the primary key. OrderItem's identity depends on both the order and the line within it."
+        },
+        {
+          "question": "What's the trade-off of adding an auto-increment order_item_id instead?",
+          "options": ["Simpler FKs from child tables, but loses the natural constraint", "Faster queries but more storage", "No trade-off, always add surrogate PKs", "Can't use auto-increment with composite keys"],
+          "correct": 0,
+          "explanation": "Surrogate PK: simpler for child references. But you lose the natural constraint that (order_id, line_number) is unique—you'd need to add that as a separate UNIQUE constraint."
+        }
+      ]
+    },
+    {
+      "id": "key-009",
+      "type": "multiple-choice",
+      "question": "What is an index in database terms?",
+      "options": ["A copy of the table sorted differently", "A data structure that speeds up lookups on specific columns", "A constraint that enforces uniqueness", "A foreign key reference"],
+      "correct": 1,
+      "explanation": "An index is a data structure (typically B-tree) that allows the database to find rows by indexed column values without scanning the entire table."
+    },
+    {
+      "id": "key-010",
+      "type": "multiple-choice",
+      "question": "What's the trade-off of adding more indexes?",
+      "options": ["More disk space only", "Faster reads but slower writes (indexes must be updated on every insert/update/delete)", "No trade-off—always add indexes", "Slower reads but faster writes"],
+      "correct": 1,
+      "explanation": "Indexes speed up reads but slow down writes. Each insert/update/delete must update every affected index. More indexes = more write overhead and storage."
+    },
+    {
+      "id": "key-011",
+      "type": "ordering",
+      "question": "Rank these operations by how much they benefit from an index (MOST to LEAST benefit):",
+      "items": ["SELECT with WHERE clause on indexed column", "INSERT (new row)", "UPDATE on non-indexed column", "SELECT * (full table scan)"],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "WHERE lookups benefit most. Full scan doesn't use indexes. Non-indexed UPDATE is neutral. INSERT is actually hurt (must update all indexes)."
+    },
+    {
+      "id": "key-012",
+      "type": "multi-select",
+      "question": "Which queries benefit from an index on posts.user_id?",
+      "options": ["SELECT * FROM posts WHERE user_id = 5", "SELECT * FROM posts ORDER BY user_id", "SELECT * FROM posts WHERE title = 'Hello'", "SELECT * FROM posts JOIN users ON posts.user_id = users.id"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Index on user_id helps: filtering by user_id, ordering by user_id, and joining on user_id. A WHERE on title needs its own index."
+    },
+    {
+      "id": "key-013",
+      "type": "multiple-choice",
+      "question": "What's a composite (compound) index?",
+      "options": ["An index on a composite key", "An index on two or more columns together", "An index with a UNIQUE constraint", "An index that spans multiple tables"],
+      "correct": 1,
+      "explanation": "A composite index covers multiple columns, e.g., INDEX(user_id, created_at). Useful when queries filter or sort on both columns together."
+    },
+    {
+      "id": "key-014",
+      "type": "multiple-choice",
+      "question": "You have INDEX(user_id, created_at). Which query can use this index?",
+      "options": ["WHERE created_at > '2024-01-01'", "WHERE user_id = 5", "WHERE user_id = 5 AND created_at > '2024-01-01'", "Both B and C"],
+      "correct": 3,
+      "explanation": "Composite indexes follow the 'leftmost prefix' rule. INDEX(user_id, created_at) supports queries on user_id alone, or user_id + created_at. NOT created_at alone."
+    },
+    {
+      "id": "key-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have INDEX(a, b, c). Which queries can use it?",
+          "options": ["WHERE a = 1", "WHERE b = 2", "WHERE a = 1 AND b = 2", "All of A and C only"],
+          "correct": 3,
+          "explanation": "Leftmost prefix rule: the index supports WHERE a, WHERE a AND b, and WHERE a AND b AND c. It does NOT support WHERE b alone or WHERE c alone."
+        },
+        {
+          "question": "Does WHERE a = 1 AND c = 3 (skipping b) fully use the index?",
+          "options": ["Yes, fully uses all three columns", "Partially—uses 'a' portion only, then scans for c", "No, can't skip columns", "Depends on the database"],
+          "correct": 1,
+          "explanation": "The index can use the 'a' portion to narrow results, but can't jump to 'c' without 'b'. It filters on a=1 using the index, then scans those results for c=3."
+        }
+      ]
+    },
+    {
+      "id": "key-016",
+      "type": "multi-select",
+      "question": "When should you add an index?",
+      "options": ["On columns frequently used in WHERE clauses", "On columns used in JOIN conditions", "On columns used in ORDER BY", "On every column for maximum performance"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Index columns used in WHERE, JOIN, and ORDER BY. Don't index everything—each index adds write overhead and storage cost."
+    },
+    {
+      "id": "key-017",
+      "type": "multiple-choice",
+      "question": "What is a covering index?",
+      "options": ["An index on all columns of a table", "An index that includes all columns needed by a query, avoiding table lookups", "An index with a WHERE clause", "A unique index"],
+      "correct": 1,
+      "explanation": "A covering index contains all columns a query needs. The database can answer the query from the index alone without reading the actual table rows. Very fast."
+    },
+    {
+      "id": "key-018",
+      "type": "numeric-input",
+      "question": "A table has 10 million rows. A non-indexed WHERE query scans all rows. With a B-tree index, approximately how many page reads to find one row? (Assume ~100 keys per page)",
+      "answer": 4,
+      "tolerance": 0.5,
+      "explanation": "B-tree depth = log100(10,000,000) ≈ 3.5, so ~4 page reads. B-tree indexes turn O(n) scans into O(log n) lookups."
+    },
+    {
+      "id": "key-019",
+      "type": "multiple-choice",
+      "question": "Should you index a boolean column (is_active)?",
+      "options": ["Always—booleans are simple to index", "Rarely—low cardinality means the index isn't selective enough", "Only in MySQL", "Only if the column is NOT NULL"],
+      "correct": 1,
+      "explanation": "Boolean has only 2 values—the index can only narrow to ~50% of rows, which often isn't better than a full scan. Exception: if 99% are TRUE and you query the rare FALSE."
+    },
+    {
+      "id": "key-020",
+      "type": "ordering",
+      "question": "Rank these columns by how useful an index is on them (MOST to LEAST useful):",
+      "items": ["user_id (FK, used in WHERE/JOIN)", "email (unique, used in login lookups)", "is_deleted (boolean, 99% false)", "created_at (range queries in reporting)"],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Email: unique lookup, always useful. user_id: frequent joins/filters. created_at: range queries benefit. is_deleted: low cardinality, rarely useful alone."
+    },
+    {
+      "id": "key-021",
+      "type": "multiple-choice",
+      "question": "What's a partial (filtered) index?",
+      "options": ["An index on part of a column's data", "An index with a WHERE clause that only indexes rows matching a condition", "An index that uses only some columns", "A B-tree that isn't fully balanced"],
+      "correct": 1,
+      "explanation": "Partial index: CREATE INDEX idx ON orders (user_id) WHERE status = 'pending'. Smaller, faster, only covers rows matching the condition."
+    },
+    {
+      "id": "key-022",
+      "type": "multi-select",
+      "question": "Which are benefits of a partial index on orders WHERE status = 'active'?",
+      "options": ["Smaller index size", "Faster lookups for active orders", "Faster lookups for all orders", "Less write overhead for non-active orders"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Partial index is smaller and faster for matching queries. It does NOT help queries on non-active orders. Inserts of non-active orders skip the index (less write overhead)."
+    },
+    {
+      "id": "key-023",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your query: SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT 10. What index?",
+          "options": ["INDEX(user_id)", "INDEX(created_at)", "INDEX(user_id, created_at)", "INDEX(created_at, user_id)"],
+          "correct": 2,
+          "explanation": "INDEX(user_id, created_at) filters by user_id then uses the second column for sorting. The database can satisfy both WHERE and ORDER BY from one index."
+        },
+        {
+          "question": "Would INDEX(created_at, user_id) work equally well for this query?",
+          "options": ["Yes, column order doesn't matter", "No, leftmost prefix must match the WHERE clause first", "Yes, the optimizer reorders columns", "Only in PostgreSQL"],
+          "correct": 1,
+          "explanation": "INDEX(created_at, user_id) can't efficiently filter by user_id first (leftmost prefix rule). It would scan all created_at values, which is far less efficient."
+        }
+      ]
+    },
+    {
+      "id": "key-024",
+      "type": "multiple-choice",
+      "question": "What is index selectivity?",
+      "options": ["How many columns an index covers", "The ratio of distinct values to total rows—higher is more selective", "Whether an index is UNIQUE", "How often the optimizer selects an index"],
+      "correct": 1,
+      "explanation": "Selectivity = distinct values / total rows. A UNIQUE column has selectivity 1.0 (best). A boolean has ~0.5 (poor). Higher selectivity means the index narrows results more."
+    },
+    {
+      "id": "key-025",
+      "type": "numeric-input",
+      "question": "A users table has 1,000,000 rows. The 'country' column has 50 distinct values. What is the selectivity of an index on 'country'?",
+      "answer": 0.00005,
+      "tolerance": 0.2,
+      "explanation": "Selectivity = 50 / 1,000,000 = 0.00005. Very low—each value matches ~20,000 rows. An index on country alone won't be very useful."
+    },
+    {
+      "id": "key-026",
+      "type": "multiple-choice",
+      "question": "In PostgreSQL, are foreign keys automatically indexed?",
+      "options": ["Yes, always", "No, you must create the index manually", "Only if CASCADE is set", "Only for composite FKs"],
+      "correct": 1,
+      "explanation": "PostgreSQL does NOT auto-index FKs. MySQL/InnoDB does. In PostgreSQL, always manually add indexes on FK columns used in joins and lookups."
+    },
+    {
+      "id": "key-027",
+      "type": "multi-select",
+      "question": "Which columns should almost always be indexed?",
+      "options": ["Primary key (auto-indexed)", "Foreign keys used in JOINs", "Columns in unique constraints", "Every VARCHAR column"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "PKs are auto-indexed. FKs need indexes for efficient joins. UNIQUE constraints auto-create indexes. Indexing every VARCHAR is wasteful."
+    },
+    {
+      "id": "key-028",
+      "type": "multiple-choice",
+      "question": "What is a clustered index?",
+      "options": ["An index that spans multiple tables", "The physical ordering of table data matches the index order", "A group of indexes on the same table", "An index in a clustered database"],
+      "correct": 1,
+      "explanation": "A clustered index determines the physical row order on disk. Only one per table. In InnoDB, the PK is always the clustered index. Range scans on the clustered key are very fast."
+    },
+    {
+      "id": "key-029",
+      "type": "ordering",
+      "question": "Rank by lookup speed for finding one row by ID (FASTEST to SLOWEST):",
+      "items": ["Clustered index (PK) lookup", "Non-clustered (secondary) index lookup", "Full table scan"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Clustered: direct to row data. Secondary: look up index → get row pointer → fetch row (extra hop). Full scan: read every row."
+    },
+    {
+      "id": "key-030",
+      "type": "multiple-choice",
+      "question": "What is a GIN index used for?",
+      "options": ["Geospatial queries", "Full-text search and array containment queries", "Graph traversals", "Time-series data"],
+      "correct": 1,
+      "explanation": "GIN (Generalized Inverted Index) indexes values within composite types: arrays, JSONB, full-text search. Supports queries like 'array contains value' or text search."
+    },
+    {
+      "id": "key-031",
+      "type": "multi-select",
+      "question": "Which index types exist in PostgreSQL?",
+      "options": ["B-tree (default, for equality and range)", "Hash (equality only)", "GiST (geometric, full-text)", "GIN (arrays, JSONB, full-text)"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "PostgreSQL supports all four (plus others like BRIN and SP-GiST). B-tree is the default and most common. Choose based on query patterns."
+    },
+    {
+      "id": "key-032",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your table has 50M rows and queries are slow. EXPLAIN shows a sequential scan. What's likely missing?",
+          "options": ["Primary key", "Index on the WHERE clause column", "More RAM", "Table partitioning"],
+          "correct": 1,
+          "explanation": "Sequential scan on a large table with a WHERE clause usually means no index on the filtered column. Adding the right index typically fixes this."
+        },
+        {
+          "question": "After adding the index, EXPLAIN still shows a sequential scan. What could be wrong?",
+          "options": ["The query returns too many rows (>10-20% of table), so the optimizer prefers a scan", "The index is corrupt", "PostgreSQL doesn't support this index type", "The index needs to be UNIQUE"],
+          "correct": 0,
+          "explanation": "If the WHERE clause matches most rows, a sequential scan is actually faster than an index lookup (no random I/O). The optimizer correctly chooses the cheaper plan."
+        }
+      ]
+    },
+    {
+      "id": "key-033",
+      "type": "multiple-choice",
+      "question": "What is a UNIQUE constraint?",
+      "options": ["Same as a primary key", "Ensures no two rows have the same value(s) in the constrained column(s)", "Prevents NULL values", "Makes a column an index"],
+      "correct": 1,
+      "explanation": "UNIQUE ensures distinctness. Unlike PK, a table can have multiple UNIQUE constraints, and (in PostgreSQL) UNIQUE columns can contain NULL. Automatically creates an index."
+    },
+    {
+      "id": "key-034",
+      "type": "multi-select",
+      "question": "Which should have UNIQUE constraints?",
+      "options": ["users.email", "users.username", "posts.title", "users.id (already PK)"],
+      "correctIndices": [0, 1],
+      "explanation": "Email and username should be unique per user. Post titles can repeat. PK is already unique by definition."
+    },
+    {
+      "id": "key-035",
+      "type": "multiple-choice",
+      "question": "What's a composite unique constraint?",
+      "options": ["A unique constraint with a condition", "UNIQUE on two or more columns together (the combination must be unique)", "Multiple unique constraints on the same table", "A unique constraint on a JSON column"],
+      "correct": 1,
+      "explanation": "UNIQUE(user_id, email) means the combination must be unique. User 1 can have 'a@x.com' and User 2 can also have 'a@x.com' if user_id is different."
+    },
+    {
+      "id": "key-036",
+      "type": "numeric-input",
+      "question": "A follows table has follower_id and followed_id. To prevent duplicate follows AND enable fast lookups in both directions, how many indexes are needed?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two: a composite UNIQUE(follower_id, followed_id) as PK/unique constraint, plus INDEX(followed_id) for reverse lookups ('who follows me'). The PK covers 'who do I follow' queries."
+    },
+    {
+      "id": "key-037",
+      "type": "ordering",
+      "question": "Rank by how commonly each is used as a primary key strategy (MOST to LEAST common):",
+      "items": ["Auto-increment BIGINT", "UUID/ULID", "Natural key (email, slug)", "Composite key"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Auto-increment is most common (simple, compact, sequential). UUID for distributed systems. Composite for junction tables. Natural keys are least common due to fragility."
+    },
+    {
+      "id": "key-038",
+      "type": "multiple-choice",
+      "question": "What problem does an auto-increment PK have in a sharded database?",
+      "options": ["IDs are too large", "Two shards can generate the same ID", "Auto-increment is slow", "IDs reveal creation order"],
+      "correct": 1,
+      "explanation": "Each shard has its own sequence, so shard A and shard B can both create ID=1. Solutions: UUID, snowflake IDs, or offset sequences (shard A: odds, shard B: evens)."
+    },
+    {
+      "id": "key-039",
+      "type": "multi-select",
+      "question": "What are Snowflake IDs (used by Twitter)?",
+      "options": ["Time-based component for ordering", "Machine/datacenter ID for uniqueness across nodes", "Sequence number for same-millisecond uniqueness", "Globally unique without coordination"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Snowflake IDs combine timestamp + machine ID + sequence counter = globally unique, roughly time-ordered, generated independently per node. 64-bit (BIGINT)."
+    },
+    {
+      "id": "key-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You expose auto-increment IDs in your API (e.g., /users/42). What security concern does this raise?",
+          "options": ["IDs are too predictable—attackers can enumerate resources", "IDs are too large", "IDs leak database implementation", "No security concern"],
+          "correct": 0,
+          "explanation": "Sequential IDs let attackers guess other IDs: /users/41, /users/43, etc. This enables enumeration attacks. Authorization must check access, but it's still an exposure."
+        },
+        {
+          "question": "How do you fix this while keeping auto-increment internally?",
+          "options": ["Use UUIDs everywhere", "Use a public-facing slug or random token alongside the internal integer ID", "Encrypt the ID", "Add a random offset"],
+          "correct": 1,
+          "explanation": "Keep auto-increment as internal PK for performance. Add a public_id column (UUID, slug, or random token) for API-facing references. Best of both worlds."
+        }
+      ]
+    },
+    {
+      "id": "key-041",
+      "type": "multiple-choice",
+      "question": "What does EXPLAIN ANALYZE show?",
+      "options": ["The table schema", "The query plan AND actual execution times", "Index statistics", "Table size on disk"],
+      "correct": 1,
+      "explanation": "EXPLAIN shows the planned query execution strategy. EXPLAIN ANALYZE actually runs the query and shows real timing, row counts, and whether estimates were accurate."
+    },
+    {
+      "id": "key-042",
+      "type": "multi-select",
+      "question": "Which EXPLAIN output signals suggest a missing index?",
+      "options": ["Seq Scan on a large table with a WHERE clause", "High actual rows vs estimated rows", "Nested Loop with inner Seq Scan", "Index Scan"],
+      "correctIndices": [0, 2],
+      "explanation": "Seq Scan with WHERE on large tables and nested loops with inner seq scans suggest missing indexes. High estimate mismatch is a stats issue. Index Scan is good."
+    },
+    {
+      "id": "key-043",
+      "type": "multiple-choice",
+      "question": "When is a hash index preferred over a B-tree?",
+      "options": ["Range queries (WHERE x > 5)", "Equality-only lookups (WHERE x = 5)", "Sorting (ORDER BY x)", "Full-text search"],
+      "correct": 1,
+      "explanation": "Hash indexes are O(1) for equality lookups. B-trees are O(log n) but support range queries and sorting. Use hash when you only ever do exact equality lookups."
+    },
+    {
+      "id": "key-044",
+      "type": "ordering",
+      "question": "Rank B-tree index operations by speed (FASTEST to SLOWEST):",
+      "items": ["Point lookup (WHERE id = 5)", "Range scan (WHERE id BETWEEN 1 AND 100)", "Full index scan (all values ordered)", "Insert (add to index)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Point lookup: O(log n). Range scan: O(log n + k). Full scan: O(n). Insert: O(log n) but involves page splits and write amplification."
+    },
+    {
+      "id": "key-045",
+      "type": "multiple-choice",
+      "question": "What is a BRIN index (Block Range INdex)?",
+      "options": ["A B-tree for ranges", "An index that stores min/max values per block of pages—efficient for naturally ordered data", "A bitmap index", "A GIN index variant"],
+      "correct": 1,
+      "explanation": "BRIN stores summary info (min, max) per range of physical pages. Extremely small. Works well when data is physically sorted (e.g., timestamp in append-only table)."
+    },
+    {
+      "id": "key-046",
+      "type": "numeric-input",
+      "question": "A table has columns (id, user_id, status, created_at, content). Your query: SELECT id, status FROM posts WHERE user_id = ? AND status = 'published'. What's the minimum number of columns for a covering index?",
+      "answer": 3,
+      "tolerance": "exact",
+      "explanation": "Three columns: INDEX(user_id, status, id). user_id for WHERE, status for WHERE, id for SELECT. The index covers all columns the query needs—no table lookup required."
+    },
+    {
+      "id": "key-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to enforce: each user can only have one 'primary' email. How?",
+          "options": ["UNIQUE(user_id) on emails table", "UNIQUE(user_id, is_primary)", "Partial unique index: UNIQUE(user_id) WHERE is_primary = true", "Application logic only"],
+          "correct": 2,
+          "explanation": "Partial unique: UNIQUE(user_id) WHERE is_primary = true. Only constrains rows where is_primary is true. A user can have many non-primary emails."
+        },
+        {
+          "question": "Can UNIQUE(user_id, is_primary) achieve the same thing?",
+          "options": ["Yes, identical behavior", "No—it allows (user1, true) and (user1, false) but NOT two (user1, true)", "No—it only allows one email per user total", "Yes, but only in PostgreSQL"],
+          "correct": 1,
+          "explanation": "UNIQUE(user_id, is_primary) prevents duplicate (user_id, true) pairs BUT also limits each user to one false email. The partial index is more precise."
+        }
+      ]
+    },
+    {
+      "id": "key-048",
+      "type": "multi-select",
+      "question": "Which are valid reasons to use a composite primary key instead of a surrogate?",
+      "options": ["The combination naturally identifies the row (e.g., student_id + course_id)", "Prevents duplicate pairs at the database level", "Child tables need fewer columns for FK references", "Works well for junction tables"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Composite PKs are natural for junction tables and enforce uniqueness. But child FKs become multi-column (more complex, not fewer). Trade-off vs simplicity of surrogate."
+    },
+    {
+      "id": "key-049",
+      "type": "multiple-choice",
+      "question": "What's the difference between a unique index and a unique constraint?",
+      "options": ["No practical difference—both enforce uniqueness via an index", "Constraints are faster", "Indexes allow NULLs, constraints don't", "Constraints are logical, indexes are physical"],
+      "correct": 0,
+      "explanation": "In most databases, a UNIQUE constraint creates a unique index behind the scenes. They're functionally equivalent. The constraint is the logical concept, the index is the implementation."
+    },
+    {
+      "id": "key-050",
+      "type": "ordering",
+      "question": "Rank by write overhead (LEAST to MOST overhead per INSERT):",
+      "items": ["Table with no indexes (just PK)", "Table with PK + 1 secondary index", "Table with PK + 3 secondary indexes", "Table with PK + 3 secondary indexes + 2 unique constraints"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Each index adds write overhead. PK only: minimal. Each secondary index and unique constraint adds another structure to update on every write."
+    },
+    {
+      "id": "key-051",
+      "type": "multiple-choice",
+      "question": "Your query uses WHERE status = 'active' AND country = 'US'. You have INDEX(status) and INDEX(country) separately. How does the database use them?",
+      "options": ["Uses both indexes simultaneously (bitmap AND)", "Uses only the more selective index", "Can't use either—needs a composite index", "Depends on the database—some can combine, some pick one"],
+      "correct": 3,
+      "explanation": "PostgreSQL can combine via BitmapAnd. MySQL typically picks one index. A composite INDEX(status, country) is usually better than relying on index merging."
+    },
+    {
+      "id": "key-052",
+      "type": "multi-select",
+      "question": "What makes a good candidate for a composite index (multi-column)?",
+      "options": ["Queries that filter on column A AND column B together", "Queries that filter on A then sort by B", "Columns that are always queried independently", "High-cardinality leading column"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Composite indexes excel when columns are queried together (WHERE + WHERE, or WHERE + ORDER BY). Independent queries need separate indexes. High-cardinality first for selectivity."
+    },
+    {
+      "id": "key-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your posts table has 50M rows. Which column order for an index on (user_id, status)?",
+          "options": ["INDEX(user_id, status) — user_id first", "INDEX(status, user_id) — status first", "Order doesn't matter", "Depends on which has more distinct values"],
+          "correct": 3,
+          "explanation": "Put the more selective (higher cardinality) column first. user_id likely has millions of distinct values; status has maybe 5. INDEX(user_id, status) is better."
+        },
+        {
+          "question": "But your most common query is WHERE status = 'draft' (rare status, 0.1% of rows). Does this change the answer?",
+          "options": ["No, still user_id first", "Yes, INDEX(status, user_id) is better for this specific query", "Need two separate indexes", "Use a partial index on status = 'draft'"],
+          "correct": 3,
+          "explanation": "For a rare status value queried frequently, a partial index WHERE status = 'draft' is ideal—tiny index, fast lookups. Better than optimizing the composite index order."
+        }
+      ]
+    },
+    {
+      "id": "key-054",
+      "type": "multiple-choice",
+      "question": "What is an expression index?",
+      "options": ["An index with a filter condition", "An index on a computed expression, like LOWER(email) or EXTRACT(year FROM created_at)", "An index created with an expression language", "A conditional unique constraint"],
+      "correct": 1,
+      "explanation": "Expression index: CREATE INDEX idx ON users (LOWER(email)). Speeds up WHERE LOWER(email) = 'john@x.com'. The index stores the computed values."
+    },
+    {
+      "id": "key-055",
+      "type": "multi-select",
+      "question": "When should you use an expression index?",
+      "options": ["Case-insensitive email lookups: INDEX(LOWER(email))", "Extracting year from timestamp: INDEX(EXTRACT(year FROM created_at))", "Simple equality: WHERE id = 5", "JSON field access: INDEX((data->>'name'))"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Expression indexes help when queries use functions on columns. Simple equality on a plain column just needs a regular index."
+    },
+    {
+      "id": "key-056",
+      "type": "numeric-input",
+      "question": "You have a table with 3 secondary indexes. Each insert requires updating the table + all indexes. How many total write operations per INSERT (table + index writes)?",
+      "answer": 4,
+      "tolerance": "exact",
+      "explanation": "Four writes: 1 for the table row + 3 for the secondary indexes. Each additional index adds one write operation per INSERT."
+    },
+    {
+      "id": "key-057",
+      "type": "multiple-choice",
+      "question": "What is an index-only scan?",
+      "options": ["A scan using only one index", "The database reads only from the index, never touching the actual table", "A scan that returns only indexed columns", "A sequential scan of the index"],
+      "correct": 1,
+      "explanation": "Index-only scan: all columns the query needs are in the index (covering index), so the database never reads the table heap. Fastest possible query path."
+    },
+    {
+      "id": "key-058",
+      "type": "ordering",
+      "question": "Rank these query plans by efficiency (BEST to WORST):",
+      "items": ["Index-only scan", "Index scan + heap fetch", "Bitmap index scan", "Sequential scan"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Index-only: reads index only. Index scan: index + table lookup. Bitmap: builds bitmap from index, then batch-reads table. Sequential: reads entire table."
+    },
+    {
+      "id": "key-059",
+      "type": "multi-select",
+      "question": "What are valid strategies for choosing between surrogate and natural keys?",
+      "options": ["Use surrogate if the natural key might change", "Use natural if the value is stable and frequently queried (e.g., country_code)", "Use surrogate for internal entities, natural for reference/lookup tables", "Always use surrogate, never natural"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Surrogates for entities that change (users, orders). Naturals for stable lookup data (country codes, currencies). Match the strategy to the stability and usage of the data."
+    },
+    {
+      "id": "key-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your orders table uses auto-increment ID. You need to share order IDs with customers. What's the problem?",
+          "options": ["IDs reveal order volume and creation order", "IDs are too long", "IDs aren't unique", "No problem"],
+          "correct": 0,
+          "explanation": "Customer sees order #10042, knows you've had ~10,000 orders, and can estimate daily volume. Competitors could monitor your growth."
+        },
+        {
+          "question": "Best fix?",
+          "options": ["Start auto-increment at a high number", "Add a random public order_number column", "Use UUIDs as the PK", "Hash the ID"],
+          "correct": 1,
+          "explanation": "Keep auto-increment PK internally. Add order_number (e.g., 'ORD-X7K9M2') for customer-facing use. Simple, no PK change needed, no leakage."
+        }
+      ]
+    },
+    {
+      "id": "key-061",
+      "type": "multiple-choice",
+      "question": "What's an index scan vs an index seek?",
+      "options": ["Same thing", "Seek finds specific values; scan reads a range or the full index", "Seek is for B-trees, scan is for hash indexes", "Scan is always faster"],
+      "correct": 1,
+      "explanation": "Seek: navigates the B-tree to a specific key (point lookup). Scan: reads a range of keys or the entire index. Seek is O(log n), scan is O(k) where k is range size."
+    },
+    {
+      "id": "key-062",
+      "type": "multi-select",
+      "question": "Which are problems with too many indexes on a write-heavy table?",
+      "options": ["Slower INSERTs", "Slower UPDATEs on indexed columns", "More disk space", "Slower SELECT queries"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "More indexes = slower writes (each must be updated), more disk space. SELECTs are not slower—they benefit from indexes. The trade-off is read performance vs write cost."
+    },
+    {
+      "id": "key-063",
+      "type": "multiple-choice",
+      "question": "What is index bloat?",
+      "options": ["An index that's too wide (too many columns)", "Dead entries in the index from updates/deletes that haven't been cleaned up", "An index that doesn't fit in memory", "An unused index"],
+      "correct": 1,
+      "explanation": "In PostgreSQL, UPDATE creates a new row version. The old index entry becomes dead space. Over time, indexes bloat beyond their useful size. REINDEX or pg_repack fixes this."
+    },
+    {
+      "id": "key-064",
+      "type": "ordering",
+      "question": "Rank these PK types by friendliness for B-tree clustered index (BEST to WORST insert locality):",
+      "items": ["Auto-increment BIGINT", "UUIDv7/ULID (time-ordered)", "UUIDv4 (random)"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Auto-increment: always appends to end (best locality). UUIDv7: mostly appends (time-prefix). UUIDv4: random inserts scattered across the B-tree (worst)."
+    },
+    {
+      "id": "key-065",
+      "type": "numeric-input",
+      "question": "A junction table student_courses has INDEX(student_id, course_id) as PK and INDEX(course_id) for reverse lookups. How many total indexes?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two: the composite PK index and the separate course_id index. The PK index supports 'find courses for student'. The course_id index supports 'find students in course'."
+    },
+    {
+      "id": "key-066",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You add INDEX(created_at) to speed up ORDER BY created_at DESC LIMIT 10. But it's slow. Why?",
+          "options": ["Index doesn't help ORDER BY", "The index sorts ASC by default, your query is DESC", "10 rows is too few for an index", "Need a covering index"],
+          "correct": 1,
+          "explanation": "B-tree indexes are sorted ASC by default. For DESC queries, the DB can scan backwards, but some optimizers don't handle this well. CREATE INDEX idx ON t (created_at DESC) is explicit."
+        },
+        {
+          "question": "Your composite index is INDEX(user_id ASC, created_at DESC). Which query benefits most?",
+          "options": ["WHERE user_id = ? ORDER BY created_at ASC", "WHERE user_id = ? ORDER BY created_at DESC", "ORDER BY user_id ASC, created_at ASC", "WHERE created_at > '2024-01-01'"],
+          "correct": 1,
+          "explanation": "The index is sorted by user_id ASC then created_at DESC. This perfectly matches 'get user X's most recent posts' without an extra sort step."
+        }
+      ]
+    },
+    {
+      "id": "key-067",
+      "type": "multi-select",
+      "question": "What does a UNIQUE constraint implicitly create?",
+      "options": ["An index", "A NOT NULL constraint", "A CHECK constraint", "A B-tree"],
+      "correctIndices": [0, 3],
+      "explanation": "UNIQUE creates an index (typically B-tree) to enforce uniqueness efficiently. It does NOT imply NOT NULL—unique columns can have NULLs in PostgreSQL."
+    },
+    {
+      "id": "key-068",
+      "type": "multiple-choice",
+      "question": "What's a multi-column index vs multiple single-column indexes?",
+      "options": ["Same thing", "Multi-column is one index on (a,b); multiple single is INDEX(a) + INDEX(b)", "Multi-column is always better", "Single-column is always better"],
+      "correct": 1,
+      "explanation": "INDEX(a, b) is one index—supports WHERE a=1, WHERE a=1 AND b=2. INDEX(a) + INDEX(b) are two indexes—each supports its column independently. Different use cases."
+    },
+    {
+      "id": "key-069",
+      "type": "multiple-choice",
+      "question": "What's a functional dependency in the context of keys?",
+      "options": ["A column that depends on a function", "Column B is functionally dependent on A if knowing A uniquely determines B", "A dependency between tables", "A foreign key relationship"],
+      "correct": 1,
+      "explanation": "If user_id → email (knowing user_id determines email), email is functionally dependent on user_id. This concept underpins normalization theory."
+    },
+    {
+      "id": "key-070",
+      "type": "ordering",
+      "question": "Rank these index maintenance operations by frequency needed (MOST to LEAST frequent):",
+      "items": ["Analyze (update stats)", "Reindex (rebuild bloated indexes)", "Drop unused indexes", "Change index columns"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Analyze: regular (auto-vacuum handles this). Reindex: periodic for bloat. Drop unused: occasional cleanup. Change columns: rare (query pattern shifts)."
+    },
+    {
+      "id": "key-071",
+      "type": "multi-select",
+      "question": "How can you identify unused indexes?",
+      "options": ["pg_stat_user_indexes (idx_scan = 0)", "Query EXPLAIN to see which indexes are used", "Check index size vs benefit", "Look for indexes with low selectivity"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "pg_stat_user_indexes tracks scan counts. EXPLAIN reveals which indexes the planner picks. Size vs benefit analysis finds oversized, rarely-used indexes."
+    },
+    {
+      "id": "key-072",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have a posts table with 100M rows. Users query their own posts sorted by date. What index?",
+          "options": ["INDEX(user_id)", "INDEX(created_at)", "INDEX(user_id, created_at DESC)", "No index needed"],
+          "correct": 2,
+          "explanation": "INDEX(user_id, created_at DESC) lets the DB find the user's posts and return them in newest-first order without sorting."
+        },
+        {
+          "question": "Admin queries also need all posts sorted by date (no user filter). Does the same index work?",
+          "options": ["Yes", "No—need a separate INDEX(created_at DESC)", "Only if user_id is the first column", "Use a different sort order"],
+          "correct": 1,
+          "explanation": "INDEX(user_id, created_at DESC) can't help ORDER BY created_at without a user_id filter (leftmost prefix). A separate INDEX(created_at DESC) is needed for admin queries."
+        }
+      ]
+    },
+    {
+      "id": "key-073",
+      "type": "multiple-choice",
+      "question": "What is a candidate key?",
+      "options": ["Any column that could be a PK", "A minimal set of columns that uniquely identifies a row", "A proposed but rejected PK", "A foreign key candidate"],
+      "correct": 1,
+      "explanation": "A candidate key is any minimal set of columns that uniquely identifies rows. A table may have multiple candidate keys. One is chosen as the PK; others become UNIQUE constraints."
+    },
+    {
+      "id": "key-074",
+      "type": "multi-select",
+      "question": "A users table has (id, email, username). Which are candidate keys?",
+      "options": ["id", "email", "username", "(id, email)"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "All three uniquely identify a user. (id, email) is NOT a candidate key because it's not minimal—id alone suffices. Candidate keys must be minimal."
+    },
+    {
+      "id": "key-075",
+      "type": "multiple-choice",
+      "question": "What's the difference between a CHECK constraint and a UNIQUE constraint?",
+      "options": ["CHECK validates a condition on column values; UNIQUE ensures no duplicates", "They're the same thing", "CHECK is faster", "UNIQUE is for numbers only"],
+      "correct": 0,
+      "explanation": "CHECK: validates a condition (e.g., age > 0, status IN ('active','inactive')). UNIQUE: ensures no two rows share the same value(s). Different purposes."
+    },
+    {
+      "id": "key-076",
+      "type": "numeric-input",
+      "question": "A table has PK(id), UNIQUE(email), UNIQUE(username), INDEX(created_at), INDEX(status, created_at). How many total indexes does this table have?",
+      "answer": 5,
+      "tolerance": "exact",
+      "explanation": "Five: PK creates one index, each UNIQUE creates one, plus the two explicit indexes. Total: 1 (PK) + 2 (UNIQUE) + 2 (INDEX) = 5."
+    },
+    {
+      "id": "key-077",
+      "type": "ordering",
+      "question": "Rank these by how many rows an index helps eliminate (MOST to LEAST selective):",
+      "items": ["UNIQUE index on email (1 row match)", "INDEX on user_id FK (avg 50 rows match)", "INDEX on country (avg 20,000 rows match)", "INDEX on is_active boolean (avg 500,000 rows match)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Unique: 1 row. FK: typically few matches per value. Country: moderate (~50 countries, many rows each). Boolean: 2 values, half the table each."
+    },
+    {
+      "id": "key-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a URL shortener. The short code ('abc123') must be unique. Should it be the PK?",
+          "options": ["Yes—it's the primary lookup key", "No—use auto-increment PK with UNIQUE on short_code", "Either works equally well", "Only if it's numeric"],
+          "correct": 1,
+          "explanation": "Auto-increment PK for internal references and sequential storage. UNIQUE on short_code for lookups. Short codes are variable-length strings—poor PKs for FK references."
+        },
+        {
+          "question": "You now need to look up URLs by both short_code and by the original URL. How many unique indexes?",
+          "options": ["1", "2", "3"],
+          "correct": 1,
+          "explanation": "Two UNIQUE indexes: one on short_code and one on original_url (prevents duplicate shortenings). Plus the PK index = 3 total indexes."
+        }
+      ]
+    },
+    {
+      "id": "key-079",
+      "type": "multiple-choice",
+      "question": "What's a deferred constraint?",
+      "options": ["A constraint checked at the end of the transaction, not at each statement", "A constraint that's disabled", "A planned future constraint", "A soft constraint in application code"],
+      "correct": 0,
+      "explanation": "Deferred constraints are checked at COMMIT, not per-statement. Useful for circular references or bulk loads where intermediate states violate constraints."
+    },
+    {
+      "id": "key-080",
+      "type": "multi-select",
+      "question": "Which are advantages of BIGINT PKs over INT PKs?",
+      "options": ["Supports more than 2.1 billion rows", "Future-proof for high-volume tables", "Smaller storage per row", "No overflow risk for decades"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "BIGINT: 2^63 = 9.2 quintillion max. INT: 2^31 = ~2.1 billion. BIGINT is 8 bytes vs 4 bytes (larger, not smaller). Worth it for tables that might grow past 2B rows."
+    },
+    {
+      "id": "key-081",
+      "type": "multiple-choice",
+      "question": "What happens if you create an index on a column that already has a UNIQUE constraint?",
+      "options": ["Error—duplicate index", "Creates a redundant second index", "The database ignores it", "It replaces the unique index"],
+      "correct": 1,
+      "explanation": "Most databases create a second, redundant index. This wastes space and slows writes. Check for existing indexes before creating new ones."
+    },
+    {
+      "id": "key-082",
+      "type": "ordering",
+      "question": "Rank these CREATE INDEX operations by how long they block writes (LEAST to MOST blocking):",
+      "items": ["CREATE INDEX CONCURRENTLY (PostgreSQL)", "CREATE INDEX (standard)", "ALTER TABLE ADD CONSTRAINT UNIQUE"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "CONCURRENTLY: doesn't block writes (takes longer). Standard CREATE INDEX: blocks writes during build. ALTER ADD UNIQUE: blocks writes and requires full scan."
+    },
+    {
+      "id": "key-083",
+      "type": "multi-select",
+      "question": "What are the parts of a compound index entry for INDEX(user_id, status, created_at)?",
+      "options": ["user_id value", "status value", "created_at value", "A pointer to the table row"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Each index entry stores all indexed column values plus a row pointer (TID/row ID). This is how the DB navigates from index to table data."
+    },
+    {
+      "id": "key-084",
+      "type": "numeric-input",
+      "question": "A table has columns (id BIGINT PK, name VARCHAR, email VARCHAR UNIQUE, status VARCHAR, created_at TIMESTAMP). How many auto-created indexes does this schema have?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two auto-created: one for the PK (id) and one for the UNIQUE constraint (email). Status and created_at have no automatic indexes."
+    },
+    {
+      "id": "key-085",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to support case-insensitive login by email. What index?",
+          "options": ["INDEX(email)", "INDEX(LOWER(email))", "INDEX(email COLLATE 'C')", "No index needed"],
+          "correct": 1,
+          "explanation": "Expression index on LOWER(email) so WHERE LOWER(email) = 'user@example.com' uses the index. A regular index on email doesn't help case-insensitive lookups."
+        },
+        {
+          "question": "Should this expression index also be UNIQUE?",
+          "options": ["No, UNIQUE on the raw email column is enough", "Yes, to prevent 'John@x.com' and 'john@x.com' being different users", "Only if case matters", "Application should handle this"],
+          "correct": 1,
+          "explanation": "UNIQUE on LOWER(email) prevents case-variant duplicates. UNIQUE on raw email allows 'John@x.com' and 'john@x.com' as different entries—almost certainly a bug."
+        }
+      ]
+    },
+    {
+      "id": "key-086",
+      "type": "multiple-choice",
+      "question": "What's the maximum number of primary keys a table can have?",
+      "options": ["Unlimited", "One (but it can be composite)", "One per column", "Depends on the database"],
+      "correct": 1,
+      "explanation": "A table has exactly one primary key. It can be a single column or a composite of multiple columns, but there's only one PK constraint per table."
+    },
+    {
+      "id": "key-087",
+      "type": "multi-select",
+      "question": "When designing an events table for an analytics system, which PK strategy fits best?",
+      "options": ["Auto-increment (requires central coordination)", "UUID (generated per-event, no coordination)", "Composite (timestamp + source_id + sequence)", "No PK (append-only log)"],
+      "correctIndices": [1, 2],
+      "explanation": "Analytics events come from many sources. UUID or composite (timestamp + source + seq) avoids central coordination. Auto-increment doesn't scale. No PK complicates dedup."
+    },
+    {
+      "id": "key-088",
+      "type": "multiple-choice",
+      "question": "What is a superkey?",
+      "options": ["A key with special privileges", "Any set of columns that uniquely identifies rows (not necessarily minimal)", "A primary key of the most important table", "A key that spans multiple tables"],
+      "correct": 1,
+      "explanation": "Superkey: any combination that uniquely identifies rows. (id, email) is a superkey. A candidate key is a minimal superkey. The PK is the chosen candidate key."
+    },
+    {
+      "id": "key-089",
+      "type": "ordering",
+      "question": "Rank by how appropriate each is for a PK (BEST to WORST):",
+      "items": ["Stable, unique, compact (auto-increment BIGINT)", "Unique but large (UUID v4)", "Unique but changeable (email)", "Not unique (first_name)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Good PKs are stable, unique, and compact. Auto-increment is ideal. UUID is unique but large. Email is unique but changes. Name isn't unique at all."
+    },
+    {
+      "id": "key-090",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have a multi-tenant SaaS. Should tenant_id be part of the PK?",
+          "options": ["No, each table just has its own auto-increment PK", "Yes, PK = (tenant_id, id) for data isolation", "Only for shared tables", "Use UUID instead"],
+          "correct": 1,
+          "explanation": "Composite PK (tenant_id, id) ensures queries always scope by tenant. The clustered index groups each tenant's data physically together—better cache/locality."
+        },
+        {
+          "question": "What's the benefit for query performance?",
+          "options": ["Smaller IDs", "All queries include tenant_id, so the clustered index serves them efficiently", "Faster UUID generation", "Simpler migrations"],
+          "correct": 1,
+          "explanation": "With PK (tenant_id, id), rows for the same tenant are physically adjacent. WHERE tenant_id = X reads sequential pages instead of random I/O across the table."
+        }
+      ]
+    },
+    {
+      "id": "key-091",
+      "type": "multiple-choice",
+      "question": "What does INCLUDE in CREATE INDEX ... INCLUDE (col) do (PostgreSQL)?",
+      "options": ["Includes the column in the WHERE clause", "Stores the column in the index leaf pages without indexing it—enables covering scans", "Includes rows from another table", "Makes the index include NULLs"],
+      "correct": 1,
+      "explanation": "INCLUDE adds columns to index leaf nodes for covering scans without making them part of the index key. Useful for SELECT columns that aren't in WHERE/ORDER BY."
+    },
+    {
+      "id": "key-092",
+      "type": "multi-select",
+      "question": "Which scenarios call for a partial (filtered) index?",
+      "options": ["Only 1% of rows have status = 'pending' and you query them often", "You want to enforce UNIQUE only for non-deleted records", "All queries filter by the same column", "Soft deletes: index only WHERE deleted_at IS NULL"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Partial indexes shine for rare subsets, conditional uniqueness, and soft-delete patterns. If all queries use the filter, a regular index works fine."
+    },
+    {
+      "id": "key-093",
+      "type": "numeric-input",
+      "question": "A posts table needs these lookups: (1) by author, (2) by author sorted by date, (3) by tag. How many indexes minimum (not counting PK)?",
+      "answer": 2,
+      "tolerance": "exact",
+      "explanation": "Two: INDEX(author_id, created_at DESC) covers lookups 1 and 2 (leftmost prefix). Tags require a junction table with its own index (tag_id or post_id). Minimum 2 additional indexes."
+    },
+    {
+      "id": "key-094",
+      "type": "multiple-choice",
+      "question": "What is an exclusion constraint (PostgreSQL)?",
+      "options": ["Prevents rows from being excluded in queries", "Ensures no two rows have overlapping values for specified columns", "Excludes columns from indexing", "A NOT IN constraint"],
+      "correct": 1,
+      "explanation": "Exclusion constraints prevent overlapping ranges. Example: no two room bookings overlap for the same room. Uses GiST index for range types (tsrange, daterange)."
+    },
+    {
+      "id": "key-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're migrating from auto-increment INT to UUID PKs. What breaks?",
+          "options": ["Nothing—just swap the column type", "All FKs referencing the old INT PK must be migrated", "Joins become slower", "Both B and C"],
+          "correct": 3,
+          "explanation": "All FKs must change type too. UUIDs are 16 bytes vs 4—every FK, join, and index is larger and potentially slower."
+        },
+        {
+          "question": "What's the safest migration strategy?",
+          "options": ["Add UUID column, backfill, swap PK in one migration", "Add UUID column, update FKs to reference UUID, then drop old INT PK over multiple deploys", "Rename the table and recreate", "Export and reimport all data"],
+          "correct": 1,
+          "explanation": "Gradual migration: add UUID, backfill, update FKs one table at a time, update application code, then drop old PK. Avoids big-bang risk."
+        }
+      ]
+    },
+    {
+      "id": "key-096",
+      "type": "multi-select",
+      "question": "Which are true about NULL in primary keys?",
+      "options": ["PKs cannot contain NULL values", "NULL = NULL is false in SQL, so uniqueness can't be enforced", "Some databases allow nullable PKs", "Composite PKs can have NULL in non-key columns"],
+      "correctIndices": [0, 1],
+      "explanation": "PKs are NOT NULL by definition. NULL ≠ NULL in SQL, so you can't meaningfully enforce uniqueness on NULLs. No standard database allows NULL PKs. (The last option is about non-PK columns.)"
+    },
+    {
+      "id": "key-097",
+      "type": "ordering",
+      "question": "Rank these constraint types by enforcement strictness (STRICTEST to LOOSEST):",
+      "items": ["PRIMARY KEY (unique, not null, one per table)", "UNIQUE (unique, allows nulls)", "CHECK (validates condition)", "Application-level validation"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "PK: strictest (unique + not null + single). UNIQUE: allows NULLs. CHECK: flexible conditions but within one table. App validation: no database enforcement."
+    },
+    {
+      "id": "key-098",
+      "type": "multiple-choice",
+      "question": "You run a query that doesn't use any index. What's this called?",
+      "options": ["Index miss", "Full table scan (sequential scan)", "Cache miss", "Index fallback"],
+      "correct": 1,
+      "explanation": "A sequential scan (full table scan) reads every row in the table. It's not always bad—for small tables or queries returning most rows, it can be faster than using an index."
+    },
+    {
+      "id": "key-099",
+      "type": "multi-select",
+      "question": "Which make a good composite index column order?",
+      "options": ["Equality columns first, then range columns", "High-cardinality columns before low-cardinality", "Columns from WHERE before ORDER BY", "Alphabetical order"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Best practice: equality (=) columns first, then range (>, <, BETWEEN), then ORDER BY. High cardinality first for selectivity. Alphabetical is irrelevant."
+    },
+    {
+      "id": "key-100",
+      "type": "multiple-choice",
+      "question": "What's the most important question to ask before adding an index?",
+      "options": ["Which database am I using?", "What queries will this index support, and are they frequent enough to justify the write overhead?", "How many rows does the table have?", "Is the column numeric or string?"],
+      "correct": 1,
+      "explanation": "Always start with the query patterns. An index should solve a real, frequent performance problem. Row count and column type matter, but query patterns drive the decision."
+    }
+  ]
+}
