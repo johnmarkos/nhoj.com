@@ -20,11 +20,11 @@ Future features and improvements for System Design Practice.
 
 **Completed:**
 1. Entity Identification (100 problems) ✓
+2. Relationships (100 problems) ✓
+3. Keys & Indexes (100 problems) ✓
+4. Normalization (100 problems) ✓
 
 **Remaining chapters:**
-2. Relationships — 1:1, 1:N, M:N, how to represent each
-3. Keys & Indexes — primary/foreign/composite keys, when to index
-4. Normalization — 1NF, 2NF, 3NF in plain English
 5. Denormalization — when to break rules, read vs write tradeoffs
 6. Access Patterns — design for queries, not how data "looks"
 7. Schema Evolution — migrations, backward compatibility
