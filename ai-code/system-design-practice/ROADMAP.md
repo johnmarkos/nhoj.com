@@ -16,22 +16,16 @@ Future features and improvements for System Design Practice.
 - Persist progress in localStorage or backend
 - Priority: High (mentioned in project thesis)
 
-## In Progress: Unit 2 Data Modeling
+## Completed: Unit 2 Data Modeling (800 problems)
 
-**Completed:**
 1. Entity Identification (100 problems) ✓
 2. Relationships (100 problems) ✓
 3. Keys & Indexes (100 problems) ✓
 4. Normalization (100 problems) ✓
-
-**Remaining chapters:**
-5. Denormalization — when to break rules, read vs write tradeoffs
-6. Access Patterns — design for queries, not how data "looks"
-7. Schema Evolution — migrations, backward compatibility
-8. Modeling Scenarios — compound problems (booking system, social feed, etc.)
-
-**Question types to use:** MC (bulk), multi-select, numeric, ordering, two-stage
-**Target:** 50-100 problems per chapter
+5. Denormalization (100 problems) ✓
+6. Access Patterns (100 problems) ✓
+7. Schema Evolution (100 problems) ✓
+8. Modeling Scenarios (100 problems) ✓
 
 ## Future: Content Expansion
 
