@@ -1,0 +1,1029 @@
+{
+  "unit": 2,
+  "unitTitle": "Data Modeling",
+  "chapter": 6,
+  "chapterTitle": "Access Patterns",
+  "chapterDescription": "Design for queries, not how data looks — model your schema around how it will be read and written.",
+  "problems": [
+    {
+      "id": "access-001",
+      "type": "multiple-choice",
+      "question": "What does 'design for access patterns' mean?",
+      "options": ["Design the prettiest ER diagram", "Structure your schema based on the queries your application will run, not just the logical data model", "Grant database access to the right users", "Design a REST API before the database"],
+      "correct": 1,
+      "explanation": "Access-pattern-driven design means your schema choices (table structure, indexes, denormalization) are guided by the actual queries your application needs to perform efficiently."
+    },
+    {
+      "id": "access-002",
+      "type": "multiple-choice",
+      "question": "A normalized schema perfectly represents the data model but a key query requires joining 6 tables. What's the pragmatic approach?",
+      "options": ["Accept the slow query — normalization is non-negotiable", "Profile the query, add indexes, and denormalize specifically for that access pattern if needed", "Rewrite the entire schema", "Switch to NoSQL"],
+      "correct": 1,
+      "explanation": "Pure normalization serves data integrity. But when a critical access pattern can't be served efficiently, pragmatic denormalization for that specific pattern is the right tradeoff. Measure first, then optimize."
+    },
+    {
+      "id": "access-003",
+      "type": "multi-select",
+      "question": "Which questions should you answer BEFORE designing a schema?",
+      "options": ["What are the most frequent read queries?", "What are the most frequent write operations?", "What is the read-to-write ratio?", "What color should the database logo be?"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Understanding read patterns, write patterns, and their ratio drives every schema decision — indexing, denormalization, partitioning, and table structure. Logo color is irrelevant."
+    },
+    {
+      "id": "access-004",
+      "type": "ordering",
+      "question": "Rank these steps in the correct order for access-pattern-driven schema design:",
+      "items": ["List the application's key access patterns (queries and writes)", "Design the logical data model (entities, relationships)", "Optimize the physical schema for the access patterns (indexes, denormalization)", "Monitor and adjust based on actual production query performance"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Start with the logical model (what data exists). Then list access patterns (how will it be used). Then optimize the physical schema for those patterns. Finally, monitor and iterate in production."
+    },
+    {
+      "id": "access-005",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A social media app's primary access pattern is: 'Show a user's feed — the 50 most recent posts from people they follow.' How does this influence schema design?",
+          "options": ["Store posts in a single Posts table with a created_at index", "Consider a precomputed feed table (fan-out on write) or an efficient query path with proper indexes on (author_id, created_at)", "Store all posts as a single JSON blob", "Use a graph database for everything"],
+          "correct": 1,
+          "explanation": "The feed access pattern dominates the design. You need either a precomputed feed (denormalized) or efficient indexing on Posts(author_id, created_at) to retrieve followed users' posts quickly."
+        },
+        {
+          "question": "The same app also needs: 'Show all comments on a post, newest first.' How does this access pattern affect the Comments table?",
+          "options": ["No special design needed", "Index on (post_id, created_at DESC) to serve the query as an index-only scan", "Store comments as JSON inside the Posts table", "Use a separate database for comments"],
+          "correct": 1,
+          "explanation": "A composite index on (post_id, created_at DESC) directly serves this query — the database can walk the index in order without sorting. The access pattern dictates the index design."
+        }
+      ]
+    },
+    {
+      "id": "access-006",
+      "type": "multiple-choice",
+      "question": "What is a 'covering index'?",
+      "options": ["An index that covers the entire table", "An index that contains all columns needed by a query, so the database never reads the actual table rows", "An index that spans multiple tables", "An encrypted index for security"],
+      "correct": 1,
+      "explanation": "A covering index includes all columns a query needs (in the index itself). The database satisfies the query entirely from the index without 'going back' to the table for remaining columns. Significant performance win for frequent queries."
+    },
+    {
+      "id": "access-007",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Query: SELECT name, email FROM users WHERE status = 'active' ORDER BY created_at DESC LIMIT 20. Which index best serves this?",
+          "options": ["INDEX(status)", "INDEX(status, created_at DESC) INCLUDE(name, email)", "INDEX(name, email)", "INDEX(created_at)"],
+          "correct": 1,
+          "explanation": "INDEX(status, created_at DESC) handles the WHERE and ORDER BY. INCLUDE(name, email) makes it covering — all columns the query needs are in the index. Zero table lookups."
+        },
+        {
+          "question": "Why is INCLUDE(name, email) used instead of adding them as index key columns?",
+          "options": ["No difference — they're interchangeable", "INCLUDE columns are stored in the index but not part of the sort order — they don't bloat the B-tree keys, keeping the index smaller and faster to traverse", "INCLUDE is a PostgreSQL-only feature", "INCLUDE columns are compressed"],
+          "correct": 1,
+          "explanation": "INCLUDE columns are stored in leaf nodes only, not in the B-tree internal nodes. They satisfy covering queries without adding to the sort key, keeping the index tree shallower and scans faster."
+        }
+      ]
+    },
+    {
+      "id": "access-008",
+      "type": "multiple-choice",
+      "question": "A query filters on status and sorts by created_at. INDEX(created_at, status) vs INDEX(status, created_at) — which is correct?",
+      "options": ["INDEX(created_at, status) — sort column first for ORDER BY", "INDEX(status, created_at) — equality filter first, then sort column", "Either order works equally well", "Neither — you need two separate indexes"],
+      "correct": 1,
+      "explanation": "Equality conditions first (status = 'active' narrows the search space), then the range/sort column (created_at). The index can jump to the 'active' section and walk it in created_at order. Reverse order forces a sort step."
+    },
+    {
+      "id": "access-009",
+      "type": "ordering",
+      "question": "For a composite index serving: WHERE a = ? AND b > ? ORDER BY c, rank the columns in the optimal index order:",
+      "items": ["Column a (equality)", "Column b (range)", "Column c (sort)"],
+      "correctOrder": [0, 2, 1],
+      "explanation": "Equality first (a), then sort (c), then range (b). Once a range condition is hit, the index can't use subsequent columns for ordering. So: equality → sort → range. This is the ESR (Equality, Sort, Range) rule."
+    },
+    {
+      "id": "access-010",
+      "type": "multiple-choice",
+      "question": "What is the ESR rule for composite index column ordering?",
+      "options": ["Entity, Schema, Relation", "Equality columns first, then Sort columns, then Range columns", "Every Schema Requires indexes", "External Sort Routine"],
+      "correct": 1,
+      "explanation": "ESR: Equality → Sort → Range. Equality columns narrow the search. Sort columns maintain order (avoiding a sort step). Range columns come last because they 'break' the index ordering for any subsequent columns."
+    },
+    {
+      "id": "access-011",
+      "type": "multi-select",
+      "question": "Which access pattern characteristics suggest a read-heavy optimization strategy?",
+      "options": ["Users browse products far more than they purchase", "The same data is requested by many different users", "Data changes every few seconds", "Dashboards display aggregated historical metrics"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Browsing > purchasing = read-heavy. Shared data across users = cacheable reads. Dashboards with historical metrics = read-heavy aggregation. Frequent data changes suggest a write-heavy pattern."
+    },
+    {
+      "id": "access-012",
+      "type": "numeric-input",
+      "question": "An app has these access patterns: product page views (100K/sec), add to cart (5K/sec), checkout (500/sec), admin product updates (10/sec). What is the read-to-write ratio for the Products table?",
+      "answer": 10000,
+      "unit": ":1",
+      "tolerance": 0.1,
+      "explanation": "Products reads: 100K/sec (page views). Products writes: 10/sec (admin updates). Ratio: 100,000/10 = 10,000:1. Cart and checkout don't write to Products. This extremely read-heavy ratio strongly favors denormalization and caching."
+    },
+    {
+      "id": "access-013",
+      "type": "multiple-choice",
+      "question": "An IoT system ingests 100K sensor readings per second. The primary access pattern is 'latest reading per sensor' and 'time range queries per sensor.' What schema design fits?",
+      "options": ["Single wide table with one column per sensor", "Time-series table: (sensor_id, timestamp, value) with a composite index on (sensor_id, timestamp)", "One table per sensor", "Store as JSON blobs"],
+      "correct": 1,
+      "explanation": "A time-series table with (sensor_id, timestamp, value) and index on (sensor_id, timestamp) directly serves both access patterns. 'Latest' = ORDER BY timestamp DESC LIMIT 1. Range = WHERE timestamp BETWEEN."
+    },
+    {
+      "id": "access-014",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A chat app needs these access patterns: (1) Get all messages in a conversation, newest first. (2) Get all conversations for a user, sorted by last activity. Which table structure serves pattern 1?",
+          "options": ["Messages(id, conversation_id, sender_id, body, created_at) with INDEX(conversation_id, created_at DESC)", "Messages(id, body) with a separate ConversationMessages junction table", "Store messages as an array in the Conversations document", "Messages(id, sender_id, body) with no conversation reference"],
+          "correct": 0,
+          "explanation": "Direct foreign key to conversation + composite index on (conversation_id, created_at DESC) gives a single index scan for all messages in a conversation in reverse chronological order."
+        },
+        {
+          "question": "For pattern 2 (user's conversations sorted by last activity), what denormalization helps?",
+          "options": ["Join Messages and Conversations and sort by MAX(messages.created_at)", "Store last_activity_at on the Conversations table, updated on each new message, with INDEX(last_activity_at DESC) and a ConversationMembers junction table", "Store all conversations in the User document", "Use a full-text search index"],
+          "correct": 1,
+          "explanation": "Denormalize last_activity_at onto Conversations. Use ConversationMembers(user_id, conversation_id) to find a user's conversations, then sort by last_activity_at. Avoids scanning the entire Messages table."
+        }
+      ]
+    },
+    {
+      "id": "access-015",
+      "type": "multiple-choice",
+      "question": "What is 'query-driven modeling' in the context of Cassandra/DynamoDB?",
+      "options": ["Writing queries before designing the schema", "Designing tables specifically to answer known queries — one table per query pattern", "Using a query builder library", "Automatically generating schemas from queries"],
+      "correct": 1,
+      "explanation": "In Cassandra/DynamoDB, you can't JOIN. Each query must be served by a single table (or index). You design tables around access patterns: if you have 3 query patterns, you might have 3 tables, each optimized for one pattern."
+    },
+    {
+      "id": "access-016",
+      "type": "multi-select",
+      "question": "In Cassandra, which constraints does query-driven modeling impose?",
+      "options": ["The partition key must match the query's equality condition", "Clustering columns determine sort order within a partition", "You often duplicate data across multiple tables for different query patterns", "All queries must use the primary key — no arbitrary WHERE clauses"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are true. Cassandra requires queries to use the partition key (for data location). Clustering columns define sort order. Different queries often need different table layouts (data duplication). Arbitrary filters without key columns trigger expensive full scans."
+    },
+    {
+      "id": "access-017",
+      "type": "ordering",
+      "question": "Rank these from MOST FLEXIBLE (any query) to LEAST FLEXIBLE (must know queries upfront):",
+      "items": ["PostgreSQL (relational, ad-hoc queries)", "MongoDB (document, flexible queries with indexes)", "Cassandra (wide-column, query-driven modeling)", "DynamoDB (key-value, single-table design)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "PostgreSQL: full SQL, any query with joins. MongoDB: flexible queries but no joins across collections. Cassandra: must design tables per query. DynamoDB: strict key-based access, most constrained — but all scale differently."
+    },
+    {
+      "id": "access-018",
+      "type": "multiple-choice",
+      "question": "A relational database query uses: SELECT * FROM orders WHERE customer_id = 123 ORDER BY created_at DESC LIMIT 10. Which index is ideal?",
+      "options": ["INDEX(customer_id)", "INDEX(customer_id, created_at DESC)", "INDEX(created_at DESC, customer_id)", "INDEX(created_at)"],
+      "correct": 1,
+      "explanation": "INDEX(customer_id, created_at DESC) perfectly serves this: jump to customer_id = 123, walk the index in descending created_at order, stop after 10 rows. No sort needed, no extra filtering."
+    },
+    {
+      "id": "access-019",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce app has these access patterns for orders: (A) Get orders by customer. (B) Get orders by status ('pending', 'shipped'). (C) Get orders by date range. How many indexes do you need minimum?",
+          "options": ["1 index handles all three", "2 indexes: (customer_id, created_at) and (status, created_at)", "3 indexes: one per access pattern", "No indexes — full table scans are fine"],
+          "correct": 1,
+          "explanation": "Two composite indexes cover all three: (customer_id, created_at) serves A and C-by-customer. (status, created_at) serves B and C-by-status. Date range alone can use either index's second column."
+        },
+        {
+          "question": "The app adds pattern (D): 'Full-text search orders by product name.' What does this require?",
+          "options": ["Another B-tree index on product_name", "A full-text search index (GIN in PostgreSQL, or an external search engine like Elasticsearch)", "A LIKE query with a B-tree index", "Store product names in a separate search table"],
+          "correct": 1,
+          "explanation": "Full-text search needs a specialized index. PostgreSQL's GIN index with tsvector, or an external search engine like Elasticsearch. B-tree indexes don't support substring/relevance searching efficiently."
+        }
+      ]
+    },
+    {
+      "id": "access-020",
+      "type": "multiple-choice",
+      "question": "What is 'index selectivity'?",
+      "options": ["How many indexes a table has", "The ratio of distinct values to total rows — higher selectivity means the index narrows results more effectively", "The order columns appear in an index", "Whether an index is selected by the query planner"],
+      "correct": 1,
+      "explanation": "Selectivity = distinct values / total rows. A unique column has selectivity 1.0 (maximum). A boolean column with 50/50 split has selectivity ~0.000002 on a million-row table — an index on it barely helps."
+    },
+    {
+      "id": "access-021",
+      "type": "numeric-input",
+      "question": "A table has 1,000,000 rows. A 'status' column has 5 distinct values, evenly distributed. What percentage of the table does a WHERE status = 'active' query scan even with an index?",
+      "answer": 20,
+      "unit": "%",
+      "tolerance": "exact",
+      "explanation": "5 distinct values, evenly distributed: each value has 1,000,000/5 = 200,000 rows = 20% of the table. The index finds those rows, but 20% is so many that the database may prefer a full table scan anyway."
+    },
+    {
+      "id": "access-022",
+      "type": "multi-select",
+      "question": "When is a B-tree index on a low-selectivity column (e.g., boolean is_active) still useful?",
+      "options": ["When combined with other columns in a composite index", "When the rare value is queried (e.g., is_active = false represents only 1% of rows)", "When every query filters on it", "When using a partial index (WHERE is_active = false)"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Low-selectivity columns become useful in composite indexes (combined with more selective columns), when querying the rare value (1% is selective enough), or as partial indexes (index only the interesting subset)."
+    },
+    {
+      "id": "access-023",
+      "type": "multiple-choice",
+      "question": "What is a 'partial index' (also called 'filtered index')?",
+      "options": ["An index on a subset of columns", "An index that only includes rows matching a WHERE condition — smaller, faster, and more targeted", "An incomplete index that's still being built", "An index that stores partial column values"],
+      "correct": 1,
+      "explanation": "CREATE INDEX idx ON orders(created_at) WHERE status = 'pending'. This index only contains pending orders — much smaller than a full index. Perfect when you frequently query a small subset of rows."
+    },
+    {
+      "id": "access-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An Orders table has 10M rows. 99% are status='completed', 1% are status='pending'. The app frequently queries pending orders. What index strategy is best?",
+          "options": ["INDEX(status) — covers all statuses", "Partial index: INDEX(created_at) WHERE status = 'pending' — only 100K rows indexed", "No index — 1% is too few rows to index", "INDEX(status, created_at) on all 10M rows"],
+          "correct": 1,
+          "explanation": "A partial index on just pending orders indexes 100K rows instead of 10M. It's tiny, fast, and perfectly targeted for the actual access pattern. The 9.9M completed orders don't need this index."
+        },
+        {
+          "question": "What happens when a pending order is marked completed?",
+          "options": ["The row remains in the partial index", "The database automatically removes the row from the partial index since it no longer matches the WHERE condition", "You must manually rebuild the index", "The index becomes corrupted"],
+          "correct": 1,
+          "explanation": "Partial indexes are automatically maintained. When a row no longer matches the filter (status changes from 'pending' to 'completed'), the database removes it from the index. No manual intervention needed."
+        }
+      ]
+    },
+    {
+      "id": "access-025",
+      "type": "multiple-choice",
+      "question": "What is 'pagination' in the context of database access patterns?",
+      "options": ["Storing data in page-sized blocks on disk", "Returning query results in chunks (pages) rather than all at once", "Splitting tables across multiple databases", "Printing database reports"],
+      "correct": 1,
+      "explanation": "Pagination returns results incrementally — page 1 shows items 1-20, page 2 shows 21-40, etc. Essential for any list/feed/search UI. The pagination strategy affects query performance significantly."
+    },
+    {
+      "id": "access-026",
+      "type": "ordering",
+      "question": "Rank these pagination methods from SIMPLEST (but worst at scale) to MOST SCALABLE:",
+      "items": ["OFFSET/LIMIT (skip N rows)", "Keyset/cursor pagination (WHERE id > last_seen_id LIMIT 20)", "Hybrid: OFFSET for first few pages, cursor for deep pages"],
+      "correctOrder": [0, 2, 1],
+      "explanation": "OFFSET/LIMIT: simplest but scans and discards rows (O(N) for page N). Hybrid: practical compromise. Keyset/cursor: most scalable — always starts from an index position, constant time regardless of page depth."
+    },
+    {
+      "id": "access-027",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "SELECT * FROM posts ORDER BY created_at DESC LIMIT 20 OFFSET 10000. Why is this slow?",
+          "options": ["The LIMIT is too small", "The database must scan and discard 10,000 rows before returning the 20 you want", "ORDER BY is inherently slow", "OFFSET doesn't use indexes"],
+          "correct": 1,
+          "explanation": "OFFSET 10000 means the database reads 10,020 rows, discards 10,000, and returns 20. At OFFSET 1,000,000, it reads a million rows to return 20. Performance degrades linearly with page depth."
+        },
+        {
+          "question": "How does keyset pagination fix this?",
+          "options": ["It caches the offset positions", "Instead of OFFSET, it uses WHERE created_at < '2024-01-15T10:30:00' ORDER BY created_at DESC LIMIT 20 — jumping directly to the right position via an index", "It loads all results into memory first", "It uses a different sort algorithm"],
+          "correct": 1,
+          "explanation": "Keyset pagination uses the last item's sort value as a cursor. The index jumps directly to that position — no rows are scanned and discarded. Performance is constant regardless of how deep you paginate."
+        }
+      ]
+    },
+    {
+      "id": "access-028",
+      "type": "multi-select",
+      "question": "What are limitations of keyset/cursor pagination?",
+      "options": ["Can't jump to an arbitrary page number (e.g., 'go to page 50')", "Requires a unique, sortable column for the cursor", "Doesn't work well with complex multi-column sorting", "Can't paginate backwards without a reverse cursor"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Keyset pagination can't jump to page 50 (no OFFSET equivalent). It needs a unique sort column (ties cause missed/duplicate rows). Multi-column sorts need composite cursors which are complex. Backward pagination is possible with reversed sort + cursor."
+    },
+    {
+      "id": "access-029",
+      "type": "multiple-choice",
+      "question": "A user search feature needs: WHERE name LIKE '%john%'. Why can't a B-tree index help?",
+      "options": ["B-tree indexes don't support text columns", "Leading wildcard (%john%) prevents index use — B-trees can only match from the beginning of the string", "The query is too simple for an index", "LIKE queries never use indexes"],
+      "correct": 1,
+      "explanation": "B-tree indexes are sorted left-to-right. 'john%' can use the index (prefix match). '%john%' cannot — the database doesn't know where in the string 'john' might appear, so it must scan every row."
+    },
+    {
+      "id": "access-030",
+      "type": "multi-select",
+      "question": "Which techniques enable efficient substring/full-text search?",
+      "options": ["GIN index with pg_trgm (trigram matching) in PostgreSQL", "Full-text search index (tsvector/tsquery in PostgreSQL)", "External search engine (Elasticsearch, Meilisearch)", "B-tree index on the text column"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Trigram indexes (GIN + pg_trgm) support LIKE '%john%'. Full-text search indexes handle natural language queries. External search engines provide advanced relevance ranking. B-tree can only handle prefix matches (LIKE 'john%')."
+    },
+    {
+      "id": "access-031",
+      "type": "multiple-choice",
+      "question": "An application needs to query: 'Find all events happening within 10km of this location.' What index type supports this?",
+      "options": ["B-tree index on latitude and longitude columns", "Spatial index (GiST in PostgreSQL, SPATIAL in MySQL) on a geometry/geography column", "Full-text index", "Hash index"],
+      "correct": 1,
+      "explanation": "Spatial indexes (GiST, R-tree) are designed for geometric/geographic queries — 'within distance', 'intersects', 'contains'. A B-tree on lat/lng can't efficiently answer radius queries."
+    },
+    {
+      "id": "access-032",
+      "type": "ordering",
+      "question": "Rank these index types by the ACCESS PATTERN they're best suited for:",
+      "items": ["B-tree: equality and range queries (=, <, >, BETWEEN)", "Hash: exact equality lookups only", "GIN: full-text search, array containment, JSONB queries", "GiST: spatial/geometric queries, nearest-neighbor"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Hash: simplest, equality only. B-tree: most versatile, equality + range + sorting. GIN: specialized for multi-value/text matching. GiST: specialized for spatial/geometric operations. Each serves distinct access patterns."
+    },
+    {
+      "id": "access-033",
+      "type": "multiple-choice",
+      "question": "What is a 'hot partition' (or 'hot key') problem?",
+      "options": ["A partition with encrypted data", "A single partition receiving disproportionate traffic because a common access pattern routes most requests to the same key", "A partition stored on an overheated disk", "A partition that was recently created"],
+      "correct": 1,
+      "explanation": "If partition key = user_id and a celebrity user generates 90% of traffic, that partition is 'hot' — overloaded while others are idle. Access patterns must be considered when choosing partition keys."
+    },
+    {
+      "id": "access-034",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A multi-tenant SaaS app uses tenant_id as the partition key. One enterprise tenant has 100x more data and traffic than average tenants. What problem occurs?",
+          "options": ["All tenants slow down equally", "The enterprise tenant's partition becomes a hot spot — that partition's node is overwhelmed while others are underutilized", "The database rejects the enterprise tenant", "No problem — partitioning handles this automatically"],
+          "correct": 1,
+          "explanation": "The large tenant's partition receives disproportionate load. The node hosting it becomes a bottleneck. Other nodes are underutilized. This is data skew + access pattern skew combined."
+        },
+        {
+          "question": "How do you mitigate this?",
+          "options": ["Limit the enterprise tenant's data", "Sub-partition the large tenant (e.g., tenant_id + date_range), or move them to a dedicated shard", "Use a random partition key", "Ignore it — eventual consistency will solve it"],
+          "correct": 1,
+          "explanation": "Sub-partition the large tenant to spread their data across multiple partitions. Or give them a dedicated shard. Both distribute the hot partition's load while keeping other tenants unaffected."
+        }
+      ]
+    },
+    {
+      "id": "access-035",
+      "type": "multiple-choice",
+      "question": "What is 'write amplification' in the context of access patterns and indexes?",
+      "options": ["Writing more data than the user sent", "Each write to a table also requires updating every index on that table, multiplying the I/O cost", "Writing data in amplified (larger) blocks", "Amplifying the write signal to disk"],
+      "correct": 1,
+      "explanation": "Each additional index means every INSERT/UPDATE/DELETE must also update that index. With 5 indexes, one row insert triggers 6 write operations (1 table + 5 indexes). More indexes = faster reads but slower writes."
+    },
+    {
+      "id": "access-036",
+      "type": "numeric-input",
+      "question": "A table has 8 indexes. Each row insert requires writing to the table plus all 8 indexes. How many I/O operations does a single INSERT trigger (minimum)?",
+      "answer": 9,
+      "unit": "operations",
+      "tolerance": "exact",
+      "explanation": "1 table write + 8 index writes = 9 I/O operations per INSERT. This is why write-heavy tables should minimize indexes — each one adds write overhead."
+    },
+    {
+      "id": "access-037",
+      "type": "multi-select",
+      "question": "For a write-heavy table (e.g., event log, 50K inserts/sec), which strategies reduce write overhead?",
+      "options": ["Minimize the number of indexes", "Use batch inserts instead of individual inserts", "Append-only design (INSERT only, no UPDATEs)", "Add more indexes for read performance"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Fewer indexes = less write amplification. Batch inserts = amortized overhead. Append-only = no in-place updates (cheaper than UPDATE which may trigger index reorganization). More indexes directly increases write cost."
+    },
+    {
+      "id": "access-038",
+      "type": "multiple-choice",
+      "question": "What is a 'write-ahead log' (WAL) and how does it affect write access patterns?",
+      "options": ["A log of planned future writes", "A sequential log where all changes are recorded before being applied to tables/indexes — enables crash recovery and makes sequential writes fast", "A log for debugging write queries", "A pre-write validation step"],
+      "correct": 1,
+      "explanation": "WAL writes changes sequentially to a log before updating tables. Sequential writes are fast (no random I/O). The database can batch and apply table changes later. This is why databases handle write bursts well — WAL absorbs them."
+    },
+    {
+      "id": "access-039",
+      "type": "ordering",
+      "question": "Rank these access patterns from MOST READ-OPTIMIZED to MOST WRITE-OPTIMIZED in typical implementation:",
+      "items": ["Heavily indexed table with materialized views", "Balanced table with a few targeted indexes", "Append-only log table with minimal indexes", "In-memory write buffer with async disk flush"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Heavy indexes + materialized views: maximum read speed, worst write performance. Balanced indexes: middle ground. Append-only log: optimized for writes (sequential). In-memory buffer: fastest writes, slowest reads."
+    },
+    {
+      "id": "access-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A time-series database stores metrics: (sensor_id, timestamp, value). The access patterns are: (1) Latest value per sensor. (2) Time range per sensor. (3) Aggregate (AVG) over time range. Which partitioning key helps all three?",
+          "options": ["Partition by sensor_id", "Partition by timestamp", "Partition by value", "No partitioning"],
+          "correct": 0,
+          "explanation": "Partitioning by sensor_id groups all readings for a sensor together. Patterns 1, 2, and 3 all filter by sensor_id first — each query hits a single partition."
+        },
+        {
+          "question": "The table has 5 years of data, but 95% of queries are for the last 24 hours. How do you optimize for this temporal access pattern?",
+          "options": ["Delete old data", "Add time-based sub-partitioning: recent data (last 7 days) on fast storage, old data on cheaper storage", "Index only the timestamp column", "Cache all 5 years in memory"],
+          "correct": 1,
+          "explanation": "Time-based partitioning (hot/cold tiering): recent data on SSDs for fast access, historical data on HDDs for cost efficiency. Most queries hit the small, fast recent partition. Old data is still accessible but slower."
+        }
+      ]
+    },
+    {
+      "id": "access-041",
+      "type": "multiple-choice",
+      "question": "What is 'secondary index' access in the context of key-value/wide-column stores?",
+      "options": ["An index on the primary key", "An additional index on a non-key column, enabling queries beyond the primary key at the cost of extra write overhead and potentially scattered reads", "The second index created on a table", "An index stored on a secondary server"],
+      "correct": 1,
+      "explanation": "In systems like Cassandra or DynamoDB, secondary indexes let you query on non-key columns. But they're costly: writes must update both the main table and the secondary index, and reads may scatter across partitions."
+    },
+    {
+      "id": "access-042",
+      "type": "multi-select",
+      "question": "Which access patterns are well-served by a Global Secondary Index (GSI) in DynamoDB?",
+      "options": ["Query items by an alternate key (e.g., query orders by customer_email instead of order_id)", "Query with a different sort order", "Full table scan with complex filters", "Exact primary key lookup"],
+      "correctIndices": [0, 1],
+      "explanation": "GSIs enable querying by alternate keys and different sort orders — they're like a copy of the table organized by a different key. Full scans don't benefit from GSIs. Primary key lookups don't need one."
+    },
+    {
+      "id": "access-043",
+      "type": "multiple-choice",
+      "question": "A multi-tenant application needs to query: 'All orders for tenant X, sorted by date.' And separately: 'All orders with status pending, across all tenants.' Which contradicts single-table efficiency?",
+      "options": ["The first query — per-tenant queries are always slow", "The second query — cross-tenant queries require scanning all partitions if tenant_id is the partition key", "Both queries are efficient", "Neither query is possible in a single table"],
+      "correct": 1,
+      "explanation": "If tenant_id is the partition key, per-tenant queries are efficient (single partition). But cross-tenant queries (status='pending' across ALL tenants) must scan every partition — a scatter-gather operation. These access patterns conflict."
+    },
+    {
+      "id": "access-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A product catalog supports: (1) Browse by category. (2) Search by name. (3) Filter by price range. (4) Sort by popularity. How many of these access patterns can a single B-tree index serve efficiently?",
+          "options": ["All 4", "At most 2 — different patterns need different indexes or search infrastructure", "1", "None — you need NoSQL"],
+          "correct": 1,
+          "explanation": "A single B-tree index can serve one or two related patterns (e.g., category + price range). But text search (pattern 2) needs a different index type, and popularity sort may need a separate index. Multiple indexes and potentially a search engine are needed."
+        },
+        {
+          "question": "For the 'search by name' pattern, what's the production-grade solution?",
+          "options": ["LIKE '%keyword%' with a B-tree index", "A dedicated search engine (Elasticsearch/Meilisearch) synced from the database", "Store names in a separate search table", "In-application linear scan"],
+          "correct": 1,
+          "explanation": "Production search needs relevance ranking, typo tolerance, highlighting, and faceting — features beyond what SQL provides. A dedicated search engine, kept in sync via events or CDC, is the standard approach."
+        }
+      ]
+    },
+    {
+      "id": "access-045",
+      "type": "multiple-choice",
+      "question": "What is 'N+1 query problem' and how does it relate to access patterns?",
+      "options": ["A database that can only handle N+1 connections", "Fetching a list of N items, then making N additional queries (one per item) to fetch related data — N+1 total queries instead of 1-2", "An index that requires N+1 columns", "A table with N+1 rows"],
+      "correct": 1,
+      "explanation": "N+1: fetch 20 posts (1 query), then fetch each post's author individually (20 queries) = 21 queries. Should be 2 queries: fetch posts, then fetch all 20 authors in one batch. Caused by naive ORM usage or missing eager loading."
+    },
+    {
+      "id": "access-046",
+      "type": "ordering",
+      "question": "Rank these from WORST to BEST for fetching 100 posts with their authors:",
+      "items": ["100 individual queries (1 per post)", "N+1: 1 query for posts + 100 queries for authors (101 total)", "2 queries: posts, then batch author lookup by IDs", "1 query: JOIN posts and authors"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "100 individual queries: worst (no batching at all). N+1 (101 queries): bad. 2 queries with batch: good (SELECT authors WHERE id IN (...)). 1 JOIN: optimal (single round trip). Network round trips dominate latency."
+    },
+    {
+      "id": "access-047",
+      "type": "multi-select",
+      "question": "Which strategies prevent the N+1 query problem?",
+      "options": ["Eager loading / JOIN fetch in the ORM", "Batch loading (DataLoader pattern)", "Denormalizing the author data onto the posts table", "Fetching posts one at a time"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Eager loading: ORM fetches related data in the initial query (JOIN). Batch loading: groups multiple lookups into a single query (DataLoader). Denormalization: stores author data on posts (no second query needed). Fetching one at a time makes N+1 worse."
+    },
+    {
+      "id": "access-048",
+      "type": "numeric-input",
+      "question": "A page loads 50 products. Each product has a category (separate table). With N+1, how many database round trips occur?",
+      "answer": 51,
+      "unit": "queries",
+      "tolerance": "exact",
+      "explanation": "1 query for 50 products + 50 queries for categories (one per product) = 51 total. With a JOIN or batch load, this could be 1 or 2 queries."
+    },
+    {
+      "id": "access-049",
+      "type": "multiple-choice",
+      "question": "What is 'connection pooling' and why does it matter for access patterns?",
+      "options": ["Sharing a swimming pool of database connections", "Reusing a pool of database connections across requests to avoid the overhead of opening/closing connections per query", "Connecting multiple databases together", "A type of database index"],
+      "correct": 1,
+      "explanation": "Opening a database connection is expensive (TCP handshake, authentication, SSL). A connection pool maintains pre-opened connections that requests can borrow and return. Essential for high-throughput access patterns."
+    },
+    {
+      "id": "access-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A web application handles 1000 concurrent requests. Each request needs a database connection. The database supports max 100 connections. What happens without a connection pool?",
+          "options": ["All 1000 requests connect simultaneously", "900 requests fail because they can't get a connection", "The database scales up automatically", "Requests are queued by the OS"],
+          "correct": 1,
+          "explanation": "Without pooling, each request tries to open its own connection. The database allows 100; the remaining 900 get connection errors. The application fails under moderate load."
+        },
+        {
+          "question": "With a connection pool of size 100, how are the 1000 concurrent requests handled?",
+          "options": ["900 still fail", "Requests wait in a queue for an available connection — each request borrows a connection, uses it, returns it for the next request", "The pool creates 1000 connections", "Requests are rejected immediately"],
+          "correct": 1,
+          "explanation": "The pool holds 100 connections. Requests queue for a free connection. When a request finishes its query (often < 10ms), the connection returns to the pool for the next request. 100 connections can serve 1000 concurrent requests with some queuing."
+        }
+      ]
+    },
+    {
+      "id": "access-051",
+      "type": "multiple-choice",
+      "question": "What is the 'read replica' pattern for scaling read access?",
+      "options": ["Copying data to a spreadsheet for reading", "Creating database copies that serve read queries, while the primary handles writes — distributing read load across multiple servers", "A replica that can only read but not write", "Reading from a backup tape"],
+      "correct": 1,
+      "explanation": "Read replicas asynchronously copy data from the primary. Read-heavy access patterns (90% reads) can direct most queries to replicas, reducing primary load. Tradeoff: replicas may have slight replication lag."
+    },
+    {
+      "id": "access-052",
+      "type": "multi-select",
+      "question": "Which access patterns work well with read replicas?",
+      "options": ["Product catalog browsing (read-heavy, tolerates slight staleness)", "Financial transaction reads (must see latest data)", "Analytics/reporting queries (heavy reads, tolerate lag)", "User profile views (read-heavy, eventual consistency acceptable)"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Read replicas suit patterns that tolerate slight staleness: browsing, analytics, profile views. Financial reads that MUST see the latest data should go to the primary to avoid replication lag issues."
+    },
+    {
+      "id": "access-053",
+      "type": "ordering",
+      "question": "Rank these access pattern optimizations from CHEAPEST (implement first) to MOST EXPENSIVE:",
+      "items": ["Add appropriate indexes", "Add read replicas", "Introduce a caching layer (Redis)", "Redesign schema with denormalization"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Indexes: SQL DDL, no code changes. Read replicas: infrastructure cost, minimal code changes (route reads). Caching: new infrastructure + cache invalidation logic. Schema redesign: most invasive — changes data model, application code, and migration."
+    },
+    {
+      "id": "access-054",
+      "type": "multiple-choice",
+      "question": "A real-time bidding system needs sub-millisecond reads for user profiles. The access pattern is: exact key lookup by user_id. What storage is most appropriate?",
+      "options": ["PostgreSQL with indexes", "In-memory key-value store (Redis, Memcached)", "Elasticsearch", "S3"],
+      "correct": 1,
+      "explanation": "Sub-millisecond exact key lookups = in-memory key-value store. Redis/Memcached serve single-key lookups in ~0.1ms. PostgreSQL with indexes is ~1-5ms. The access pattern (exact key, extreme latency requirement) dictates the storage choice."
+    },
+    {
+      "id": "access-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An application has two conflicting access patterns: (1) Transactional writes with ACID guarantees (orders, payments). (2) Full-text search with relevance ranking (product search). Can one database serve both?",
+          "options": ["Yes — PostgreSQL can do full-text search", "Pragmatically, use two stores: relational DB for transactions, search engine for search — each optimized for its access pattern", "No database supports both", "Use MongoDB for everything"],
+          "correct": 1,
+          "explanation": "While PostgreSQL has full-text search, a dedicated search engine (Elasticsearch) provides better relevance, faceting, and performance at scale. Use the right tool for each access pattern. The relational DB is the source of truth; the search engine is a read-optimized projection."
+        },
+        {
+          "question": "This pattern — different stores for different access patterns — is called?",
+          "options": ["Microservices", "Polyglot persistence — using multiple database technologies, each chosen for specific access patterns", "Database sharding", "Multi-master replication"],
+          "correct": 1,
+          "explanation": "Polyglot persistence: pick the best storage technology per access pattern. Relational for transactions, search engine for full-text, Redis for caching, time-series DB for metrics. Complexity cost: multiple systems to operate and keep in sync."
+        }
+      ]
+    },
+    {
+      "id": "access-056",
+      "type": "multi-select",
+      "question": "Which are examples of polyglot persistence (multiple storage technologies for different access patterns)?",
+      "options": ["PostgreSQL for orders + Elasticsearch for search", "PostgreSQL for everything", "Redis for sessions + DynamoDB for user profiles + S3 for media", "MySQL for one service + PostgreSQL for another"],
+      "correctIndices": [0, 2],
+      "explanation": "Polyglot persistence = different database TYPES for different patterns. PostgreSQL + Elasticsearch and Redis + DynamoDB + S3 are polyglot (different technologies for different access needs). MySQL + PostgreSQL are both relational — same paradigm, not truly polyglot."
+    },
+    {
+      "id": "access-057",
+      "type": "multiple-choice",
+      "question": "What is 'time-to-live' (TTL) and how does it relate to access patterns?",
+      "options": ["How long a database server runs before restart", "An automatic expiration time on data — rows or cache entries are deleted after a specified duration, optimizing storage for temporal access patterns", "The latency of a database query", "How long before a connection times out"],
+      "correct": 1,
+      "explanation": "TTL auto-expires old data. Perfect for access patterns where only recent data matters: sessions (expire after 30 min), cache entries (expire after 5 min), event logs (expire after 90 days). Reduces storage and keeps queries scanning less data."
+    },
+    {
+      "id": "access-058",
+      "type": "numeric-input",
+      "question": "A session store uses TTL of 30 minutes. With 100K active users and an average session size of 2KB, how much memory does the session store require (approximately)?",
+      "answer": 200,
+      "unit": "MB",
+      "tolerance": 0.1,
+      "explanation": "100,000 sessions × 2 KB = 200,000 KB = ~200 MB. TTL ensures inactive sessions expire, preventing unbounded memory growth. Without TTL, abandoned sessions would accumulate indefinitely."
+    },
+    {
+      "id": "access-059",
+      "type": "multiple-choice",
+      "question": "A graph database (Neo4j, Neptune) excels at which access pattern?",
+      "options": ["Simple key-value lookups", "Traversing relationships — 'friends of friends', 'shortest path between nodes', 'all users within 3 degrees of connection'", "Full-text search", "Time-series data"],
+      "correct": 1,
+      "explanation": "Graph databases are optimized for relationship traversal. Queries like 'find friends-of-friends' or 'shortest path' that would require recursive joins in SQL are native graph operations. The access pattern (multi-hop traversal) dictates the storage choice."
+    },
+    {
+      "id": "access-060",
+      "type": "ordering",
+      "question": "Match these access patterns to their ideal database type, from SIMPLEST ACCESS to MOST COMPLEX:",
+      "items": ["Key-value lookup (Redis, DynamoDB)", "Relational queries with joins (PostgreSQL)", "Multi-hop relationship traversal (Neo4j)", "Full-text search with relevance (Elasticsearch)"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Key-value: simplest access (get by key). Relational: structured queries with joins. Full-text search: complex ranking and relevance. Graph traversal: most complex — arbitrary depth traversals across relationships."
+    },
+    {
+      "id": "access-061",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A recommendation engine needs: 'Users who bought X also bought Y.' The access pattern traverses purchase relationships across users. Which modeling approach fits?",
+          "options": ["Relational JOIN across Users, Purchases, and Products", "Graph model: User -[:PURCHASED]-> Product, then traverse shared products", "Store recommendations in a flat table", "Machine learning only — no database modeling needed"],
+          "correct": 1,
+          "explanation": "The access pattern is inherently graph-like: traverse purchase edges to find co-purchased products. A graph model naturally expresses 'users who bought X → find other products they bought.' SQL can do this with recursive CTEs, but it's less natural."
+        },
+        {
+          "question": "In practice, how are product recommendations often served to users?",
+          "options": ["Real-time graph queries on every page load", "Precomputed recommendations stored in a cache/database — the graph traversal runs as a batch job, not in the request path", "Hard-coded recommendations", "Random selection"],
+          "correct": 1,
+          "explanation": "Graph traversal for recommendations is computationally expensive. Run it as a batch/periodic job, store the results (denormalized), and serve precomputed recommendations. The real-time access pattern is a simple key lookup."
+        }
+      ]
+    },
+    {
+      "id": "access-062",
+      "type": "multiple-choice",
+      "question": "What is 'read-your-writes' consistency and when does it matter?",
+      "options": ["A database that reads while writing", "After a user writes data, their subsequent reads immediately reflect that write — even if replicas haven't caught up yet", "Reading and writing in the same transaction", "A write-through cache pattern"],
+      "correct": 1,
+      "explanation": "Read-your-writes: if you update your profile, you immediately see the update. Without this, you might save changes and see the old version (confusing). Typically implemented by routing a user's reads to the primary for a few seconds after writes."
+    },
+    {
+      "id": "access-063",
+      "type": "multi-select",
+      "question": "Which access patterns require read-your-writes consistency?",
+      "options": ["User edits their profile and views it immediately after", "User submits a form and sees a success confirmation with the new data", "User browses a product catalog (no writes involved)", "Admin updates a setting and verifies it took effect"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Any pattern where a user writes and then immediately reads their own data needs read-your-writes. Browsing a catalog (read-only) doesn't involve a write, so there's nothing to 'read back.'"
+    },
+    {
+      "id": "access-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "How do you implement read-your-writes with read replicas?",
+          "options": ["Always read from the primary", "After a write, route that user's reads to the primary for a short window (e.g., 5 seconds), then back to replicas", "Use synchronous replication for everything", "Disable read replicas"],
+          "correct": 1,
+          "explanation": "Short-circuit to primary: after a write, set a cookie/flag with a timestamp. For the next few seconds, route that user's reads to the primary. Once replication catches up (~1-2 seconds), resume reading from replicas."
+        },
+        {
+          "question": "What's the downside of always reading from the primary (to guarantee consistency)?",
+          "options": ["No downside — always do this", "The primary handles ALL read and write load, eliminating the scaling benefit of read replicas", "Primary databases are slower for reads", "It's not possible with PostgreSQL"],
+          "correct": 1,
+          "explanation": "The whole point of read replicas is to offload reads from the primary. If everything reads from the primary, replicas are useless. The selective approach (primary for recent writers, replicas for everyone else) gets both consistency and scalability."
+        }
+      ]
+    },
+    {
+      "id": "access-065",
+      "type": "multiple-choice",
+      "question": "What is 'scatter-gather' query pattern?",
+      "options": ["A query that randomly accesses data", "A query sent to all partitions/shards in parallel, with results merged — necessary when the query can't be routed to a single partition", "Gathering statistics about query performance", "A method of distributing writes"],
+      "correct": 1,
+      "explanation": "Scatter-gather: the query doesn't match a single partition, so it's 'scattered' to all partitions, each returns partial results, which are 'gathered' and merged. Expensive (hits every shard) but sometimes unavoidable."
+    },
+    {
+      "id": "access-066",
+      "type": "numeric-input",
+      "question": "A database has 20 shards. A scatter-gather query takes 50ms per shard (in parallel). Merging results takes 10ms. What is the total query latency?",
+      "answer": 60,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "All 20 shards run in parallel (50ms), then merge (10ms) = 60ms total. The latency is the slowest shard + merge time, not 20 × 50ms. Parallel execution is the saving grace of scatter-gather."
+    },
+    {
+      "id": "access-067",
+      "type": "multi-select",
+      "question": "Which techniques avoid scatter-gather queries?",
+      "options": ["Choose partition keys that match common query patterns", "Use Global Secondary Indexes for alternate access patterns", "Denormalize data so queries can be served from a single partition", "Always query all partitions for maximum accuracy"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Partition keys matching queries route to one shard. GSIs provide alternate query paths. Denormalization co-locates data for single-partition reads. Querying all partitions is the opposite of avoiding scatter-gather."
+    },
+    {
+      "id": "access-068",
+      "type": "ordering",
+      "question": "Rank these query types from CHEAPEST to MOST EXPENSIVE on a sharded database:",
+      "items": ["Point lookup by partition key (single shard)", "Range query within one partition", "Query on secondary index (may scatter)", "Full scatter-gather across all shards"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Point lookup: one shard, one row. Range within partition: one shard, sequential scan. Secondary index: may need multiple shards. Full scatter-gather: every shard participates — most expensive."
+    },
+    {
+      "id": "access-069",
+      "type": "multiple-choice",
+      "question": "An event streaming system (Kafka) uses topic partitions. A consumer needs to process events for a specific user_id in order. Which partition key ensures this?",
+      "options": ["Random partition key", "user_id as the partition key — all events for a user go to the same partition, guaranteeing order within that partition", "timestamp as the partition key", "event_type as the partition key"],
+      "correct": 1,
+      "explanation": "Kafka guarantees ordering within a partition. Using user_id as the partition key ensures all events for user 123 go to the same partition and are consumed in order. Different users' events may be on different partitions."
+    },
+    {
+      "id": "access-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A booking system has these access patterns: (1) 'Show available rooms for date range.' (2) 'Book a specific room.' (3) 'Show user's bookings.' Pattern 1 is the most frequent. How should the Rooms table be indexed?",
+          "options": ["INDEX(room_id)", "A composite index or availability lookup table keyed on (date, room_type) for efficient availability searches", "INDEX(user_id)", "No index — rooms is a small table"],
+          "correct": 1,
+          "explanation": "The dominant access pattern (availability search) drives the index design. An index on availability date range + room type serves the most frequent query. Room_id and user_id indexes serve patterns 2 and 3."
+        },
+        {
+          "question": "Pattern 2 (book a room) requires preventing double-booking. What database technique ensures two users can't book the same room for overlapping dates?",
+          "options": ["Application-level locking", "An exclusion constraint (PostgreSQL) or SELECT FOR UPDATE in a transaction — database-enforced mutual exclusion", "Check availability in application code before inserting", "Use optimistic locking only"],
+          "correct": 1,
+          "explanation": "PostgreSQL exclusion constraints prevent overlapping ranges at the database level. Alternatively, SELECT FOR UPDATE locks the row during the transaction. Application-only checks have race conditions."
+        }
+      ]
+    },
+    {
+      "id": "access-071",
+      "type": "multiple-choice",
+      "question": "What is 'database connection routing' and why does it matter for access patterns?",
+      "options": ["Routing cables to the database server", "Directing read queries to replicas and write queries to the primary, based on the query type", "Routing between different database vendors", "A networking protocol for databases"],
+      "correct": 1,
+      "explanation": "Connection routing (read/write splitting) sends writes to the primary and reads to replicas. This is an access-pattern-aware optimization: the application (or a proxy like PgBouncer, ProxySQL) classifies each query and routes accordingly."
+    },
+    {
+      "id": "access-072",
+      "type": "multi-select",
+      "question": "Which are common strategies for read/write splitting?",
+      "options": ["Application-level routing (code chooses primary or replica)", "Middleware/proxy layer (ProxySQL, PgBouncer) that parses queries", "Database driver with built-in routing (e.g., read_replica connection string)", "All queries to primary, replicas only for backups"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Application-level: most control, code explicitly chooses. Middleware: transparent to application, parses SQL. Driver-level: built-in support in the DB driver. Using replicas only for backups wastes their read capacity."
+    },
+    {
+      "id": "access-073",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A multi-region application serves users in US, EU, and Asia. Each region has a database replica. What access pattern optimization does this enable?",
+          "options": ["Cross-region joins", "Geo-routing: users read from their nearest replica, reducing latency from ~200ms (cross-continent) to ~5ms (local)", "Using different schemas per region", "Automatic failover"],
+          "correct": 1,
+          "explanation": "Geo-routing directs each user to their nearest replica. A US user reads from the US replica (5ms RTT) instead of an EU database (150ms RTT). The access pattern is latency-sensitive; proximity is the optimization."
+        },
+        {
+          "question": "Writes still go to the single primary (in US). What's the tradeoff for EU and Asia users?",
+          "options": ["No tradeoff — writes are just as fast", "Write latency is higher (cross-continent RTT) and there's replication lag before local replicas reflect the write", "EU/Asia users can't write at all", "Data is different in each region"],
+          "correct": 1,
+          "explanation": "EU users' writes travel to the US primary (~150ms RTT). After writing, there's replication lag before their local EU replica reflects the change. Read-your-writes becomes harder across regions."
+        }
+      ]
+    },
+    {
+      "id": "access-074",
+      "type": "numeric-input",
+      "question": "A query plan shows: Seq Scan with 1M rows estimated, filter removing 99%. How many rows survive the filter?",
+      "answer": 10000,
+      "unit": "rows",
+      "tolerance": "exact",
+      "explanation": "1,000,000 × (1 - 0.99) = 10,000 rows. The database scanned 1M rows to find 10K matching rows — a sign that an index on the filter column would eliminate 990K unnecessary reads."
+    },
+    {
+      "id": "access-075",
+      "type": "multiple-choice",
+      "question": "What does EXPLAIN ANALYZE tell you that EXPLAIN alone doesn't?",
+      "options": ["The table structure", "Actual execution times and row counts — not just estimates, but what really happened when the query ran", "The index definitions", "The query syntax errors"],
+      "correct": 1,
+      "explanation": "EXPLAIN shows the planner's estimated plan. EXPLAIN ANALYZE actually runs the query and shows real execution times, actual row counts vs estimates, and which nodes were the bottlenecks. Essential for diagnosing slow queries."
+    },
+    {
+      "id": "access-076",
+      "type": "ordering",
+      "question": "Rank these EXPLAIN plan nodes from BEST to WORST performance for finding a single row:",
+      "items": ["Index Scan (directly to the row)", "Index Only Scan (covers all columns)", "Bitmap Index Scan + Bitmap Heap Scan", "Sequential Scan (full table scan)"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Index Only Scan: best (never touches table). Index Scan: fast (index → table lookup). Bitmap Scan: good for moderate selectivity (batch table access). Seq Scan: worst for single row (reads entire table)."
+    },
+    {
+      "id": "access-077",
+      "type": "multi-select",
+      "question": "When might a Sequential Scan be FASTER than an Index Scan?",
+      "options": ["When the query returns most of the table's rows (low selectivity)", "When the table is very small (fits in a few pages)", "When the query returns a single row by primary key", "When the table has no indexes (no choice)"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Sequential scans read pages in order (efficient I/O). If the query returns most rows, random index lookups are worse than sequential reads. Small tables fit in memory — scanning is fast. A single-row PK lookup is always better with an index."
+    },
+    {
+      "id": "access-078",
+      "type": "multiple-choice",
+      "question": "What is 'query plan caching' and why can it cause problems?",
+      "options": ["Caching query results", "The database reuses a previously generated execution plan for the same query — but parameter values may change the optimal plan, causing poor performance", "Storing queries in a file", "Caching the database schema"],
+      "correct": 1,
+      "explanation": "With plan caching (common in PostgreSQL prepared statements), a plan optimized for one parameter value may be reused for a very different value. Example: WHERE status = 'active' (90% of rows) vs 'suspended' (0.01%) — different optimal plans."
+    },
+    {
+      "id": "access-079",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A query runs fast in development (1ms) but slow in production (5 seconds) despite identical schemas and indexes. What's a likely cause?",
+          "options": ["Production server is slower", "Data volume and distribution differ — production has millions of rows with different cardinality, causing the optimizer to choose a different (worse) plan", "The query is different in production", "Network latency between app and database"],
+          "correct": 1,
+          "explanation": "The query optimizer bases decisions on table statistics (row counts, value distributions). Production data at scale has different statistics → different plan choices. A plan that's optimal for 1K rows may be terrible for 10M rows."
+        },
+        {
+          "question": "How do you diagnose this?",
+          "options": ["Restart the database", "Run EXPLAIN ANALYZE in production to see the actual plan, compare with development, and identify where the plan diverges", "Rewrite the query in a different style", "Add more RAM"],
+          "correct": 1,
+          "explanation": "EXPLAIN ANALYZE shows the actual plan and execution stats. Compare with development to find where plans diverge — maybe production uses a Seq Scan where dev uses an Index Scan due to different row counts."
+        }
+      ]
+    },
+    {
+      "id": "access-080",
+      "type": "multiple-choice",
+      "question": "What is 'table partitioning' and how does it relate to access patterns?",
+      "options": ["Splitting a table across multiple databases", "Dividing a large table into smaller physical segments based on a column (date, region, etc.) so queries that filter on that column only scan relevant partitions", "Partitioning the table's columns into separate tables", "Creating read replicas for each partition"],
+      "correct": 1,
+      "explanation": "Table partitioning splits a table by a key (typically date or region). Queries that filter on the partition key only scan matching partitions (partition pruning). A query for January data skips February-December partitions entirely."
+    },
+    {
+      "id": "access-081",
+      "type": "multi-select",
+      "question": "Which access patterns benefit most from time-based table partitioning?",
+      "options": ["Queries always filter by date range", "Queries need to scan all data regardless of date", "Old data needs to be archived/deleted efficiently (DROP partition)", "Most queries access recent data (last 7 days)"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Time partitioning shines when: queries filter by date (partition pruning). Archival = drop old partitions (instant vs DELETE of millions of rows). Recent data access = most queries hit only the latest partition. Queries that span all dates don't benefit."
+    },
+    {
+      "id": "access-082",
+      "type": "numeric-input",
+      "question": "A table has 365 daily partitions (one year). A query for data from January (31 days) uses partition pruning. What percentage of the data does the query need to scan?",
+      "answer": 8.5,
+      "unit": "%",
+      "tolerance": 0.1,
+      "explanation": "31/365 = 8.49%. The query scans only 31 partitions instead of 365. Partition pruning eliminated ~91.5% of the data from consideration."
+    },
+    {
+      "id": "access-083",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A logging system stores 500M rows per month. After 12 months, the table has 6B rows and queries are slow. What partitioning strategy helps?",
+          "options": ["Partition by log_level", "Partition by month — most queries filter by time range, and old partitions can be archived/dropped", "Partition by log_message content", "Don't partition — add more indexes"],
+          "correct": 1,
+          "explanation": "Monthly partitions: queries for recent logs scan only the relevant month's partition (500M rows) instead of 6B. Old months can be detached and archived to cheaper storage, or dropped entirely."
+        },
+        {
+          "question": "The retention policy says keep 3 months of data. How do you drop old data with partitioning?",
+          "options": ["DELETE FROM logs WHERE created_at < '2024-10-01' (slow, generates massive WAL)", "DROP the old monthly partition (instant, no row-by-row deletion)", "Truncate the entire table monthly", "Manual file deletion"],
+          "correct": 1,
+          "explanation": "ALTER TABLE logs DETACH PARTITION logs_2024_09; DROP TABLE logs_2024_09; Instant operation — drops the partition's files. No row-by-row deletion, no massive WAL generation, no table bloat. This is a major operational advantage of partitioning."
+        }
+      ]
+    },
+    {
+      "id": "access-084",
+      "type": "multiple-choice",
+      "question": "What is 'data locality' and why does it matter for access patterns?",
+      "options": ["Storing data in the correct country for legal compliance", "Physically co-locating data that's frequently accessed together on the same disk pages, reducing I/O", "Using local variables in application code", "Storing data locally instead of in the cloud"],
+      "correct": 1,
+      "explanation": "Data locality means related data is stored near each other on disk. When a query reads user 123's orders, if they're all on adjacent disk pages, one sequential read fetches them all. Scattered data requires many random I/O operations."
+    },
+    {
+      "id": "access-085",
+      "type": "ordering",
+      "question": "Rank these from BEST data locality to WORST for the access pattern 'get all orders for customer 123':",
+      "items": ["Orders clustered by customer_id (all customer 123's orders on adjacent pages)", "Orders stored in insertion order (customer 123's orders scattered throughout)", "Orders stored in a separate shard per customer (customer 123's data isolated)", "Orders in a document DB embedded in the customer document"],
+      "correctOrder": [3, 2, 0, 1],
+      "explanation": "Embedded document: maximum locality (all data in one document). Dedicated shard: strong locality. Clustered index: good locality (sorted on disk). Insertion order: worst — orders interleaved with other customers' data."
+    },
+    {
+      "id": "access-086",
+      "type": "multiple-choice",
+      "question": "What is a 'clustered index' and how does it affect access patterns?",
+      "options": ["An index shared across a cluster of servers", "The index that determines the physical sort order of rows on disk — the table's rows are stored in the index's order", "A group of indexes", "An index on a clustered column"],
+      "correct": 1,
+      "explanation": "A clustered index dictates the physical order of rows on disk. In PostgreSQL (via CLUSTER command) or SQL Server/MySQL InnoDB (primary key = clustered by default). Range queries on the clustered column are fast because data is sequential on disk."
+    },
+    {
+      "id": "access-087",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A MySQL/InnoDB table with primary key (id) stores Orders. The main access pattern is: 'Get all orders for customer 123 from the last 30 days.' Currently, the primary key auto-increment ID determines physical row order. Why is this suboptimal?",
+          "options": ["Auto-increment IDs are too large", "Customer 123's orders are scattered across the table because they're interleaved with other customers' orders in ID order", "InnoDB doesn't support the query", "The 30-day filter is the problem"],
+          "correct": 1,
+          "explanation": "InnoDB stores rows in primary key order. Auto-increment means rows are ordered by insertion time, not by customer. Customer 123's 50 orders might be spread across 50 different pages — 50 random I/O operations."
+        },
+        {
+          "question": "How could you improve data locality for this access pattern?",
+          "options": ["Use a composite primary key (customer_id, created_at) so each customer's orders are stored together on disk", "Add more memory so all data fits in the buffer pool", "Use a separate table per customer", "Switch to PostgreSQL"],
+          "correct": 0,
+          "explanation": "A composite PK (customer_id, created_at) physically groups each customer's orders together and sorts them by date. The access pattern (customer + date range) now reads sequential pages — dramatically better I/O."
+        }
+      ]
+    },
+    {
+      "id": "access-088",
+      "type": "multi-select",
+      "question": "Which access patterns benefit from BRIN (Block Range Index) in PostgreSQL?",
+      "options": ["Queries on naturally ordered data (e.g., timestamp on append-only tables)", "Random point lookups on unordered data", "Range queries on data that's physically sorted on disk", "Queries on small tables (< 1000 rows)"],
+      "correctIndices": [0, 2],
+      "explanation": "BRIN indexes store min/max values per block range. They're tiny and effective when data's physical order matches the query column (e.g., timestamps in an append-only log). Random/unordered data or small tables don't benefit."
+    },
+    {
+      "id": "access-089",
+      "type": "numeric-input",
+      "question": "A B-tree index on a 10M row table is 250MB. A BRIN index on the same column is 64KB. How many times smaller is the BRIN index?",
+      "answer": 4000,
+      "unit": "x",
+      "tolerance": 0.1,
+      "explanation": "250MB / 64KB = 256,000KB / 64KB ≈ 4,000x smaller. BRIN indexes are dramatically smaller because they only store summary statistics per block range, not individual row pointers."
+    },
+    {
+      "id": "access-090",
+      "type": "multiple-choice",
+      "question": "What is 'query fan-out' in a distributed system?",
+      "options": ["A query that creates new queries recursively", "A single user query that spawns multiple sub-queries across services/databases — each sub-query adds latency and failure risk", "A query optimizer technique", "Caching queries across servers"],
+      "correct": 1,
+      "explanation": "A product page might query: Product Service, Review Service, Recommendation Service, Inventory Service — 4 fan-out calls. Total latency = slowest call (if parallel). Any service failure can break the page. Access pattern design should minimize fan-out."
+    },
+    {
+      "id": "access-091",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A page requires data from 5 microservices. Each has 99.9% availability. What is the approximate composite availability of the page?",
+          "options": ["99.9%", "99.5% — 0.999^5 ≈ 0.995", "95%", "99.9% (same as each service)"],
+          "correct": 1,
+          "explanation": "Composite availability = 0.999^5 ≈ 0.995 = 99.5%. Each dependency multiplies the failure probability. 5 nines becomes 2.5 nines. Fan-out to more services = lower composite availability."
+        },
+        {
+          "question": "How do you mitigate availability loss from fan-out?",
+          "options": ["Reduce the number of services queried", "Use circuit breakers, timeouts, fallback/default values, and graceful degradation — so one service failure doesn't break the entire page", "Increase each service to 99.99% availability", "Make all calls synchronous"],
+          "correct": 1,
+          "explanation": "Resilience patterns: circuit breakers (stop calling a failing service), timeouts (don't wait forever), fallbacks (show cached/default data), graceful degradation (show the page without recommendations if that service is down)."
+        }
+      ]
+    },
+    {
+      "id": "access-092",
+      "type": "ordering",
+      "question": "Rank these strategies from MOST to LEAST effective for reducing query latency:",
+      "items": ["Serve from local cache (sub-millisecond)", "Read from database with proper index (1-10ms)", "Cross-service API call (10-100ms)", "Cross-region database query (100-300ms)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Each hop adds latency. Local cache: fastest (in-process memory). Indexed DB: single network hop. Cross-service: network + processing. Cross-region: speed-of-light latency across continents."
+    },
+    {
+      "id": "access-093",
+      "type": "multiple-choice",
+      "question": "What is 'workload isolation' in database architecture?",
+      "options": ["Running the database in a container", "Separating different types of workloads (OLTP transactions vs OLAP analytics) onto different database instances so they don't compete for resources", "Isolating user data from system data", "Network-level isolation"],
+      "correct": 1,
+      "explanation": "A heavy analytics query (full table scan, 10 minutes) competing with OLTP transactions (point lookups, milliseconds) degrades both. Workload isolation runs them on separate instances: primary for OLTP, replica/warehouse for OLAP."
+    },
+    {
+      "id": "access-094",
+      "type": "multi-select",
+      "question": "Which pairs of access patterns should typically be isolated onto separate database instances?",
+      "options": ["Real-time transactional queries + heavy batch reporting", "Simple CRUD operations + other simple CRUD operations", "User-facing reads + admin bulk data imports", "Interactive search queries + overnight ETL jobs"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Isolate workloads that would compete for resources: OLTP vs analytics, user-facing vs bulk imports, real-time vs batch ETL. Similar lightweight CRUD operations can share an instance."
+    },
+    {
+      "id": "access-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS application has these access patterns: (1) User CRUD operations (low latency required). (2) Nightly report generation (scans entire tables). (3) Real-time dashboard (aggregation queries). Where should each run?",
+          "options": ["All on the primary database", "CRUD on primary, reports on a read replica, dashboard on a materialized view/cache", "Each on a separate database server", "All on a data warehouse"],
+          "correct": 1,
+          "explanation": "CRUD: primary (needs latest data, writes). Reports: read replica (heavy scans, doesn't affect primary). Dashboard: materialized view or cache (precomputed aggregations, instant reads). Each access pattern gets the right resource."
+        },
+        {
+          "question": "The nightly report takes 3 hours and locks rows. What happens if it runs on the primary?",
+          "options": ["Nothing — modern databases handle this fine", "Long-running scans can bloat the transaction log, hold locks, and increase latency for OLTP queries competing for the same rows and I/O", "Reports run faster on the primary", "The database automatically queues it"],
+          "correct": 1,
+          "explanation": "A 3-hour scan on the primary: consumes I/O bandwidth, may hold row/page locks, bloats MVCC cleanup (PostgreSQL), and degrades transactional query latency. This is exactly why workload isolation exists."
+        }
+      ]
+    },
+    {
+      "id": "access-096",
+      "type": "numeric-input",
+      "question": "An index scan reads 500 rows from an index, then does 500 random heap lookups. Each random I/O takes 0.1ms. How much time is spent on heap lookups alone?",
+      "answer": 50,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "500 random lookups × 0.1ms = 50ms. This is why covering indexes (which avoid heap lookups entirely) are so effective — they eliminate this random I/O cost."
+    },
+    {
+      "id": "access-097",
+      "type": "multiple-choice",
+      "question": "You need to support a 'typeahead' search feature — showing results as the user types each character. What access pattern optimization is critical?",
+      "options": ["Full table scan with LIKE", "Prefix index + response under 50ms — use trie-based indexes or prefix matching with B-tree (LIKE 'jo%'), potentially backed by a search engine with autocomplete support", "Exact match index", "Pre-load all data to the client"],
+      "correct": 1,
+      "explanation": "Typeahead needs sub-50ms responses for every keystroke. Prefix matching (LIKE 'jo%') works with B-tree indexes. At scale, a dedicated search engine with autocomplete (edge n-grams in Elasticsearch) provides the best experience."
+    },
+    {
+      "id": "access-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API endpoint returns a list of items. Currently it returns ALL matching items (sometimes 50,000). What access pattern problem does this create?",
+          "options": ["The query is too complex", "Unbounded result sets cause memory pressure on the server, network saturation, and slow client rendering", "The items are too large", "The API rate limit is hit"],
+          "correct": 1,
+          "explanation": "Returning 50K items: the database fetches all 50K rows, the server serializes them, the network transmits megabytes, and the client tries to render them all. Every stage is strained. Always paginate."
+        },
+        {
+          "question": "What should the API enforce?",
+          "options": ["A maximum page size (e.g., limit=100) with pagination — clients must paginate to get more results", "No change — let clients request what they need", "Return only the first 10 results", "Compress the response"],
+          "correct": 0,
+          "explanation": "Enforce a maximum page size (e.g., 100). Return a cursor/pagination token for the next page. Clients that need all 50K items paginate through. This bounds resource usage per request and prevents accidental denial-of-service."
+        }
+      ]
+    },
+    {
+      "id": "access-099",
+      "type": "multi-select",
+      "question": "Which are signs that your schema needs access pattern optimization?",
+      "options": ["Common queries consistently take > 1 second", "EXPLAIN shows sequential scans on large tables for selective queries", "Database CPU/IO is consistently high during normal operations", "Rare admin queries take 30 seconds (acceptable for admin use)"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Consistent slow queries, unnecessary sequential scans, and high resource usage are signs of poor access pattern optimization. Rare admin queries being slow is often acceptable — optimize for the common paths first."
+    },
+    {
+      "id": "access-100",
+      "type": "ordering",
+      "question": "Rank these access pattern optimization techniques in the order you should try them (FIRST to LAST):",
+      "items": ["Analyze slow queries with EXPLAIN ANALYZE", "Add/modify indexes to serve the queries", "Introduce caching for hot data", "Redesign the schema or adopt a different database"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "First, understand the problem (EXPLAIN). Then try the cheapest fix (indexes). Then add caching if indexes aren't enough. Schema redesign or new databases are last resort — most expensive and highest risk."
+    }
+  ]
+}
