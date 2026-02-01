@@ -43,8 +43,8 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 
 **10 units planned:**
 
-1. Estimation ← current focus
-2. Data Modeling
+1. Estimation (complete — 1,007 problems, 8 chapters)
+2. Data Modeling (complete — 800 problems, 8 chapters)
 3. API Design
 4. Storage Selection
 5. Caching
@@ -64,6 +64,17 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 6. Growth Projections
 7. Reasonableness Checks
 8. Compound Scenarios
+
+**Unit 2: Data Modeling chapters:**
+
+1. Entity Identification
+2. Relationships
+3. Keys & Indexes
+4. Normalization
+5. Denormalization
+6. Access Patterns
+7. Schema Evolution
+8. Modeling Scenarios
 
 Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
 
@@ -164,6 +175,16 @@ Insights captured from development:
 **Display toggling:**
 - Prefer CSS classes (`.hidden-container`) over inline `style.display` manipulation
 - More consistent, easier to debug, and keeps styling in CSS where it belongs
+
+**Multi-select quality:**
+- All-correct multi-selects ("select all that apply" where all 4 are correct) are valid when testing "know the complete set" (e.g., "which are real PostgreSQL index types?") but should have at least one distractor when testing discriminating judgment
+- Single-correct multi-selects should be converted to multiple-choice — "select all that apply" with one answer is confusing UX
+- Automated check: flag any multi-select where correctIndices.length == options.length or correctIndices.length == 1
+
+**Uncertainty markers:**
+- "Actually" used as rhetorical "in fact" (highlighting counterintuitive points) is fine and pedagogically effective — don't flag these
+- "maybe", "probably" as hedging in explanations should be replaced with confident language
+- False positive rate is high (~80%) — manual review is needed after automated flagging
 
 **Accessibility basics:**
 - `aria-live="polite"` on dynamic content (feedback messages) for screen reader announcements
