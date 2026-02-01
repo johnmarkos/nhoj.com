@@ -27,6 +27,28 @@ Future features and improvements for System Design Practice.
 7. Schema Evolution (100 problems) ✓
 8. Modeling Scenarios (100 problems) ✓
 
+## OpenQuizzer Extraction
+
+Extract the quiz engine from System Design Practice into a reusable library called **OpenQuizzer**. Goal is clean separation, not a framework.
+
+**Phase 1: Audit index.html**
+- Add comments marking code as `// GENERIC` (reusable quiz logic) or `// DOMAIN` (system design specific)
+- Don't move anything yet — just identify the boundary
+
+**Phase 2: Extract generic logic into openquizzer.js**
+- State machine: idle → practicing → answered → complete
+- Handle all question types: MC, numeric, ranking, multi-select, two-stage
+- Score and track progress
+- Take content JSON as input
+- Emit events, not touch DOM
+
+**Phase 3: Refactor UI as a theme**
+- UI code listens to engine events
+- Keep current nhoj.com styling as default theme
+
+**Phase 4: Separate repo** (later)
+- Move OpenQuizzer to its own repo/package
+
 ## Future: Content Expansion
 
 **Units 3-10** (see CLAUDE.md for full list)
