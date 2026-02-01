@@ -27,6 +27,8 @@ Two files, no external frameworks:
 - **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently.
 - **`index.html`** — All HTML, CSS, and UI logic. Imports the engine, renders questions based on engine events, delegates user actions to engine methods.
 
+**OpenQuizzer relationship:** This project is the original OpenQuizzer instance. The engine (`openquizzer.js` and `openquizzer.test.js`) is the canonical source that gets published to the OpenQuizzer template repo. When the engine changes here, those changes must be synced to the OpenQuizzer repo. This copy is always the most up-to-date.
+
 Three views managed by CSS classes:
 
 - **Landing** (`#landing`) — Unit/chapter selection

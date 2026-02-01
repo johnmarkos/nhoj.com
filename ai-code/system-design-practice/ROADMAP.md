@@ -31,23 +31,52 @@ Future features and improvements for System Design Practice.
 
 Extract the quiz engine from System Design Practice into a reusable library called **OpenQuizzer**. Goal is clean separation, not a framework.
 
-**Phase 1: Audit index.html**
-- Add comments marking code as `// GENERIC` (reusable quiz logic) or `// DOMAIN` (system design specific)
-- Don't move anything yet — just identify the boundary
+**Phase 1: Audit index.html** ✓
+- Added `// GENERIC` / `// DOMAIN` / `// MIXED` comments to identify the boundary
 
-**Phase 2: Extract generic logic into openquizzer.js**
-- State machine: idle → practicing → answered → complete
-- Handle all question types: MC, numeric, ranking, multi-select, two-stage
-- Score and track progress
-- Take content JSON as input
-- Emit events, not touch DOM
+**Phase 2: Extract generic logic into openquizzer.js** ✓
+- Engine ES module with state machine, all 5 question types, event system
+- index.html imports engine, renders based on events
 
-**Phase 3: Refactor UI as a theme**
-- UI code listens to engine events
-- Keep current nhoj.com styling as default theme
+**Phase 3: Tests & review** ✓
+- 48 tests covering engine (state machine, grading, parsing, session flows)
+- Code review caught 2 bugs (allProblems by-reference, div-by-zero) and 4 dead code items
 
-**Phase 4: Separate repo** (later)
-- Move OpenQuizzer to its own repo/package
+**Phase 4: Template repo**
+
+Create a GitHub template repo that anyone can use to build their own quiz site. System Design Practice remains the canonical source — changes flow from here to the template repo.
+
+*What goes in the OpenQuizzer repo:*
+- `openquizzer.js` — engine (copied from this project)
+- `openquizzer.test.js` — tests (copied from this project)
+- `index.html` — generic UI with placeholder content (adapted from this project's index.html, with System Design branding/content removed)
+- `content/sample-chapter.json` — example chapter showing the JSON format for all 5 question types
+- `README.md` — what OpenQuizzer is, how to create your own instance, content format docs, question type reference
+
+*What the README covers:*
+- Quick start: "Use this template" → edit UNITS → add content JSON → enable GitHub Pages
+- Content JSON format for all 5 question types (with examples)
+- How the engine works (state machine, events, API)
+- Customization: styling, adding question types
+
+*How to create an instance (e.g., cooking, geography):*
+1. Click "Use this template" on GitHub → new repo
+2. Edit the `UNITS` array in `index.html` with your topics
+3. Add content JSON files to `content/`
+4. Enable GitHub Pages → live quiz site
+5. No build step, no dependencies, no npm
+
+*Sync model:*
+- System Design Practice (this project) is the canonical engine source
+- When engine changes here, copy `openquizzer.js` + `openquizzer.test.js` to the template repo
+- Instances are independent forks — they don't auto-update (acceptable for a single-file engine)
+
+*Steps to execute:*
+1. Create `openquizzer` repo on GitHub with template flag enabled
+2. Generalize index.html: strip System Design content, use generic placeholder UNITS
+3. Create sample-chapter.json with examples of all 5 question types
+4. Write README with quick start, content format, and API docs
+5. Push, verify "Use this template" works, test a fresh instance deploys to Pages
 
 ## Future: Content Expansion
 
