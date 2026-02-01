@@ -766,6 +766,10 @@
   </div>
 
   <script>
+    // =============================================
+    // DOMAIN — Content catalog (specific to System Design Practice)
+    // =============================================
+
     // Unit and chapter definitions - add new chapters here
     const UNITS = [
       {
@@ -798,6 +802,10 @@
       }
     ];
 
+    // =============================================
+    // GENERIC — Quiz engine constants
+    // =============================================
+
     // Question type weights for balanced distribution
     const TYPE_WEIGHTS = {
       'multiple-choice': 1,
@@ -807,8 +815,12 @@
       'two-stage': 2
     };
 
-    // Animation/transition timing constants (ms)
+    // DOMAIN — UI timing constant
     const TWO_STAGE_TRANSITION_DELAY = 800;
+
+    // =============================================
+    // GENERIC — Quiz engine state
+    // =============================================
 
     const state = {
       chapter: null,
@@ -818,14 +830,17 @@
       answers: [],
       answered: false,
       mode: 'chapter', // 'chapter' or 'unit'
-      // New state for complex question types
+      // State for complex question types
       multiSelectSelected: new Set(),
       orderingOrder: [],
       twoStageIndex: 0,
       twoStageAnswers: []
     };
 
-    // DOM elements
+    // =============================================
+    // DOMAIN — DOM element references
+    // =============================================
+
     const landing = document.getElementById('landing');
     const practice = document.getElementById('practice');
     const results = document.getElementById('results');
@@ -863,6 +878,10 @@
     const stageContext = document.getElementById('stage-context');
     const stageContextText = document.getElementById('stage-context-text');
 
+    // =============================================
+    // DOMAIN — UI helpers (error display, view transitions)
+    // =============================================
+
     function showError(message) {
       errorMsg.textContent = message;
       errorMsg.classList.add('visible');
@@ -872,7 +891,7 @@
       errorMsg.classList.remove('visible');
     }
 
-    // Render the unit list dynamically
+    // DOMAIN — Landing page / unit list rendering
     function renderUnitList() {
       const container = document.getElementById('unit-list');
       const ul = document.createElement('ul');
@@ -929,7 +948,7 @@
       container.appendChild(ul);
     }
 
-    // Load all chapters for a unit
+    // DOMAIN — Content loading (fetch + UI). State init inside is GENERIC.
     async function loadUnit(unitId, buttonEl) {
       if (buttonEl.disabled) return;
 
@@ -980,6 +999,7 @@
       }
     }
 
+    // DOMAIN — Content loading (fetch + UI). State init inside is GENERIC.
     async function loadChapter(chapterId, buttonEl) {
       if (buttonEl.disabled) return; // Prevent double-click
 
@@ -1013,6 +1033,10 @@
         buttonEl.classList.remove('loading');
       }
     }
+
+    // =============================================
+    // GENERIC — Shuffle and weighted distribution
+    // =============================================
 
     function shuffleArray(array) {
       for (let i = array.length - 1; i > 0; i--) {
@@ -1067,6 +1091,7 @@
       return result;
     }
 
+    // DOMAIN — View transition (landing → practice)
     function startPractice() {
       landing.classList.add('hidden');
       results.classList.remove('active');
@@ -1079,6 +1104,7 @@
       showQuestion();
     }
 
+    // DOMAIN — Hide all question type DOM containers
     function hideAllQuestionTypes() {
       optionsEl.classList.add('hidden-container');
       numericContainer.classList.add('hidden-container');
@@ -1089,6 +1115,7 @@
       correctAnswerDisplay.classList.add('hidden-container');
     }
 
+    // MIXED — State reset is GENERIC, DOM updates are DOMAIN
     function showQuestion() {
       const problem = state.problems[state.currentIndex];
       const type = problem.type || 'multiple-choice';
@@ -1129,6 +1156,10 @@
       // Scroll to top for new question
       window.scrollTo(0, 0);
     }
+
+    // =============================================
+    // DOMAIN — Question type renderers (all DOM manipulation)
+    // =============================================
 
     function showMultipleChoiceQuestion(problem) {
       questionText.textContent = problem.question;
@@ -1247,6 +1278,10 @@
       });
     }
 
+    // =============================================
+    // MIXED — Answer handlers (grading logic is GENERIC, DOM updates are DOMAIN)
+    // =============================================
+
     function selectAnswer(index, type) {
       const problem = state.problems[state.currentIndex];
 
@@ -1357,6 +1392,10 @@
       showFeedback(isCorrect, problem.explanation);
     }
 
+    // =============================================
+    // GENERIC — Numeric parsing, validation, formatting
+    // =============================================
+
     function parseNumericInput(input) {
       // Remove commas and spaces
       let cleaned = input.replace(/[,\s]/g, '').toLowerCase();
@@ -1409,6 +1448,7 @@
       return num.toString();
     }
 
+    // MIXED — Ordering grading is GENERIC, DOM updates are DOMAIN
     function submitOrderingAnswer() {
       if (state.answered) return;
       if (state.orderingOrder.length !== state.problems[state.currentIndex].items.length) return;
@@ -1446,6 +1486,7 @@
       showFeedback(isCorrect, problem.explanation);
     }
 
+    // MIXED — Multi-select grading is GENERIC, DOM updates are DOMAIN
     function submitMultiSelectAnswer() {
       if (state.answered) return;
 
@@ -1485,6 +1526,7 @@
       showFeedback(isCorrect, problem.explanation);
     }
 
+    // DOMAIN — Feedback display
     function showFeedback(isCorrect, explanation) {
       feedback.classList.add('visible');
       feedback.classList.add(isCorrect ? 'correct' : 'incorrect');
@@ -1496,6 +1538,7 @@
       nextBtn.focus();
     }
 
+    // MIXED — Ordering interaction. State tracking is GENERIC, DOM/auto-submit timing is DOMAIN.
     function handleOrderingClick(e) {
       if (state.answered) return;
 
@@ -1523,6 +1566,7 @@
       }
     }
 
+    // DOMAIN — Ordering display update
     function updateOrderingDisplay() {
       const items = orderingItems.querySelectorAll('.ordering-item');
       items.forEach(item => {
@@ -1540,12 +1584,18 @@
       });
     }
 
+    // MIXED — State reset is GENERIC, display update is DOMAIN
     function resetOrdering() {
       if (state.answered) return;
       state.orderingOrder = [];
       updateOrderingDisplay();
     }
 
+    // =============================================
+    // GENERIC — Navigation and scoring
+    // =============================================
+
+    // GENERIC — Advance to next question or end
     function nextQuestion() {
       if (state.currentIndex < state.problems.length - 1) {
         state.currentIndex++;
@@ -1555,6 +1605,7 @@
       }
     }
 
+    // MIXED — Score calculation is GENERIC, DOM updates are DOMAIN
     function showResults() {
       practice.classList.remove('active');
       results.classList.add('active');
@@ -1570,6 +1621,7 @@
       window.scrollTo(0, 0);
     }
 
+    // MIXED — State reset is GENERIC, view switching is DOMAIN
     function retry() {
       state.problems = weightedShuffle([...state.allProblems]);
       state.currentIndex = 0;
@@ -1586,6 +1638,7 @@
       showQuestion();
     }
 
+    // DOMAIN — Full reset and return to landing page
     function backToMenu() {
       practice.classList.remove('active');
       results.classList.remove('active');
@@ -1615,7 +1668,10 @@
       window.scrollTo(0, 0);
     }
 
-    // Event delegation for options (instead of creating listeners per question)
+    // =============================================
+    // DOMAIN — Event bindings and initialization
+    // =============================================
+
     optionsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('.option-btn');
       if (btn && !btn.disabled) {
