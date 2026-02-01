@@ -71,6 +71,7 @@ function parseNumericInput(input) {
 
 function checkNumericAnswer(userValue, correctValue, tolerance) {
   if (isNaN(userValue)) return false;
+  if (correctValue === 0) return userValue === 0;
 
   if (tolerance === 'order-of-magnitude') {
     const ratio = userValue / correctValue;
@@ -110,8 +111,6 @@ export class OpenQuizzer {
   // Problem data
   #problems = [];
   #allProblems = [];
-  #title = '';
-  #description = '';
   #currentIndex = 0;
   #answers = [];
 
@@ -121,9 +120,6 @@ export class OpenQuizzer {
   #orderingOrder = [];
   #twoStageIndex = 0;
   #twoStageAnswers = [];
-
-  // For ordering questions: the shuffled indices used for display
-  #orderingShuffledIndices = [];
 
   constructor({ typeWeights } = {}) {
     this.#typeWeights = { ...DEFAULT_TYPE_WEIGHTS, ...typeWeights };
@@ -179,11 +175,9 @@ export class OpenQuizzer {
 
   // --- Lifecycle ---
 
-  loadProblems(problems, { title = '', description = '' } = {}) {
-    this.#allProblems = problems;
+  loadProblems(problems) {
+    this.#allProblems = [...problems];
     this.#problems = weightedShuffle([...problems], this.#typeWeights);
-    this.#title = title;
-    this.#description = description;
     this.#currentIndex = 0;
     this.#answers = [];
     this.#resetQuestionState();
@@ -223,8 +217,6 @@ export class OpenQuizzer {
     this.#allProblems = [];
     this.#currentIndex = 0;
     this.#answers = [];
-    this.#title = '';
-    this.#description = '';
     this.#resetQuestionState();
     this.#setState('idle');
   }
@@ -367,7 +359,6 @@ export class OpenQuizzer {
     this.#orderingOrder = [];
     this.#twoStageIndex = 0;
     this.#twoStageAnswers = [];
-    this.#orderingShuffledIndices = [];
   }
 
   #showCurrentQuestion() {
@@ -377,9 +368,9 @@ export class OpenQuizzer {
 
     let shuffledItems = undefined;
     if (type === 'ordering') {
-      this.#orderingShuffledIndices = [...Array(problem.items.length).keys()];
-      shuffleArray(this.#orderingShuffledIndices);
-      shuffledItems = this.#orderingShuffledIndices.map(i => ({
+      const shuffledIndices = [...Array(problem.items.length).keys()];
+      shuffleArray(shuffledIndices);
+      shuffledItems = shuffledIndices.map(i => ({
         originalIndex: i,
         text: problem.items[i]
       }));

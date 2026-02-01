@@ -18,15 +18,22 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 
 **Local preview:** Content loads via `fetch()`, so you need a local server to test (e.g., `python3 -m http.server`). Opening `index.html` directly via `file://` won't load problems.
 
+**Tests:** `node --test openquizzer.test.js` — 48 tests covering the engine (state machine, all 5 question types, numeric parsing, session flows). Zero dependencies, uses Node's built-in test runner. Run tests after any engine changes.
+
 ## Architecture
 
-Single-page app, all HTML/CSS/JS in `index.html`. No external frameworks. Three views managed by CSS classes:
+Two files, no external frameworks:
+
+- **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently.
+- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine, renders questions based on engine events, delegates user actions to engine methods.
+
+Three views managed by CSS classes:
 
 - **Landing** (`#landing`) — Unit/chapter selection
 - **Practice** (`#practice`) — Question, options, feedback
 - **Results** (`#results`) — Score summary (shown after completing all problems)
 
-**Unit/chapter list is dynamic.** The `UNITS` array at the top of the `<script>` block defines all units and chapters. To add a new chapter:
+**Unit/chapter list is dynamic.** The `UNITS` array in the `<script>` block of `index.html` defines all units and chapters. To add a new chapter:
 1. Create the JSON file in `content/`
 2. Set `ready: true` for that chapter in the `UNITS` array
 
@@ -190,3 +197,18 @@ Insights captured from development:
 - `aria-live="polite"` on dynamic content (feedback messages) for screen reader announcements
 - `aria-pressed` on toggle buttons (multi-select options)
 - Keyboard accessibility for custom interactions (flagged ordering for v2)
+
+**Engine extraction (Phase 2):**
+- When splitting MIXED functions (part logic, part DOM), the engine emits events with all data the UI needs — the UI should never need to reach back into the engine for display info
+- Store defensive copies of caller-provided arrays (`[...problems]`) — the caller may mutate the original after passing it in
+- Watch for dead fields after extraction: if a field is set but never read (no getter, no internal use), delete it. Common during refactors when responsibilities shift between files
+- `loadProblems()` shouldn't accept parameters the engine doesn't use — keep the API honest about what the engine cares about vs. what's a UI concern
+- Guard against division by zero in numeric grading when `correctValue === 0` — easy to miss since no current content has answer=0, but a future unit easily could
+- When the UI checks state via DOM classes (e.g., `item.classList.contains('placed')`), prefer that over querying and looping through sibling elements
+
+**Testing:**
+- Node's built-in test runner (`node:test`) is sufficient for a zero-dependency project — no need for Jest/Vitest
+- Node 24+ detects ES modules natively; Node 20 needs `--experimental-detect-module`
+- Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise and make the test data structure obvious
+- The `collectEvents` pattern (register listener, return array, assert on array after actions) works well for event-driven APIs
+- Test through shuffling by reading `quiz.problem` to get the current problem and using its `.correct` field — don't assume problem order

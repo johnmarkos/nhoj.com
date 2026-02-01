@@ -287,6 +287,24 @@ describe('numeric input', () => {
     quiz.submitNumeric('abc');
     assert.equal(events[0].correct, false);
   });
+
+  it('correctValue of 0 does not divide by zero', () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([numericProblem('n1', { answer: 0, tolerance: 0.1 })]);
+    quiz.start();
+    const events = collectEvents(quiz, 'numericResult');
+    quiz.submitNumeric('0');
+    assert.equal(events[0].correct, true);
+  });
+
+  it('correctValue of 0 rejects nonzero', () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([numericProblem('n1', { answer: 0, tolerance: 0.1 })]);
+    quiz.start();
+    const events = collectEvents(quiz, 'numericResult');
+    quiz.submitNumeric('5');
+    assert.equal(events[0].correct, false);
+  });
 });
 
 // =============================================
@@ -643,5 +661,20 @@ describe('getters', () => {
     const a2 = quiz.answers;
     assert.notEqual(a1, a2); // different array references
     assert.deepEqual(a1, a2); // same content
+  });
+
+  it('loadProblems copies the array — caller mutation does not affect retry', () => {
+    const quiz = new OpenQuizzer();
+    const problems = [mcProblem('m1', 0), mcProblem('m2', 1)];
+    quiz.loadProblems(problems);
+    problems.length = 0; // caller mutates
+    quiz.start();
+    assert.equal(quiz.progress.total, 2); // engine still has 2
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next(); // complete
+    quiz.retry();
+    assert.equal(quiz.progress.total, 2); // retry still has 2
   });
 });
