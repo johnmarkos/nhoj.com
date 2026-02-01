@@ -42,7 +42,7 @@ Extract the quiz engine from System Design Practice into a reusable library call
 - 48 tests covering engine (state machine, grading, parsing, session flows)
 - Code review caught 2 bugs (allProblems by-reference, div-by-zero) and 4 dead code items
 
-**Phase 4: Template repo**
+**Phase 4: Template repo** ✓
 
 Create a GitHub template repo that anyone can use to build their own quiz site. System Design Practice remains the canonical source — changes flow from here to the template repo.
 
