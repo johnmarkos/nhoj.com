@@ -765,12 +765,15 @@
 
   </div>
 
-  <script>
+  <script type="module">
+    import { OpenQuizzer } from './openquizzer.js';
+
+    const quiz = new OpenQuizzer();
+
     // =============================================
-    // DOMAIN — Content catalog (specific to System Design Practice)
+    // Content catalog
     // =============================================
 
-    // Unit and chapter definitions - add new chapters here
     const UNITS = [
       {
         id: 1,
@@ -802,43 +805,10 @@
       }
     ];
 
-    // =============================================
-    // GENERIC — Quiz engine constants
-    // =============================================
-
-    // Question type weights for balanced distribution
-    const TYPE_WEIGHTS = {
-      'multiple-choice': 1,
-      'numeric-input': 1.5,
-      'ordering': 2,
-      'multi-select': 1.5,
-      'two-stage': 2
-    };
-
-    // DOMAIN — UI timing constant
     const TWO_STAGE_TRANSITION_DELAY = 800;
 
     // =============================================
-    // GENERIC — Quiz engine state
-    // =============================================
-
-    const state = {
-      chapter: null,
-      problems: [],
-      allProblems: [], // Unshuffled copy for retry
-      currentIndex: 0,
-      answers: [],
-      answered: false,
-      mode: 'chapter', // 'chapter' or 'unit'
-      // State for complex question types
-      multiSelectSelected: new Set(),
-      orderingOrder: [],
-      twoStageIndex: 0,
-      twoStageAnswers: []
-    };
-
-    // =============================================
-    // DOMAIN — DOM element references
+    // DOM element references
     // =============================================
 
     const landing = document.getElementById('landing');
@@ -862,7 +832,6 @@
     const quitBtn = document.getElementById('quit-btn');
     const errorMsg = document.getElementById('error-msg');
     const progressEl = document.getElementById('progress');
-    // New question type elements
     const numericContainer = document.getElementById('numeric-container');
     const numericInput = document.getElementById('numeric-input');
     const numericUnit = document.getElementById('numeric-unit');
@@ -878,8 +847,11 @@
     const stageContext = document.getElementById('stage-context');
     const stageContextText = document.getElementById('stage-context-text');
 
+    // Track mode for UI purposes
+    let currentMode = 'chapter';
+
     // =============================================
-    // DOMAIN — UI helpers (error display, view transitions)
+    // UI helpers
     // =============================================
 
     function showError(message) {
@@ -891,7 +863,20 @@
       errorMsg.classList.remove('visible');
     }
 
-    // DOMAIN — Landing page / unit list rendering
+    function hideAllQuestionTypes() {
+      optionsEl.classList.add('hidden-container');
+      numericContainer.classList.add('hidden-container');
+      orderingContainer.classList.add('hidden-container');
+      multiSubmitContainer.classList.add('hidden-container');
+      stageIndicator.classList.add('hidden-container');
+      stageContext.classList.add('hidden-container');
+      correctAnswerDisplay.classList.add('hidden-container');
+    }
+
+    // =============================================
+    // Landing page rendering
+    // =============================================
+
     function renderUnitList() {
       const container = document.getElementById('unit-list');
       const ul = document.createElement('ul');
@@ -909,7 +894,6 @@
         const chapterUl = document.createElement('ul');
         chapterUl.className = 'chapter-list';
 
-        // Add "Practice All" button if unit has 2+ ready chapters
         const readyChapters = unit.chapters.filter(c => c.ready);
         if (readyChapters.length > 1) {
           const allLi = document.createElement('li');
@@ -922,7 +906,6 @@
           chapterUl.appendChild(allLi);
         }
 
-        // Add individual chapter buttons
         unit.chapters.forEach(chapter => {
           const chapterLi = document.createElement('li');
           const btn = document.createElement('button');
@@ -948,7 +931,10 @@
       container.appendChild(ul);
     }
 
-    // DOMAIN — Content loading (fetch + UI). State init inside is GENERIC.
+    // =============================================
+    // Content loading
+    // =============================================
+
     async function loadUnit(unitId, buttonEl) {
       if (buttonEl.disabled) return;
 
@@ -963,7 +949,6 @@
       const readyChapters = unit.chapters.filter(c => c.ready);
 
       try {
-        // Load all chapter JSONs in parallel
         const chapterPromises = readyChapters.map(c =>
           fetch(`content/unit-${unitId}-chapter-${c.num}.json`).then(r => {
             if (!r.ok) throw new Error(`Failed to load chapter ${c.num}`);
@@ -972,23 +957,14 @@
         );
 
         const chapters = await Promise.all(chapterPromises);
-
-        // Combine all problems
         const allProblems = chapters.flatMap(ch => ch.problems);
 
-        state.chapter = {
-          unitTitle: unit.title,
-          chapterTitle: `All ${unit.title}`,
-          chapterDescription: `${allProblems.length} problems from ${readyChapters.length} chapters`
-        };
-        state.allProblems = allProblems;
-        state.problems = weightedShuffle([...allProblems]);
-        state.currentIndex = 0;
-        state.answers = [];
-        state.answered = false;
-        state.mode = 'unit';
+        const chapterTitle = `All ${unit.title}`;
+        const chapterDescription = `${allProblems.length} problems from ${readyChapters.length} chapters`;
 
-        startPractice();
+        quiz.loadProblems(allProblems, { title: chapterTitle, description: chapterDescription });
+        currentMode = 'unit';
+        startPractice(chapterTitle, chapterDescription);
       } catch (err) {
         console.error('Failed to load unit:', err);
         showError('Failed to load unit. Please try again.');
@@ -999,14 +975,13 @@
       }
     }
 
-    // DOMAIN — Content loading (fetch + UI). State init inside is GENERIC.
     async function loadChapter(chapterId, buttonEl) {
-      if (buttonEl.disabled) return; // Prevent double-click
+      if (buttonEl.disabled) return;
 
       hideError();
       const originalText = buttonEl.textContent;
       buttonEl.dataset.originalText = originalText;
-      buttonEl.disabled = true; // Immediately disable to prevent race condition
+      buttonEl.disabled = true;
       buttonEl.classList.add('loading');
       buttonEl.textContent = 'Loading...';
 
@@ -1016,14 +991,10 @@
           throw new Error(`Failed to load (${response.status})`);
         }
         const data = await response.json();
-        state.chapter = data;
-        state.allProblems = data.problems;
-        state.problems = weightedShuffle([...data.problems]);
-        state.currentIndex = 0;
-        state.answers = [];
-        state.answered = false;
-        state.mode = 'chapter';
-        startPractice();
+
+        quiz.loadProblems(data.problems, { title: data.chapterTitle, description: data.chapterDescription });
+        currentMode = 'chapter';
+        startPractice(data.chapterTitle, data.chapterDescription);
       } catch (err) {
         console.error('Failed to load chapter:', err);
         showError('Failed to load chapter. Please try again.');
@@ -1035,133 +1006,41 @@
     }
 
     // =============================================
-    // GENERIC — Shuffle and weighted distribution
+    // View transitions
     // =============================================
 
-    function shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
-    }
-
-    // Weighted shuffle to balance question type distribution
-    function weightedShuffle(problems) {
-      // Group by type
-      const byType = {};
-      problems.forEach(p => {
-        const type = p.type || 'multiple-choice';
-        if (!byType[type]) byType[type] = [];
-        byType[type].push(p);
-      });
-
-      // Shuffle within each type
-      Object.keys(byType).forEach(type => {
-        shuffleArray(byType[type]);
-      });
-
-      // Interleave types based on weights
-      const result = [];
-      const typeQueues = Object.entries(byType).map(([type, items]) => ({
-        type,
-        items: [...items],
-        weight: TYPE_WEIGHTS[type] || 1
-      }));
-
-      while (typeQueues.some(q => q.items.length > 0)) {
-        // Calculate total remaining weighted items
-        const totalWeight = typeQueues.reduce((sum, q) =>
-          sum + (q.items.length > 0 ? q.weight : 0), 0);
-
-        if (totalWeight === 0) break;
-
-        // Random selection weighted by type
-        let rand = Math.random() * totalWeight;
-        for (const q of typeQueues) {
-          if (q.items.length === 0) continue;
-          rand -= q.weight;
-          if (rand <= 0) {
-            result.push(q.items.shift());
-            break;
-          }
-        }
-      }
-
-      return result;
-    }
-
-    // DOMAIN — View transition (landing → practice)
-    function startPractice() {
+    function startPractice(title, description) {
       landing.classList.add('hidden');
       results.classList.remove('active');
       practice.classList.add('active');
 
-      practiceTitle.textContent = state.chapter.chapterTitle;
-      chapterDesc.textContent = state.chapter.chapterDescription;
-      totalEl.textContent = state.problems.length;
+      practiceTitle.textContent = title;
+      chapterDesc.textContent = description;
 
-      showQuestion();
+      quiz.start();
     }
 
-    // DOMAIN — Hide all question type DOM containers
-    function hideAllQuestionTypes() {
-      optionsEl.classList.add('hidden-container');
-      numericContainer.classList.add('hidden-container');
-      orderingContainer.classList.add('hidden-container');
-      multiSubmitContainer.classList.add('hidden-container');
-      stageIndicator.classList.add('hidden-container');
-      stageContext.classList.add('hidden-container');
-      correctAnswerDisplay.classList.add('hidden-container');
-    }
+    function backToMenu() {
+      practice.classList.remove('active');
+      results.classList.remove('active');
+      landing.classList.remove('hidden');
 
-    // MIXED — State reset is GENERIC, DOM updates are DOMAIN
-    function showQuestion() {
-      const problem = state.problems[state.currentIndex];
-      const type = problem.type || 'multiple-choice';
-      state.answered = false;
+      quiz.reset();
 
-      // Reset state for complex types
-      state.multiSelectSelected = new Set();
-      state.orderingOrder = [];
-      state.twoStageIndex = 0;
-      state.twoStageAnswers = [];
+      document.querySelectorAll('.chapter-btn[data-original-text]').forEach(btn => {
+        btn.textContent = btn.dataset.originalText;
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      });
 
-      const questionNum = state.currentIndex + 1;
-      currentEl.textContent = questionNum;
-      progressEl.setAttribute('aria-label', `Question ${questionNum} of ${state.problems.length}`);
-
-      // Hide all type-specific containers
-      hideAllQuestionTypes();
-      optionsEl.innerHTML = '';
-
-      // Hide feedback and next button
-      feedback.classList.remove('visible', 'correct', 'incorrect');
-      nextBtn.classList.add('hidden');
-
-      // Handle by type
-      if (type === 'two-stage') {
-        showTwoStageQuestion(problem, 0);
-      } else if (type === 'numeric-input') {
-        showNumericQuestion(problem);
-      } else if (type === 'ordering') {
-        showOrderingQuestion(problem);
-      } else if (type === 'multi-select') {
-        showMultiSelectQuestion(problem);
-      } else {
-        // Default: multiple-choice
-        showMultipleChoiceQuestion(problem);
-      }
-
-      // Scroll to top for new question
       window.scrollTo(0, 0);
     }
 
     // =============================================
-    // DOMAIN — Question type renderers (all DOM manipulation)
+    // Question type renderers
     // =============================================
 
-    function showMultipleChoiceQuestion(problem) {
+    function renderMultipleChoiceQuestion(problem) {
       questionText.textContent = problem.question;
       optionsEl.classList.remove('hidden-container');
       optionsEl.innerHTML = '';
@@ -1178,7 +1057,7 @@
       });
     }
 
-    function showNumericQuestion(problem) {
+    function renderNumericQuestion(problem) {
       questionText.textContent = problem.question;
       numericContainer.classList.remove('hidden-container');
       numericInput.value = '';
@@ -1190,18 +1069,13 @@
       numericInput.focus();
     }
 
-    function showOrderingQuestion(problem) {
+    function renderOrderingQuestion(problem, shuffledItems) {
       questionText.textContent = problem.question;
       orderingContainer.classList.remove('hidden-container');
       orderingReset.disabled = false;
       orderingItems.innerHTML = '';
-      state.orderingOrder = [];
 
-      // Shuffle items for display
-      const shuffledIndices = [...Array(problem.items.length).keys()];
-      shuffleArray(shuffledIndices);
-
-      shuffledIndices.forEach(originalIndex => {
+      shuffledItems.forEach(({ originalIndex, text }) => {
         const div = document.createElement('div');
         div.className = 'ordering-item';
         div.dataset.originalIndex = originalIndex;
@@ -1210,24 +1084,23 @@
         rank.className = 'ordering-rank';
         rank.textContent = '?';
 
-        const text = document.createElement('span');
-        text.className = 'ordering-text';
-        text.textContent = problem.items[originalIndex];
+        const textSpan = document.createElement('span');
+        textSpan.className = 'ordering-text';
+        textSpan.textContent = text;
 
         div.appendChild(rank);
-        div.appendChild(text);
+        div.appendChild(textSpan);
         orderingItems.appendChild(div);
       });
     }
 
-    function showMultiSelectQuestion(problem) {
+    function renderMultiSelectQuestion(problem) {
       questionText.textContent = problem.question;
       optionsEl.classList.remove('hidden-container');
       multiSubmitContainer.classList.remove('hidden-container');
       multiSubmit.disabled = false;
       optionsEl.innerHTML = '';
 
-      // Add hint
       const hint = document.createElement('li');
       hint.innerHTML = '<div class="multi-select-hint">Select all that apply</div>';
       optionsEl.appendChild(hint);
@@ -1245,18 +1118,15 @@
       });
     }
 
-    function showTwoStageQuestion(problem, stageIndex) {
+    function renderTwoStageQuestion(problem, stageIndex, previousAnswer) {
       const stage = problem.stages[stageIndex];
-      state.twoStageIndex = stageIndex;
 
       stageIndicator.classList.remove('hidden-container');
       stageIndicator.textContent = `Part ${stageIndex + 1} of ${problem.stages.length}`;
 
-      if (stageIndex > 0 && state.twoStageAnswers.length > 0) {
+      if (stageIndex > 0 && previousAnswer != null) {
         stageContext.classList.remove('hidden-container');
-        const prevStage = problem.stages[stageIndex - 1];
-        const prevAnswer = state.twoStageAnswers[stageIndex - 1];
-        stageContextText.textContent = prevStage.options[prevAnswer.selected];
+        stageContextText.textContent = previousAnswer;
       } else {
         stageContext.classList.add('hidden-container');
       }
@@ -1279,299 +1149,26 @@
     }
 
     // =============================================
-    // MIXED — Answer handlers (grading logic is GENERIC, DOM updates are DOMAIN)
+    // Feedback display
     // =============================================
 
-    function selectAnswer(index, type) {
-      const problem = state.problems[state.currentIndex];
-
-      if (type === 'multi-select') {
-        // Toggle selection
-        if (state.multiSelectSelected.has(index)) {
-          state.multiSelectSelected.delete(index);
-        } else {
-          state.multiSelectSelected.add(index);
-        }
-        // Update visual state and accessibility
-        const btn = optionsEl.querySelector(`[data-index="${index}"]`);
-        const isSelected = state.multiSelectSelected.has(index);
-        btn.classList.toggle('selected', isSelected);
-        btn.setAttribute('aria-pressed', isSelected.toString());
-        return; // Don't grade yet
-      }
-
-      if (type === 'two-stage') {
-        const stageIndex = state.twoStageIndex;
-        const stage = problem.stages[stageIndex];
-        const isCorrect = index === stage.correct;
-
-        state.twoStageAnswers.push({ selected: index, correct: isCorrect });
-
-        // Update button states for this stage
-        const buttons = optionsEl.querySelectorAll('.option-btn');
-        buttons.forEach((btn, i) => {
-          btn.disabled = true;
-          if (i === stage.correct) {
-            btn.classList.add('correct');
-          } else if (i === index && !isCorrect) {
-            btn.classList.add('incorrect');
-          }
-        });
-
-        // Show stage feedback briefly, then continue
-        if (stageIndex < problem.stages.length - 1) {
-          // More stages to go
-          setTimeout(() => {
-            showTwoStageQuestion(problem, stageIndex + 1);
-          }, TWO_STAGE_TRANSITION_DELAY);
-        } else {
-          // All stages complete - show final feedback
-          state.answered = true;
-          const allCorrect = state.twoStageAnswers.every(a => a.correct);
-          state.answers.push({
-            problemId: problem.id,
-            stageAnswers: state.twoStageAnswers,
-            correct: allCorrect
-          });
-          showFeedback(allCorrect, problem.stages[stageIndex].explanation);
-        }
-        return;
-      }
-
-      // Default multiple-choice behavior
-      if (state.answered) return;
-      state.answered = true;
-
-      const isCorrect = index === problem.correct;
-      state.answers.push({ problemId: problem.id, selected: index, correct: isCorrect });
-
-      // Update button states
-      const buttons = optionsEl.querySelectorAll('.option-btn');
-      buttons.forEach((btn, i) => {
-        btn.disabled = true;
-        if (i === problem.correct) {
-          btn.classList.add('correct');
-        } else if (i === index && !isCorrect) {
-          btn.classList.add('incorrect');
-        }
-      });
-
-      showFeedback(isCorrect, problem.explanation);
-    }
-
-    function submitNumericAnswer() {
-      if (state.answered) return;
-
-      const problem = state.problems[state.currentIndex];
-      const userInput = numericInput.value.trim();
-
-      if (!userInput) return;
-
-      state.answered = true;
-      numericInput.disabled = true;
-      numericSubmit.disabled = true;
-
-      // Parse user input (handle commas, K/M/B suffixes)
-      const userValue = parseNumericInput(userInput);
-      const isCorrect = checkNumericAnswer(userValue, problem.answer, problem.tolerance);
-
-      state.answers.push({
-        problemId: problem.id,
-        userValue,
-        correctValue: problem.answer,
-        correct: isCorrect
-      });
-
-      numericInput.classList.add(isCorrect ? 'correct' : 'incorrect');
-
-      if (!isCorrect) {
-        correctAnswerDisplay.classList.remove('hidden-container');
-        correctAnswerValue.textContent = formatNumber(problem.answer) + (problem.unit ? ' ' + problem.unit : '');
-      }
-
-      showFeedback(isCorrect, problem.explanation);
-    }
-
-    // =============================================
-    // GENERIC — Numeric parsing, validation, formatting
-    // =============================================
-
-    function parseNumericInput(input) {
-      // Remove commas and spaces
-      let cleaned = input.replace(/[,\s]/g, '').toLowerCase();
-
-      // Handle K/M/B/T suffixes
-      const suffixes = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 };
-      for (const [suffix, multiplier] of Object.entries(suffixes)) {
-        if (cleaned.endsWith(suffix)) {
-          return parseFloat(cleaned.slice(0, -1)) * multiplier;
-        }
-      }
-
-      return parseFloat(cleaned);
-    }
-
-    function checkNumericAnswer(userValue, correctValue, tolerance) {
-      if (isNaN(userValue)) return false;
-
-      if (tolerance === 'order-of-magnitude') {
-        // Within one order of magnitude (10x either direction)
-        const ratio = userValue / correctValue;
-        return ratio >= 0.1 && ratio <= 10;
-      } else if (tolerance === 'exact') {
-        return userValue === correctValue;
-      } else if (typeof tolerance === 'number') {
-        // Percentage tolerance
-        const diff = Math.abs(userValue - correctValue) / correctValue;
-        return diff <= tolerance;
-      } else {
-        // Default: 50% tolerance
-        const diff = Math.abs(userValue - correctValue) / correctValue;
-        return diff <= 0.5;
-      }
-    }
-
-    function formatNumber(num) {
-      // Handle negative numbers
-      if (num < 0) return '-' + formatNumber(-num);
-
-      // Format with suffix, removing trailing zeros
-      const format = (val, suffix) => {
-        const fixed = (val).toFixed(1);
-        return (fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed) + suffix;
-      };
-
-      if (num >= 1e12) return format(num / 1e12, 'T');
-      if (num >= 1e9) return format(num / 1e9, 'B');
-      if (num >= 1e6) return format(num / 1e6, 'M');
-      if (num >= 1e3) return format(num / 1e3, 'K');
-      return num.toString();
-    }
-
-    // MIXED — Ordering grading is GENERIC, DOM updates are DOMAIN
-    function submitOrderingAnswer() {
-      if (state.answered) return;
-      if (state.orderingOrder.length !== state.problems[state.currentIndex].items.length) return;
-
-      state.answered = true;
-      const problem = state.problems[state.currentIndex];
-
-      // Check if order is correct
-      const isCorrect = state.orderingOrder.every((originalIndex, position) =>
-        problem.correctOrder[position] === originalIndex
-      );
-
-      state.answers.push({
-        problemId: problem.id,
-        userOrder: state.orderingOrder,
-        correct: isCorrect
-      });
-
-      // Show correct/incorrect positions
-      const items = orderingItems.querySelectorAll('.ordering-item');
-      items.forEach(item => {
-        item.classList.add('disabled');
-        const originalIndex = parseInt(item.dataset.originalIndex);
-        const userPosition = state.orderingOrder.indexOf(originalIndex);
-        const correctPosition = problem.correctOrder.indexOf(originalIndex);
-
-        if (userPosition === correctPosition) {
-          item.classList.add('correct-position');
-        } else {
-          item.classList.add('incorrect-position');
-        }
-      });
-
-      orderingReset.disabled = true;
-      showFeedback(isCorrect, problem.explanation);
-    }
-
-    // MIXED — Multi-select grading is GENERIC, DOM updates are DOMAIN
-    function submitMultiSelectAnswer() {
-      if (state.answered) return;
-
-      state.answered = true;
-      const problem = state.problems[state.currentIndex];
-      const selected = Array.from(state.multiSelectSelected).sort();
-      const correct = [...problem.correctIndices].sort();
-
-      const isCorrect = selected.length === correct.length &&
-        selected.every((v, i) => v === correct[i]);
-
-      state.answers.push({
-        problemId: problem.id,
-        selected,
-        correctIndices: correct,
-        correct: isCorrect
-      });
-
-      // Update visual states
-      const buttons = optionsEl.querySelectorAll('.option-btn.multi-select');
-      buttons.forEach((btn, i) => {
-        btn.disabled = true;
-        const wasSelected = state.multiSelectSelected.has(i);
-        const shouldBeSelected = problem.correctIndices.includes(i);
-
-        if (wasSelected && shouldBeSelected) {
-          btn.classList.add('correct-selected');
-        } else if (wasSelected && !shouldBeSelected) {
-          btn.classList.add('incorrect-selected');
-        } else if (!wasSelected && shouldBeSelected) {
-          btn.classList.add('correct-missed');
-        }
-      });
-
-      multiSubmit.disabled = true;
-      multiSubmitContainer.classList.add('hidden-container');
-      showFeedback(isCorrect, problem.explanation);
-    }
-
-    // DOMAIN — Feedback display
     function showFeedback(isCorrect, explanation) {
       feedback.classList.add('visible');
       feedback.classList.add(isCorrect ? 'correct' : 'incorrect');
       feedbackTitle.textContent = isCorrect ? 'Correct!' : 'Incorrect';
       feedbackExplanation.textContent = explanation;
 
+      const { current, total } = quiz.progress;
       nextBtn.classList.remove('hidden');
-      nextBtn.textContent = state.currentIndex < state.problems.length - 1 ? 'Next' : 'See Results';
+      nextBtn.textContent = current < total ? 'Next' : 'See Results';
       nextBtn.focus();
     }
 
-    // MIXED — Ordering interaction. State tracking is GENERIC, DOM/auto-submit timing is DOMAIN.
-    function handleOrderingClick(e) {
-      if (state.answered) return;
-
-      const item = e.target.closest('.ordering-item');
-      if (!item) return;
-
-      const originalIndex = parseInt(item.dataset.originalIndex);
-      const problem = state.problems[state.currentIndex];
-
-      // If already placed, remove from order
-      const existingPos = state.orderingOrder.indexOf(originalIndex);
-      if (existingPos !== -1) {
-        state.orderingOrder.splice(existingPos, 1);
-        updateOrderingDisplay();
-        return;
-      }
-
-      // Add to order
-      state.orderingOrder.push(originalIndex);
-      updateOrderingDisplay();
-
-      // Auto-submit when all items placed
-      if (state.orderingOrder.length === problem.items.length) {
-        setTimeout(submitOrderingAnswer, 300);
-      }
-    }
-
-    // DOMAIN — Ordering display update
-    function updateOrderingDisplay() {
+    function updateOrderingDisplay(order) {
       const items = orderingItems.querySelectorAll('.ordering-item');
       items.forEach(item => {
         const originalIndex = parseInt(item.dataset.originalIndex);
-        const position = state.orderingOrder.indexOf(originalIndex);
+        const position = order.indexOf(originalIndex);
         const rank = item.querySelector('.ordering-rank');
 
         if (position !== -1) {
@@ -1584,124 +1181,224 @@
       });
     }
 
-    // MIXED — State reset is GENERIC, display update is DOMAIN
-    function resetOrdering() {
-      if (state.answered) return;
-      state.orderingOrder = [];
-      updateOrderingDisplay();
-    }
-
     // =============================================
-    // GENERIC — Navigation and scoring
+    // Engine event listeners
     // =============================================
 
-    // GENERIC — Advance to next question or end
-    function nextQuestion() {
-      if (state.currentIndex < state.problems.length - 1) {
-        state.currentIndex++;
-        showQuestion();
+    quiz.on('questionShow', ({ problem, index, total, type, shuffledItems }) => {
+      hideAllQuestionTypes();
+      optionsEl.innerHTML = '';
+
+      feedback.classList.remove('visible', 'correct', 'incorrect');
+      nextBtn.classList.add('hidden');
+
+      currentEl.textContent = index + 1;
+      totalEl.textContent = total;
+      progressEl.setAttribute('aria-label', `Question ${index + 1} of ${total}`);
+
+      if (type === 'two-stage') {
+        renderTwoStageQuestion(problem, 0, null);
+      } else if (type === 'numeric-input') {
+        renderNumericQuestion(problem);
+      } else if (type === 'ordering') {
+        renderOrderingQuestion(problem, shuffledItems);
+      } else if (type === 'multi-select') {
+        renderMultiSelectQuestion(problem);
       } else {
-        showResults();
+        renderMultipleChoiceQuestion(problem);
       }
-    }
 
-    // MIXED — Score calculation is GENERIC, DOM updates are DOMAIN
-    function showResults() {
+      window.scrollTo(0, 0);
+    });
+
+    quiz.on('optionSelected', ({ index, correct, correctIndex, explanation, isFinalStage, allCorrect }) => {
+      const buttons = optionsEl.querySelectorAll('.option-btn');
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === correctIndex) {
+          btn.classList.add('correct');
+        } else if (i === index && !correct) {
+          btn.classList.add('incorrect');
+        }
+      });
+
+      if (isFinalStage) {
+        showFeedback(allCorrect, explanation);
+      } else {
+        showFeedback(correct, explanation);
+      }
+    });
+
+    quiz.on('twoStageAdvance', ({ stageResult, nextStage }) => {
+      // Show result on current stage buttons
+      const buttons = optionsEl.querySelectorAll('.option-btn');
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === stageResult.correctIndex) {
+          btn.classList.add('correct');
+        } else if (i === stageResult.index && !stageResult.correct) {
+          btn.classList.add('incorrect');
+        }
+      });
+
+      // Transition to next stage after delay
+      setTimeout(() => {
+        const problem = quiz.problem;
+        hideAllQuestionTypes();
+        optionsEl.innerHTML = '';
+        renderTwoStageQuestion(problem, nextStage.stageIndex, nextStage.previousAnswer);
+      }, TWO_STAGE_TRANSITION_DELAY);
+    });
+
+    quiz.on('numericResult', ({ correct, formatted, unit, explanation }) => {
+      numericInput.disabled = true;
+      numericSubmit.disabled = true;
+      numericInput.classList.add(correct ? 'correct' : 'incorrect');
+
+      if (!correct) {
+        correctAnswerDisplay.classList.remove('hidden-container');
+        correctAnswerValue.textContent = formatted + (unit ? ' ' + unit : '');
+      }
+
+      showFeedback(correct, explanation);
+    });
+
+    quiz.on('multiSelectToggle', ({ index, selected }) => {
+      const btn = optionsEl.querySelector(`[data-index="${index}"]`);
+      btn.classList.toggle('selected', selected);
+      btn.setAttribute('aria-pressed', selected.toString());
+    });
+
+    quiz.on('multiSelectResult', ({ selected, correctIndices, correct, explanation }) => {
+      const selectedSet = new Set(selected);
+      const buttons = optionsEl.querySelectorAll('.option-btn.multi-select');
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        const wasSelected = selectedSet.has(i);
+        const shouldBeSelected = correctIndices.includes(i);
+
+        if (wasSelected && shouldBeSelected) {
+          btn.classList.add('correct-selected');
+        } else if (wasSelected && !shouldBeSelected) {
+          btn.classList.add('incorrect-selected');
+        } else if (!wasSelected && shouldBeSelected) {
+          btn.classList.add('correct-missed');
+        }
+      });
+
+      multiSubmit.disabled = true;
+      multiSubmitContainer.classList.add('hidden-container');
+      showFeedback(correct, explanation);
+    });
+
+    quiz.on('orderingUpdate', ({ order }) => {
+      updateOrderingDisplay(order);
+    });
+
+    quiz.on('orderingResult', ({ userOrder, correctOrder, correct, explanation }) => {
+      const items = orderingItems.querySelectorAll('.ordering-item');
+      items.forEach(item => {
+        item.classList.add('disabled');
+        const originalIndex = parseInt(item.dataset.originalIndex);
+        const userPosition = userOrder.indexOf(originalIndex);
+        const correctPosition = correctOrder.indexOf(originalIndex);
+
+        if (userPosition === correctPosition) {
+          item.classList.add('correct-position');
+        } else {
+          item.classList.add('incorrect-position');
+        }
+      });
+
+      orderingReset.disabled = true;
+      showFeedback(correct, explanation);
+    });
+
+    quiz.on('complete', ({ correct, total, percentage }) => {
       practice.classList.remove('active');
       results.classList.add('active');
 
-      const correctCount = state.answers.filter(a => a.correct).length;
-      const total = state.answers.length;
-      const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
-
       scoreEl.textContent = percentage + '%';
-      correctCountEl.textContent = correctCount;
+      correctCountEl.textContent = correct;
       totalCountEl.textContent = total;
 
       window.scrollTo(0, 0);
-    }
-
-    // MIXED — State reset is GENERIC, view switching is DOMAIN
-    function retry() {
-      state.problems = weightedShuffle([...state.allProblems]);
-      state.currentIndex = 0;
-      state.answers = [];
-      state.answered = false;
-      // Reset complex type state
-      state.multiSelectSelected = new Set();
-      state.orderingOrder = [];
-      state.twoStageIndex = 0;
-      state.twoStageAnswers = [];
-
-      results.classList.remove('active');
-      practice.classList.add('active');
-      showQuestion();
-    }
-
-    // DOMAIN — Full reset and return to landing page
-    function backToMenu() {
-      practice.classList.remove('active');
-      results.classList.remove('active');
-      landing.classList.remove('hidden');
-
-      // Full state reset
-      state.chapter = null;
-      state.problems = [];
-      state.allProblems = [];
-      state.currentIndex = 0;
-      state.answers = [];
-      state.answered = false;
-      state.mode = 'chapter';
-      // Reset complex type state
-      state.multiSelectSelected = new Set();
-      state.orderingOrder = [];
-      state.twoStageIndex = 0;
-      state.twoStageAnswers = [];
-
-      // Reset chapter buttons in case they were left in loading state
-      document.querySelectorAll('.chapter-btn[data-original-text]').forEach(btn => {
-        btn.textContent = btn.dataset.originalText;
-        btn.disabled = false;
-        btn.classList.remove('loading');
-      });
-
-      window.scrollTo(0, 0);
-    }
+    });
 
     // =============================================
-    // DOMAIN — Event bindings and initialization
+    // DOM event bindings
     // =============================================
 
     optionsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('.option-btn');
       if (btn && !btn.disabled) {
         const type = btn.dataset.type || 'multiple-choice';
-        selectAnswer(parseInt(btn.dataset.index, 10), type);
+        const index = parseInt(btn.dataset.index, 10);
+        if (type === 'multi-select') {
+          quiz.toggleMultiSelect(index);
+        } else {
+          quiz.selectOption(index);
+        }
       }
     });
 
-    // Numeric input handlers
-    numericSubmit.addEventListener('click', submitNumericAnswer);
+    numericSubmit.addEventListener('click', () => {
+      quiz.submitNumeric(numericInput.value);
+    });
+
     numericInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        submitNumericAnswer();
+        quiz.submitNumeric(numericInput.value);
       }
     });
 
-    // Ordering handlers
-    orderingItems.addEventListener('click', handleOrderingClick);
-    orderingReset.addEventListener('click', resetOrdering);
+    orderingItems.addEventListener('click', (e) => {
+      const item = e.target.closest('.ordering-item');
+      if (!item) return;
+      const originalIndex = parseInt(item.dataset.originalIndex);
 
-    // Multi-select handler
-    multiSubmit.addEventListener('click', submitMultiSelectAnswer);
+      // Check if already placed — if so, remove
+      const items = orderingItems.querySelectorAll('.ordering-item.placed');
+      let isPlaced = false;
+      items.forEach(placedItem => {
+        if (parseInt(placedItem.dataset.originalIndex) === originalIndex) {
+          isPlaced = true;
+        }
+      });
 
-    // Initialize
-    renderUnitList();
+      if (isPlaced) {
+        quiz.removeOrderingItem(originalIndex);
+      } else {
+        quiz.placeOrderingItem(originalIndex);
+      }
+    });
 
-    nextBtn.addEventListener('click', nextQuestion);
-    retryBtn.addEventListener('click', retry);
+    orderingReset.addEventListener('click', () => {
+      quiz.resetOrdering();
+    });
+
+    multiSubmit.addEventListener('click', () => {
+      quiz.submitMultiSelect();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      quiz.next();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      results.classList.remove('active');
+      practice.classList.add('active');
+      quiz.retry();
+    });
+
     backBtn.addEventListener('click', backToMenu);
     quitBtn.addEventListener('click', backToMenu);
+
+    // =============================================
+    // Initialize
+    // =============================================
+
+    renderUnitList();
   </script>
 </body>
 </html>
