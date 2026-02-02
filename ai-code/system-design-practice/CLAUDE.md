@@ -22,14 +22,17 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 
 ## Architecture
 
-Two files, no external frameworks:
+This is an **OpenQuizzer instance**. Three generic files come from the OpenQuizzer template repo; one file is instance-specific:
 
 - **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently.
-- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine, renders questions based on engine events, delegates user actions to engine methods.
+- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine and config, renders questions based on engine events, delegates user actions to engine methods. Generic across all instances.
+- **`config.js`** — Instance-specific: title, description, back-link, and units/chapters catalog. This is the only file that differs from the template.
+
+**Upgrade path:** Copy `openquizzer.js`, `openquizzer.test.js`, and `index.html` from the OpenQuizzer repo (`/home/nhoj/Documents/learning/web/openquizzer/`). `config.js` and `content/` are untouched.
+
+**OpenQuizzer relationship:** The OpenQuizzer repo is canonical for the engine and generic UI. This project is an instance that consumes those files. When the engine or UI changes in OpenQuizzer, copy the files here.
 
 **Readability is a nonfunctional requirement.** Code should be legible to humans, weaker models, and future maintainers without needing the full project context. Concretely: use section headers to group related code, add doc comments on non-obvious algorithms, choose method names that describe what the code does (not what the caller uses it for), label conditional branches, and avoid single-letter variable names outside tight loops. When in doubt, a short comment is better than making the reader trace through code to understand intent.
-
-**OpenQuizzer relationship:** This project is the original OpenQuizzer instance. The engine (`openquizzer.js` and `openquizzer.test.js`) is the canonical source that gets published to the OpenQuizzer template repo. When the engine changes here, those changes must be synced to the OpenQuizzer repo. This copy is always the most up-to-date.
 
 Three views managed by CSS classes:
 
@@ -37,9 +40,9 @@ Three views managed by CSS classes:
 - **Practice** (`#practice`) — Question, options, feedback
 - **Results** (`#results`) — Score summary (shown after completing all problems)
 
-**Unit/chapter list is dynamic.** The `UNITS` array in the `<script>` block of `index.html` defines all units and chapters. To add a new chapter:
+**Unit/chapter list is dynamic.** The `units` array in `config.js` defines all units and chapters. To add a new chapter:
 1. Create the JSON file in `content/`
-2. Set `ready: true` for that chapter in the `UNITS` array
+2. Set `ready: true` for that chapter in the `units` array in `config.js`
 
 The "Practice All" button appears automatically when a unit has 2+ ready chapters.
 
@@ -111,7 +114,7 @@ Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are su
 }
 ```
 
-To add a chapter: create the JSON file, set `ready: true` in the `UNITS` array in `index.html`.
+To add a chapter: create the JSON file, set `ready: true` in the `units` array in `config.js`.
 
 ## Content Guidelines
 

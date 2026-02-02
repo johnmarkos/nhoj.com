@@ -78,20 +78,11 @@ Create a GitHub template repo that anyone can use to build their own quiz site. 
 4. Write README with quick start, content format, and API docs
 5. Push, verify "Use this template" works, test a fresh instance deploys to Pages
 
-## Phase 5: Make System Design Practice a proper OpenQuizzer instance
-
-System Design Practice was the original source for the engine extraction, but it isn't yet consuming the template in the standard way. This phase aligns it so the relationship is clean.
-
-**What this means:**
-- `index.html` structure should match the OpenQuizzer template (same HTML skeleton, same integration pattern)
-- Domain-specific content stays: UNITS array, System Design branding, back-link to nhoj.com
-- Engine files (`openquizzer.js`, `openquizzer.test.js`) remain the canonical source — changes here get copied to the template repo, not the other way around
-- Any generic UI improvements made here should be ported to the template repo
-
-**What to verify:**
-- The generic portions of `index.html` match the template's `index.html` (diff should show only content/branding differences)
-- No domain-specific logic has crept into `openquizzer.js`
-- New question types added to the engine work in both this project and the template
+**Phase 5: Make System Design Practice a proper OpenQuizzer instance** ✓
+- Extracted instance-specific content into `config.js` (title, description, back-link, units)
+- `index.html` is now byte-identical to OpenQuizzer template
+- Upgrade path: copy `openquizzer.js`, `openquizzer.test.js`, `index.html` from OpenQuizzer — done
+- OpenQuizzer repo is now canonical for engine + UI; this project is an instance
 
 ## Future: Content Expansion
 

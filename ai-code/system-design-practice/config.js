@@ -1,0 +1,40 @@
+// Instance configuration for System Design Practice.
+// This file is the only thing that differs from the OpenQuizzer template.
+// To upgrade: copy openquizzer.js, openquizzer.test.js, and index.html
+// from the OpenQuizzer repo. This file and content/ are untouched.
+
+export const CONFIG = {
+  title: 'System Design Practice',
+  description: 'Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.',
+  backLink: { href: '../', text: '\u2190 Back to AI Code' },
+  units: [
+    {
+      id: 1,
+      title: 'Estimation',
+      chapters: [
+        { num: 1, title: 'Reference Numbers', ready: true },
+        { num: 2, title: 'Time Math', ready: true },
+        { num: 3, title: 'Storage Math', ready: true },
+        { num: 4, title: 'Bandwidth Math', ready: true },
+        { num: 5, title: 'QPS & Load', ready: true },
+        { num: 6, title: 'Growth Projections', ready: true },
+        { num: 7, title: 'Reasonableness Checks', ready: true },
+        { num: 8, title: 'Compound Scenarios', ready: true }
+      ]
+    },
+    {
+      id: 2,
+      title: 'Data Modeling',
+      chapters: [
+        { num: 1, title: 'Entity Identification', ready: true },
+        { num: 2, title: 'Relationships', ready: true },
+        { num: 3, title: 'Keys & Indexes', ready: true },
+        { num: 4, title: 'Normalization', ready: true },
+        { num: 5, title: 'Denormalization', ready: true },
+        { num: 6, title: 'Access Patterns', ready: true },
+        { num: 7, title: 'Schema Evolution', ready: true },
+        { num: 8, title: 'Modeling Scenarios', ready: true }
+      ]
+    }
+  ]
+};
