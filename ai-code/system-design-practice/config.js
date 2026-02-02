@@ -36,8 +36,7 @@ export const CONFIG = {
         { num: 7, title: 'Schema Evolution', ready: true },
         { num: 8, title: 'Modeling Scenarios', ready: true }
       ]
-    }
-  ],
+    },
     {
       id: 3,
       title: 'API Design',
