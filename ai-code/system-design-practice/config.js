@@ -7,6 +7,7 @@ export const CONFIG = {
   title: 'System Design Practice',
   description: 'Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.',
   backLink: { href: '../', text: '\u2190 Back to AI Code' },
+  showProblemId: true,
   units: [
     {
       id: 1,
