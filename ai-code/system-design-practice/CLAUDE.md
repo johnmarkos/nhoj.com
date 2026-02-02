@@ -205,17 +205,7 @@ Insights captured from development:
 - `aria-pressed` on toggle buttons (multi-select options)
 - Keyboard accessibility for custom interactions (flagged ordering for v2)
 
-**Engine extraction (Phase 2):**
-- When splitting MIXED functions (part logic, part DOM), the engine emits events with all data the UI needs — the UI should never need to reach back into the engine for display info
-- Store defensive copies of caller-provided arrays (`[...problems]`) — the caller may mutate the original after passing it in
-- Watch for dead fields after extraction: if a field is set but never read (no getter, no internal use), delete it. Common during refactors when responsibilities shift between files
-- `loadProblems()` shouldn't accept parameters the engine doesn't use — keep the API honest about what the engine cares about vs. what's a UI concern
-- Guard against division by zero in numeric grading when `correctValue === 0` — easy to miss since no current content has answer=0, but a future unit easily could
-- When the UI checks state via DOM classes (e.g., `item.classList.contains('placed')`), prefer that over querying and looping through sibling elements
-
-**Testing:**
-- Node's built-in test runner (`node:test`) is sufficient for a zero-dependency project — no need for Jest/Vitest
-- Node 24+ detects ES modules natively; Node 20 needs `--experimental-detect-module`
-- Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise and make the test data structure obvious
-- The `collectEvents` pattern (register listener, return array, assert on array after actions) works well for event-driven APIs
-- Test through shuffling by reading `quiz.problem` to get the current problem and using its `.correct` field — don't assume problem order
+**Config separation:**
+- Instance-specific content (title, description, units, back-link) belongs in `config.js`, not `index.html`
+- `index.html` should be byte-identical across all instances — never edit it for instance customization
+- When upgrading from OpenQuizzer, copy three files (`openquizzer.js`, `openquizzer.test.js`, `index.html`) and verify tests pass
