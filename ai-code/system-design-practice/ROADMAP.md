@@ -1,43 +1,44 @@
-# Roadmap
+# System Design Practice Roadmap
 
-Future features and improvements for System Design Practice.
+## Now (In Progress)
 
-## v2: Accessibility & Polish
+- [ ] **Unit 3: API Design** — REST vs GraphQL, versioning, pagination, rate limiting, error handling
+- [ ] **Weighting system** — Ensure numeric, ordering, multi-select, two-stage appear proportionally despite MC dominance
 
-**Keyboard accessibility for ordering questions**
-- Current: tap-to-order only (touch/mouse)
-- Needed: keyboard navigation (arrow keys to select, Enter to place, Escape to deselect)
-- Consider: drag-and-drop as alternative interaction pattern
-- Priority: Medium (accessibility compliance)
+## Next (Units 4-6)
 
-**Spaced repetition**
-- Track user performance per problem
-- Surface weak areas more frequently
-- Persist progress in localStorage or backend
-- Priority: High (mentioned in project thesis)
+- [ ] **Unit 4: Storage Selection** — SQL vs NoSQL vs blob vs cache, when to use what
+- [ ] **Unit 5: Caching** — Layers, invalidation strategies, cache-aside vs write-through, TTLs
+- [ ] **Unit 6: Messaging & Async** — Queues, pub/sub, event-driven architecture, exactly-once delivery
 
-## Future: Content Expansion
+## Later (Units 7-10)
 
-**Units 3-10** (see CLAUDE.md for full list)
+- [ ] **Unit 7: Scaling Compute** — Load balancing, horizontal scaling, statelessness, autoscaling
+- [ ] **Unit 8: Consistency & Coordination** — CAP theorem, transactions, distributed consensus, eventual consistency
+- [ ] **Unit 9: Reliability** — Failure modes, redundancy, graceful degradation, circuit breakers, retries
+- [ ] **Unit 10: Classic Designs Decomposed** — Twitter, URL shortener, chat, notification system — as atomic questions
 
-## v2: UX Improvements
+## Features (After Content Complete)
 
-**Progress persistence**
-- Resume interrupted sessions
-- Track completion per chapter
+- [ ] **Spaced repetition** — Track problem history, surface weak areas (depends on OpenQuizzer v1.1)
+- [ ] **Skill grid** — FitStar-style Elo per dimension (estimation, data modeling, API design, etc.)
+- [ ] **Progress persistence** — localStorage to resume across sessions
+- [ ] **Interview simulation mode** — Timed sessions, random mix across all units
 
-**Review mode**
-- Review missed questions at end of session
-- Bookmark problems for later
+## Content Quality
 
-## Deferred / Low Priority
+- [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
+- [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
+- [ ] **Source citations** — Link problems to DDIA chapters, papers, or blog posts where relevant
 
-**Reference Numbers as static cheat sheet**
-- Originally Chapter 1 was a non-interactive reference table
-- Converted to interactive problems in current version
-- Could add a "View Reference" toggle if users want quick lookup
-- Code was removed in code review; would need to rebuild if wanted
+## Maybe
 
----
+- [ ] **Community contributions** — Accept PRs for new problems with quality guidelines
+- [ ] **Alternative tracks** — Frontend system design, ML system design, data engineering
+- [ ] **Mock interview mode** — 45-minute timed session with problem mix matching real interviews
 
-*This file is referenced from CLAUDE.md. Update when flagging features for future work. Completed items go in CHANGELOG.md.*
+## Won't Do
+
+- Video explanations — text is faster and more bus-friendly
+- Discussion forums — use GitHub issues
+- Certification or badges — not the point
