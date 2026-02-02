@@ -1,5 +1,10 @@
 # Changelog
 
+## Problem ID display
+
+- Synced index.html from OpenQuizzer v2.1 with configurable problem ID feature
+- Enabled `showProblemId: true` in config — each question now shows its ID (e.g. ref-001, qps-042) for easy reference when reporting issues
+
 ## Phase 5: OpenQuizzer instance
 
 - Extracted instance-specific content into `config.js` (title, description, back-link, units)
