@@ -125,9 +125,9 @@ To add a chapter: create the JSON file, set `ready: true` in the `units` array i
 - **Avoid:** Pure arithmetic with no systems context, trivia, ambiguous answers
 - **Flag problems** where the correct answer is debatable or math is tricky. Expect John to edit/cull during alpha testing.
 
-## Roadmap
+## Roadmap & Changelog
 
-Future features are tracked in `ROADMAP.md`. When flagging something for v2, add it there.
+Future features are tracked in `ROADMAP.md`. Completed work is recorded in `CHANGELOG.md`.
 
 ## Self-Review Loop
 
