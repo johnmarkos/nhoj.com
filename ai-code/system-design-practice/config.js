@@ -42,7 +42,7 @@ export const CONFIG = {
       title: 'API Design',
       chapters: [
         { num: 1, title: 'REST Fundamentals', ready: true },
-        { num: 2, title: 'API Modeling', ready: false },
+        { num: 2, title: 'API Modeling', ready: true },
         { num: 3, title: 'Pagination & Filtering', ready: false },
         { num: 4, title: 'Rate Limiting & Quotas', ready: false },
         { num: 5, title: 'Versioning & Evolution', ready: false },

@@ -1,0 +1,1534 @@
+{
+  "unit": 3,
+  "unitTitle": "API Design",
+  "chapter": 2,
+  "chapterTitle": "API Modeling",
+  "chapterDescription": "Resource design, URL structure, request/response shapes, nested vs flat.",
+  "problems": [
+    {
+      "id": "model-001",
+      "type": "multiple-choice",
+      "question": "You're designing an API for a blog. Which resource breakdown is best?",
+      "options": [
+        "/blogs (one endpoint for everything)",
+        "/posts, /comments, /authors (separate resources)",
+        "/blog-posts-and-comments (combined resource)",
+        "/data?type=post or /data?type=comment"
+      ],
+      "correct": 1,
+      "explanation": "Separate resources for distinct entities (posts, comments, authors) follows REST principles. Each has its own lifecycle, relationships, and access patterns. Combining them makes CRUD operations awkward."
+    },
+    {
+      "id": "model-002",
+      "type": "multiple-choice",
+      "question": "A 'like' on a post — should it be its own resource or an action endpoint?",
+      "options": [
+        "POST /posts/42/like (action)",
+        "POST /posts/42/likes (create a like resource)",
+        "PATCH /posts/42 with {liked: true}",
+        "Any of these can work depending on requirements"
+      ],
+      "correct": 3,
+      "explanation": "All approaches are valid. If you need to track WHO liked it, /likes as a resource makes sense. If it's just a counter, PATCH or an action endpoint works. Choose based on whether 'like' needs its own identity and attributes."
+    },
+    {
+      "id": "model-003",
+      "type": "multi-select",
+      "question": "Which are signs that something should be its own API resource (not just a field)?",
+      "options": [
+        "It has its own lifecycle (can be created/deleted independently)",
+        "Multiple other resources reference it",
+        "It has more than 2 attributes",
+        "It needs its own access control"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Independent lifecycle, being referenced by multiple resources, and needing separate access control all suggest a first-class resource. Number of attributes alone isn't sufficient — a resource with 2 attributes can still deserve its own endpoint."
+    },
+    {
+      "id": "model-004",
+      "type": "multiple-choice",
+      "question": "For a user's profile photo, which design is most RESTful?",
+      "options": [
+        "GET /users/42/photo returns the image binary",
+        "GET /users/42 includes a base64-encoded photo field",
+        "GET /users/42 includes a photoUrl field pointing to a CDN",
+        "Both A and C are good; B is problematic"
+      ],
+      "correct": 3,
+      "explanation": "Returning the binary directly (/users/42/photo) or a URL to the image are both good. Embedding base64 in JSON bloats every user response, even when the photo isn't needed, and breaks caching."
+    },
+    {
+      "id": "model-005",
+      "type": "multiple-choice",
+      "question": "An order has line items. Should line items be a nested resource or embedded in the order?",
+      "options": [
+        "Always nested: GET /orders/42/items",
+        "Always embedded: GET /orders/42 returns {items: [...]}",
+        "Depends on whether items need independent operations",
+        "Embedded for reads, nested for writes"
+      ],
+      "correct": 2,
+      "explanation": "If line items are only modified as part of order updates, embedding is simpler. If you need to add/remove/update individual items independently, they should be a nested resource. The access pattern determines the design."
+    },
+    {
+      "id": "model-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing a music API. An album has tracks. Users rarely need tracks without the album context. How should you model tracks?",
+          "options": [
+            "Separate resource: GET /tracks/123",
+            "Nested resource: GET /albums/42/tracks",
+            "Embedded in album: GET /albums/42 returns {tracks: [...]}",
+            "Nested for listing, embedded for single album retrieval"
+          ],
+          "correct": 3,
+          "explanation": "Embedding tracks in the album response reduces round trips for the common case (viewing an album). A nested endpoint for listing gives flexibility for track-specific operations or pagination if needed."
+        },
+        {
+          "question": "A user wants to add a track to their playlist. The track is from album 42. What's the best endpoint?",
+          "options": [
+            "POST /playlists/7/tracks with {albumId: 42, trackNumber: 3}",
+            "POST /playlists/7/tracks with {trackId: 123}",
+            "PATCH /playlists/7 with {addTrack: {albumId: 42, trackNumber: 3}}",
+            "POST /albums/42/tracks/3/add-to-playlist/7"
+          ],
+          "correct": 1,
+          "explanation": "If tracks have their own IDs, use the ID directly. This decouples playlists from the album structure. If tracks only exist within albums (no global ID), option A works. Option D inverts the relationship awkwardly."
+        }
+      ]
+    },
+    {
+      "id": "model-007",
+      "type": "multiple-choice",
+      "question": "Which response shape is better for a list of users?",
+      "options": [
+        "[{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}]",
+        "{users: [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}]}",
+        "{data: [{id: 1, name: 'Alice'}], meta: {total: 100, page: 1}}",
+        "B or C — envelope with room for metadata"
+      ],
+      "correct": 3,
+      "explanation": "A bare array (option A) leaves no room for pagination metadata, total counts, or links. An envelope (B or C) lets you add metadata without breaking clients. Choose one style and be consistent."
+    },
+    {
+      "id": "model-008",
+      "type": "multiple-choice",
+      "question": "What's the problem with this response? {success: true, data: {id: 1}, error: null}",
+      "options": [
+        "Nothing — it's thorough",
+        "Redundant fields — HTTP status already indicates success, error is null",
+        "Should use XML instead",
+        "The data should not be nested"
+      ],
+      "correct": 1,
+      "explanation": "HTTP status codes already indicate success/failure. 'success: true' and 'error: null' are redundant with a 200 status. This pattern often comes from RPC-over-HTTP designs that ignore HTTP semantics."
+    },
+    {
+      "id": "model-009",
+      "type": "multi-select",
+      "question": "Which fields are commonly included in an API error response?",
+      "options": [
+        "error.code (machine-readable error type)",
+        "error.message (human-readable description)",
+        "error.details (field-specific validation errors)",
+        "error.stackTrace (server stack trace)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Code, message, and field-specific details help clients handle errors programmatically and display helpful messages. Stack traces should never be exposed — they leak implementation details and aid attackers."
+    },
+    {
+      "id": "model-010",
+      "type": "multiple-choice",
+      "question": "A user resource has 50 fields. A mobile app only needs 5 of them. What's the best approach?",
+      "options": [
+        "Always return all 50 fields — clients ignore what they don't need",
+        "Create separate endpoints: /users/42/summary and /users/42/full",
+        "Support sparse fieldsets: GET /users/42?fields=id,name,email",
+        "Create a mobile-specific endpoint: /mobile/users/42"
+      ],
+      "correct": 2,
+      "explanation": "Sparse fieldsets (like JSON:API's ?fields=) let any client request only what it needs. Separate endpoints lead to endpoint sprawl. Always returning everything wastes bandwidth, especially on mobile."
+    },
+    {
+      "id": "model-011",
+      "type": "multiple-choice",
+      "question": "Which pattern allows clients to request related resources in one call?",
+      "options": [
+        "GET /users/42?include=posts,comments",
+        "GET /users/42/with-posts-and-comments",
+        "GET /users/42 + GET /users/42/posts + GET /users/42/comments",
+        "POST /graphql with a query"
+      ],
+      "correct": 0,
+      "explanation": "The ?include= pattern (used by JSON:API) lets clients specify which relationships to embed. This reduces N+1 requests while keeping the base endpoint simple. GraphQL also solves this, but the question asks about REST patterns."
+    },
+    {
+      "id": "model-012",
+      "type": "ordering",
+      "question": "Rank these from most coupling to least coupling between client and API:",
+      "items": [
+        "Client hardcodes every URL",
+        "Client constructs URLs from patterns",
+        "Client follows links from responses (HATEOAS)",
+        "Client discovers everything from a root endpoint"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Hardcoded URLs = maximum coupling. URL patterns are slightly better. HATEOAS (following links) and discovery from root both reduce coupling, with link-following being the most flexible since the server controls navigation."
+    },
+    {
+      "id": "model-013",
+      "type": "multiple-choice",
+      "question": "GET /users returns [{id: 1, ...}, {id: 2, ...}]. GET /users/1 returns {id: 1, ...}. Is this inconsistent?",
+      "options": [
+        "Yes — the list should return {users: [...]}",
+        "Yes — the single item should return {user: {...}}",
+        "No — this is standard REST: collection returns array, item returns object",
+        "It depends on whether you use an envelope"
+      ],
+      "correct": 3,
+      "explanation": "Both are valid patterns. Without envelopes: collection returns array, item returns object (option C). With envelopes: collection returns {users: [...]}, item returns {user: {...}}. The key is consistency within your API."
+    },
+    {
+      "id": "model-014",
+      "type": "multiple-choice",
+      "question": "A POST /users request should return what on success?",
+      "options": [
+        "Just 201 Created with no body",
+        "201 Created with the full created resource",
+        "201 Created with just the new ID: {id: 42}",
+        "Any of these, but returning the full resource is most useful"
+      ],
+      "correct": 3,
+      "explanation": "Returning the full resource saves a round trip (the client doesn't need GET /users/42). It also shows server-assigned values like createdAt or defaults. The Location header should point to the new resource either way."
+    },
+    {
+      "id": "model-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to model the relationship 'users follow other users.' Which approach is best?",
+          "options": [
+            "Array field on user: {following: [2, 3, 4]}",
+            "Separate follows resource: POST /follows with {followerId: 1, followeeId: 2}",
+            "Nested action: POST /users/1/follow/2",
+            "User sub-resource: GET /users/1/following"
+          ],
+          "correct": 1,
+          "explanation": "A follows resource treats the relationship as a first-class entity. It can have its own attributes (followedAt, notifications), be created/deleted independently, and scales better than embedding arrays. GET /users/1/following can still work as a view."
+        },
+        {
+          "question": "For this follows relationship, what's the best way to expose the list of users someone follows?",
+          "options": [
+            "GET /follows?followerId=1 returns follow records",
+            "GET /users/1/following returns user objects",
+            "GET /users/1?include=following embeds the user objects",
+            "All are valid — depends on what the client needs"
+          ],
+          "correct": 3,
+          "explanation": "Each serves a different need. /follows?followerId=1 is useful if you need the follow metadata (when, notifications). /users/1/following is convenient if you just need the user list. ?include=following avoids a second request. Offer multiple views based on use cases."
+        }
+      ]
+    },
+    {
+      "id": "model-016",
+      "type": "multiple-choice",
+      "question": "Should ID fields in responses be strings or integers?",
+      "options": [
+        "Always integers — they're more compact",
+        "Always strings — JavaScript can't handle large integers safely",
+        "Integers for auto-increment, UUIDs as strings",
+        "Strings are safer, but document your choice clearly"
+      ],
+      "correct": 3,
+      "explanation": "JavaScript's Number type loses precision beyond 2^53. Large integer IDs (like Twitter snowflakes) must be strings. Using strings consistently avoids this edge case entirely. Either works if documented, but strings are safer for interoperability."
+    },
+    {
+      "id": "model-017",
+      "type": "multiple-choice",
+      "question": "How should dates be formatted in JSON API responses?",
+      "options": [
+        "Unix timestamp (seconds since epoch)",
+        "Unix timestamp in milliseconds",
+        "ISO 8601 string: 2024-01-15T10:30:00Z",
+        "Any of these, but ISO 8601 is most readable and unambiguous"
+      ],
+      "correct": 3,
+      "explanation": "All are valid. ISO 8601 is human-readable and timezone-explicit (the Z means UTC). Timestamps are compact and easy to compute with, but seconds vs milliseconds is ambiguous. ISO 8601 is the most common choice for REST APIs."
+    },
+    {
+      "id": "model-018",
+      "type": "multi-select",
+      "question": "Which are advantages of ISO 8601 date format over Unix timestamps?",
+      "options": [
+        "Human readable in logs and debugging",
+        "Timezone is explicit (not assumed)",
+        "Smaller payload size",
+        "Native JavaScript Date parsing"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "ISO 8601 is readable, includes timezone info, and JavaScript parses it natively. Unix timestamps are actually smaller (fewer bytes), but clarity usually outweighs payload size for dates."
+    },
+    {
+      "id": "model-019",
+      "type": "multiple-choice",
+      "question": "A resource has a 'status' field with values like 'active', 'pending', 'cancelled'. How should this be represented?",
+      "options": [
+        "Integer enum: status: 1 (map to strings client-side)",
+        "String value: status: 'active'",
+        "Boolean flags: isActive: true, isPending: false, isCancelled: false",
+        "Strings are clearest; booleans don't scale, integers obscure meaning"
+      ],
+      "correct": 3,
+      "explanation": "String enums are self-documenting. Integers require a lookup table and break when values are added. Multiple booleans become unwieldy and can have invalid states (isActive: true, isCancelled: true). Use strings for enums."
+    },
+    {
+      "id": "model-020",
+      "type": "multiple-choice",
+      "question": "What's the problem with this field name: 'userData'?",
+      "options": [
+        "It's too long",
+        "It's vague — 'data' adds no information",
+        "It should be 'user_data'",
+        "Nothing — it's fine"
+      ],
+      "correct": 1,
+      "explanation": "'data' is a noise word that adds no meaning. 'userData' is just 'user' with extra characters. Similarly avoid 'Info', 'Object', 'Item' suffixes. Name fields for what they contain: 'user', 'profile', 'settings'."
+    },
+    {
+      "id": "model-021",
+      "type": "ordering",
+      "question": "Rank these field names from best to worst for an array of product IDs:",
+      "items": [
+        "productIds",
+        "products",
+        "productIdList",
+        "arrayOfProductIds"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "productIds is clear and concise. products is acceptable (could imply objects, but context helps). productIdList and arrayOfProductIds have redundant type information — the value being an array is obvious from the JSON."
+    },
+    {
+      "id": "model-022",
+      "type": "multiple-choice",
+      "question": "Should boolean fields be named positively (isActive) or negatively (isDisabled)?",
+      "options": [
+        "Always positive — isActive instead of isNotActive",
+        "Always negative — clearer when the default is true",
+        "Prefer positive, but use the most natural phrasing",
+        "Use 'enabled/disabled' instead of boolean"
+      ],
+      "correct": 2,
+      "explanation": "Positive naming avoids double negatives (if (!isNotActive)). But sometimes negative names are natural: 'isHidden' vs 'isVisible' depends on the default. The goal is readability, not rigid rules."
+    },
+    {
+      "id": "model-023",
+      "type": "multiple-choice",
+      "question": "A response includes user: {id: 1, email: 'a@b.com', password: 'hash'}. What's wrong?",
+      "options": [
+        "Nothing — the password is hashed",
+        "Even hashed passwords shouldn't be in API responses",
+        "The email should be masked",
+        "The id should be a string"
+      ],
+      "correct": 1,
+      "explanation": "Never expose password hashes in API responses. They're useless to legitimate clients and valuable to attackers (offline cracking). Only store hashes server-side; never return them. Other auth fields like API keys, tokens, etc. also shouldn't leak."
+    },
+    {
+      "id": "model-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing an e-commerce API. A product has variants (size, color). How should you model variants?",
+          "options": [
+            "Flat: each size/color combo is a separate product",
+            "Nested: products have a variants array with each combo",
+            "Separate resource: /variants linked to products",
+            "Depends on inventory and pricing granularity"
+          ],
+          "correct": 3,
+          "explanation": "If each variant has its own SKU, inventory count, and price, it needs to be addressable independently (C or B with variant IDs). If variants share everything except the attribute (L vs XL), embedding is simpler."
+        },
+        {
+          "question": "Each variant has its own inventory and price. A cart needs to reference specific variants. What's the best design?",
+          "options": [
+            "Cart contains productId + variantAttributes: {productId: 1, size: 'L', color: 'blue'}",
+            "Cart contains variantId: {variantId: 42}",
+            "Cart contains productId and assumes variants are looked up",
+            "Cart embeds the full variant object"
+          ],
+          "correct": 1,
+          "explanation": "If variants are independent resources with their own IDs, the cart should reference by variantId. This is unambiguous and survives variant changes. Looking up by attributes is fragile (what if 'Large' becomes 'L'?)."
+        }
+      ]
+    },
+    {
+      "id": "model-025",
+      "type": "multiple-choice",
+      "question": "What's the difference between /users/42/posts and /posts?userId=42?",
+      "options": [
+        "No difference — both return the same data",
+        "Nested implies hierarchy; query param is a filter",
+        "Nested is more RESTful",
+        "Query param is faster"
+      ],
+      "correct": 1,
+      "explanation": "/users/42/posts implies posts *belong to* user 42 — a hierarchical relationship. /posts?userId=42 filters the posts collection — a query. Both return the same data, but the semantics differ. Use nested for ownership, params for filtering."
+    },
+    {
+      "id": "model-026",
+      "type": "multi-select",
+      "question": "When is deep nesting (/a/1/b/2/c/3/d/4) problematic?",
+      "options": [
+        "URLs become long and unwieldy",
+        "Each segment requires a database lookup",
+        "Clients must know all parent IDs to address a resource",
+        "It violates REST principles"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Deep nesting makes URLs long, requires multiple lookups to validate the chain, and forces clients to track parent IDs. It doesn't violate REST per se, but it's impractical. Flatten: /d/4 with a parentC field is often better."
+    },
+    {
+      "id": "model-027",
+      "type": "multiple-choice",
+      "question": "A comment belongs to a post. Comments have unique IDs. Which endpoint is better?",
+      "options": [
+        "GET /posts/1/comments/42 (requires knowing post ID)",
+        "GET /comments/42 (just needs comment ID)",
+        "Both — offer both and let clients choose",
+        "B is better, but A is also valid if clients always have post context"
+      ],
+      "correct": 3,
+      "explanation": "If comments have globally unique IDs, /comments/42 is simpler — clients don't need to track the post. But /posts/1/comments/42 can be valid if clients always navigate from post context. Offering both adds flexibility but also complexity."
+    },
+    {
+      "id": "model-028",
+      "type": "multiple-choice",
+      "question": "You're adding a 'archive' action to posts. Which endpoint design is best?",
+      "options": [
+        "DELETE /posts/42 (archive = delete)",
+        "POST /posts/42/archive",
+        "PATCH /posts/42 with {status: 'archived'}",
+        "Either B or C — both are valid"
+      ],
+      "correct": 3,
+      "explanation": "Archiving isn't deletion (the post still exists), so DELETE is wrong. POST /posts/42/archive is an action-oriented design. PATCH with status is a state change design. Both are valid; PATCH is arguably more RESTful, but POST /archive is more discoverable."
+    },
+    {
+      "id": "model-029",
+      "type": "multiple-choice",
+      "question": "An API needs to support searching across multiple resource types (users, posts, comments). What's the best approach?",
+      "options": [
+        "GET /search?q=foo (global search endpoint)",
+        "GET /users?q=foo, GET /posts?q=foo, GET /comments?q=foo",
+        "POST /search with a complex query body",
+        "A or C — global search for cross-resource queries is reasonable"
+      ],
+      "correct": 3,
+      "explanation": "Cross-resource search doesn't fit neatly into a single collection. A /search endpoint (GET or POST depending on query complexity) is practical. If users typically search one type at a time, per-collection search (/users?q=) is simpler."
+    },
+    {
+      "id": "model-030",
+      "type": "ordering",
+      "question": "Rank these response structures from simplest to most feature-rich:",
+      "items": [
+        "{id: 1, name: 'Alice'}",
+        "{data: {id: 1, name: 'Alice'}}",
+        "{data: {...}, meta: {...}, links: {...}}",
+        "{data: {...}, included: [...], meta: {...}, links: {...}}"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Bare object is simplest. data wrapper adds room for metadata. meta + links enables pagination/navigation. included (JSON:API style) adds compound documents. Each layer adds flexibility at the cost of verbosity."
+    },
+    {
+      "id": "model-031",
+      "type": "multiple-choice",
+      "question": "What's the purpose of a 'self' link in a response?",
+      "options": [
+        "To help with caching",
+        "To provide the canonical URL for the returned resource",
+        "To enable backwards navigation",
+        "It's required by HTTP"
+      ],
+      "correct": 1,
+      "explanation": "A 'self' link gives the canonical URL for the resource, useful when the response came from a non-canonical URL (like /me resolving to /users/42). Clients can use it for caching, bookmarking, or sharing."
+    },
+    {
+      "id": "model-032",
+      "type": "multi-select",
+      "question": "Which are common link relations in REST APIs?",
+      "options": [
+        "self (canonical URL for this resource)",
+        "next/prev (pagination)",
+        "related (associated resources)",
+        "execute (run this action)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "self, next, prev, and related are standard link relations (RFC 5988). 'execute' is not a standard relation — actions are typically modeled as POST to a URL, not a special link type."
+    },
+    {
+      "id": "model-033",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An order can be in states: pending → paid → shipped → delivered. A 'cancel' action is only valid for pending or paid orders. How should cancel be exposed?",
+          "options": [
+            "Always expose POST /orders/42/cancel; return 400 if invalid state",
+            "Only include a 'cancel' link in responses where cancellation is valid",
+            "Use PATCH /orders/42 with {status: 'cancelled'}",
+            "Any of these work; B is the most HATEOAS-compliant"
+          ],
+          "correct": 3,
+          "explanation": "All work. Always exposing cancel and returning 400 is simple. Conditional links (B) let clients know when cancel is available without trial and error — true HATEOAS. PATCH is resource-centric but doesn't distinguish valid transitions."
+        },
+        {
+          "question": "The order response includes 'links'. Which design best shows available actions?",
+          "options": [
+            "links: {self: '...', cancel: '/orders/42/cancel'}",
+            "links: [{rel: 'self', href: '...'}, {rel: 'cancel', href: '...'}]",
+            "actions: [{name: 'cancel', method: 'POST', href: '...'}]",
+            "B or C — array format with explicit relations/methods"
+          ],
+          "correct": 3,
+          "explanation": "Array format (B) is more flexible than object keys (what if you have two links of the same type?). Including the method (C) makes actions even more discoverable. Both B and C follow established patterns (HAL, JSON:API, etc.)."
+        }
+      ]
+    },
+    {
+      "id": "model-034",
+      "type": "multiple-choice",
+      "question": "A request creates multiple resources at once. What should the response contain?",
+      "options": [
+        "Just 201 Created with no body",
+        "Array of all created resources",
+        "Array of IDs/URLs for created resources",
+        "B or C — clients need to know what was created"
+      ],
+      "correct": 3,
+      "explanation": "Clients need to know what was created. Full resources (B) are most useful but potentially large. IDs or URLs (C) are lighter and let clients fetch details if needed. Returning nothing (A) leaves clients guessing."
+    },
+    {
+      "id": "model-035",
+      "type": "multiple-choice",
+      "question": "How should null vs. absent fields be handled in API responses?",
+      "options": [
+        "Always include null fields for consistency",
+        "Always omit null fields to save bandwidth",
+        "Null means 'explicitly no value', absent means 'not requested/applicable'",
+        "Document your choice — consistency matters more than which approach"
+      ],
+      "correct": 3,
+      "explanation": "Both null and absent have valid uses. The key is consistency and documentation. Mixing approaches arbitrarily confuses clients. If you use sparse fieldsets (?fields=), absent makes sense for non-requested fields."
+    },
+    {
+      "id": "model-036",
+      "type": "multiple-choice",
+      "question": "A PATCH request sets a field to null. What should happen?",
+      "options": [
+        "Ignore it — null means 'no change'",
+        "Delete/clear the field",
+        "Return an error — null isn't a valid value",
+        "Depends on your merge patch semantics (RFC 7396 says delete)"
+      ],
+      "correct": 3,
+      "explanation": "In JSON Merge Patch (RFC 7396), null explicitly means 'remove this field'. In other semantics, it might mean 'set to null value'. Document your patch behavior clearly."
+    },
+    {
+      "id": "model-037",
+      "type": "multi-select",
+      "question": "Which are valid reasons to use UUIDs instead of auto-increment IDs?",
+      "options": [
+        "Can be generated client-side before POSTing",
+        "No sequential enumeration attack",
+        "Work across distributed databases without coordination",
+        "Shorter URLs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "UUIDs can be pre-generated (enables PUT for create), prevent enumeration, and work in distributed systems. They're longer than integers, not shorter — URLs like /users/550e8400-e29b-41d4-a716-446655440000 are verbose."
+    },
+    {
+      "id": "model-038",
+      "type": "multiple-choice",
+      "question": "A resource has both an 'id' and a 'slug' (human-readable identifier). How should the API handle this?",
+      "options": [
+        "Only allow access by ID: GET /articles/42",
+        "Only allow access by slug: GET /articles/my-article-title",
+        "Support both: GET /articles/42 and GET /articles/my-article-title",
+        "C is most flexible, but requires disambiguation logic"
+      ],
+      "correct": 3,
+      "explanation": "Supporting both is user-friendly. ID access is stable (slugs can change). Slug access is readable for URLs users see. Disambiguation is needed — typically by format (UUIDs vs. slugs are distinguishable, integers vs. numeric slugs need care)."
+    },
+    {
+      "id": "model-039",
+      "type": "ordering",
+      "question": "Rank these identifier formats from most to least suitable for URL stability:",
+      "items": [
+        "UUID (550e8400-e29b-41d4-a716-446655440000)",
+        "Auto-increment integer (42)",
+        "Slug (my-article-title)",
+        "Composite (user-42-post-7)"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "UUIDs and integers never change. Composite keys are stable if their parts are. Slugs can change when titles are edited, breaking bookmarks and links. If slugs can change, support redirects or keep old slugs as aliases."
+    },
+    {
+      "id": "model-040",
+      "type": "multiple-choice",
+      "question": "Should sub-resources have their own ID namespace or inherit the parent's?",
+      "options": [
+        "Own namespace: /orders/1/items/1, /orders/2/items/1 both valid",
+        "Global namespace: /orders/1/items/42 unique across all orders",
+        "Global is simpler — you can reference /items/42 directly",
+        "Either works; global enables simpler direct access"
+      ],
+      "correct": 3,
+      "explanation": "Per-parent IDs mean item 1 in order 1 is different from item 1 in order 2 — you always need both IDs. Global IDs let you access /items/42 directly. Global is simpler if the sub-resource might be accessed without parent context."
+    },
+    {
+      "id": "model-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing a file storage API. Files are organized in folders. How should you model the hierarchy?",
+          "options": [
+            "Flat: /files with a 'folderId' field on each file",
+            "Nested: /folders/1/files/42",
+            "Path-based: /files/path/to/my/file.txt",
+            "Depends on how users navigate and access files"
+          ],
+          "correct": 3,
+          "explanation": "Flat is simple but hides hierarchy. Nested reflects structure but limits depth. Path-based is intuitive for users but complex to implement (encoding, renames, moves). Choose based on primary access patterns."
+        },
+        {
+          "question": "Files can be moved between folders. What's the best endpoint for moving?",
+          "options": [
+            "PATCH /files/42 with {folderId: newFolderId}",
+            "POST /files/42/move with {destination: newFolderId}",
+            "DELETE /folders/1/files/42, then POST /folders/2/files with the file",
+            "A is simplest; B is clearer for complex moves"
+          ],
+          "correct": 3,
+          "explanation": "PATCH is simplest if moving means changing a folderId field. POST /move is clearer if moving has side effects (path updates, permission checks, notifications). DELETE + recreate loses file ID and history."
+        }
+      ]
+    },
+    {
+      "id": "model-042",
+      "type": "multiple-choice",
+      "question": "An API returns a user with their 10 most recent orders embedded. How should the response indicate there are more orders?",
+      "options": [
+        "Include hasMoreOrders: true",
+        "Include a link: moreOrders: '/users/42/orders'",
+        "Include meta: {orders: {total: 100, limit: 10}}",
+        "Any of these — the client needs to know more exist"
+      ],
+      "correct": 3,
+      "explanation": "All approaches work. A flag is minimal, a link is actionable, metadata is informative. The key is signaling that the embedded array is partial, so clients know to fetch more if needed."
+    },
+    {
+      "id": "model-043",
+      "type": "multiple-choice",
+      "question": "What's 'over-fetching' in API design?",
+      "options": [
+        "Making too many API calls",
+        "Returning more data than the client needs",
+        "Fetching data that doesn't exist",
+        "Exceeding rate limits"
+      ],
+      "correct": 1,
+      "explanation": "Over-fetching means the API returns more data than the client needs — wasting bandwidth and processing. It's a common complaint about REST APIs that GraphQL addresses with precise field selection."
+    },
+    {
+      "id": "model-044",
+      "type": "multiple-choice",
+      "question": "What's 'under-fetching' in API design?",
+      "options": [
+        "The API doesn't have enough data",
+        "The client needs multiple round trips to get all required data",
+        "The response is too small",
+        "The client doesn't request enough fields"
+      ],
+      "correct": 1,
+      "explanation": "Under-fetching means a single request doesn't return everything the client needs, forcing additional requests. Example: GET /orders returns order IDs, then the client must GET /orders/1, GET /orders/2, ... (N+1 problem)."
+    },
+    {
+      "id": "model-045",
+      "type": "multi-select",
+      "question": "Which REST patterns help reduce under-fetching?",
+      "options": [
+        "Compound documents (?include=related)",
+        "Sparse fieldsets (?fields=name,email)",
+        "Pagination",
+        "Embedding common relations by default"
+      ],
+      "correctIndices": [0, 3],
+      "explanation": "Including related resources (?include=) and embedding common relations reduce round trips. Sparse fieldsets address over-fetching (requesting less). Pagination controls list size, not under-fetching."
+    },
+    {
+      "id": "model-046",
+      "type": "multiple-choice",
+      "question": "A mobile app and a web app use the same API. Mobile needs fewer fields. How should the API handle this?",
+      "options": [
+        "Separate endpoints: /mobile/users and /web/users",
+        "Sparse fieldsets: ?fields=id,name for mobile",
+        "Different API versions for mobile",
+        "B is cleanest — one API, client controls response shape"
+      ],
+      "correct": 3,
+      "explanation": "Sparse fieldsets let each client request what it needs without API changes. Separate endpoints or versions lead to fragmentation and duplicated logic. One flexible API serves all clients."
+    },
+    {
+      "id": "model-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team member suggests: 'Our API should return different fields based on the user's role.' Is this a good idea?",
+          "options": [
+            "Yes — hide sensitive fields from unauthorized users",
+            "No — it makes the API unpredictable",
+            "Only for sensitive fields like SSN, not general fields",
+            "It's valid but requires careful documentation"
+          ],
+          "correct": 3,
+          "explanation": "Role-based field visibility is common for security (admins see more). But it makes API behavior vary by caller, complicating testing and documentation. If you do this, document it clearly and keep the variations minimal."
+        },
+        {
+          "question": "How should the API indicate a field was hidden due to permissions?",
+          "options": [
+            "Return null for hidden fields",
+            "Omit hidden fields entirely",
+            "Return 403 for the entire request",
+            "B is common; A could signal 'exists but hidden'"
+          ],
+          "correct": 3,
+          "explanation": "Omitting is cleanest — the field simply isn't there. Returning null could mean 'you can't see it' or 'it's actually null' — ambiguous. 403 for the whole request is too coarse. Omission is the standard pattern."
+        }
+      ]
+    },
+    {
+      "id": "model-048",
+      "type": "multiple-choice",
+      "question": "What's a 'projection' in API design?",
+      "options": [
+        "Predicting future API usage",
+        "Selecting a subset of fields to return",
+        "Estimating response time",
+        "Mapping internal models to API responses"
+      ],
+      "correct": 1,
+      "explanation": "A projection (borrowed from databases) means selecting specific fields to return. ?fields=id,name projects only those two fields. Also called sparse fieldsets, partial responses, or field selection."
+    },
+    {
+      "id": "model-049",
+      "type": "ordering",
+      "question": "Rank these data transfer strategies from least to most flexible for clients:",
+      "items": [
+        "Fixed response shape (every call returns everything)",
+        "Sparse fieldsets (?fields=a,b,c)",
+        "Include related resources (?include=posts)",
+        "GraphQL (client specifies exact query)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Fixed is least flexible. Fieldsets add projection. Include adds relationship selection. GraphQL combines both with arbitrary nesting and is maximally flexible, at the cost of complexity."
+    },
+    {
+      "id": "model-050",
+      "type": "multiple-choice",
+      "question": "Should API resources match database tables 1:1?",
+      "options": [
+        "Yes — it's simpler to implement",
+        "No — APIs should model the domain, not the storage",
+        "Only for simple CRUD apps",
+        "B is correct — APIs are an abstraction over storage"
+      ],
+      "correct": 3,
+      "explanation": "API resources model domain concepts, not database structure. A 'user profile' API resource might combine data from users, preferences, and settings tables. The API contract is stable; the database schema can evolve independently."
+    },
+    {
+      "id": "model-051",
+      "type": "multi-select",
+      "question": "Which are benefits of NOT exposing database structure in your API?",
+      "options": [
+        "Can change database schema without breaking clients",
+        "Can denormalize or combine tables freely",
+        "Hides internal details from attackers",
+        "Reduces API documentation needs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Decoupling API from DB allows schema changes, denormalization, and hides internals (like table names, which could hint at vulnerabilities). It doesn't reduce documentation — the API contract still needs documenting."
+    },
+    {
+      "id": "model-052",
+      "type": "multiple-choice",
+      "question": "A database has separate 'users' and 'profiles' tables. Should the API have separate /users and /profiles endpoints?",
+      "options": [
+        "Yes — mirror the database structure",
+        "No — combine into one /users resource with profile fields",
+        "Yes — separation of concerns",
+        "Depends on whether they're accessed independently"
+      ],
+      "correct": 3,
+      "explanation": "If clients always need both, combining simplifies the API. If profiles are large and optional, separate endpoints make sense. The database split is an implementation detail; the API models client needs."
+    },
+    {
+      "id": "model-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user has private notes visible only to them. How should notes appear in GET /users/42?",
+          "options": [
+            "Always included (rely on authorization)",
+            "Never included (use GET /users/42/notes)",
+            "Included only if the requester is user 42",
+            "C, or use ?include=notes and check permissions"
+          ],
+          "correct": 3,
+          "explanation": "Only the owner should see their notes. Including them conditionally based on auth (C) or requiring explicit ?include= with permission checks both work. Never exposing them in the base resource is also valid and simpler."
+        },
+        {
+          "question": "User 42 requests GET /users/99. User 99 has notes, but 42 shouldn't see them. What does the response look like?",
+          "options": [
+            "{id: 99, name: 'Bob', notes: []} (empty array)",
+            "{id: 99, name: 'Bob', notes: null}",
+            "{id: 99, name: 'Bob'} (notes field absent)",
+            "C is cleanest — field doesn't exist for unauthorized viewers"
+          ],
+          "correct": 3,
+          "explanation": "Omitting the field entirely is cleanest. Empty array suggests 'no notes' (false). Null suggests 'unknown' or 'hidden'. Absence says 'this field isn't part of your view of this resource.'"
+        }
+      ]
+    },
+    {
+      "id": "model-054",
+      "type": "multiple-choice",
+      "question": "What does it mean for an API to be 'resource-oriented'?",
+      "options": [
+        "It only handles static files",
+        "Operations are framed as CRUD on named resources, not procedures",
+        "It uses minimal server resources",
+        "It's optimized for mobile"
+      ],
+      "correct": 1,
+      "explanation": "Resource-oriented means thinking in terms of resources (nouns) and standard operations (GET, POST, PUT, DELETE) rather than procedure calls (verbs like 'getUser', 'createOrder'). REST is resource-oriented; RPC is procedure-oriented."
+    },
+    {
+      "id": "model-055",
+      "type": "ordering",
+      "question": "Rank these API styles from most resource-oriented to most action-oriented:",
+      "items": [
+        "POST /users (create a user)",
+        "POST /sendEmail (send an email)",
+        "POST /email-queue (create an email job resource)",
+        "PATCH /users/42 (update a user)"
+      ],
+      "correctOrder": [3, 0, 2, 1],
+      "explanation": "PATCH and POST on resources are resource-oriented. POST /email-queue frames the action as creating a resource (the job). POST /sendEmail is pure RPC — an action verb, not a resource. All valid, but different styles."
+    },
+    {
+      "id": "model-056",
+      "type": "multiple-choice",
+      "question": "When is an action endpoint (like POST /users/42/send-welcome-email) appropriate?",
+      "options": [
+        "Never — it's not RESTful",
+        "When the action doesn't map to creating, reading, updating, or deleting a resource",
+        "Only for asynchronous operations",
+        "B — some actions are genuinely procedural"
+      ],
+      "correct": 3,
+      "explanation": "Not everything maps cleanly to CRUD. 'Send welcome email' is a side effect, not a resource. You could model it as POST /emails, but sometimes an action endpoint is more natural. Pragmatism > purity."
+    },
+    {
+      "id": "model-057",
+      "type": "multi-select",
+      "question": "Which are good candidates for action endpoints instead of resource operations?",
+      "options": [
+        "Restart a server",
+        "Create a user",
+        "Validate an address (check without saving)",
+        "Calculate shipping cost"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Restart, validate, and calculate are actions without persistent resource creation. Create a user is clearly resource creation (POST /users). Actions that have side effects but don't create/modify resources suit action endpoints."
+    },
+    {
+      "id": "model-058",
+      "type": "multiple-choice",
+      "question": "How should a 'calculate' endpoint (like shipping cost) be designed?",
+      "options": [
+        "GET /shipping-cost?weight=5&destination=NYC",
+        "POST /calculate-shipping with body",
+        "GET is correct for read-only; POST if inputs are complex",
+        "POST /shipping-costs to create a cost record"
+      ],
+      "correct": 2,
+      "explanation": "GET is semantically correct for a read-only calculation — it's safe and cacheable. But if inputs are complex (large body), POST is practical. Creating a 'cost record' resource is overkill for a stateless calculation."
+    },
+    {
+      "id": "model-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A POST /orders/42/refund endpoint is called. What should happen if the order can't be refunded?",
+          "options": [
+            "Return 400 Bad Request",
+            "Return 409 Conflict (order state conflicts with refund)",
+            "Return 422 Unprocessable Entity",
+            "Any of these; 409 best conveys 'state conflict'"
+          ],
+          "correct": 3,
+          "explanation": "409 Conflict is most precise — the request is valid but conflicts with current resource state (order already shipped, already refunded, etc.). 400 suggests malformed request. 422 suggests validation error. All work, 409 is clearest."
+        },
+        {
+          "question": "The refund succeeds. What should the response contain?",
+          "options": [
+            "Just 200 OK",
+            "The updated order resource showing refund status",
+            "A new refund resource: {refundId: 123, amount: 50, orderId: 42}",
+            "B or C — return something useful"
+          ],
+          "correct": 3,
+          "explanation": "Either works. Returning the updated order is convenient. Returning a refund resource (if refunds are first-class) provides the refund details. Both give the client useful information without another request."
+        }
+      ]
+    },
+    {
+      "id": "model-060",
+      "type": "multiple-choice",
+      "question": "A resource has computed fields (like 'orderTotal'). Should they be stored or calculated?",
+      "options": [
+        "Always calculated on read — no stale data",
+        "Always stored — faster reads",
+        "Calculated on write, stored for reads",
+        "Depends on computation cost and freshness needs"
+      ],
+      "correct": 3,
+      "explanation": "If computation is cheap and data changes often, calculate on read. If computation is expensive and data rarely changes, compute-on-write is better. Many systems use write-time computation with invalidation. Context matters."
+    },
+    {
+      "id": "model-061",
+      "type": "multiple-choice",
+      "question": "A client submits a POST /orders request. The server creates the order but fails to send the confirmation email. What should happen?",
+      "options": [
+        "Roll back the order and return 500",
+        "Return 201 Created — the order was created successfully",
+        "Return 207 Multi-Status to indicate partial success",
+        "B — the order was created; email is a side effect"
+      ],
+      "correct": 3,
+      "explanation": "The primary action (creating the order) succeeded. Failing side effects (email) shouldn't roll back the main operation unless critical. Return success; handle email retry asynchronously. Log the failure for monitoring."
+    },
+    {
+      "id": "model-062",
+      "type": "multiple-choice",
+      "question": "A POST endpoint takes a body with 10 optional fields. 8 are missing. Is this valid?",
+      "options": [
+        "No — all fields should be sent",
+        "Yes — optional means omittable; server uses defaults",
+        "Only if defaults are documented",
+        "B is correct for optional fields"
+      ],
+      "correct": 1,
+      "explanation": "Optional fields can be omitted. The server applies defaults or null. This is different from required fields, which must be present. Document defaults and validate required fields server-side."
+    },
+    {
+      "id": "model-063",
+      "type": "multi-select",
+      "question": "Which should typically be server-assigned, not client-provided?",
+      "options": [
+        "Resource ID",
+        "Creation timestamp",
+        "Update timestamp",
+        "User-provided title"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "ID, createdAt, and updatedAt should be server-controlled — clients shouldn't set their own IDs (usually) or manipulate timestamps. User-provided content like titles is obviously client-provided."
+    },
+    {
+      "id": "model-064",
+      "type": "ordering",
+      "question": "Rank these fields from most to least appropriate for client input on POST /orders:",
+      "items": [
+        "items: [{productId: 1, quantity: 2}]",
+        "total: 150.00",
+        "status: 'completed'",
+        "createdAt: '2024-01-15'"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Items are clearly client-provided. Total is borderline (could be client-suggested but server-calculated). Status should be server-controlled (new orders start as 'pending'). Timestamps are always server-assigned."
+    },
+    {
+      "id": "model-065",
+      "type": "multiple-choice",
+      "question": "A PUT request includes a read-only field like 'createdAt'. What should the server do?",
+      "options": [
+        "Return 400 — client shouldn't send read-only fields",
+        "Ignore the field — replace everything else",
+        "Only accept the request if the value matches the stored value",
+        "B is most practical; C is strictest"
+      ],
+      "correct": 3,
+      "explanation": "Ignoring read-only fields is pragmatic — clients might echo what they got. Strict validation (C) catches clients that accidentally modify them. Rejecting entirely (A) is harsh when the value matches. Choose based on API philosophy."
+    },
+    {
+      "id": "model-066",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An order has a 'discount' that depends on the user's membership tier. Who should calculate it?",
+          "options": [
+            "Client calculates and sends discount amount",
+            "Client sends tier; server calculates discount",
+            "Server looks up tier and calculates discount",
+            "C — server has authoritative data, avoids tampering"
+          ],
+          "correct": 3,
+          "explanation": "Server should calculate pricing. Clients can't be trusted with discount calculations (they could send discount: 100%). The server knows the user's current tier and applies business logic."
+        },
+        {
+          "question": "The client needs to show the discount before submitting the order. How should the API support this?",
+          "options": [
+            "GET /users/42/discount-tier",
+            "POST /orders/preview with cart contents, returns calculated totals",
+            "Embed discount logic in the client app",
+            "B — let the server calculate a preview"
+          ],
+          "correct": 3,
+          "explanation": "A preview endpoint lets the client show accurate totals without duplicating pricing logic. GET /discount-tier only gives raw data, not the calculated discount. Never embed pricing logic in clients — it'll be wrong and exploitable."
+        }
+      ]
+    },
+    {
+      "id": "model-067",
+      "type": "multiple-choice",
+      "question": "What's the purpose of an ETag in a GET response?",
+      "options": [
+        "To identify the API version",
+        "To enable conditional requests (caching and concurrency)",
+        "To track request origin",
+        "To validate the request format"
+      ],
+      "correct": 1,
+      "explanation": "ETag is a version identifier for the resource. Clients send If-None-Match for conditional GETs (304 Not Modified) or If-Match for conditional writes (412 Precondition Failed if the resource changed)."
+    },
+    {
+      "id": "model-068",
+      "type": "multiple-choice",
+      "question": "A response includes a 'version' field for optimistic concurrency. How should updates use it?",
+      "options": [
+        "Send version in URL: PUT /orders/42?version=3",
+        "Send version in header: If-Match: 3",
+        "Send version in body: {version: 3, ...updates}",
+        "All valid; header or body are most common"
+      ],
+      "correct": 3,
+      "explanation": "All work. Headers (If-Match) are the HTTP-standard approach. Body is simpler for clients that just echo the resource. Query params are unusual but valid. Consistency within your API matters most."
+    },
+    {
+      "id": "model-069",
+      "type": "multi-select",
+      "question": "Which patterns help prevent conflicting concurrent updates?",
+      "options": [
+        "Optimistic locking with version numbers",
+        "ETags with If-Match headers",
+        "Last-Modified timestamps",
+        "Requiring all updates to be PATCH (not PUT)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Version numbers, ETags, and Last-Modified timestamps all detect concurrent modifications. PATCH vs PUT doesn't prevent conflicts — two PATCHes to different fields can still conflict semantically."
+    },
+    {
+      "id": "model-070",
+      "type": "multiple-choice",
+      "question": "When should you expose internal database IDs vs. generating API-specific IDs?",
+      "options": [
+        "Always use database IDs — simpler",
+        "Always generate API IDs — better decoupling",
+        "Database IDs are fine unless you need to hide structure or merge databases",
+        "Never expose any IDs"
+      ],
+      "correct": 2,
+      "explanation": "Database IDs are usually fine. Generate separate IDs if: you might merge databases (conflicting IDs), you want to obscure internal structure, or you need distributed ID generation. Over-engineering ID schemes is common."
+    },
+    {
+      "id": "model-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A shopping cart API: should cart be a resource or session state?",
+          "options": [
+            "Session state — disappears when user leaves",
+            "Resource — persistent, has its own URL like /carts/abc123",
+            "Stored in a cookie/localStorage on the client",
+            "B for logged-in users; A or C for guests"
+          ],
+          "correct": 3,
+          "explanation": "For logged-in users, a persistent cart resource makes sense — they can access it across devices. For guests, session-based or client-side storage is simpler and avoids orphaned cart resources."
+        },
+        {
+          "question": "The cart API is resource-based: POST /carts/{id}/items. How should 'checkout' be modeled?",
+          "options": [
+            "POST /carts/abc123/checkout (action on cart)",
+            "POST /orders with {cartId: 'abc123'} (create order from cart)",
+            "DELETE /carts/abc123 and POST /orders separately",
+            "B is more resource-oriented; A is acceptable"
+          ],
+          "correct": 3,
+          "explanation": "POST /orders with cartId models checkout as creating a new resource (the order). POST /carts/checkout is action-oriented. Both work; POST /orders is more RESTful since checkout creates an order, not a cart."
+        }
+      ]
+    },
+    {
+      "id": "model-072",
+      "type": "multiple-choice",
+      "question": "How should a search endpoint return results when there are no matches?",
+      "options": [
+        "200 OK with empty array: {results: []}",
+        "404 Not Found",
+        "204 No Content",
+        "A — 200 with empty results is correct"
+      ],
+      "correct": 3,
+      "explanation": "The search succeeded and found zero results. That's 200 OK with an empty array, not an error. 404 would mean the search endpoint itself doesn't exist. 204 is awkward because you'd need a way to convey metadata (total: 0)."
+    },
+    {
+      "id": "model-073",
+      "type": "multiple-choice",
+      "question": "GET /users/42 when user 42 doesn't exist. GET /search?q=xyz when no results match. Which is 404?",
+      "options": [
+        "Both are 404",
+        "Only /users/42 is 404; search returns 200 with empty results",
+        "Neither is 404",
+        "Depends on API conventions"
+      ],
+      "correct": 1,
+      "explanation": "GET /users/42 addresses a specific resource that doesn't exist → 404. GET /search?q=xyz is querying a collection that exists but returned no matches → 200 with empty results. The collection endpoint exists; the results are empty."
+    },
+    {
+      "id": "model-074",
+      "type": "ordering",
+      "question": "Rank these response strategies for GET /products when no products exist:",
+      "items": [
+        "404 Not Found",
+        "200 OK with {products: [], total: 0}",
+        "204 No Content",
+        "200 OK with {products: null}"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "200 with empty array is correct — the collection exists, it's just empty. 204 is awkward for lists. Null is ambiguous (no products vs. couldn't load?). 404 is wrong — the /products endpoint exists."
+    },
+    {
+      "id": "model-075",
+      "type": "multiple-choice",
+      "question": "A resource can be in multiple states (draft, published, archived). Should these be different endpoints?",
+      "options": [
+        "Yes: /drafts, /published, /archived",
+        "No: GET /articles?status=draft filters one collection",
+        "Yes for reads, no for writes",
+        "B is simpler and more flexible"
+      ],
+      "correct": 3,
+      "explanation": "One collection with a status filter is simpler. Separate collections require duplicating endpoints and handling transitions between them. A single /articles endpoint with status query param is more flexible."
+    },
+    {
+      "id": "model-076",
+      "type": "multi-select",
+      "question": "Which are valid ways to represent a user's address in a user resource?",
+      "options": [
+        "Embedded object: address: {street: '...', city: '...'}",
+        "Flattened: addressStreet: '...', addressCity: '...'",
+        "Separate endpoint: GET /users/42/address",
+        "Reference: addressId: 789 (with /addresses/789 endpoint)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid. Embedded is clean and common. Flattened is simple but verbose. Separate endpoint suits reusable/independent addresses. Reference works if addresses are shared (billing vs. shipping) or have their own lifecycle."
+    },
+    {
+      "id": "model-077",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user can have multiple addresses (home, work, billing, shipping). How should you model this?",
+          "options": [
+            "Separate fields: homeAddress, workAddress, billingAddress, shippingAddress",
+            "Array of typed addresses: addresses: [{type: 'home', ...}, {type: 'work', ...}]",
+            "Separate endpoints: GET /users/42/addresses",
+            "B or C — arrays are flexible; endpoints give independent access"
+          ],
+          "correct": 3,
+          "explanation": "Separate fields only work for fixed types. Array or nested endpoint handles dynamic types and quantities. Choose array for simple embedding, endpoint if addresses need their own IDs or operations."
+        },
+        {
+          "question": "You chose nested endpoint: GET /users/42/addresses returns addresses. A client needs to update just the city of one address. What's the request?",
+          "options": [
+            "PATCH /users/42/addresses with [{id: 1, city: 'NYC'}]",
+            "PATCH /users/42/addresses/1 with {city: 'NYC'}",
+            "PUT /users/42/addresses with full array including updated address",
+            "B — address 1 is a resource that can be patched directly"
+          ],
+          "correct": 3,
+          "explanation": "If addresses have IDs, they're individual resources: PATCH /users/42/addresses/1. This is precise — update one field of one address. Patching the whole array risks clobbering concurrent changes to other addresses."
+        }
+      ]
+    },
+    {
+      "id": "model-078",
+      "type": "multiple-choice",
+      "question": "A team wants to add 'tagging' to multiple resource types (posts, photos, documents). What's the best model?",
+      "options": [
+        "Add a tags array to each resource type",
+        "Create a separate /tags resource that links to tagged items",
+        "POST /posts/42/tags, POST /photos/42/tags (nested per type)",
+        "Any can work; polymorphic tags resource is most reusable"
+      ],
+      "correct": 3,
+      "explanation": "Embedded arrays are simple but can't query 'all items with tag X'. A separate tags resource with polymorphic links (taggedType: 'post', taggedId: 42) enables cross-resource queries. Nested per type works but duplicates logic."
+    },
+    {
+      "id": "model-079",
+      "type": "multiple-choice",
+      "question": "What's a 'polymorphic' relationship in API modeling?",
+      "options": [
+        "A field that can hold different types of objects",
+        "A resource that belongs to multiple different resource types",
+        "An endpoint that returns different formats",
+        "A or B — the term applies to flexible type relationships"
+      ],
+      "correct": 3,
+      "explanation": "Polymorphism means a relationship can point to different types. A comment might belong to a post OR a photo. Represented as {commentableType: 'post', commentableId: 42} or similar. Common in 'tagging' or 'commenting' systems."
+    },
+    {
+      "id": "model-080",
+      "type": "ordering",
+      "question": "Rank these approaches to modeling comments (which can belong to posts or photos) from least to most flexible:",
+      "items": [
+        "Separate tables/endpoints: postComments, photoComments",
+        "Single comments with polymorphic reference (type + id)",
+        "Comments with both postId and photoId (one is always null)",
+        "A comments resource with a 'parent' link object"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Separate resources are rigid. Dual nullable FKs are awkward. Polymorphic type + id is flexible. A structured 'parent' link (type, id, href) is most flexible and self-documenting."
+    },
+    {
+      "id": "model-081",
+      "type": "multiple-choice",
+      "question": "A photo has a location (lat/long). Should this be part of the photo resource or a separate location resource?",
+      "options": [
+        "Part of photo: {location: {lat: 40.7, lng: -74.0}}",
+        "Separate: {locationId: 123} with GET /locations/123",
+        "A — location is an attribute of the photo, not an independent entity",
+        "B — if you want to query 'photos at this location'"
+      ],
+      "correct": 2,
+      "explanation": "A lat/long pair is data about the photo, not something with its own identity or lifecycle. Embed it. A separate location resource makes sense if locations are named places that multiple photos share, but raw coordinates are just attributes."
+    },
+    {
+      "id": "model-082",
+      "type": "multi-select",
+      "question": "When should a conceptual 'thing' be modeled as a separate API resource?",
+      "options": [
+        "It has its own lifecycle (create, update, delete independently)",
+        "It's referenced by multiple other resources",
+        "It has more than 5 attributes",
+        "It requires separate access control"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Independent lifecycle, shared references, and separate access control all suggest a first-class resource. Number of attributes alone doesn't matter — a 2-attribute entity with its own lifecycle deserves its own resource."
+    },
+    {
+      "id": "model-083",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A product has reviews. Most clients show products with a rating summary. Some clients show full reviews. How should you model this?",
+          "options": [
+            "GET /products/42 always includes full reviews array",
+            "GET /products/42 includes summary; GET /products/42/reviews for full list",
+            "GET /products/42?include=reviews for optional embedding",
+            "B or C — avoid embedding large lists by default"
+          ],
+          "correct": 3,
+          "explanation": "Embedding a potentially large reviews array bloats every product response. Include a summary (avgRating, reviewCount) by default; let clients fetch full reviews when needed via nested endpoint or ?include=."
+        },
+        {
+          "question": "The product response includes {reviewSummary: {avg: 4.5, count: 150}}. What's the best link to full reviews?",
+          "options": [
+            "reviewsUrl: '/products/42/reviews'",
+            "links: {reviews: '/products/42/reviews'}",
+            "Inside summary: {avg: 4.5, count: 150, href: '/products/42/reviews'}",
+            "B or C — include an actionable link"
+          ],
+          "correct": 3,
+          "explanation": "A link to the full reviews resource helps clients navigate. Putting it in 'links' (B) is clean. Putting it in the summary object (C) keeps related data together. Both are good; be consistent."
+        }
+      ]
+    },
+    {
+      "id": "model-084",
+      "type": "multiple-choice",
+      "question": "An endpoint returns aggregated data (e.g., sales by region). Is this RESTful?",
+      "options": [
+        "No — REST is only for CRUD on resources",
+        "Yes — the aggregation result is itself a resource",
+        "Only if you cache it with an ID",
+        "B — GET /reports/sales-by-region returns a representation of that report"
+      ],
+      "correct": 3,
+      "explanation": "Aggregated/computed data is still a resource. GET /reports/sales-by-region returns a representation of the 'sales by region' concept. Not everything needs to be persisted. Computed views are valid REST resources."
+    },
+    {
+      "id": "model-085",
+      "type": "multiple-choice",
+      "question": "A client requests GET /users?email=alice@example.com to find a user by email. Is this correct?",
+      "options": [
+        "No — should be GET /users/alice@example.com",
+        "No — should be POST /users/search",
+        "Yes — filtering a collection by a unique field is valid",
+        "Only if the response is an array (even for 0 or 1 results)"
+      ],
+      "correct": 2,
+      "explanation": "Filtering a collection by email is valid. The response is an array (might be empty or have one item). If exactly one user will match, some APIs return the object directly; returning an array is more consistent."
+    },
+    {
+      "id": "model-086",
+      "type": "multi-select",
+      "question": "Which are signs that an API is well-modeled?",
+      "options": [
+        "Clients rarely need multiple requests for common operations",
+        "Adding features doesn't require breaking changes",
+        "The API matches the database schema exactly",
+        "Resources and actions have clear, intuitive names"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Efficient operations, extensibility, and clear naming indicate good modeling. Matching the database exactly is actually a smell — APIs should abstract over storage, not mirror it."
+    },
+    {
+      "id": "model-087",
+      "type": "ordering",
+      "question": "Rank these API design priorities from most to least important:",
+      "items": [
+        "Intuitive for developers using the API",
+        "Easy to implement on the server",
+        "Minimal payload size",
+        "Maximum REST purity"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Developer experience trumps all. Payload size affects performance. Implementation ease matters but shouldn't compromise the API contract. REST purity is nice but less important than a usable, efficient API."
+    },
+    {
+      "id": "model-088",
+      "type": "multiple-choice",
+      "question": "A product has price in multiple currencies. How should this be represented?",
+      "options": [
+        "priceUsd: 10, priceEur: 8, priceGbp: 7",
+        "prices: {usd: 10, eur: 8, gbp: 7}",
+        "prices: [{currency: 'USD', amount: 10}, ...]",
+        "B or C — structured data, not field-per-currency"
+      ],
+      "correct": 3,
+      "explanation": "Field-per-currency doesn't scale (new currencies need schema changes). An object (B) or array (C) is flexible. Array is better if currencies have metadata (exchange rate date, etc.). Object is simpler for lookup."
+    },
+    {
+      "id": "model-089",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A mobile app needs to render a 'home feed' with posts, stories, and suggestions. How should the API support this?",
+          "options": [
+            "Three calls: GET /posts, GET /stories, GET /suggestions",
+            "Single endpoint: GET /home-feed returns mixed content",
+            "GraphQL query for exactly what's needed",
+            "B is practical; C is most flexible"
+          ],
+          "correct": 3,
+          "explanation": "A single home-feed endpoint optimized for this view reduces round trips. GraphQL lets the client specify exactly what it needs. Three separate calls are inefficient for a single screen render."
+        },
+        {
+          "question": "GET /home-feed returns [{type: 'post', ...}, {type: 'story', ...}]. What's the tradeoff of this design?",
+          "options": [
+            "It's faster but not cacheable",
+            "It couples the API to a specific client view",
+            "It's not RESTful",
+            "B — changing the feed layout may require API changes"
+          ],
+          "correct": 3,
+          "explanation": "Aggregated endpoints like /home-feed are optimized for specific use cases. If the app redesigns the home screen, the API might need changes. The tradeoff is efficiency vs. flexibility. Still RESTful — it's a resource (the feed view)."
+        }
+      ]
+    },
+    {
+      "id": "model-090",
+      "type": "multiple-choice",
+      "question": "Which is a 'Backend for Frontend' (BFF) pattern?",
+      "options": [
+        "A single API for all clients",
+        "Separate API layers optimized for each client type (mobile, web)",
+        "Frontend and backend in the same codebase",
+        "Using GraphQL"
+      ],
+      "correct": 1,
+      "explanation": "BFF means building separate backend services tailored to each frontend. Mobile BFF returns minimal data, web BFF returns rich data. Each BFF aggregates from underlying microservices. Avoids one-size-fits-all compromises."
+    },
+    {
+      "id": "model-091",
+      "type": "multi-select",
+      "question": "Which are benefits of the BFF (Backend for Frontend) pattern?",
+      "options": [
+        "API optimized for each client's needs",
+        "Reduces over-fetching and under-fetching",
+        "Simpler client code — BFF handles aggregation",
+        "Fewer backend services to maintain"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "BFFs optimize for specific clients, reduce data transfer issues, and simplify clients. But they ADD backend services (one per client type), not reduce them. That's the tradeoff — more backend complexity for better client experiences."
+    },
+    {
+      "id": "model-092",
+      "type": "multiple-choice",
+      "question": "A resource has a field that's expensive to compute. How should it be handled?",
+      "options": [
+        "Always include it — clients expect complete resources",
+        "Omit by default; include with ?include=expensiveField",
+        "Put it on a separate endpoint: GET /resources/42/expensive",
+        "B or C — avoid expensive computation unless requested"
+      ],
+      "correct": 3,
+      "explanation": "Don't compute expensive fields unless requested. Either make it opt-in (?include=) or put it on its own endpoint. This keeps default responses fast and lets clients pay the cost only when needed."
+    },
+    {
+      "id": "model-093",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A notification has a 'target' that could be a user, post, or comment. How should the API represent this?",
+          "options": [
+            "targetUserId, targetPostId, targetCommentId (only one is set)",
+            "target: {type: 'user', id: 42}",
+            "targetUrl: '/users/42'",
+            "B or C — polymorphic reference with type info"
+          ],
+          "correct": 3,
+          "explanation": "Polymorphic reference (type + id or a URL) cleanly handles multiple target types. Separate nullable fields don't scale (what if you add more types?) and waste space. URL is especially nice for HATEOAS."
+        },
+        {
+          "question": "The notification response includes target: {type: 'user', id: 42}. Should it also embed the target user's name?",
+          "options": [
+            "No — client should fetch /users/42 separately",
+            "Yes — embed common fields: target: {type: 'user', id: 42, name: 'Alice'}",
+            "Only if requested: ?include=target",
+            "B for minimal fields; C for full objects"
+          ],
+          "correct": 3,
+          "explanation": "Embedding the name avoids an extra request for displaying the notification. Full objects might be overkill. Include essential display fields (name, avatar) but not everything. ?include= gives flexibility."
+        }
+      ]
+    },
+    {
+      "id": "model-094",
+      "type": "multiple-choice",
+      "question": "A request body has nested objects 4 levels deep. Is this problematic?",
+      "options": [
+        "Yes — flatten to 2 levels maximum",
+        "No — nest as deep as the data model requires",
+        "Only problematic if it affects performance",
+        "Depends on readability and whether the nesting is natural"
+      ],
+      "correct": 3,
+      "explanation": "Deep nesting is fine if it reflects real structure. A 'company.address.country.code' structure is natural. Artificial nesting for grouping can confuse. Evaluate readability, not arbitrary depth limits."
+    },
+    {
+      "id": "model-095",
+      "type": "ordering",
+      "question": "Rank these API documentation elements from most to least essential:",
+      "items": [
+        "Request/response examples",
+        "Error response formats",
+        "Rate limit details",
+        "Internal implementation notes"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Examples are most helpful — developers copy-paste them. Error formats are critical for handling failures. Rate limits prevent surprises. Implementation notes are rarely useful to API consumers and may leak internals."
+    },
+    {
+      "id": "model-096",
+      "type": "multiple-choice",
+      "question": "A boolean field needs a third state (true, false, unknown). How should you handle this?",
+      "options": [
+        "Add a separate 'isUnknown' boolean",
+        "Change to enum: {status: 'confirmed' | 'denied' | 'unknown'}",
+        "Use nullable boolean: true, false, null (null = unknown)",
+        "B or C — the field is no longer boolean"
+      ],
+      "correct": 3,
+      "explanation": "A three-state field isn't boolean anymore. Either use an enum (clearest) or a nullable boolean (common convention where null = unknown). Avoid boolean + another field — that's implicit state."
+    },
+    {
+      "id": "model-097",
+      "type": "multi-select",
+      "question": "Which field naming conventions improve API readability?",
+      "options": [
+        "Consistent naming across all endpoints",
+        "Avoiding abbreviations (createdAt, not crAt)",
+        "Using 'info', 'data', 'object' suffixes liberally",
+        "Boolean prefixes like 'is' or 'has'"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Consistency, full words, and clear boolean naming (isActive, hasChildren) improve readability. 'info', 'data', 'object' suffixes are noise words that add length without meaning."
+    },
+    {
+      "id": "model-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user has settings that are independent of profile data. How should settings be modeled?",
+          "options": [
+            "Fields on the user resource: GET /users/42 includes settings",
+            "Nested resource: GET /users/42/settings",
+            "Separate top-level: GET /settings (for the current user)",
+            "B or C depending on access patterns"
+          ],
+          "correct": 3,
+          "explanation": "If settings are rarely needed with profile data, a separate endpoint avoids bloat. Nested under user (B) is logical. Top-level /settings (C) works if settings are user-specific and accessed standalone. Both are valid."
+        },
+        {
+          "question": "Settings are key-value pairs that vary by user. How should PATCH work?",
+          "options": [
+            "Send the full settings object, replacing everything",
+            "Send only changed keys, merging with existing",
+            "PUT for full replace, PATCH for merge",
+            "C — both operations are useful"
+          ],
+          "correct": 3,
+          "explanation": "PUT /settings replaces all settings (useful for bulk updates). PATCH /settings merges with existing (useful for changing one setting). Supporting both gives clients flexibility."
+        }
+      ]
+    },
+    {
+      "id": "model-099",
+      "type": "multiple-choice",
+      "question": "A 'soft delete' sets a 'deletedAt' timestamp instead of removing the record. How should GET /resources handle this?",
+      "options": [
+        "Include soft-deleted resources by default",
+        "Exclude soft-deleted by default; allow ?includeDeleted=true",
+        "Return 404 for soft-deleted resources",
+        "B — most clients want active resources only"
+      ],
+      "correct": 3,
+      "explanation": "Clients usually want active resources. Exclude deleted by default, but provide a query param for admin/audit use cases. For GET /resources/42 of a soft-deleted resource, 404 or 410 Gone are both reasonable."
+    },
+    {
+      "id": "model-100",
+      "type": "multiple-choice",
+      "question": "What's the key principle behind REST resource modeling?",
+      "options": [
+        "Every database table gets an endpoint",
+        "Every action gets a POST endpoint",
+        "Resources represent meaningful domain concepts, not implementation details",
+        "Resources must be fully CRUD-compliant"
+      ],
+      "correct": 2,
+      "explanation": "Resources model domain concepts meaningful to clients, not database tables or internal structures. An 'Order' resource might combine data from orders, line_items, and shipping tables. API design is about abstractions, not mirroring storage."
+    }
+  ]
+}
