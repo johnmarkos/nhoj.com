@@ -45,8 +45,8 @@ export const CONFIG = {
         { num: 2, title: 'API Modeling', ready: true },
         { num: 3, title: 'Pagination & Filtering', ready: true },
         { num: 4, title: 'Rate Limiting & Quotas', ready: true },
-        { num: 5, title: 'Versioning & Evolution', ready: false },
-        { num: 6, title: 'Error Handling', ready: false },
+        { num: 5, title: 'Versioning & Evolution', ready: true },
+        { num: 6, title: 'Error Handling', ready: true },
         { num: 7, title: 'GraphQL & Alternatives', ready: false },
         { num: 8, title: 'API Design Scenarios', ready: false }
       ]
