@@ -18,7 +18,11 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 
 **Local preview:** Content loads via `fetch()`, so you need a local server to test (e.g., `python3 -m http.server`). Opening `index.html` directly via `file://` won't load problems.
 
-**Tests:** `node --test openquizzer.test.js` — 48 tests covering the engine (state machine, all 5 question types, numeric parsing, session flows). Zero dependencies, uses Node's built-in test runner. Run tests after any engine changes.
+**Tests:**
+- `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing)
+- `node --test config.test.js` — Config and content validation (syntax, structure, duplicate IDs)
+
+**Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs both test suites when SDP files are staged. This catches syntax errors in config.js and invalid content before they reach production.
 
 ## Architecture
 
