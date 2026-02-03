@@ -1,0 +1,1593 @@
+{
+  "unit": 3,
+  "unitTitle": "API Design",
+  "chapter": 3,
+  "chapterTitle": "Pagination & Filtering",
+  "chapterDescription": "Cursor vs offset pagination, filtering patterns, sorting, and partial responses.",
+  "problems": [
+    {
+      "id": "page-001",
+      "type": "multiple-choice",
+      "question": "What's the main problem with returning all 10,000 users in a single GET /users response?",
+      "options": [
+        "HTTP doesn't support large responses",
+        "High latency, memory usage, and bandwidth waste",
+        "It's not RESTful",
+        "Browsers can't parse that much JSON"
+      ],
+      "correct": 1,
+      "explanation": "Large responses are slow to generate, transfer, and parse. They waste bandwidth when clients only need a page. Memory spikes on both server and client. Pagination solves this by returning manageable chunks."
+    },
+    {
+      "id": "page-002",
+      "type": "multiple-choice",
+      "question": "What does 'offset pagination' mean?",
+      "options": [
+        "Skipping a number of records: ?offset=20&limit=10",
+        "Using page numbers: ?page=3&size=10",
+        "Both A and B are offset-based pagination",
+        "Pagination using timestamps"
+      ],
+      "correct": 2,
+      "explanation": "Offset pagination skips N records. ?offset=20&limit=10 and ?page=3&size=10 (where page 3 means offset 20) are equivalent approaches. Both translate to 'skip this many, return this many.'"
+    },
+    {
+      "id": "page-003",
+      "type": "multiple-choice",
+      "question": "What does 'cursor pagination' mean?",
+      "options": [
+        "Using a mouse cursor to scroll",
+        "Using an opaque token to mark position: ?cursor=abc123",
+        "Using database cursors directly",
+        "Pagination based on record IDs"
+      ],
+      "correct": 1,
+      "explanation": "Cursor pagination uses an opaque token (cursor) that encodes the position. The server returns a 'nextCursor' token; the client passes it back to get the next page. The cursor's internal format is server-controlled."
+    },
+    {
+      "id": "page-004",
+      "type": "ordering",
+      "question": "Rank these pagination methods from worst to best for a frequently-updated, large dataset:",
+      "items": [
+        "Offset: ?offset=1000&limit=10",
+        "Page number: ?page=101&size=10",
+        "Cursor: ?cursor=eyJpZCI6MTAwMH0=",
+        "Keyset: ?after_id=1000&limit=10"
+      ],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Page numbers and offsets perform poorly on large, changing datasets (skipping 1000 rows is slow, and inserts/deletes shift pages). Keyset uses indexed columns. Cursors are best — they encode position stably and can use efficient keyset queries internally."
+    },
+    {
+      "id": "page-005",
+      "type": "multi-select",
+      "question": "What are problems with offset pagination on large tables?",
+      "options": [
+        "OFFSET 10000 requires scanning and discarding 10000 rows",
+        "Inserted/deleted rows shift subsequent pages",
+        "Can't be cached effectively",
+        "Requires sequential access — can't jump to page 50"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Large offsets are slow (database skips rows). Row changes cause items to shift between pages (duplicates or missed items). Offset pagination CAN jump to any page and CAN be cached (with caveats). The performance and consistency issues are the main problems."
+    },
+    {
+      "id": "page-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user is viewing page 5 of results. Another user deletes an item from page 1. What happens when the first user clicks 'next' to page 6?",
+          "options": [
+            "Nothing — pages are stable",
+            "They might miss an item that shifted from page 6 to page 5",
+            "They'll see a duplicate from page 5",
+            "The API returns an error"
+          ],
+          "correct": 1,
+          "explanation": "With offset pagination, deleting an item shifts all subsequent items up. The item that was first on page 6 is now last on page 5. When the user goes to page 6, they skip it — it's now on page 5 which they already saw."
+        },
+        {
+          "question": "How does cursor pagination avoid this problem?",
+          "options": [
+            "It locks the data during pagination",
+            "The cursor marks a specific position (like 'after ID 500'), not a row count",
+            "It caches all results upfront",
+            "It doesn't — cursor pagination has the same issue"
+          ],
+          "correct": 1,
+          "explanation": "Cursor pagination says 'give me items after this point' (e.g., after ID 500). Deletions before that point don't affect the query — you still get items after ID 500. The position is based on values, not row counts."
+        }
+      ]
+    },
+    {
+      "id": "page-007",
+      "type": "multiple-choice",
+      "question": "Which pagination style allows jumping directly to page 50?",
+      "options": [
+        "Cursor pagination",
+        "Offset/page-number pagination",
+        "Keyset pagination",
+        "All of them"
+      ],
+      "correct": 1,
+      "explanation": "Offset pagination supports random access: ?page=50 or ?offset=490. Cursor and keyset pagination are sequential — you must traverse from the start. This is the main UX advantage of offset pagination."
+    },
+    {
+      "id": "page-008",
+      "type": "multi-select",
+      "question": "Which are advantages of cursor pagination over offset?",
+      "options": [
+        "Consistent results when data changes",
+        "Better performance on large datasets",
+        "Can jump to any page",
+        "Simpler client implementation"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Cursors provide consistency (no skipped/duplicate items) and performance (no row skipping). They don't support random page access. Client implementation is similar — just pass a token instead of a page number."
+    },
+    {
+      "id": "page-009",
+      "type": "multiple-choice",
+      "question": "What should a cursor contain?",
+      "options": [
+        "The database row ID",
+        "A page number",
+        "Opaque encoded position data — the client shouldn't parse it",
+        "A timestamp"
+      ],
+      "correct": 2,
+      "explanation": "Cursors should be opaque to clients. Internally they might encode an ID, timestamp, or multiple sort keys. Making them opaque lets you change the format without breaking clients. Base64-encoded JSON is common."
+    },
+    {
+      "id": "page-010",
+      "type": "multiple-choice",
+      "question": "A paginated response returns {data: [...], nextCursor: 'abc123'}. The client wants the next page. What request should they make?",
+      "options": [
+        "GET /items?page=2",
+        "GET /items?cursor=abc123",
+        "POST /items/next with {cursor: 'abc123'}",
+        "GET /items?offset=10"
+      ],
+      "correct": 1,
+      "explanation": "Pass the cursor as a query parameter. The server decodes it to determine where to resume. No need for POST — pagination is a read operation. The cursor replaces offset/page parameters."
+    },
+    {
+      "id": "page-011",
+      "type": "multiple-choice",
+      "question": "What should the response include when there are no more pages?",
+      "options": [
+        "nextCursor: null",
+        "Omit the nextCursor field entirely",
+        "hasMore: false",
+        "Any of these — just be consistent"
+      ],
+      "correct": 3,
+      "explanation": "All are valid conventions. null cursor, absent cursor, or an explicit hasMore flag all communicate 'no more pages.' Pick one and document it. Mixing approaches within an API causes confusion."
+    },
+    {
+      "id": "page-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API uses cursor pagination. A client wants to show 'Page 3 of 10' in the UI. How can they get the total page count?",
+          "options": [
+            "The cursor response should include totalPages",
+            "Make a separate COUNT query: GET /items/count",
+            "They can't — cursor pagination doesn't support total counts efficiently",
+            "Decode the cursor to calculate it"
+          ],
+          "correct": 2,
+          "explanation": "Cursor pagination intentionally avoids counting total rows (COUNT is expensive on large tables). If you need totals, you sacrifice some performance benefits. Many cursor-paginated APIs don't provide totals."
+        },
+        {
+          "question": "The product team insists on showing total count. What's the best compromise?",
+          "options": [
+            "Switch to offset pagination",
+            "Cache the count and update it periodically (may be stale)",
+            "Return an approximate count using database statistics",
+            "B or C — accept some staleness for performance"
+          ],
+          "correct": 3,
+          "explanation": "Exact counts on large tables are expensive. Cached or approximate counts are usually good enough for UI ('~10,000 results'). If exact counts are critical, you may need to accept the performance cost or use offset pagination."
+        }
+      ]
+    },
+    {
+      "id": "page-013",
+      "type": "multiple-choice",
+      "question": "What's 'keyset pagination'?",
+      "options": [
+        "Pagination using API keys",
+        "Pagination using indexed column values: 'WHERE id > 1000 LIMIT 10'",
+        "Pagination using keyboard shortcuts",
+        "Pagination using composite keys"
+      ],
+      "correct": 1,
+      "explanation": "Keyset pagination filters by column values instead of offsets: 'WHERE created_at < :last_seen ORDER BY created_at DESC LIMIT 10'. It uses indexes efficiently and is stable under inserts/deletes. Cursors often encode keyset values."
+    },
+    {
+      "id": "page-014",
+      "type": "ordering",
+      "question": "Rank these by query performance on a table with 1 million rows (getting page 10,000):",
+      "items": [
+        "SELECT * FROM items LIMIT 10 OFFSET 99990",
+        "SELECT * FROM items WHERE id > 99990 LIMIT 10",
+        "SELECT * FROM items WHERE id IN (SELECT id FROM items LIMIT 10 OFFSET 99990)"
+      ],
+      "correctOrder": [2, 0, 1],
+      "explanation": "Keyset/WHERE id > X uses the index directly — very fast. OFFSET 99990 must skip 99,990 rows — slow. The subquery approach is worst — it does the offset AND then a join. Keyset wins on large offsets."
+    },
+    {
+      "id": "page-015",
+      "type": "multiple-choice",
+      "question": "Keyset pagination requires what property of the sort column(s)?",
+      "options": [
+        "They must be integers",
+        "They must be unique (or include a tiebreaker)",
+        "They must be indexed",
+        "Both B and C"
+      ],
+      "correct": 3,
+      "explanation": "Keyset needs unique sort keys to avoid ambiguity (which row is 'next' when values are equal?). It also needs indexes for performance. Common pattern: ORDER BY created_at DESC, id DESC — timestamp plus unique ID as tiebreaker."
+    },
+    {
+      "id": "page-016",
+      "type": "multiple-choice",
+      "question": "Two items have the same created_at timestamp. How does keyset pagination handle this?",
+      "options": [
+        "It can't — keyset requires unique values",
+        "Add a secondary sort key (like id) as a tiebreaker",
+        "Return both items on the same page",
+        "Skip one of them"
+      ],
+      "correct": 1,
+      "explanation": "Use a tiebreaker: ORDER BY created_at DESC, id DESC. The cursor encodes both values. The WHERE clause becomes: (created_at < :ts) OR (created_at = :ts AND id < :id). This handles ties correctly."
+    },
+    {
+      "id": "page-017",
+      "type": "multi-select",
+      "question": "Which query parameters are commonly used for pagination?",
+      "options": [
+        "limit, offset",
+        "page, size (or per_page)",
+        "cursor (or after)",
+        "start, end"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "limit/offset, page/size, and cursor are all standard pagination parameters. start/end suggests a range query (like date ranges), not pagination. Pick one style and use it consistently."
+    },
+    {
+      "id": "page-018",
+      "type": "multiple-choice",
+      "question": "What's a reasonable default page size for an API?",
+      "options": [
+        "10 items",
+        "20-25 items",
+        "100 items",
+        "No default — require clients to specify"
+      ],
+      "correct": 1,
+      "explanation": "20-25 is a common default — fits on a screen, reasonable payload size. 10 might require too many requests; 100 might be wasteful. Having a default is good (clients shouldn't fail if they forget limit), but allow clients to override."
+    },
+    {
+      "id": "page-019",
+      "type": "multiple-choice",
+      "question": "Should there be a maximum page size?",
+      "options": [
+        "No — let clients request whatever they need",
+        "Yes — prevent clients from requesting 1 million items",
+        "Only for authenticated requests",
+        "Only for expensive queries"
+      ],
+      "correct": 1,
+      "explanation": "Always cap the maximum page size. A client requesting ?limit=1000000 could crash your server or timeout. Common maximums are 100-1000 depending on resource weight. Return an error or silently cap to the maximum."
+    },
+    {
+      "id": "page-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A client requests GET /users?limit=500 but your max is 100. What should the API do?",
+          "options": [
+            "Return 400 Bad Request",
+            "Return 100 items and indicate the limit was capped",
+            "Return 500 items anyway",
+            "Return 100 items silently"
+          ],
+          "correct": 1,
+          "explanation": "Return the capped amount and indicate it. A header (X-Max-Limit: 100), a meta field, or a warning in the response helps clients understand the behavior. Silent capping is less transparent but also acceptable."
+        },
+        {
+          "question": "How should the capped limit be communicated?",
+          "options": [
+            "In the response body: {data: [...], meta: {limit: 100, requestedLimit: 500}}",
+            "In a response header: X-Limit-Applied: 100",
+            "In the documentation only",
+            "A or B — communicate it alongside the response"
+          ],
+          "correct": 3,
+          "explanation": "Both body metadata and headers work. Body is more discoverable; headers are cleaner. Documentation is important too, but runtime feedback helps debugging. The key is not silently returning less than requested."
+        }
+      ]
+    },
+    {
+      "id": "page-021",
+      "type": "multiple-choice",
+      "question": "A paginated response should include links to which related pages?",
+      "options": [
+        "Only 'next'",
+        "'next' and 'prev'",
+        "'first', 'prev', 'next', 'last'",
+        "At minimum 'next'; others are nice-to-have"
+      ],
+      "correct": 3,
+      "explanation": "'next' is essential for traversal. 'prev' enables backward navigation. 'first' and 'last' are useful for offset pagination. Cursor pagination usually only provides 'next' (and sometimes 'prev'). Include what makes sense for your pagination style."
+    },
+    {
+      "id": "page-022",
+      "type": "multiple-choice",
+      "question": "Where should pagination links be placed in the response?",
+      "options": [
+        "Link header: Link: </users?page=2>; rel=\"next\"",
+        "Response body: links: {next: '/users?page=2'}",
+        "Both are valid — Link header is more RESTful, body is more common",
+        "In a separate /users/pages endpoint"
+      ],
+      "correct": 2,
+      "explanation": "The Link header follows HTTP standards (RFC 5988). Body links are easier for many clients to parse. Both are widely used. Body links are more common in practice; headers are purer REST. Pick one."
+    },
+    {
+      "id": "page-023",
+      "type": "multi-select",
+      "question": "Which metadata is useful in a paginated response?",
+      "options": [
+        "totalCount (total items across all pages)",
+        "pageSize (items per page)",
+        "currentPage or cursor",
+        "hasNextPage"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are useful. totalCount enables 'X of Y' UI. pageSize confirms the limit applied. currentPage/cursor helps clients track position. hasNextPage tells clients when to stop. Include what clients need."
+    },
+    {
+      "id": "page-024",
+      "type": "multiple-choice",
+      "question": "What's the difference between filtering and searching?",
+      "options": [
+        "Filtering is exact match; searching is fuzzy/partial",
+        "Filtering is on specific fields; searching is full-text",
+        "There's no difference",
+        "Both A and B — filtering is precise, searching is broader"
+      ],
+      "correct": 3,
+      "explanation": "Filtering uses exact or range matches on specific fields (?status=active). Searching typically means full-text or fuzzy matching (?q=john). The terms are sometimes used interchangeably, but this distinction is common."
+    },
+    {
+      "id": "page-025",
+      "type": "multiple-choice",
+      "question": "How should simple field filters be passed in a GET request?",
+      "options": [
+        "Query parameters: ?status=active&type=premium",
+        "Request body with filters",
+        "Custom header: X-Filters: status=active,type=premium",
+        "POST request with filter specification"
+      ],
+      "correct": 0,
+      "explanation": "Query parameters are the standard for GET request filtering. GET requests shouldn't have bodies. Headers are awkward for variable filters. POST for read operations is used for complex queries but isn't ideal for simple filters."
+    },
+    {
+      "id": "page-026",
+      "type": "ordering",
+      "question": "Rank these filter syntaxes from simplest to most expressive:",
+      "items": [
+        "?status=active (exact match only)",
+        "?status=active&status=pending (multi-value)",
+        "?price[gte]=10&price[lte]=50 (operators)",
+        "?filter={\"and\": [{\"field\": \"status\", \"op\": \"eq\", \"value\": \"active\"}]} (full expression)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Simple key=value, then multi-value, then operators in brackets, then full expression objects. More expressiveness means more complexity. Match filter complexity to actual needs — most APIs don't need full expression trees."
+    },
+    {
+      "id": "page-027",
+      "type": "multiple-choice",
+      "question": "A client needs to filter users where status is 'active' OR 'pending'. How should this be expressed?",
+      "options": [
+        "?status=active&status=pending (repeated parameter)",
+        "?status=active,pending (comma-separated)",
+        "?status[]=active&status[]=pending (array syntax)",
+        "Any of these — all are common conventions"
+      ],
+      "correct": 3,
+      "explanation": "All are valid conventions for multi-value filters. Repeated params are standard HTTP. Comma-separated is concise. Array brackets are explicit. Document your choice and parse it correctly server-side."
+    },
+    {
+      "id": "page-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "How should a 'greater than' filter be expressed? (e.g., price > 100)",
+          "options": [
+            "?price_gt=100",
+            "?price[gt]=100",
+            "?filter[price][gt]=100",
+            "Any of these work"
+          ],
+          "correct": 3,
+          "explanation": "All are valid conventions. Underscore suffix (price_gt) is simple. Bracket notation (price[gt]) is popular (used by many frameworks). Nested filter object is most explicit. Choose based on your framework and complexity needs."
+        },
+        {
+          "question": "Which comparison operators are commonly supported?",
+          "options": [
+            "eq, ne (equal, not equal)",
+            "gt, gte, lt, lte (greater/less than)",
+            "contains, startsWith (string matching)",
+            "All of the above, depending on field type"
+          ],
+          "correct": 3,
+          "explanation": "eq/ne for all types, gt/gte/lt/lte for numbers and dates, string operators for text. Support operators that make sense for each field type. Document which operators work with which fields."
+        }
+      ]
+    },
+    {
+      "id": "page-029",
+      "type": "multiple-choice",
+      "question": "How should date range filters be expressed?",
+      "options": [
+        "?created_after=2024-01-01&created_before=2024-12-31",
+        "?created[gte]=2024-01-01&created[lte]=2024-12-31",
+        "?created=2024-01-01..2024-12-31 (range syntax)",
+        "All are reasonable approaches"
+      ],
+      "correct": 3,
+      "explanation": "All work. Separate _after/_before params are explicit. Bracket operators are consistent with other filters. Range syntax is compact. Pick what fits your API's filter style and document the date format clearly."
+    },
+    {
+      "id": "page-030",
+      "type": "multi-select",
+      "question": "Which date formats are appropriate for API query parameters?",
+      "options": [
+        "ISO 8601: 2024-01-15T10:30:00Z",
+        "Unix timestamp: 1705315800",
+        "Natural language: 'yesterday'",
+        "Locale-specific: 01/15/2024"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "ISO 8601 and Unix timestamps are unambiguous and parseable. Natural language requires NLP and is imprecise. Locale-specific formats (is 01/02 January 2nd or February 1st?) cause confusion. Stick to standard formats."
+    },
+    {
+      "id": "page-031",
+      "type": "multiple-choice",
+      "question": "A filter parameter value contains special characters (?name=O'Brien). How should this be handled?",
+      "options": [
+        "Reject the request",
+        "URL-encode the value: ?name=O%27Brien",
+        "Use a different delimiter",
+        "B — standard URL encoding handles special characters"
+      ],
+      "correct": 3,
+      "explanation": "URL encoding is the standard solution. Clients should encode special characters (' becomes %27). Servers decode them. This is built into HTTP — no special handling needed beyond proper URL parsing."
+    },
+    {
+      "id": "page-032",
+      "type": "multiple-choice",
+      "question": "Should filter parameters be case-sensitive?",
+      "options": [
+        "Always case-sensitive for consistency",
+        "Always case-insensitive for usability",
+        "Case-insensitive for strings, case-sensitive for enums",
+        "Document the behavior — both are valid choices"
+      ],
+      "correct": 3,
+      "explanation": "Both approaches are valid. Case-insensitive is friendlier for user-facing filters (email search). Case-sensitive is cleaner for enums and IDs. Document your choice. Consider offering a flag: ?name=john&caseSensitive=false."
+    },
+    {
+      "id": "page-033",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API supports filtering by 20 different fields. Every combination of filters is valid. How should this be documented?",
+          "options": [
+            "List every possible combination",
+            "Document each filter parameter independently",
+            "Just say 'all fields are filterable'",
+            "B — document each filter, note that they can be combined"
+          ],
+          "correct": 3,
+          "explanation": "Document each filterable field with its supported operators. Note that filters combine with AND logic (or whatever logic you use). Don't enumerate combinations — that's exponential and obvious from the individual filter docs."
+        },
+        {
+          "question": "How do multiple filter parameters combine? (?status=active&type=premium)",
+          "options": [
+            "Always AND — items must match all filters",
+            "Always OR — items must match any filter",
+            "AND within a field, OR across fields",
+            "Usually AND; document if different"
+          ],
+          "correct": 3,
+          "explanation": "AND is the common default — each filter narrows results. Some APIs use OR for multi-value on the same field (?status=active&status=pending means active OR pending). Document your logic clearly."
+        }
+      ]
+    },
+    {
+      "id": "page-034",
+      "type": "multiple-choice",
+      "question": "How should sorting be specified in a GET request?",
+      "options": [
+        "?sort=name (ascending by name)",
+        "?sort=name&order=desc",
+        "?sort=-name (minus prefix for descending)",
+        "All are common conventions"
+      ],
+      "correct": 3,
+      "explanation": "All are used. ?sort=name with default ascending is simple. Separate order param is explicit. Minus prefix (-name) is compact and popular. Plus/minus prefixes are used by JSON:API and many frameworks."
+    },
+    {
+      "id": "page-035",
+      "type": "multiple-choice",
+      "question": "How should multi-field sorting be specified? (Sort by date, then by name)",
+      "options": [
+        "?sort=date&sort=name",
+        "?sort=date,name",
+        "?sort[0]=date&sort[1]=name",
+        "A or B — both are common"
+      ],
+      "correct": 3,
+      "explanation": "Repeated params or comma-separated lists are both common for multi-field sorts. Order matters — the first field is primary sort. ?sort=date,name means sort by date first, then by name within same dates."
+    },
+    {
+      "id": "page-036",
+      "type": "ordering",
+      "question": "Rank these sort specifications from least to most expressive:",
+      "items": [
+        "?sort=name (field only, implied ascending)",
+        "?sort=name&order=asc (separate order param)",
+        "?sort=-created_at,name (multi-field with direction prefix)",
+        "?sort=[{\"field\":\"date\",\"dir\":\"desc\"},{\"field\":\"name\"}] (JSON)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Single field is simplest. Separate order param adds direction. Prefix notation handles multi-field with directions. JSON is most flexible (could add nulls handling, locale, etc.) but verbose."
+    },
+    {
+      "id": "page-037",
+      "type": "multi-select",
+      "question": "Which fields should typically be sortable?",
+      "options": [
+        "Fields with database indexes",
+        "Fields users commonly want to sort by (date, name, price)",
+        "All fields",
+        "Only fields with unique values"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Indexed fields sort efficiently. User-requested fields matter for UX. Not all fields need to be sortable — sorting by 'description' text is rarely useful and might be expensive. Uniqueness isn't required for sorting."
+    },
+    {
+      "id": "page-038",
+      "type": "multiple-choice",
+      "question": "A client requests ?sort=password. What should happen?",
+      "options": [
+        "Sort by password hash — it's just a field",
+        "Return 400 — password isn't a sortable field",
+        "Ignore the sort parameter",
+        "B — reject invalid sort fields explicitly"
+      ],
+      "correct": 3,
+      "explanation": "Password shouldn't be sortable (or even in the response). Return an error indicating the field isn't sortable. Silently ignoring bad parameters is confusing. Validate and whitelist sortable fields."
+    },
+    {
+      "id": "page-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Sorting by a text field might behave differently by locale (ä before or after z?). How should this be handled?",
+          "options": [
+            "Always use ASCII sort order",
+            "Always use the server's locale",
+            "Accept a locale parameter: ?sort=name&locale=de_DE",
+            "Use Unicode collation by default; locale param is a nice-to-have"
+          ],
+          "correct": 3,
+          "explanation": "Unicode collation (ICU) provides sensible defaults for international text. Locale-specific sorting is important for some use cases. Supporting a locale parameter is ideal but complex. At minimum, don't use naive ASCII sorting."
+        },
+        {
+          "question": "How should nulls be sorted?",
+          "options": [
+            "Always first",
+            "Always last",
+            "Depends on ascending vs descending",
+            "Configurable: ?nulls=first or ?nulls=last"
+          ],
+          "correct": 3,
+          "explanation": "Different databases default differently (Postgres: nulls last for ASC, first for DESC). Making it configurable avoids surprises. If not configurable, document the behavior and be consistent."
+        }
+      ]
+    },
+    {
+      "id": "page-040",
+      "type": "multiple-choice",
+      "question": "What's the relationship between sorting and pagination?",
+      "options": [
+        "They're independent — apply them separately",
+        "Sorting must happen before pagination",
+        "Pagination must happen before sorting",
+        "B — sort the full result, then paginate"
+      ],
+      "correct": 3,
+      "explanation": "Sort first, then paginate. Otherwise, you'd get the first N rows and then sort them — which isn't 'page 1 of sorted results.' The database query is: ORDER BY ... LIMIT ... OFFSET ... (or keyset equivalent)."
+    },
+    {
+      "id": "page-041",
+      "type": "multi-select",
+      "question": "A request is GET /users?status=active&sort=-created_at&limit=10. What operations happen on the server?",
+      "options": [
+        "Filter: WHERE status = 'active'",
+        "Sort: ORDER BY created_at DESC",
+        "Paginate: LIMIT 10",
+        "Count: SELECT COUNT(*) (for total)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Filter, sort, and paginate always happen. COUNT for totals is optional (and expensive) — many APIs skip it or do it separately. The order is: filter → sort → paginate."
+    },
+    {
+      "id": "page-042",
+      "type": "multiple-choice",
+      "question": "What's a 'sparse fieldset' (or 'partial response')?",
+      "options": [
+        "A response with missing data",
+        "Requesting only specific fields: ?fields=id,name,email",
+        "A response with null fields",
+        "Pagination that returns sparse pages"
+      ],
+      "correct": 1,
+      "explanation": "Sparse fieldsets let clients request only the fields they need, reducing payload size. ?fields=id,name returns only those fields, omitting the rest. This is sometimes called 'field projection' or 'partial response.'"
+    },
+    {
+      "id": "page-043",
+      "type": "ordering",
+      "question": "Rank these response strategies by payload size (smallest to largest):",
+      "items": [
+        "Sparse fieldset: ?fields=id,name",
+        "Full resource with all 20 fields",
+        "Resource with nested related objects included",
+        "Summary endpoint: /users/42/summary"
+      ],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "Sparse fieldset is smallest (only requested fields). Summary endpoints return a fixed small subset. Full resource includes everything. Included nested objects add even more data."
+    },
+    {
+      "id": "page-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "How should sparse fieldsets for nested objects work? (e.g., requesting user's name and their posts' titles)",
+          "options": [
+            "?fields=name,posts",
+            "?fields=name&fields[posts]=title",
+            "?fields[user]=name&fields[posts]=title",
+            "B or C — nested fieldset specification"
+          ],
+          "correct": 3,
+          "explanation": "Requesting 'posts' might include full post objects. For nested field selection, you need syntax to specify fields per resource type. JSON:API uses ?fields[users]=name&fields[posts]=title."
+        },
+        {
+          "question": "If sparse fieldsets are requested but the server can't honor them (e.g., computed field), what should happen?",
+          "options": [
+            "Return 400 error",
+            "Include the computable fields anyway",
+            "Omit the uncomputable fields",
+            "Include if possible, omit if expensive, document the behavior"
+          ],
+          "correct": 3,
+          "explanation": "If a field can't be returned (doesn't exist), error. If it can be returned but is expensive, you might omit it or include it. Document which fields are always included (like 'id') and which are optional."
+        }
+      ]
+    },
+    {
+      "id": "page-045",
+      "type": "multiple-choice",
+      "question": "Which fields should always be included regardless of sparse fieldset requests?",
+      "options": [
+        "None — return exactly what was requested",
+        "The 'id' field at minimum",
+        "id and 'type' for polymorphic resources",
+        "B or C — identifiers are usually always included"
+      ],
+      "correct": 3,
+      "explanation": "Always including 'id' ensures resources are identifiable. JSON:API mandates 'id' and 'type'. Some APIs return exactly what's requested. Including identifiers by default is safer and rarely wasteful."
+    },
+    {
+      "id": "page-046",
+      "type": "multi-select",
+      "question": "Which are benefits of sparse fieldsets?",
+      "options": [
+        "Reduced bandwidth",
+        "Faster server response (less data to serialize)",
+        "Potentially faster database queries (can skip JOINs)",
+        "Simpler client code"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Sparse fieldsets reduce payload (bandwidth), speed up serialization, and can optimize queries (skip JOINs for excluded related data). Client code is slightly more complex — they must specify fields, but the payload is smaller."
+    },
+    {
+      "id": "page-047",
+      "type": "multiple-choice",
+      "question": "Full-text search is requested on GET /products?q=wireless headphones. Which approach is best?",
+      "options": [
+        "SQL LIKE '%wireless%' AND LIKE '%headphones%'",
+        "Full-text search engine (Elasticsearch, Postgres FTS)",
+        "Search each word separately and intersect results",
+        "B — use proper full-text search for this use case"
+      ],
+      "correct": 3,
+      "explanation": "LIKE queries are slow (no index use) and simplistic (no stemming, ranking, etc.). Full-text search engines handle relevance ranking, stemming, typos, and scale much better. Use the right tool for search."
+    },
+    {
+      "id": "page-048",
+      "type": "multiple-choice",
+      "question": "A search endpoint returns results. Should they be sorted by relevance or by a default field (like created_at)?",
+      "options": [
+        "Always by relevance",
+        "Always by the default sort field",
+        "Relevance by default, but allow explicit sort override",
+        "C — relevance is expected for search, but sorting is still useful"
+      ],
+      "correct": 3,
+      "explanation": "Search implies relevance ranking ('wireless headphones' should rank exact matches higher). But users might want to sort results by price or date after searching. Relevance default with sort override is most flexible."
+    },
+    {
+      "id": "page-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A search query is very complex: multiple filters, full-text search, geo queries, facets. Should this be GET or POST?",
+          "options": [
+            "GET — searches are read operations",
+            "POST — the query is too complex for URL parameters",
+            "GET with query in a header",
+            "B — POST /search with a JSON body is practical for complex queries"
+          ],
+          "correct": 3,
+          "explanation": "GET is semantically correct for reads and enables caching. But URLs have length limits (~2000 chars), and complex queries are hard to express in query params. POST with a body is pragmatic for complex search APIs."
+        },
+        {
+          "question": "If you use POST for search, what are the tradeoffs?",
+          "options": [
+            "Can't cache responses",
+            "Can't bookmark or share searches",
+            "Not technically RESTful (POST for read)",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "POST responses aren't cached by default (though you can add caching headers). Searches can't be shared as URLs. It's not pure REST. These tradeoffs are often acceptable for complex search — Elasticsearch uses POST for queries."
+        }
+      ]
+    },
+    {
+      "id": "page-050",
+      "type": "multi-select",
+      "question": "Which are common features of advanced search APIs?",
+      "options": [
+        "Faceted results (counts per category)",
+        "Highlighting (show where the match occurred)",
+        "Suggestions/autocomplete",
+        "Exact phrase matching ('\"wireless headphones\"')"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are common search features. Facets enable filtering UI (10 results in Electronics, 5 in Sports). Highlighting shows context. Suggestions help users. Phrase matching provides precision. Full-text engines support all of these."
+    },
+    {
+      "id": "page-051",
+      "type": "multiple-choice",
+      "question": "What's a 'faceted search' result?",
+      "options": [
+        "Search results organized by category with counts",
+        "Search with multiple input fields",
+        "Search results displayed in a grid",
+        "A search that covers multiple data sources"
+      ],
+      "correct": 0,
+      "explanation": "Faceted search returns results plus category breakdowns: {results: [...], facets: {category: {Electronics: 10, Sports: 5}, brand: {Sony: 7, Bose: 8}}}. Users can then filter by clicking facets."
+    },
+    {
+      "id": "page-052",
+      "type": "ordering",
+      "question": "Rank these search features by implementation complexity (simplest to most complex):",
+      "items": [
+        "Exact field match (?title=exact)",
+        "Contains match (?title_contains=word)",
+        "Full-text search with ranking",
+        "Fuzzy matching (typo tolerance)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Exact match is a simple WHERE clause. Contains uses LIKE or similar. Full-text requires an index and ranking algorithm. Fuzzy matching needs edit-distance calculation or phonetic matching — most complex."
+    },
+    {
+      "id": "page-053",
+      "type": "multiple-choice",
+      "question": "A filter specifies a field that doesn't exist: ?nonexistent=value. What should happen?",
+      "options": [
+        "Ignore the filter",
+        "Return 400 Bad Request",
+        "Return empty results",
+        "B — reject invalid filter fields"
+      ],
+      "correct": 3,
+      "explanation": "Rejecting unknown fields helps catch typos and client bugs (?stauts=active vs ?status=active). Silently ignoring could return unexpected results. Be strict with filter validation."
+    },
+    {
+      "id": "page-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API supports ?status= filter. A client sends ?status= (empty value). What should happen?",
+          "options": [
+            "Ignore the filter (treat as if not specified)",
+            "Filter for empty status (WHERE status = '')",
+            "Return 400 Bad Request",
+            "Document the behavior — all are defensible"
+          ],
+          "correct": 3,
+          "explanation": "All behaviors are used in practice. Some APIs treat empty as 'not specified', others as 'match empty string', others reject it. The key is documenting and being consistent. Consider what makes sense for your use case."
+        },
+        {
+          "question": "How should filtering for NULL values work?",
+          "options": [
+            "?status=null (literal string 'null')",
+            "?status_is_null=true",
+            "?status[is]=null (operator syntax)",
+            "Any of these — but literal 'null' is ambiguous"
+          ],
+          "correct": 3,
+          "explanation": "?status=null might mean the string 'null' or the absence of value — ambiguous. Explicit operators (?status_is_null=true or ?status[is]=null) are clearer. Document how to filter for nulls."
+        }
+      ]
+    },
+    {
+      "id": "page-055",
+      "type": "multiple-choice",
+      "question": "An endpoint supports filtering, sorting, and pagination. Which should be applied first on the server?",
+      "options": [
+        "Pagination, then filter, then sort",
+        "Filter, then pagination, then sort",
+        "Filter, then sort, then pagination",
+        "Sort, then filter, then pagination"
+      ],
+      "correct": 2,
+      "explanation": "Filter first (reduce the result set), then sort (order what remains), then paginate (take a slice). Any other order gives wrong results. Paginating before filtering would filter only the first page."
+    },
+    {
+      "id": "page-056",
+      "type": "multi-select",
+      "question": "Which URL query parameters are standard (not custom to your API)?",
+      "options": [
+        "?callback=fn (JSONP)",
+        "?format=json",
+        "?limit=10",
+        "?pretty=true"
+      ],
+      "correctIndices": [0],
+      "explanation": "JSONP callback is a cross-domain workaround standard (though deprecated). The others are common conventions but not HTTP/URL standards. format, limit, pretty are application-defined, though widely used."
+    },
+    {
+      "id": "page-057",
+      "type": "multiple-choice",
+      "question": "A mobile client needs only 3 fields; a web client needs 10. How should the API handle this?",
+      "options": [
+        "Separate endpoints: /mobile/users and /web/users",
+        "Sparse fieldsets: ?fields=id,name,avatar",
+        "Return all 10 fields; mobile ignores what it doesn't need",
+        "B — sparse fieldsets serve both without duplication"
+      ],
+      "correct": 3,
+      "explanation": "Sparse fieldsets let each client request what it needs. Separate endpoints duplicate logic. Returning everything wastes mobile bandwidth. One flexible API serves all clients efficiently."
+    },
+    {
+      "id": "page-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cursor pagination cursors are typically base64-encoded. Why?",
+          "options": [
+            "For security/encryption",
+            "To make them URL-safe and opaque",
+            "To compress them",
+            "To validate them"
+          ],
+          "correct": 1,
+          "explanation": "Base64 makes binary/JSON data URL-safe (no special characters to encode). It also makes cursors opaque — clients can't easily parse or construct them, which is intentional. It's not encryption or compression."
+        },
+        {
+          "question": "A cursor contains {id: 1000, created_at: '2024-01-15T10:00:00Z'}. Should clients be able to construct cursors?",
+          "options": [
+            "Yes — it's more flexible for clients",
+            "No — clients should only use cursors from the API",
+            "Only for special admin endpoints",
+            "B — server-generated cursors are safer and more flexible"
+          ],
+          "correct": 3,
+          "explanation": "Clients should treat cursors as opaque tokens. If clients construct their own, you can't change the cursor format without breaking them. Server-generated cursors let you evolve the implementation."
+        }
+      ]
+    },
+    {
+      "id": "page-059",
+      "type": "multiple-choice",
+      "question": "Should paginated responses include an 'empty page' when there are no results?",
+      "options": [
+        "Return 404 Not Found",
+        "Return 200 with empty array: {data: [], total: 0}",
+        "Return 204 No Content",
+        "B — successful request with no results"
+      ],
+      "correct": 3,
+      "explanation": "The request succeeded; there are just no matching items. Return 200 with an empty array and zero total. 404 means the endpoint doesn't exist. 204 means no body, but you need the body for metadata."
+    },
+    {
+      "id": "page-060",
+      "type": "ordering",
+      "question": "Rank these filter implementations by flexibility (least to most):",
+      "items": [
+        "Fixed filters defined by the API (?active=true)",
+        "Any field filterable, equality only (?status=active)",
+        "Any field, multiple operators (?price[gte]=10)",
+        "Query language (GraphQL, OData, custom DSL)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Fixed filters are least flexible. Any-field equality adds flexibility. Operators add range queries, etc. Query languages are maximally flexible (arbitrary expressions, nested logic). Match complexity to needs."
+    },
+    {
+      "id": "page-061",
+      "type": "multi-select",
+      "question": "Which are common pagination response patterns?",
+      "options": [
+        "{data: [...], pagination: {page: 1, totalPages: 10}}",
+        "{items: [...], nextCursor: 'abc123', hasMore: true}",
+        "{results: [...], count: 100, next: 'https://...?page=2'}",
+        "[...] (bare array with Link header for next page)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are used. Object with pagination metadata, cursor with hasMore flag, URLs to next page (Django REST style), or bare array with Link header (GitHub style). Pick one and be consistent."
+    },
+    {
+      "id": "page-062",
+      "type": "multiple-choice",
+      "question": "A filter value needs to include a comma: ?tags=a,b,c should match the tag 'a,b,c' not three tags. How should this be handled?",
+      "options": [
+        "URL encode the comma: ?tags=a%2Cb%2Cc",
+        "Use a different delimiter: ?tags=a|b|c",
+        "Use array syntax: ?tags[]=a,b,c",
+        "A or C — encoding or explicit array syntax"
+      ],
+      "correct": 3,
+      "explanation": "URL encoding the comma makes it literal (not a delimiter). Array syntax (?tags[]=value) makes multi-value explicit. If commas are common in values, consider avoiding comma as a delimiter. Document your parsing rules."
+    },
+    {
+      "id": "page-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API cursor expires after 1 hour. A client sends an expired cursor. What should happen?",
+          "options": [
+            "Return 400 Bad Request",
+            "Return 410 Gone (cursor no longer valid)",
+            "Start over from page 1",
+            "A or B — indicate the cursor is invalid"
+          ],
+          "correct": 3,
+          "explanation": "The cursor is no longer valid — communicate this clearly. 400 (bad request) or 410 (gone) with an error message both work. Silently starting over would confuse clients who expect to resume."
+        },
+        {
+          "question": "Why might cursors expire?",
+          "options": [
+            "To save server memory",
+            "Data may have changed significantly, making old cursors meaningless",
+            "Security — prevent cursor abuse",
+            "All are valid reasons"
+          ],
+          "correct": 3,
+          "explanation": "Stateful cursors use server memory. Data changes can invalidate cursor assumptions. Long-lived cursors could be used to probe data. Expiration balances these concerns with usability."
+        }
+      ]
+    },
+    {
+      "id": "page-064",
+      "type": "multiple-choice",
+      "question": "What's 'seek pagination'?",
+      "options": [
+        "Another name for offset pagination",
+        "Another name for keyset/cursor pagination",
+        "Pagination using full-text search ranking",
+        "Pagination that allows jumping to arbitrary positions"
+      ],
+      "correct": 1,
+      "explanation": "Seek pagination is another term for keyset pagination — 'seeking' to a position based on column values rather than row counts. The terms keyset, cursor, and seek pagination often refer to the same concept."
+    },
+    {
+      "id": "page-065",
+      "type": "multi-select",
+      "question": "Which can improve pagination performance?",
+      "options": [
+        "Indexes on sort/filter columns",
+        "Using keyset instead of offset pagination",
+        "Caching paginated results",
+        "Reducing page size"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All help. Indexes make filtering/sorting fast. Keyset avoids row-skipping. Caching avoids repeated computation. Smaller pages mean less data to fetch/transfer per request."
+    },
+    {
+      "id": "page-066",
+      "type": "ordering",
+      "question": "Rank these filter query complexities by how hard they are to implement securely:",
+      "items": [
+        "?status=active (whitelist of allowed values)",
+        "?name=John (user-provided string, exact match)",
+        "?name_contains=Joh (user-provided substring)",
+        "?query=status:active AND created:>2024-01-01 (custom query language)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Whitelisted values are safest. Exact match with sanitization is straightforward. Substring matching needs SQL injection protection. Custom query languages need parsing, validation, and careful execution — highest risk."
+    },
+    {
+      "id": "page-067",
+      "type": "multiple-choice",
+      "question": "A filter allows querying by user_id. A client sends ?user_id=1 OR 1=1. What's the risk?",
+      "options": [
+        "No risk if properly parameterized",
+        "SQL injection — returns all users",
+        "Performance degradation",
+        "A — parameterized queries prevent injection"
+      ],
+      "correct": 3,
+      "explanation": "If you use parameterized queries (WHERE user_id = ?), the value '1 OR 1=1' is treated as a literal string, not SQL code. No injection occurs. Never concatenate user input into SQL strings."
+    },
+    {
+      "id": "page-068",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A very slow filter request times out: ?created_after=2020-01-01&sort=name (returns 500K rows). How should this be handled?",
+          "options": [
+            "Increase server timeout",
+            "Return a 504 Gateway Timeout",
+            "Limit results even if not paginated",
+            "All of the above are mitigations; limiting results is best"
+          ],
+          "correct": 3,
+          "explanation": "Increasing timeout delays the problem. 504 tells the client it failed. Limiting results (or requiring pagination) prevents the issue entirely. Set a maximum result count, even for non-paginated requests."
+        },
+        {
+          "question": "Should all list endpoints require pagination?",
+          "options": [
+            "Yes — always paginate",
+            "No — small collections don't need it",
+            "Paginate by default, but allow ?limit=all for small collections",
+            "Make it optional but set a maximum return count"
+          ],
+          "correct": 3,
+          "explanation": "Small collections (like user roles or categories) may not need pagination. But having a maximum prevents runaway responses. Optional pagination with a cap (e.g., max 1000 without pagination) is practical."
+        }
+      ]
+    },
+    {
+      "id": "page-069",
+      "type": "multiple-choice",
+      "question": "Which header indicates the total count of resources in a paginated response?",
+      "options": [
+        "Content-Length",
+        "X-Total-Count",
+        "X-Total-Count or in the response body",
+        "Count-Total (standard HTTP header)"
+      ],
+      "correct": 2,
+      "explanation": "X-Total-Count is a common convention for total resource count. Content-Length is the response body size in bytes, not item count. There's no standard HTTP header — X-Total-Count is a convention, or put it in the body."
+    },
+    {
+      "id": "page-070",
+      "type": "multi-select",
+      "question": "Which are valid approaches to returning related resource counts without full objects?",
+      "options": [
+        "Include counts in the parent: {id: 1, name: 'Post', commentCount: 42}",
+        "HEAD /posts/1/comments returns count in Content-Length header",
+        "GET /posts/1/comments?count=true returns just the count",
+        "GET /posts/1/comments?limit=0 returns metadata with total"
+      ],
+      "correctIndices": [0, 3],
+      "explanation": "Embedding counts is common and efficient. HEAD doesn't return counts (Content-Length is body size). ?count=true is unusual. ?limit=0 returning metadata with total is a clever pattern some APIs use."
+    },
+    {
+      "id": "page-071",
+      "type": "ordering",
+      "question": "Rank these pagination UI patterns by how well they work with cursor pagination:",
+      "items": [
+        "Infinite scroll (load more as you scroll)",
+        "Next/Previous buttons",
+        "Page number buttons (1, 2, 3, ... 50)",
+        "Jump to specific page input"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Infinite scroll and Next/Prev are perfect for cursors (sequential access). Page numbers are awkward (can't jump ahead without traversing). Jump-to-page is worst — impossible without knowing all cursor values. Use offset pagination if you need page numbers."
+    },
+    {
+      "id": "page-072",
+      "type": "multiple-choice",
+      "question": "A search result should show 'About 1,230,000 results'. Where does this number come from?",
+      "options": [
+        "Exact COUNT(*) query",
+        "Estimated count from database statistics",
+        "Count from a cached/indexed value",
+        "B or C — exact counts at scale are too expensive"
+      ],
+      "correct": 3,
+      "explanation": "Google-style 'about X results' uses estimates. Exact counts on millions of rows are slow. PostgreSQL's EXPLAIN can give estimates. Elasticsearch provides approximate counts. For UX, estimates are often sufficient."
+    },
+    {
+      "id": "page-073",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API needs to support both 'newest first' and 'oldest first' sorting with cursor pagination. What's the challenge?",
+          "options": [
+            "Cursors need to encode the sort direction",
+            "The keyset comparison changes (< vs >)",
+            "You need separate indexes for each direction",
+            "A and B — cursor must work correctly with the sort"
+          ],
+          "correct": 3,
+          "explanation": "The cursor must remember which direction the query was sorted. Changing direction mid-pagination gives wrong results. The keyset condition flips: created_at < :cursor (descending) vs created_at > :cursor (ascending)."
+        },
+        {
+          "question": "A user reverses the sort direction mid-pagination. What should happen?",
+          "options": [
+            "Continue from the current cursor in the new direction",
+            "Start over from page 1 with the new direction",
+            "Return an error — can't change sort mid-stream",
+            "B — changing sort requires starting over"
+          ],
+          "correct": 3,
+          "explanation": "Cursor positions are tied to their sort order. Continuing from a 'descending' cursor in ascending order is undefined. Clients should start over when changing sort. Make cursors invalid if sort changes."
+        }
+      ]
+    },
+    {
+      "id": "page-074",
+      "type": "multiple-choice",
+      "question": "GraphQL's 'Connection' pattern for pagination includes what components?",
+      "options": [
+        "nodes, offset, limit",
+        "edges (with node and cursor), pageInfo",
+        "items, page, totalPages",
+        "results, next, previous"
+      ],
+      "correct": 1,
+      "explanation": "GraphQL Connections have: edges (array of {node, cursor}), pageInfo (hasNextPage, hasPreviousPage, startCursor, endCursor). Each item gets its own cursor, enabling flexible pagination."
+    },
+    {
+      "id": "page-075",
+      "type": "multi-select",
+      "question": "Which fields does GraphQL's pageInfo typically include?",
+      "options": [
+        "hasNextPage",
+        "hasPreviousPage",
+        "startCursor",
+        "totalCount"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Standard pageInfo has hasNextPage, hasPreviousPage, startCursor, and endCursor. totalCount is optional (not in the Relay spec by default) because it's expensive to compute. Many implementations add it anyway."
+    },
+    {
+      "id": "page-076",
+      "type": "multiple-choice",
+      "question": "How should an API handle unsupported sort fields?",
+      "options": [
+        "Ignore the sort parameter",
+        "Use the default sort",
+        "Return 400 Bad Request with a clear error",
+        "C — reject explicitly to help developers catch mistakes"
+      ],
+      "correct": 3,
+      "explanation": "Rejecting invalid sorts helps clients catch bugs early. ?sort=naem (typo) should fail, not silently use default sort. List the valid sort fields in the error message or documentation."
+    },
+    {
+      "id": "page-077",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A filter by 'category' should return items where category exactly matches. But users type 'electronics' and expect to find 'Electronics'. What should you do?",
+          "options": [
+            "Make all filters case-insensitive",
+            "Only category filter is case-insensitive",
+            "Normalize categories (lowercase on storage and query)",
+            "Any of these — balance usability vs precision"
+          ],
+          "correct": 3,
+          "explanation": "Case-insensitive matching is more user-friendly. You can lowercase on both storage and query, or use case-insensitive DB collation. For IDs or codes, case-sensitivity might matter. Decide per-field."
+        },
+        {
+          "question": "Users also type 'electrnics' (typo). Should the API handle this?",
+          "options": [
+            "No — that's the client's job (autocomplete, spell check)",
+            "Yes — fuzzy matching improves UX",
+            "Only for search, not for filters",
+            "C — filters should be exact, search can be fuzzy"
+          ],
+          "correct": 3,
+          "explanation": "Filters are typically exact (or case-insensitive) matches. Fuzzy matching is a search feature. Separate ?category=Electronics (exact filter) from ?q=electrnics (fuzzy search). Autocomplete helps users pick valid filter values."
+        }
+      ]
+    },
+    {
+      "id": "page-078",
+      "type": "ordering",
+      "question": "Rank these API response times from acceptable to concerning (for a paginated endpoint):",
+      "items": [
+        "50ms",
+        "200ms",
+        "2 seconds",
+        "30 seconds"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "50ms is excellent. 200ms is acceptable. 2 seconds is slow but might be tolerable for complex queries. 30 seconds is too slow — users will abandon, connections might timeout. Optimize or paginate more aggressively."
+    },
+    {
+      "id": "page-079",
+      "type": "multiple-choice",
+      "question": "A paginated API response should be cacheable. What's the challenge?",
+      "options": [
+        "Pagination responses can't be cached",
+        "The cache key must include all query parameters",
+        "Cached pages become stale as data changes",
+        "B and C — cache key complexity and staleness"
+      ],
+      "correct": 3,
+      "explanation": "Cache keys must include page/cursor, filters, and sorts — each combo is different. Pages go stale as data is added/deleted. Short cache TTLs or cache invalidation help. Cursor pagination helps since positions are stable."
+    },
+    {
+      "id": "page-080",
+      "type": "multi-select",
+      "question": "Which caching headers are relevant for paginated responses?",
+      "options": [
+        "Cache-Control: max-age=60",
+        "ETag based on page content hash",
+        "Vary: Accept, Authorization",
+        "Last-Modified"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are relevant. max-age controls TTL. ETag enables conditional requests. Vary indicates which headers affect the response. Last-Modified enables time-based conditionals. Use them together for effective caching."
+    },
+    {
+      "id": "page-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A client paginates through results. Halfway through, the server is updated and new items are added. What happens with offset pagination?",
+          "options": [
+            "Client misses the new items",
+            "Client sees some items twice",
+            "Client sees some items twice AND misses some",
+            "It depends on where items were added"
+          ],
+          "correct": 3,
+          "explanation": "If items are added BEFORE the current offset, existing items shift forward — the client sees duplicates. If added AFTER, the client eventually sees them. If sorted by newest-first and items are added at the top, earlier pages shift."
+        },
+        {
+          "question": "The same scenario with cursor pagination. What happens?",
+          "options": [
+            "Same problems as offset",
+            "No duplicates, but new items might be missed or seen depending on sort",
+            "Cursors guarantee perfect consistency",
+            "B — cursors provide stability but not snapshot isolation"
+          ],
+          "correct": 3,
+          "explanation": "Cursors mark a position, not a row count. Items before the cursor position don't affect future pages (no duplicates). But items added after the cursor position might appear later. Full snapshot isolation requires more infrastructure."
+        }
+      ]
+    },
+    {
+      "id": "page-082",
+      "type": "multiple-choice",
+      "question": "What's 'forward-only' pagination?",
+      "options": [
+        "Pagination that only supports 'next', not 'previous'",
+        "Pagination using sequential IDs",
+        "Pagination that can't go back to earlier pages",
+        "A and C — no backward navigation"
+      ],
+      "correct": 3,
+      "explanation": "Some cursor implementations are forward-only — you can get the next page but not the previous one. This simplifies implementation and covers most use cases (infinite scroll). Backward pagination requires storing reverse cursors."
+    },
+    {
+      "id": "page-083",
+      "type": "multi-select",
+      "question": "Which pagination features are typically needed for an admin dashboard?",
+      "options": [
+        "Arbitrary page jumping (go to page 50)",
+        "Total count display",
+        "Large page sizes (100+ items)",
+        "Cursor stability"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Admin dashboards often show page numbers (arbitrary jumping), totals, and large pages for data review. Cursor stability is nice but admins often tolerate some inconsistency. Offset pagination is common for admin UIs despite its drawbacks."
+    },
+    {
+      "id": "page-084",
+      "type": "ordering",
+      "question": "Rank these pagination implementations by database load (lowest to highest) for page 100 of a large table:",
+      "items": [
+        "Keyset: WHERE id > 1000 ORDER BY id LIMIT 10",
+        "Offset: LIMIT 10 OFFSET 990",
+        "Subquery: SELECT * FROM t WHERE id IN (SELECT id ... OFFSET 990)",
+        "Full scan: SELECT * then slice in application code"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Keyset uses an index seek — very fast. Offset scans and discards 990 rows. Subquery with offset does the skip, then a lookup. Full scan loads everything — worst. Keyset wins, especially for later pages."
+    },
+    {
+      "id": "page-085",
+      "type": "multiple-choice",
+      "question": "A filter parameter is vulnerable to ReDoS (Regular Expression Denial of Service). How?",
+      "options": [
+        "User provides a regex pattern that takes exponential time",
+        "User provides a very long filter value",
+        "User makes too many filter requests",
+        "User provides nested filter objects"
+      ],
+      "correct": 0,
+      "explanation": "If the API evaluates user-provided regex patterns (e.g., ?name_matches=...), a malicious pattern like (a+)+$ can cause exponential backtracking. Never eval user regexes, or use a regex engine with timeout/limits."
+    },
+    {
+      "id": "page-086",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An endpoint filters by date: ?created_after=2024-01-15. The client is in UTC-8, the server stores UTC. What could go wrong?",
+          "options": [
+            "Nothing — dates don't have timezones",
+            "The boundary might be off by up to a day",
+            "The filter might not work at all",
+            "B — timezone ambiguity affects the boundary"
+          ],
+          "correct": 3,
+          "explanation": "Is 2024-01-15 midnight in client's timezone or UTC? That's a potential 16-hour difference (UTC-8 to UTC). If client means 'the 15th in their timezone' but server interprets as UTC midnight, wrong items may be included/excluded."
+        },
+        {
+          "question": "How should date filters handle timezones?",
+          "options": [
+            "Always interpret as UTC",
+            "Always interpret as server timezone",
+            "Accept ISO 8601 with timezone: 2024-01-15T00:00:00-08:00",
+            "C — unambiguous dates include timezone"
+          ],
+          "correct": 3,
+          "explanation": "ISO 8601 with timezone (2024-01-15T00:00:00-08:00) is unambiguous. If accepting date-only (2024-01-15), document the assumed timezone (usually UTC). Explicit is better than implicit."
+        }
+      ]
+    },
+    {
+      "id": "page-087",
+      "type": "multiple-choice",
+      "question": "A filter supports 'between' queries: ?price_min=10&price_max=50. Are the bounds inclusive or exclusive?",
+      "options": [
+        "Always inclusive: 10 <= price <= 50",
+        "Always exclusive: 10 < price < 50",
+        "Min inclusive, max exclusive (like Python ranges)",
+        "Document it — there's no universal convention"
+      ],
+      "correct": 3,
+      "explanation": "Conventions vary. Some APIs use inclusive bounds, others half-open intervals. The key is documenting your choice. Consider supporting explicit operators: ?price[gte]=10&price[lt]=50 for clarity."
+    },
+    {
+      "id": "page-088",
+      "type": "multi-select",
+      "question": "Which are performance optimizations for paginated list endpoints?",
+      "options": [
+        "Database indexes on filter and sort columns",
+        "Connection pooling",
+        "Returning only requested fields (projection)",
+        "Eager loading related data to avoid N+1"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All help. Indexes speed queries. Connection pooling reduces connection overhead. Projection reduces data transfer and serialization. Eager loading prevents N+1 queries when embedding related data."
+    },
+    {
+      "id": "page-089",
+      "type": "ordering",
+      "question": "Rank these API design documents by how useful they are for filter/sort/pagination:",
+      "items": [
+        "List of available filter parameters",
+        "Examples of filter/sort combinations",
+        "Performance characteristics (what's indexed)",
+        "Maximum limits and defaults"
+      ],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Examples are most immediately useful (copy-paste). Parameter list is essential reference. Limits/defaults prevent surprises. Performance info is nice for optimization but less critical for getting started."
+    },
+    {
+      "id": "page-090",
+      "type": "multiple-choice",
+      "question": "A paginated endpoint returns items in random order each time (no sort specified). Is this a problem?",
+      "options": [
+        "No — clients should specify sort if they care",
+        "Yes — pagination relies on stable ordering",
+        "Only if using cursor pagination",
+        "B — items might appear on multiple pages or be skipped"
+      ],
+      "correct": 3,
+      "explanation": "Without stable ordering, the same item might appear on page 1 and page 2 (if order shuffled between requests). Always have a deterministic default sort for paginated endpoints — often by ID or created_at."
+    },
+    {
+      "id": "page-091",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An endpoint supports searching and filtering together: ?q=wireless&category=Electronics. How should these interact?",
+          "options": [
+            "Search first, then filter results",
+            "Filter first, then search within filtered set",
+            "Apply both simultaneously (AND)",
+            "C — both constraints apply together"
+          ],
+          "correct": 2,
+          "explanation": "Both constraints apply: items must match the search term AND the filter. The database combines them in one query (WHERE category='Electronics' AND full_text_matches('wireless')). Order doesn't matter for the result."
+        },
+        {
+          "question": "Should the relevance ranking consider only the search term, or also how well items match filters?",
+          "options": [
+            "Only search term relevance",
+            "Filters don't have relevance — they're exact",
+            "Boost items matching preferred filters",
+            "B for exact filters; A for search relevance"
+          ],
+          "correct": 3,
+          "explanation": "Filters are typically boolean (match or don't). Search has relevance/ranking. The query returns items matching filter + search, ranked by search relevance. Some systems boost by filter facets, but that's advanced."
+        }
+      ]
+    },
+    {
+      "id": "page-092",
+      "type": "multiple-choice",
+      "question": "What's OData?",
+      "options": [
+        "A data compression format",
+        "A standardized protocol for queryable REST APIs with filtering, sorting, and pagination",
+        "A database query language",
+        "A JavaScript library for pagination"
+      ],
+      "correct": 1,
+      "explanation": "OData (Open Data Protocol) is a standard for REST APIs that defines query syntax: $filter, $orderby, $top, $skip, $select, etc. It provides consistent querying across OData-compliant APIs. Complex but powerful."
+    },
+    {
+      "id": "page-093",
+      "type": "multi-select",
+      "question": "Which OData query parameters are standard?",
+      "options": [
+        "$filter (filtering)",
+        "$orderby (sorting)",
+        "$top and $skip (pagination)",
+        "$expand (include related resources)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are OData standard. $filter supports complex expressions. $orderby for sorting. $top/$skip for pagination. $expand for relationships. Also $select for field selection. OData is comprehensive but verbose."
+    },
+    {
+      "id": "page-094",
+      "type": "ordering",
+      "question": "Rank these query standards/conventions by adoption (most to least common in REST APIs):",
+      "items": [
+        "Custom/ad-hoc query params (?status=active&sort=name)",
+        "JSON:API (?filter[status]=active&sort=-name)",
+        "OData (?$filter=status eq 'active'&$orderby=name)",
+        "GraphQL (separate query language)"
+      ],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "Custom params are most common (every API does it differently). GraphQL is widely adopted for its flexibility. JSON:API has a following in Ruby/Ember communities. OData is powerful but complex, more common in enterprise/.NET."
+    },
+    {
+      "id": "page-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A client wants to filter by a computed field (e.g., 'age' computed from birthDate). The database only has birthDate. What's the challenge?",
+          "options": [
+            "Can't filter by computed fields",
+            "Must compute the filter value in the query",
+            "Must compute age for every row to filter",
+            "B — translate age filter to birthDate query"
+          ],
+          "correct": 3,
+          "explanation": "?age_gte=18 must become WHERE birthDate <= (today - 18 years). Compute the boundary value, then query the stored field. Don't fetch all rows and filter in code — that's expensive."
+        },
+        {
+          "question": "Should the API expose the computed field (age) or the stored field (birthDate) in filters?",
+          "options": [
+            "Only stored fields — simpler implementation",
+            "Only computed fields — better UX",
+            "Both — give clients flexibility",
+            "Computed for filtering, stored in responses (or both)"
+          ],
+          "correct": 3,
+          "explanation": "Clients think in terms of 'age >= 18', not 'birthDate <= 2006-...'. Expose the computed field for filtering. Responses might include both. Translate internally to efficient queries on stored fields."
+        }
+      ]
+    },
+    {
+      "id": "page-096",
+      "type": "multiple-choice",
+      "question": "A filter endpoint is being abused to enumerate data (?id=1, ?id=2, ...). How can this be mitigated?",
+      "options": [
+        "Rate limiting",
+        "Use UUIDs instead of sequential IDs",
+        "Require authentication",
+        "All of the above"
+      ],
+      "correct": 3,
+      "explanation": "Rate limiting slows enumeration. UUIDs make guessing hard. Authentication restricts who can query. Defense in depth — use multiple protections. Also consider: can they legitimately filter by ID, or should that be restricted?"
+    },
+    {
+      "id": "page-097",
+      "type": "multi-select",
+      "question": "Which are signs that an API's pagination/filtering is well-designed?",
+      "options": [
+        "Consistent parameter names across endpoints",
+        "Clear documentation of operators and defaults",
+        "Helpful error messages for invalid filters",
+        "The ability to filter by internal database IDs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Consistency, documentation, and helpful errors indicate good design. Filtering by database IDs isn't inherently good — it may expose internal structure. External IDs or UUIDs are often better."
+    },
+    {
+      "id": "page-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user can only see their own data. A filter request comes in: ?user_id=other_user. What should happen?",
+          "options": [
+            "Return 403 Forbidden",
+            "Return empty results (act like no data matches)",
+            "Ignore the user_id filter and return only their data",
+            "C — the filter is effectively overridden by permissions"
+          ],
+          "correct": 3,
+          "explanation": "The user can only see their data regardless of the filter. Returning 403 might leak that 'other_user' exists. Returning empty is okay but might confuse. Silently scoping to their data is often the safest approach."
+        },
+        {
+          "question": "Should the API reject or silently ignore filters that are overridden by permissions?",
+          "options": [
+            "Reject — don't accept parameters you'll ignore",
+            "Ignore — act as if the filter wasn't sent",
+            "Apply permissions invisibly to any filter value",
+            "Any approach works; document the behavior"
+          ],
+          "correct": 3,
+          "explanation": "All are defensible. Rejecting is strict but might seem unhelpful. Ignoring is permissive but potentially confusing. Invisible scoping is seamless. Document your approach so clients know what to expect."
+        }
+      ]
+    },
+    {
+      "id": "page-099",
+      "type": "ordering",
+      "question": "Rank these from least to most important for a public API's filtering feature:",
+      "items": [
+        "Supporting every possible filter combination",
+        "Good performance on common filter patterns",
+        "Clear documentation",
+        "Preventing injection attacks"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Security (injection prevention) is paramount. Performance on common cases affects usability. Documentation helps developers. Supporting every combination is nice but less critical — focus on common use cases first."
+    },
+    {
+      "id": "page-100",
+      "type": "multiple-choice",
+      "question": "What's the key insight behind cursor pagination?",
+      "options": [
+        "Cursors are faster than offsets",
+        "Position is based on data values, not row counts",
+        "Cursors can be encrypted for security",
+        "Cursors enable parallel fetching"
+      ],
+      "correct": 1,
+      "explanation": "The core insight is that 'give me items after ID 1000' is stable — inserts/deletes don't affect it. 'Skip 1000 rows' is unstable — row counts change with data. Value-based positioning is why cursors handle dynamic data well."
+    }
+  ]
+}
