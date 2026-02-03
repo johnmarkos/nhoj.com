@@ -1,0 +1,1668 @@
+{
+  "unit": 3,
+  "unitTitle": "API Design",
+  "chapter": 4,
+  "chapterTitle": "Rate Limiting & Quotas",
+  "chapterDescription": "Token bucket, sliding window, rate limit headers, throttling strategies.",
+  "problems": [
+    {
+      "id": "rate-001",
+      "type": "multiple-choice",
+      "question": "What's the primary purpose of API rate limiting?",
+      "options": [
+        "To make the API faster",
+        "To protect the service from overload and ensure fair usage",
+        "To track API usage for billing",
+        "To authenticate users"
+      ],
+      "correct": 1,
+      "explanation": "Rate limiting protects the service from being overwhelmed (intentionally or accidentally) and ensures fair access for all clients. Billing and analytics are secondary benefits."
+    },
+    {
+      "id": "rate-002",
+      "type": "multi-select",
+      "question": "Which are valid reasons to implement rate limiting?",
+      "options": [
+        "Prevent denial-of-service attacks",
+        "Ensure fair usage among clients",
+        "Protect downstream dependencies from overload",
+        "Force clients to upgrade to paid plans"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Rate limiting protects against DoS, ensures fairness, and shields backends. While rate limits can encourage upgrades, that's a business decision, not a technical reason for rate limiting."
+    },
+    {
+      "id": "rate-003",
+      "type": "multiple-choice",
+      "question": "What HTTP status code indicates a client has exceeded their rate limit?",
+      "options": [
+        "400 Bad Request",
+        "403 Forbidden",
+        "429 Too Many Requests",
+        "503 Service Unavailable"
+      ],
+      "correct": 2,
+      "explanation": "429 Too Many Requests is specifically designed for rate limiting. 503 indicates server overload (not client-specific). 403 is for authorization failures."
+    },
+    {
+      "id": "rate-004",
+      "type": "multiple-choice",
+      "question": "What header should accompany a 429 response to tell clients when to retry?",
+      "options": [
+        "X-Retry-After",
+        "Retry-After",
+        "X-RateLimit-Reset",
+        "Both B and C are commonly used"
+      ],
+      "correct": 3,
+      "explanation": "Retry-After is the standard HTTP header (seconds or date). X-RateLimit-Reset is a common convention (usually Unix timestamp). Many APIs include both for compatibility."
+    },
+    {
+      "id": "rate-005",
+      "type": "ordering",
+      "question": "Rank these rate limit headers from most to least commonly implemented:",
+      "items": [
+        "X-RateLimit-Limit (max requests allowed)",
+        "X-RateLimit-Remaining (requests left)",
+        "X-RateLimit-Reset (when limit resets)",
+        "X-RateLimit-Policy (human-readable policy)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Limit, Remaining, and Reset are the standard trio implemented by most APIs. Policy descriptions are less common but helpful for documentation."
+    },
+    {
+      "id": "rate-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API returns: X-RateLimit-Limit: 100, X-RateLimit-Remaining: 23, X-RateLimit-Reset: 1705320000. What does this mean?",
+          "options": [
+            "23 requests made, 100 allowed, resets at timestamp 1705320000",
+            "100 requests allowed, 23 remaining, resets at Unix timestamp 1705320000",
+            "Rate limit is 23 per 100 seconds",
+            "100 requests remaining, 23 seconds until reset"
+          ],
+          "correct": 1,
+          "explanation": "The client can make 100 requests per window, has 23 left, and the window resets at Unix timestamp 1705320000. They've used 77 requests (100 - 23) so far."
+        },
+        {
+          "question": "The client needs to make 30 more requests before the reset. What should they do?",
+          "options": [
+            "Make all 30 immediately — they'll only get 23 through",
+            "Wait until reset, then make all 30",
+            "Make 23 now, wait for reset, make remaining 7",
+            "C is most efficient if time permits"
+          ],
+          "correct": 3,
+          "explanation": "Use the 23 remaining requests now, then wait for reset and use 7 more. This maximizes throughput while respecting limits. Making all 30 immediately wastes 7 requests to rate limiting."
+        }
+      ]
+    },
+    {
+      "id": "rate-007",
+      "type": "multiple-choice",
+      "question": "What's the 'token bucket' algorithm?",
+      "options": [
+        "Tokens are issued to authenticated users",
+        "A bucket fills with tokens at a steady rate; each request consumes a token",
+        "Requests are bucketed by type and limited separately",
+        "A queue of request tokens waiting to be processed"
+      ],
+      "correct": 1,
+      "explanation": "Token bucket: a bucket holds tokens (up to a max). Tokens are added at a fixed rate. Each request removes a token. If the bucket is empty, the request is rejected. This allows bursts up to bucket size."
+    },
+    {
+      "id": "rate-008",
+      "type": "multiple-choice",
+      "question": "A token bucket has capacity 100 and refills at 10 tokens/second. A client makes no requests for 30 seconds, then makes 150 requests instantly. How many succeed?",
+      "options": [
+        "100 (bucket capacity)",
+        "150 (all of them)",
+        "300 (30 seconds × 10 tokens)",
+        "10 (refill rate per second)"
+      ],
+      "correct": 0,
+      "explanation": "After 30 seconds the bucket is full at 100 tokens (it doesn't exceed capacity). The client can burst 100 requests, then must wait for refills. 50 requests are rejected."
+    },
+    {
+      "id": "rate-009",
+      "type": "ordering",
+      "question": "Rank these rate limiting algorithms from simplest to most sophisticated:",
+      "items": [
+        "Fixed window (100 requests per minute)",
+        "Sliding window log (track each request timestamp)",
+        "Sliding window counter (weighted across windows)",
+        "Token bucket (continuous refill)"
+      ],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Fixed window is simplest (one counter per window). Sliding counter approximates between windows. Token bucket adds continuous refill. Sliding log is most accurate but stores every request timestamp — memory intensive."
+    },
+    {
+      "id": "rate-010",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Fixed window rate limiting: 100 requests/minute. At 0:59 a client makes 100 requests. At 1:01 they make another 100. Both windows allow this. What's the problem?",
+          "options": [
+            "No problem — both are within limits",
+            "200 requests in 2 seconds crosses the intended rate",
+            "The counter didn't reset properly",
+            "The windows are too short"
+          ],
+          "correct": 1,
+          "explanation": "The client made 200 requests in ~2 seconds by hitting the boundary between windows. Fixed windows have this edge case — the effective rate can double at window boundaries."
+        },
+        {
+          "question": "How does sliding window rate limiting address this?",
+          "options": [
+            "Uses smaller windows",
+            "Considers requests from both current and previous window, weighted by time",
+            "Tracks individual request timestamps",
+            "B or C — sliding windows smooth the boundary"
+          ],
+          "correct": 3,
+          "explanation": "Sliding window counter weights previous window's count by overlap (e.g., at 1:30, count = 50% of prev window + 100% of current). Sliding log tracks exact timestamps. Both prevent the boundary spike."
+        }
+      ]
+    },
+    {
+      "id": "rate-011",
+      "type": "multiple-choice",
+      "question": "What's the 'leaky bucket' algorithm?",
+      "options": [
+        "Requests 'leak' past the rate limiter randomly",
+        "Requests queue up and are processed at a steady rate, like water leaking from a bucket",
+        "Failed requests are retried with exponential backoff",
+        "The rate limit decreases over time"
+      ],
+      "correct": 1,
+      "explanation": "Leaky bucket queues incoming requests and processes them at a constant rate. Unlike token bucket (which allows bursts), leaky bucket smooths traffic to a steady flow. Excess requests queue or are dropped."
+    },
+    {
+      "id": "rate-012",
+      "type": "multi-select",
+      "question": "What's the difference between token bucket and leaky bucket?",
+      "options": [
+        "Token bucket allows bursts; leaky bucket smooths to constant rate",
+        "Token bucket tracks tokens; leaky bucket tracks queue depth",
+        "Token bucket refills; leaky bucket drains",
+        "They're mathematically equivalent"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Token bucket allows bursts up to capacity, then rate-limits. Leaky bucket enforces a constant output rate (smoothing). They're related but not equivalent — token bucket is more permissive of bursts."
+    },
+    {
+      "id": "rate-013",
+      "type": "multiple-choice",
+      "question": "When should you prefer token bucket over leaky bucket?",
+      "options": [
+        "When you want to smooth traffic completely",
+        "When you want to allow short bursts while limiting sustained rate",
+        "When memory is constrained",
+        "When you need precise per-second limiting"
+      ],
+      "correct": 1,
+      "explanation": "Token bucket is ideal when bursts are acceptable (e.g., a client batch-uploading files) but sustained high rates are not. Leaky bucket is better when you need smooth, constant-rate processing."
+    },
+    {
+      "id": "rate-014",
+      "type": "ordering",
+      "question": "Rank these by how much traffic burst they allow (least to most):",
+      "items": [
+        "Leaky bucket (constant output rate)",
+        "Fixed window (N per window)",
+        "Token bucket with small capacity",
+        "Token bucket with large capacity"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Leaky bucket allows no bursts (constant rate). Small-capacity token bucket allows small bursts. Fixed window allows up to N at once. Large-capacity token bucket allows the largest bursts."
+    },
+    {
+      "id": "rate-015",
+      "type": "multiple-choice",
+      "question": "What's 'throttling' in the context of rate limiting?",
+      "options": [
+        "Rejecting requests that exceed the limit",
+        "Slowing down requests instead of rejecting them",
+        "Reducing the rate limit dynamically",
+        "Any of these — 'throttling' is used broadly"
+      ],
+      "correct": 3,
+      "explanation": "'Throttling' is often used interchangeably with rate limiting. Strictly, it can mean slowing (adding latency) rather than rejecting, or dynamically adjusting limits. Context matters."
+    },
+    {
+      "id": "rate-016",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API could either: (A) return 429 immediately when rate limited, or (B) queue the request and respond slowly. Which is better?",
+          "options": [
+            "A — fail fast so clients can retry appropriately",
+            "B — the request eventually succeeds",
+            "A for real-time APIs, B for batch/async APIs",
+            "C — it depends on the use case"
+          ],
+          "correct": 3,
+          "explanation": "For interactive/real-time APIs, fail fast (429) is usually better — users can't wait. For batch/background jobs, queueing might be acceptable. The choice depends on client expectations."
+        },
+        {
+          "question": "If you queue requests, what's the risk?",
+          "options": [
+            "Memory exhaustion from unbounded queues",
+            "Clients time out waiting",
+            "Upstream load isn't actually reduced",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Queuing without bounds risks memory issues. Long waits cause client timeouts. If you queue everything, the backend still processes at capacity — you're just adding latency. Queuing needs limits too."
+        }
+      ]
+    },
+    {
+      "id": "rate-017",
+      "type": "multiple-choice",
+      "question": "What's the difference between 'rate limit' and 'quota'?",
+      "options": [
+        "They're the same thing",
+        "Rate limit is requests per time unit; quota is total requests over a longer period",
+        "Rate limit is for reads; quota is for writes",
+        "Rate limit is soft; quota is hard"
+      ],
+      "correct": 1,
+      "explanation": "Rate limits are typically short-term (100 requests/minute). Quotas are longer-term allocations (10,000 requests/month). An API might have both: rate limit prevents bursts, quota caps total usage."
+    },
+    {
+      "id": "rate-018",
+      "type": "multi-select",
+      "question": "Which are examples of quotas (not rate limits)?",
+      "options": [
+        "1000 API calls per month",
+        "100 requests per minute",
+        "5GB storage per account",
+        "10 concurrent connections"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Monthly API calls and storage are quotas — long-term resource allocations. Requests per minute is a rate limit. Concurrent connections is a concurrency limit (different from both)."
+    },
+    {
+      "id": "rate-019",
+      "type": "multiple-choice",
+      "question": "How should rate limits be applied: per API key, per user, per IP, or globally?",
+      "options": [
+        "Always per API key",
+        "Always per IP address",
+        "Depends on the authentication model and abuse patterns",
+        "Always globally across all clients"
+      ],
+      "correct": 2,
+      "explanation": "Per-key limits work for authenticated APIs. Per-IP helps for anonymous access but is fooled by NAT/proxies. Per-user is fairest for authenticated users. Global limits protect the service. Often use multiple layers."
+    },
+    {
+      "id": "rate-020",
+      "type": "ordering",
+      "question": "Rank these rate limit identifiers from least to most reliable for identifying unique clients:",
+      "items": [
+        "IP address",
+        "Session cookie",
+        "API key",
+        "Authenticated user ID"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "IP is least reliable (NAT, proxies, mobile networks share IPs). Session cookies can be cleared. API keys are reliable but can be shared. User ID (authenticated) is most reliable for per-user limiting."
+    },
+    {
+      "id": "rate-021",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A large enterprise uses your API. 1000 employees share one API key. Your rate limit is 100 requests/minute per key. What happens?",
+          "options": [
+            "Each employee gets 100 requests/minute",
+            "All employees share 100 requests/minute — they constantly hit limits",
+            "The enterprise is automatically given higher limits",
+            "The API key is revoked"
+          ],
+          "correct": 1,
+          "explanation": "If 1000 users share one key and the limit is 100/minute per key, they'll constantly hit rate limits. This is a common enterprise pain point with per-key limits."
+        },
+        {
+          "question": "How should this be addressed?",
+          "options": [
+            "Rate limit per user ID instead of per key",
+            "Give enterprise customers higher limits or unlimited access",
+            "Issue multiple API keys to the enterprise",
+            "Any of these, or a combination"
+          ],
+          "correct": 3,
+          "explanation": "Options: limit per user (if auth provides user ID), higher enterprise tiers, multiple keys. Many APIs offer enterprise plans with custom limits. The right solution depends on your business model."
+        }
+      ]
+    },
+    {
+      "id": "rate-022",
+      "type": "multiple-choice",
+      "question": "What's 'adaptive rate limiting'?",
+      "options": [
+        "Rate limits that change based on time of day",
+        "Rate limits that adjust based on current system load",
+        "Rate limits that learn client behavior",
+        "All of these are forms of adaptive limiting"
+      ],
+      "correct": 3,
+      "explanation": "Adaptive rate limiting adjusts limits dynamically. This could be based on time (lower limits during peak hours), system load (tighten when overloaded), or client behavior (more lenient for well-behaved clients)."
+    },
+    {
+      "id": "rate-023",
+      "type": "multi-select",
+      "question": "When might you use different rate limits for different endpoints?",
+      "options": [
+        "Write endpoints are more expensive than reads",
+        "Some endpoints call expensive downstream services",
+        "Search endpoints are computationally intensive",
+        "All endpoints should have the same limit for simplicity"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Different endpoints have different costs. Write operations may need stricter limits. Endpoints calling expensive services need protection. While uniform limits are simpler, tiered limits often make more sense."
+    },
+    {
+      "id": "rate-024",
+      "type": "ordering",
+      "question": "Rank these endpoints from most to least restrictive rate limits (typically):",
+      "items": [
+        "POST /payments (payment processing)",
+        "POST /login (authentication)",
+        "GET /users/{id} (single resource read)",
+        "GET /health (health check)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Payment is highly sensitive — very low limits. Login attempts are limited to prevent brute force. Normal reads have moderate limits. Health checks should be very permissive (monitoring needs frequent checks)."
+    },
+    {
+      "id": "rate-025",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API is deployed across multiple servers. Each server enforces rate limits locally. A client making requests gets routed to different servers. What's the problem?",
+          "options": [
+            "No problem — load balancing is working",
+            "The effective limit multiplies by the number of servers",
+            "Some servers might be overloaded",
+            "B — with 5 servers and 100/min limit, effective limit is ~500/min"
+          ],
+          "correct": 3,
+          "explanation": "If each of 5 servers allows 100/min, a client could potentially make 500/min by hitting all servers. Local rate limiting doesn't work correctly in a distributed system."
+        },
+        {
+          "question": "How do you implement rate limiting correctly in a distributed system?",
+          "options": [
+            "Use sticky sessions so each client hits one server",
+            "Use a shared counter in Redis or similar",
+            "Synchronize counters between servers",
+            "B is most common; A works but has other tradeoffs"
+          ],
+          "correct": 3,
+          "explanation": "A centralized store (Redis) for counters is the standard solution. Sticky sessions work but reduce load balancing benefits. Synchronizing between servers is complex. Redis with atomic increments is simple and fast."
+        }
+      ]
+    },
+    {
+      "id": "rate-026",
+      "type": "multiple-choice",
+      "question": "Why is Redis commonly used for distributed rate limiting?",
+      "options": [
+        "It's the only database that supports counters",
+        "It's fast, supports atomic operations, and has built-in expiry",
+        "It's required by the HTTP specification",
+        "It automatically handles rate limiting"
+      ],
+      "correct": 1,
+      "explanation": "Redis offers atomic INCR operations, low latency, and TTL-based expiry (keys auto-delete when the window ends). This makes token bucket and sliding window implementations straightforward."
+    },
+    {
+      "id": "rate-027",
+      "type": "multi-select",
+      "question": "Which Redis commands are useful for rate limiting?",
+      "options": [
+        "INCR (increment counter)",
+        "EXPIRE/TTL (set/check expiration)",
+        "MULTI/EXEC (atomic transactions)",
+        "ZADD/ZRANGEBYSCORE (sorted sets for sliding window)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "INCR counts requests. EXPIRE auto-deletes keys after the window. MULTI/EXEC ensures atomic check-and-increment. Sorted sets (ZADD) can store request timestamps for sliding window log."
+    },
+    {
+      "id": "rate-028",
+      "type": "multiple-choice",
+      "question": "What happens if Redis is unavailable and you're using it for rate limiting?",
+      "options": [
+        "All requests are rate limited",
+        "All requests are allowed",
+        "Depends on your fallback strategy — fail open or fail closed",
+        "The API returns 503 for all requests"
+      ],
+      "correct": 2,
+      "explanation": "You must decide: fail open (allow requests, risking overload) or fail closed (reject requests, risking availability). Fail open is more common — a brief Redis outage shouldn't take down the API."
+    },
+    {
+      "id": "rate-029",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A client receives a 429 response. The well-behaved client should:",
+          "options": [
+            "Retry immediately in a tight loop",
+            "Wait for the time specified in Retry-After, then retry",
+            "Give up and show an error",
+            "Switch to a different API key"
+          ],
+          "correct": 1,
+          "explanation": "Respect Retry-After. Retrying immediately makes things worse (more 429s). Giving up might be premature. Switching keys might work but could be against ToS. Wait, then retry."
+        },
+        {
+          "question": "What if the 429 response doesn't include Retry-After?",
+          "options": [
+            "Retry immediately",
+            "Use exponential backoff with jitter",
+            "Wait a fixed 60 seconds",
+            "Give up — no way to know when to retry"
+          ],
+          "correct": 1,
+          "explanation": "Exponential backoff (wait 1s, then 2s, then 4s...) with random jitter prevents thundering herd. If many clients retry at exactly the same time, they'll all hit limits again. Jitter spreads retries out."
+        }
+      ]
+    },
+    {
+      "id": "rate-030",
+      "type": "multiple-choice",
+      "question": "What's 'exponential backoff'?",
+      "options": [
+        "Doubling the rate limit over time",
+        "Doubling the wait time between retries: 1s, 2s, 4s, 8s...",
+        "Reducing request rate exponentially",
+        "A way to calculate token bucket refill rate"
+      ],
+      "correct": 1,
+      "explanation": "Exponential backoff means increasing wait times between retries exponentially. After failure, wait 1s; if still failing, wait 2s, then 4s, etc. This reduces load on an overloaded system and increases chance of success."
+    },
+    {
+      "id": "rate-031",
+      "type": "multiple-choice",
+      "question": "What's 'jitter' in the context of retry strategies?",
+      "options": [
+        "Random variation added to backoff times",
+        "Network latency variation",
+        "Fluctuations in rate limits",
+        "Client-side request throttling"
+      ],
+      "correct": 0,
+      "explanation": "Jitter adds randomness to retry delays. Instead of all clients retrying at exactly 1s, 2s, 4s, they retry at 1.2s, 2.7s, 3.8s. This prevents 'thundering herd' where synchronized retries overwhelm the server."
+    },
+    {
+      "id": "rate-032",
+      "type": "ordering",
+      "question": "Rank these retry strategies from worst to best for handling rate limits:",
+      "items": [
+        "Immediate retry in a tight loop",
+        "Fixed delay (always wait 5 seconds)",
+        "Exponential backoff",
+        "Exponential backoff with jitter"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Tight loops make overload worse. Fixed delay is better but can still synchronize. Exponential backoff spreads load over time. Adding jitter prevents synchronized retries — best practice."
+    },
+    {
+      "id": "rate-033",
+      "type": "multi-select",
+      "question": "Which should clients do to minimize hitting rate limits?",
+      "options": [
+        "Cache responses to avoid redundant requests",
+        "Batch requests where possible",
+        "Monitor rate limit headers and slow down proactively",
+        "Use multiple API keys to multiply limits"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Caching and batching reduce request count. Monitoring headers lets clients back off before hitting limits. Using multiple keys to bypass limits is typically against ToS and may get you banned."
+    },
+    {
+      "id": "rate-034",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "X-RateLimit-Remaining: 10. You need to make 50 requests. How should you pace them?",
+          "options": [
+            "Make 10 immediately, wait for reset, make 40",
+            "Spread all 50 evenly across the window",
+            "Make all 50 and handle 429s with retry",
+            "A is safe; B is gentler on the server"
+          ],
+          "correct": 3,
+          "explanation": "Making 10 then waiting works but wastes time. Spreading evenly (if you have the full window available) is friendlier to the server. Option C is inefficient — you'll make 10, get forty 429s, then retry."
+        },
+        {
+          "question": "The rate limit is 100/minute. How long should you wait between each request to pace 50 requests without hitting limits?",
+          "options": [
+            "0.6 seconds (60s / 100 requests)",
+            "1.2 seconds (60s / 50 requests)",
+            "No waiting needed — 50 < 100",
+            "A gives headroom; C works but leaves no margin"
+          ],
+          "correct": 3,
+          "explanation": "50 requests fit in the 100/min limit, so no waiting is strictly needed. But pacing at 0.6s (the rate limit pace) gives headroom for retries and is gentler. The best strategy depends on time constraints."
+        }
+      ]
+    },
+    {
+      "id": "rate-035",
+      "type": "multiple-choice",
+      "question": "What's 'client-side rate limiting'?",
+      "options": [
+        "Rate limits enforced by the client, not the server",
+        "Rate limit headers sent by the client",
+        "Clients voluntarily limiting their own request rate",
+        "Both A and C — clients proactively limiting themselves"
+      ],
+      "correct": 3,
+      "explanation": "Client-side rate limiting means clients track and limit their own requests to stay under limits. This is more efficient than hitting server limits and getting 429s. Well-designed clients respect rate limits proactively."
+    },
+    {
+      "id": "rate-036",
+      "type": "multiple-choice",
+      "question": "An API has both rate limits (100/min) and quotas (10,000/month). A client uses 9,900 requests on day 1. What happens for the rest of the month?",
+      "options": [
+        "They get 100 more requests",
+        "They're blocked for the month",
+        "Rate limit still applies, but only 100 requests remain from quota",
+        "The quota resets daily"
+      ],
+      "correct": 2,
+      "explanation": "The client has 100 requests left in their monthly quota. They can still make 100/min, but only 100 total for the month. Both constraints apply — you can hit either limit."
+    },
+    {
+      "id": "rate-037",
+      "type": "multi-select",
+      "question": "How should quota exhaustion be communicated differently from rate limiting?",
+      "options": [
+        "Use 429 for rate limits, 403 for quota exhaustion",
+        "Include quota info in headers (X-Quota-Remaining)",
+        "Provide a way to check quota without making an API call",
+        "There's no need to distinguish them"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Distinguishing helps clients respond appropriately. 429 means 'wait and retry'; 403/quota exhaustion means 'upgrade or wait for monthly reset.' Quota headers and a status endpoint let clients plan ahead."
+    },
+    {
+      "id": "rate-038",
+      "type": "ordering",
+      "question": "Rank these by how often the limit window resets (most frequent to least):",
+      "items": [
+        "Rate limit: 100/minute",
+        "Rate limit: 1000/hour",
+        "Quota: 10,000/day",
+        "Quota: 100,000/month"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Per-minute resets every 60 seconds. Per-hour every 3600 seconds. Daily every 86400 seconds. Monthly every ~2.6 million seconds. More frequent resets = more bursty usage allowed over time."
+    },
+    {
+      "id": "rate-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API serves both free and paid users. How should rate limits differ?",
+          "options": [
+            "Same limits for everyone — fair is fair",
+            "Higher limits for paid users",
+            "Paid users get priority during overload",
+            "B and C — paid users should get better service"
+          ],
+          "correct": 3,
+          "explanation": "Paid users typically get higher limits and priority. This is fair — they're paying for better service. Free tiers have lower limits to encourage upgrades and prevent abuse."
+        },
+        {
+          "question": "The system is overloaded. Should paid users be exempt from rate limiting?",
+          "options": [
+            "Yes — they paid for access",
+            "No — even paid users should have some limits",
+            "Only during emergencies",
+            "B — unlimited access risks system stability for everyone"
+          ],
+          "correct": 3,
+          "explanation": "Even paid users need limits. One misbehaving paid client could take down the system for everyone. Higher limits yes, but not unlimited. 'Unlimited' plans typically still have fair use policies."
+        }
+      ]
+    },
+    {
+      "id": "rate-040",
+      "type": "multiple-choice",
+      "question": "What's a 'burst limit'?",
+      "options": [
+        "The maximum requests per second regardless of bucket size",
+        "The maximum number of requests allowed in a short burst",
+        "A limit on how quickly new clients can onboard",
+        "A limit on response size"
+      ],
+      "correct": 1,
+      "explanation": "Burst limit is the maximum requests allowed in a short burst (often equals token bucket capacity). E.g., '100 requests/minute with burst of 20' means 20 instant, then 80 more spread over the minute."
+    },
+    {
+      "id": "rate-041",
+      "type": "multi-select",
+      "question": "Which scenarios benefit from allowing bursts?",
+      "options": [
+        "Clients batch-uploading multiple files",
+        "Page loads that require many parallel API calls",
+        "Startup initialization that fetches configuration",
+        "Long-running polling connections"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Bursts help batch operations, parallel fetches on page load, and initialization. Polling is typically low-frequency and steady — doesn't need bursts. Token bucket naturally supports burst then steady-state."
+    },
+    {
+      "id": "rate-042",
+      "type": "multiple-choice",
+      "question": "Should rate limit headers be included on every response, or only on 429s?",
+      "options": [
+        "Only on 429 responses",
+        "On every response",
+        "Only when remaining < 10%",
+        "B — clients benefit from seeing limits proactively"
+      ],
+      "correct": 3,
+      "explanation": "Include rate limit headers on every response. This lets clients monitor usage and slow down before hitting limits. Only showing on 429s means clients can't plan ahead."
+    },
+    {
+      "id": "rate-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your rate limiter uses Redis. Redis is at capacity. What's the impact?",
+          "options": [
+            "Rate limiting becomes slower but still works",
+            "Rate limiting fails, so you must decide: fail open or closed",
+            "Requests queue until Redis recovers",
+            "The API automatically switches to local rate limiting"
+          ],
+          "correct": 1,
+          "explanation": "If Redis can't respond, you can't check or update limits. You must choose a fallback: fail open (allow requests, risk overload) or fail closed (reject all, risk availability). This should be a conscious design decision."
+        },
+        {
+          "question": "You choose fail-open (allow all requests when Redis is down). What should you do?",
+          "options": [
+            "Nothing — requests flow normally",
+            "Alert operators and log the failure",
+            "Apply a stricter local rate limit temporarily",
+            "B and C — have a degraded-mode strategy"
+          ],
+          "correct": 3,
+          "explanation": "Alert on Redis failure (it's a risk). Local rate limiting (even if imprecise) is better than none. Log the event for investigation. Have a plan for degraded operation — don't just hope Redis stays up."
+        }
+      ]
+    },
+    {
+      "id": "rate-044",
+      "type": "ordering",
+      "question": "Rank these rate limiting concerns from most to least important for a public API:",
+      "items": [
+        "Protecting backend services from overload",
+        "Fair allocation among clients",
+        "Preventing abuse and attacks",
+        "Maximizing revenue by encouraging upgrades"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Protecting the backend is paramount (if it goes down, everything fails). Preventing abuse is critical for security. Fair allocation keeps customers happy. Revenue optimization is valid but secondary."
+    },
+    {
+      "id": "rate-045",
+      "type": "multiple-choice",
+      "question": "What's the 'thundering herd' problem in the context of rate limiting?",
+      "options": [
+        "Too many requests arriving at once",
+        "Many clients retrying at the exact same time after rate limit reset",
+        "A sudden spike in traffic from a news event",
+        "All rate limit counters resetting simultaneously"
+      ],
+      "correct": 1,
+      "explanation": "Thundering herd: many clients hit rate limits, all wait for reset, all retry at exactly the reset time, causing another spike. Jitter and staggered resets help prevent this synchronized retry storm."
+    },
+    {
+      "id": "rate-046",
+      "type": "multi-select",
+      "question": "How can you prevent thundering herd from rate limit resets?",
+      "options": [
+        "Use sliding windows instead of fixed windows",
+        "Clients add jitter to their retry timing",
+        "Stagger reset times per client (not all at :00)",
+        "Increase rate limits during reset periods"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Sliding windows don't have sharp resets. Client jitter spreads retries. Staggered per-client resets (based on client ID hash) prevent synchronized expiry. Increasing limits just defers the problem."
+    },
+    {
+      "id": "rate-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A popular endpoint suddenly gets 10x traffic. Rate limiting kicks in. Many requests get 429s. What else should happen?",
+          "options": [
+            "Nothing — rate limiting is handling it",
+            "Auto-scale to handle the load",
+            "Alert operators about the spike",
+            "B and C — rate limiting buys time, but investigate the cause"
+          ],
+          "correct": 3,
+          "explanation": "Rate limiting protects the service short-term, but you need to understand why. Is it a viral moment (scale up)? A misconfigured client? An attack? Alert and investigate while rate limiting holds the line."
+        },
+        {
+          "question": "The spike is from one client with a bug in their code. How should you handle it?",
+          "options": [
+            "Rate limiting is already handling it",
+            "Contact the client and help them fix the bug",
+            "Block the client entirely until they fix it",
+            "B, possibly C if they don't respond"
+          ],
+          "correct": 3,
+          "explanation": "Proactively helping clients fix bugs is good customer service. If they're unresponsive and causing issues, you might need to temporarily block them. Rate limiting alone might not be enough if they're consuming excessive resources even with 429s."
+        }
+      ]
+    },
+    {
+      "id": "rate-048",
+      "type": "multiple-choice",
+      "question": "What's the purpose of rate limit 'cost' or 'weight' per endpoint?",
+      "options": [
+        "Billing clients based on usage",
+        "Some requests consume more than 1 unit of the rate limit",
+        "Prioritizing important requests",
+        "Calculating server costs"
+      ],
+      "correct": 1,
+      "explanation": "Weighted rate limiting: expensive operations cost more against your limit. A complex query might cost 10 points; a simple GET costs 1. This protects expensive endpoints while being generous with cheap ones."
+    },
+    {
+      "id": "rate-049",
+      "type": "ordering",
+      "question": "Rank these operations by reasonable rate limit cost (lowest to highest):",
+      "items": [
+        "GET /users/{id} (single resource)",
+        "GET /users (paginated list)",
+        "POST /reports/generate (heavy computation)",
+        "GET /users/search?q=... (full-text search)"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Single resource fetch is cheapest. Paginated lists cost more (more data). Search is expensive (full-text query). Report generation is heaviest (long computation). Weight limits accordingly."
+    },
+    {
+      "id": "rate-050",
+      "type": "multi-select",
+      "question": "Which information should be available for clients to understand their rate limits?",
+      "options": [
+        "Current limit and remaining count (headers)",
+        "When the limit resets (header or timestamp)",
+        "Documentation of limits per endpoint",
+        "API endpoint to check limits without using quota"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are helpful. Headers give real-time info. Reset time helps planning. Documentation sets expectations. A status endpoint lets clients check limits without making real requests."
+    },
+    {
+      "id": "rate-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "GitHub's API has a /rate_limit endpoint that returns current limits. Why is this useful?",
+          "options": [
+            "It lets clients check limits without consuming them",
+            "It provides more detail than headers alone",
+            "It works for OAuth apps that need to check user limits",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "A dedicated endpoint lets clients check limits proactively, see all limit types (core API, search, graphql), and check limits for tokens without making a real request. It's a convenience for clients."
+        },
+        {
+          "question": "Should the /rate_limit endpoint itself be rate limited?",
+          "options": [
+            "No — it defeats the purpose",
+            "Yes — it could be abused like any endpoint",
+            "Light limits only (much higher than other endpoints)",
+            "C — allow frequent checks but prevent abuse"
+          ],
+          "correct": 3,
+          "explanation": "A very high limit or a separate lightweight limit makes sense. You want clients to check often, but not infinitely. GitHub's rate_limit endpoint doesn't count against the main limit but is still protected."
+        }
+      ]
+    },
+    {
+      "id": "rate-052",
+      "type": "multiple-choice",
+      "question": "What's 'dynamic rate limiting'?",
+      "options": [
+        "Rate limits that change based on client identity",
+        "Rate limits that adjust based on current system load",
+        "Rate limits set by an administrator in real-time",
+        "All of these are forms of dynamic rate limiting"
+      ],
+      "correct": 3,
+      "explanation": "Dynamic rate limiting adjusts limits based on various factors: client tier, system health, time of day, or admin overrides. This is more sophisticated than static limits but harder to implement and explain."
+    },
+    {
+      "id": "rate-053",
+      "type": "multi-select",
+      "question": "Which are benefits of implementing rate limiting at the API gateway level?",
+      "options": [
+        "Requests are rejected before reaching backend services",
+        "Consistent enforcement across all services",
+        "Centralized configuration and monitoring",
+        "Better performance for rate-limited requests"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Gateway-level limiting stops requests early (saving backend resources), provides consistency, and centralizes config. Performance is similar — you still need to check limits, just at a different layer."
+    },
+    {
+      "id": "rate-054",
+      "type": "ordering",
+      "question": "Rank these points in a request flow where rate limiting could be applied (earliest to latest):",
+      "items": [
+        "CDN/Edge",
+        "Load Balancer",
+        "API Gateway",
+        "Application Server"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "CDN is first (global edge). Load balancer is next. API gateway handles routing and policies. Application server is last. Earlier limiting protects more downstream resources but has less context."
+    },
+    {
+      "id": "rate-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You rate limit at the API gateway. A downstream microservice has its own limits. A request passes the gateway limit but hits the microservice limit. What should happen?",
+          "options": [
+            "Return 429 from the microservice",
+            "Return 503 Service Unavailable",
+            "Return 500 Internal Server Error",
+            "A — it's still a rate limit issue, surface it correctly"
+          ],
+          "correct": 3,
+          "explanation": "The request was rate limited, just at a different layer. Return 429 with appropriate headers. The client doesn't need to know which layer enforced the limit. From their perspective, they're rate limited."
+        },
+        {
+          "question": "How can you avoid this gateway-vs-microservice limit conflict?",
+          "options": [
+            "Only rate limit at one layer",
+            "Coordinate limits so gateway is always stricter",
+            "Pass rate limit budget from gateway to microservice",
+            "B or C — ensure limits are coherent"
+          ],
+          "correct": 3,
+          "explanation": "Either make gateway limits stricter (so you never hit microservice limits), or pass remaining budget through (gateway used 5 of 10, microservice has 5 left). Incoherent limits across layers create confusing behavior."
+        }
+      ]
+    },
+    {
+      "id": "rate-056",
+      "type": "multiple-choice",
+      "question": "What's 'request coalescing' in the context of rate limiting?",
+      "options": [
+        "Combining multiple small requests into one",
+        "Rejecting duplicate requests to save quota",
+        "Merging concurrent identical requests into one backend call",
+        "Batching rate limit checks"
+      ],
+      "correct": 2,
+      "explanation": "Request coalescing: if multiple clients request the same thing simultaneously, make one backend call and share the result. This reduces load and is often combined with caching. It's an optimization, not rate limiting per se."
+    },
+    {
+      "id": "rate-057",
+      "type": "multi-select",
+      "question": "Which are signs of a client behaving badly (potential abuse)?",
+      "options": [
+        "Consistently hitting rate limits",
+        "Retrying immediately after 429 without backoff",
+        "Requests from many different IPs with the same API key",
+        "Requesting non-existent resources repeatedly"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Immediate retry (ignoring backoff) wastes resources. Requests from many IPs might indicate key sharing or proxied attacks. Hammering 404s suggests scanning. Hitting limits isn't bad per se — that's what limits are for."
+    },
+    {
+      "id": "rate-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A client is hitting rate limits and ignoring Retry-After (retrying immediately in a loop). What should you do?",
+          "options": [
+            "The rate limiter is handling it",
+            "Temporarily block the client",
+            "Increase their rate limit",
+            "B — they're wasting resources and should be blocked"
+          ],
+          "correct": 3,
+          "explanation": "Rate limiting costs resources even when rejecting (check limit, log, respond). A client in a tight retry loop wastes resources. Temporarily blocking them (longer ban, or require captcha) is reasonable."
+        },
+        {
+          "question": "How might you implement progressive penalties for misbehavior?",
+          "options": [
+            "Increase the Retry-After time for repeat offenders",
+            "Reduce their rate limit temporarily",
+            "Require additional authentication (captcha, 2FA)",
+            "All of these — escalating responses"
+          ],
+          "correct": 3,
+          "explanation": "Progressive penalties: first offense gets normal Retry-After. Continued abuse gets longer delays, reduced limits, or harder auth requirements. This discourages abuse while giving legitimate clients a chance to fix bugs."
+        }
+      ]
+    },
+    {
+      "id": "rate-059",
+      "type": "multiple-choice",
+      "question": "What's 'quota management' vs 'rate limiting'?",
+      "options": [
+        "They're the same thing",
+        "Rate limiting is short-term throttling; quota management is long-term allocation",
+        "Quota is for billing; rate limiting is for protection",
+        "B is most accurate"
+      ],
+      "correct": 3,
+      "explanation": "Rate limiting typically means short-term throttling (requests per second/minute). Quota management is about long-term resource allocation (10,000 API calls per month, 50GB storage). Both involve limits, but at different timescales."
+    },
+    {
+      "id": "rate-060",
+      "type": "ordering",
+      "question": "Rank these by typical reset frequency (most to least frequent):",
+      "items": [
+        "Token bucket refill",
+        "Sliding window update",
+        "Daily quota reset",
+        "Monthly billing cycle"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Token buckets refill continuously (per second typically). Sliding windows update with each request. Daily quotas reset once per day. Billing cycles are monthly. Different timescales for different purposes."
+    },
+    {
+      "id": "rate-061",
+      "type": "multi-select",
+      "question": "Which headers are part of the IETF RateLimit header fields draft standard?",
+      "options": [
+        "RateLimit-Limit",
+        "RateLimit-Remaining",
+        "RateLimit-Reset",
+        "RateLimit-Policy"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "The IETF draft (RFC 9110 related) proposes standardized headers: RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and RateLimit-Policy. Many APIs use X-RateLimit-* variants; the standard aims to unify this."
+    },
+    {
+      "id": "rate-062",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A GraphQL API: should rate limits be per query, per operation, or per field?",
+          "options": [
+            "Per query (each HTTP request)",
+            "Per operation (queries can have multiple)",
+            "Per field (based on query complexity)",
+            "C or complexity-based — simple per-query limits don't work for GraphQL"
+          ],
+          "correct": 3,
+          "explanation": "GraphQL queries vary hugely in cost. One query might request 1 field, another might request 10,000 nested records. Complexity-based limits (scoring each field/connection) are more accurate than simple per-query limits."
+        },
+        {
+          "question": "How do you calculate GraphQL query complexity?",
+          "options": [
+            "Count the number of fields",
+            "Assign costs to types and fields, sum them",
+            "Parse and execute the query, measure actual cost",
+            "B for pre-execution limits; C for accurate but post-hoc"
+          ],
+          "correct": 3,
+          "explanation": "Assigning complexity scores lets you reject expensive queries before execution. Measuring actual execution time is more accurate but only works post-hoc. Most implementations use pre-calculated complexity with some actual-cost tracking."
+        }
+      ]
+    },
+    {
+      "id": "rate-063",
+      "type": "multiple-choice",
+      "question": "What's 'backpressure' in API systems?",
+      "options": [
+        "Clients pushing back on rate limits",
+        "Downstream services signaling they're overloaded, causing upstream to slow",
+        "The pressure of accumulated requests in a queue",
+        "Rate limiting applied in reverse"
+      ],
+      "correct": 1,
+      "explanation": "Backpressure: when a downstream service is overwhelmed, it signals upstream to slow down. This propagates through the system, preventing overload. Rate limiting is one way to implement backpressure at the API level."
+    },
+    {
+      "id": "rate-064",
+      "type": "multi-select",
+      "question": "Which are forms of backpressure an API might apply?",
+      "options": [
+        "Returning 429 Too Many Requests",
+        "Returning 503 Service Unavailable with Retry-After",
+        "Adding latency to responses when load is high",
+        "Reducing response quality (fewer fields, lower resolution)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are forms of backpressure. 429 and 503 tell clients to slow down. Added latency naturally slows clients. Degraded responses (graceful degradation) let you serve more requests at lower quality."
+    },
+    {
+      "id": "rate-065",
+      "type": "ordering",
+      "question": "Rank these responses from most to least preferred when the API is overloaded:",
+      "items": [
+        "429 with clear Retry-After",
+        "503 with vague error",
+        "Timeout (no response)",
+        "200 with incomplete/degraded data"
+      ],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "429 with Retry-After is clear and actionable. Degraded 200 keeps things working (if clients handle it). 503 at least indicates server trouble. Timeout is worst — clients don't know what happened or whether to retry."
+    },
+    {
+      "id": "rate-066",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API is under DDoS attack. Rate limiting alone isn't enough. What else helps?",
+          "options": [
+            "Block obvious attack patterns (IPs, user agents)",
+            "Use a DDoS mitigation service (Cloudflare, AWS Shield)",
+            "Scale up infrastructure",
+            "All of the above — defense in depth"
+          ],
+          "correct": 3,
+          "explanation": "DDoS requires multiple defenses. Rate limiting helps. Blocking known-bad actors helps. DDoS services specialize in absorbing attack traffic. Scaling helps handle what gets through. No single solution is enough."
+        },
+        {
+          "question": "The attack is using many IPs (botnet). Per-IP rate limits are ineffective. What next?",
+          "options": [
+            "Rate limit more aggressively globally",
+            "Look for patterns (user agent, request signatures) to block",
+            "Use behavioral analysis to distinguish bots from users",
+            "B and C — identify attack characteristics"
+          ],
+          "correct": 3,
+          "explanation": "Botnets rotate IPs, so per-IP limits fail. Look for patterns: specific user agents, request paths, timing patterns. Behavioral analysis (CAPTCHA, JavaScript challenges) can distinguish bots. This is beyond simple rate limiting."
+        }
+      ]
+    },
+    {
+      "id": "rate-067",
+      "type": "multiple-choice",
+      "question": "What's 'circuit breaking' in distributed systems?",
+      "options": [
+        "Disconnecting misbehaving clients",
+        "Stopping requests to a failing dependency to prevent cascade failure",
+        "Limiting electrical power to servers",
+        "Breaking up long-running requests"
+      ],
+      "correct": 1,
+      "explanation": "Circuit breaker: if a downstream service is failing, stop calling it temporarily. This prevents wasting resources on doomed requests and gives the service time to recover. Like an electrical circuit breaker preventing overload."
+    },
+    {
+      "id": "rate-068",
+      "type": "multi-select",
+      "question": "How do circuit breakers and rate limiters complement each other?",
+      "options": [
+        "Rate limiters protect against too many requests from clients",
+        "Circuit breakers protect against failing downstream dependencies",
+        "Both prevent cascade failures",
+        "They serve the same purpose"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Rate limiters face clients (limit incoming requests). Circuit breakers face downstream (limit outgoing requests to failing services). Both prevent cascade failures — one from the demand side, one from the supply side."
+    },
+    {
+      "id": "rate-069",
+      "type": "ordering",
+      "question": "Rank these circuit breaker states in their typical lifecycle order:",
+      "items": [
+        "Closed (normal operation)",
+        "Open (rejecting requests)",
+        "Half-Open (testing recovery)"
+      ],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Closed: normal operation, requests flow. Failures accumulate → Open: rejecting requests, not calling failing service. After timeout → Half-Open: let a few requests through to test. If they succeed → Closed again."
+    },
+    {
+      "id": "rate-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A payment gateway is rate limited. A customer tries to pay but gets rate limited. What's the impact?",
+          "options": [
+            "Minor inconvenience — they retry later",
+            "Lost sale — customer abandons checkout",
+            "Potential for duplicate charges on retry",
+            "B and C — critical path rate limiting is serious"
+          ],
+          "correct": 3,
+          "explanation": "Rate limiting on critical paths (payments, auth) causes lost revenue and poor UX. Careless retries can cause duplicate charges. Critical endpoints often need higher limits, queuing, or different strategies."
+        },
+        {
+          "question": "How should you handle rate limiting on critical payment endpoints?",
+          "options": [
+            "Higher rate limits for payment endpoints",
+            "Queue and process rather than reject",
+            "Idempotency keys to safely retry",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Critical paths deserve careful treatment: higher limits, queuing (if latency is acceptable), and idempotency keys for safe retries. Never leave customers wondering if their payment went through."
+        }
+      ]
+    },
+    {
+      "id": "rate-071",
+      "type": "multiple-choice",
+      "question": "What's 'load shedding'?",
+      "options": [
+        "Removing unused features from the API",
+        "Intentionally dropping requests when the system is overloaded",
+        "Distributing load across servers",
+        "Reducing rate limits during off-peak hours"
+      ],
+      "correct": 1,
+      "explanation": "Load shedding: when the system is overwhelmed, intentionally drop some requests to keep the system responsive for others. Better to serve 80% of requests well than 100% badly. It's an extreme form of rate limiting."
+    },
+    {
+      "id": "rate-072",
+      "type": "multi-select",
+      "question": "Which requests might be prioritized (not shed) during overload?",
+      "options": [
+        "Requests from premium/paying customers",
+        "Health check requests from load balancers",
+        "Requests that are almost complete (avoid wasted work)",
+        "Requests from internal services"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are candidates for prioritization. Premium customers paid for reliability. Health checks keep routing correct. Completing in-flight work avoids waste. Internal services might be critical. Priority shedding is nuanced."
+    },
+    {
+      "id": "rate-073",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API has a limit of 100 requests/minute. A client SDK they provide makes 5 API calls per user action. How should this be communicated?",
+          "options": [
+            "Just document the 100 requests/minute limit",
+            "Document that each user action consumes 5 requests",
+            "Change the SDK to batch requests",
+            "B is minimum; C is a good improvement"
+          ],
+          "correct": 3,
+          "explanation": "Clients need to understand effective limits. If the SDK uses 5 calls/action, the limit is really 20 actions/minute. Better: optimize the SDK to batch, reducing calls per action. Documentation + optimization."
+        },
+        {
+          "question": "What's the impact of SDK overhead on rate limits?",
+          "options": [
+            "No impact — SDK calls are free",
+            "SDK calls count against limits like any other requests",
+            "SDKs automatically handle rate limiting",
+            "B — clients may hit limits faster than expected"
+          ],
+          "correct": 3,
+          "explanation": "Every HTTP request counts, whether from an SDK or direct. Clients using SDKs with multiple calls per operation hit limits faster. SDKs should minimize calls and handle rate limiting gracefully."
+        }
+      ]
+    },
+    {
+      "id": "rate-074",
+      "type": "multiple-choice",
+      "question": "What's 'priority queuing' for rate limiting?",
+      "options": [
+        "Processing rate limited requests in priority order",
+        "Higher priority requests get higher rate limits",
+        "Some requests bypass the queue entirely",
+        "All can be considered priority queuing"
+      ],
+      "correct": 3,
+      "explanation": "Priority queuing can mean any of these: processing queued requests by priority, varying limits by priority, or letting high-priority requests skip limits. The goal is treating important requests better."
+    },
+    {
+      "id": "rate-075",
+      "type": "ordering",
+      "question": "Rank these metrics from most to least useful for understanding rate limiting effectiveness:",
+      "items": [
+        "Number of 429 responses returned",
+        "P99 latency of rate limit checks",
+        "Requests rejected vs passed ratio",
+        "Time to rate limit implementation"
+      ],
+      "correctOrder": [2, 0, 1, 3],
+      "explanation": "Rejection ratio shows how much traffic is being limited. 429 count is related. P99 of rate limit checks ensures limiting isn't adding latency. Implementation time is a one-time cost, not ongoing metric."
+    },
+    {
+      "id": "rate-076",
+      "type": "multi-select",
+      "question": "Which should trigger alerts related to rate limiting?",
+      "options": [
+        "Spike in 429 responses",
+        "Rate limiting service (Redis) becoming unavailable",
+        "A single client hitting limits repeatedly",
+        "Overall request rate approaching capacity"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All warrant alerting. 429 spikes may indicate issues. Redis down means rate limiting is failing. Repeated hits from one client could be a bug or abuse. Approaching capacity is a scaling signal."
+    },
+    {
+      "id": "rate-077",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing rate limits for a new API. What information do you need?",
+          "options": [
+            "Expected traffic patterns and peak loads",
+            "Backend service capacity",
+            "Customer segments and their needs",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Traffic patterns inform normal vs burst limits. Backend capacity sets upper bounds. Customer segments guide tiered limits. Without these inputs, you're guessing. Start with conservative limits and adjust."
+        },
+        {
+          "question": "You launched with 100 requests/minute. Users complain it's too low. What should you do?",
+          "options": [
+            "Immediately raise it to 1000",
+            "Analyze usage patterns — why do they need more?",
+            "Raise it incrementally while monitoring impact",
+            "B then C — understand and adjust carefully"
+          ],
+          "correct": 3,
+          "explanation": "Understand why first. Are they doing something inefficient? Do they genuinely need more? Then adjust incrementally. A 10x jump might overwhelm your backend. Data-driven adjustments are safest."
+        }
+      ]
+    },
+    {
+      "id": "rate-078",
+      "type": "multiple-choice",
+      "question": "What's a 'soft' vs 'hard' rate limit?",
+      "options": [
+        "Soft limits warn; hard limits reject",
+        "Soft limits allow bursts; hard limits don't",
+        "Soft limits are per-user; hard limits are global",
+        "A — soft limits notify without enforcing"
+      ],
+      "correct": 3,
+      "explanation": "Soft limits might log a warning or add a header but allow the request. Hard limits reject with 429. Soft limits are useful for monitoring before enforcing, or for gently nudging clients without breaking them."
+    },
+    {
+      "id": "rate-079",
+      "type": "multi-select",
+      "question": "When might you use soft (non-enforcing) rate limits?",
+      "options": [
+        "When first rolling out limits (to monitor impact)",
+        "For internal services that should be trusted",
+        "To notify clients they're approaching limits",
+        "When you can't handle the load anyway"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Soft limits help with rollout (see who would be affected), trusted internal services (alert but don't block), and proactive warnings. If you can't handle load, you need hard limits eventually."
+    },
+    {
+      "id": "rate-080",
+      "type": "ordering",
+      "question": "Rank these rollout strategies for a new rate limit (safest to riskiest):",
+      "items": [
+        "Enable for 1% of traffic, monitor, increase gradually",
+        "Soft limit (logging only) first, then hard limit",
+        "Enable for all traffic immediately",
+        "Enable for internal traffic first, then external"
+      ],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Soft limit first is safest (no impact, just logging). Percentage rollout catches issues early. Internal-first protects external customers. All traffic immediately is riskiest (any issue affects everyone)."
+    },
+    {
+      "id": "rate-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Rate limits are per API key. A malicious user creates 100 API keys to get 100x the limits. How do you prevent this?",
+          "options": [
+            "Rate limit per account, not per key",
+            "Require verification (email, phone) to create keys",
+            "Monitor for key-creation abuse",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Per-account limits ignore key count. Verification raises the cost of creating fake accounts. Monitoring catches abuse patterns. Layered defenses make abuse harder."
+        },
+        {
+          "question": "What if they create 100 accounts?",
+          "options": [
+            "You've lost — rate limits can't stop determined attackers",
+            "IP-based limiting catches them",
+            "Behavioral analysis, device fingerprinting, captchas",
+            "C — move from identity-based to behavior-based detection"
+          ],
+          "correct": 3,
+          "explanation": "Identity-based limits fail against fake identities. Behavioral analysis looks at patterns: same IP, same timing, same requests. Fingerprinting tracks devices. CAPTCHA proves humanity. It's an arms race."
+        }
+      ]
+    },
+    {
+      "id": "rate-082",
+      "type": "multiple-choice",
+      "question": "What's 'graceful degradation' in the context of rate limiting?",
+      "options": [
+        "Gradually reducing limits over time",
+        "Returning partial results instead of rejecting requests",
+        "Slowly ramping up after an outage",
+        "Decreasing quality of service as load increases"
+      ],
+      "correct": 1,
+      "explanation": "Graceful degradation: instead of 429, return a partial or cached response. Serve something useful rather than nothing. This can be combined with rate limiting — reserve full processing for within-limit requests."
+    },
+    {
+      "id": "rate-083",
+      "type": "multi-select",
+      "question": "Which are forms of graceful degradation when approaching limits?",
+      "options": [
+        "Return cached responses instead of fresh queries",
+        "Omit expensive-to-compute fields",
+        "Return lower resolution images",
+        "Increase response latency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Caching, omitting expensive fields, and lower resolution are degradation strategies that still provide value. Adding latency is backpressure, not degradation — the response is the same, just slower."
+    },
+    {
+      "id": "rate-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A webhook endpoint receives events from an external service. That service starts sending 10x normal volume. What happens?",
+          "options": [
+            "Your rate limits protect you",
+            "You're overwhelmed — you don't control their rate",
+            "Webhooks automatically queue",
+            "B — rate limiting is for your clients, not external senders"
+          ],
+          "correct": 3,
+          "explanation": "Rate limiting protects you from your clients. External webhook senders aren't your clients — they push to you. You can return 429, but they might not respect it. You need queuing or load shedding for incoming webhooks."
+        },
+        {
+          "question": "How should you handle incoming webhooks from external services?",
+          "options": [
+            "Queue them and process at your own pace",
+            "Return 429 and hope they retry later",
+            "Negotiate rate limits with the sender",
+            "A, with potential for C"
+          ],
+          "correct": 3,
+          "explanation": "Queuing decouples ingestion from processing — accept quickly, process sustainably. 429 might work if the sender respects it. For important integrations, negotiate mutual rate limits. Design webhook endpoints for resilience."
+        }
+      ]
+    },
+    {
+      "id": "rate-085",
+      "type": "multiple-choice",
+      "question": "What's the purpose of rate limit 'windows'?",
+      "options": [
+        "Displaying rate limits in a UI",
+        "The time period over which limits are measured",
+        "Time slots when different limits apply",
+        "B — windows define the measurement period"
+      ],
+      "correct": 3,
+      "explanation": "Rate limit windows define the measurement period: 100 requests per minute means the window is 1 minute. Limits reset when the window expires. Window choice affects burst allowance and implementation complexity."
+    },
+    {
+      "id": "rate-086",
+      "type": "ordering",
+      "question": "Rank these window sizes from most to least burst-friendly:",
+      "items": [
+        "1 second (100 requests/second)",
+        "1 minute (6000 requests/minute)",
+        "1 hour (360,000 requests/hour)",
+        "1 day (8,640,000 requests/day)"
+      ],
+      "correctOrder": [3, 2, 1, 0],
+      "explanation": "Longer windows allow bigger bursts. A day limit of 8.64M allows using most of it in an hour if needed. A 1-second limit of 100 enforces a constant rate. Same overall rate, very different burst behavior."
+    },
+    {
+      "id": "rate-087",
+      "type": "multi-select",
+      "question": "What's included in a well-designed 429 response?",
+      "options": [
+        "Retry-After header with time to wait",
+        "X-RateLimit-* headers showing limit status",
+        "Error message explaining the limit",
+        "Stack trace for debugging"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Retry-After tells when to retry. RateLimit headers show current status. A human-readable message helps developers. Stack traces expose internals and aren't useful — this is a policy rejection, not a bug."
+    },
+    {
+      "id": "rate-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Should rate limits apply to successful responses only, or also to errors (4xx/5xx)?",
+          "options": [
+            "Only successful (2xx) responses",
+            "All responses — errors are still work",
+            "Errors should have their own limit",
+            "B, though C is sometimes used for specific abuse prevention"
+          ],
+          "correct": 3,
+          "explanation": "Errors still consume server resources (validate, process, respond). Counting only successes allows clients to spam invalid requests for free. Some APIs have separate limits for errors (e.g., login failures)."
+        },
+        {
+          "question": "Why might you specifically rate limit failed login attempts?",
+          "options": [
+            "Prevent brute force password guessing",
+            "Login failures are more expensive to process",
+            "To punish users for forgetting passwords",
+            "A — failed logins often indicate attack"
+          ],
+          "correct": 3,
+          "explanation": "Failed logins might be brute force attacks trying passwords. Stricter limits on failures (e.g., 5 failures per minute) prevent this while allowing normal typos. This is different from general rate limiting."
+        }
+      ]
+    },
+    {
+      "id": "rate-089",
+      "type": "multiple-choice",
+      "question": "What's 'concurrent request limiting'?",
+      "options": [
+        "Limiting how many requests can be in-flight at once",
+        "Limiting requests to concurrent endpoints",
+        "Rate limiting across multiple services",
+        "Limiting requests that modify the same resource"
+      ],
+      "correct": 0,
+      "explanation": "Concurrent limiting caps how many requests from a client can be processing simultaneously, not per time unit. E.g., max 10 in-flight requests. This prevents clients from opening thousands of connections and overwhelming the server."
+    },
+    {
+      "id": "rate-090",
+      "type": "multi-select",
+      "question": "Which are differences between rate limiting and concurrency limiting?",
+      "options": [
+        "Rate is requests/time; concurrency is simultaneous requests",
+        "Rate limiting uses counters; concurrency uses semaphores/counts",
+        "Rate limits reset; concurrency limits release when requests complete",
+        "Rate limiting is more common for APIs"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Rate limits time-based throughput. Concurrency limits simultaneous connections. Implementation differs (counters vs semaphores). Rate limiting is more common, but concurrency limits prevent connection exhaustion."
+    },
+    {
+      "id": "rate-091",
+      "type": "ordering",
+      "question": "Rank these by typical limit values (lowest to highest) for a public API:",
+      "items": [
+        "Concurrent connections per client",
+        "Requests per second",
+        "Requests per minute",
+        "Requests per month (quota)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Concurrent connections might be 5-20. Requests/second might be 10-100. Requests/minute would be higher (600-6000). Monthly quota is highest (100K-10M). Different scales for different limits."
+    },
+    {
+      "id": "rate-092",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API consumer complains that rate limits hurt their use case. They need to sync millions of records. What options do you have?",
+          "options": [
+            "Tell them to work within limits",
+            "Offer higher limits for a price",
+            "Provide a bulk export endpoint",
+            "B and/or C — accommodate legitimate use cases"
+          ],
+          "correct": 3,
+          "explanation": "Legitimate bulk sync needs shouldn't be impossible. Higher tier limits, a bulk export API, or a different architecture (webhooks, change feeds) might be better than millions of individual requests."
+        },
+        {
+          "question": "What's a 'bulk export' endpoint?",
+          "options": [
+            "An endpoint that returns all data at once",
+            "An async endpoint that generates a file for download",
+            "A WebSocket stream of data",
+            "B typically — generate file, notify when ready, download"
+          ],
+          "correct": 3,
+          "explanation": "Bulk export: client requests an export, gets a job ID. Server generates the file (possibly large). Client polls or gets notified when ready, then downloads. This is more efficient than millions of API calls and avoids rate limits."
+        }
+      ]
+    },
+    {
+      "id": "rate-093",
+      "type": "multiple-choice",
+      "question": "What's 'admission control' in distributed systems?",
+      "options": [
+        "Authentication before allowing API access",
+        "Deciding which requests to accept based on current capacity",
+        "Limiting which users can access which endpoints",
+        "Controlling who can modify rate limits"
+      ],
+      "correct": 1,
+      "explanation": "Admission control: deciding whether to accept a request based on current system state. Rate limiting is a form of admission control. More sophisticated versions consider request cost, system load, and priorities."
+    },
+    {
+      "id": "rate-094",
+      "type": "multi-select",
+      "question": "Which factors might influence admission control decisions?",
+      "options": [
+        "Current system CPU/memory usage",
+        "Number of in-flight requests",
+        "Request priority or customer tier",
+        "Predicted cost of the request"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Sophisticated admission control considers system health (CPU, memory), current load (in-flight requests), request importance (priority), and expected cost. Simple rate limiting only counts requests; admission control is more nuanced."
+    },
+    {
+      "id": "rate-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to rate limit an API called by thousands of microservices internally. How does this differ from external API rate limiting?",
+          "options": [
+            "No difference — apply the same limits",
+            "Internal services might need higher limits",
+            "Internal services might be trusted (no limits needed)",
+            "B, with monitoring; C is risky"
+          ],
+          "correct": 3,
+          "explanation": "Internal services often need higher limits (machine-to-machine is more intense). But no limits is risky — bugs can cause internal DDoS. Higher limits with monitoring and circuit breakers is typical."
+        },
+        {
+          "question": "An internal service has a bug causing a request loop. How should this be handled differently than external abuse?",
+          "options": [
+            "Same — rate limit and reject",
+            "Alert the team immediately while limiting",
+            "Auto-kill the service",
+            "B — it's a bug, not abuse; fast human response helps"
+          ],
+          "correct": 3,
+          "explanation": "Internal bugs warrant faster response than external abuse. Alert immediately (PagerDuty, Slack). Rate limit to protect the system. Don't auto-kill without human oversight. The goal is to fix, not punish."
+        }
+      ]
+    },
+    {
+      "id": "rate-096",
+      "type": "multiple-choice",
+      "question": "What information should NOT be in rate limit error responses?",
+      "options": [
+        "Current limits and reset time",
+        "Which specific internal service is overloaded",
+        "Retry-After suggestion",
+        "Reference to documentation"
+      ],
+      "correct": 1,
+      "explanation": "Exposing internal architecture (which microservice is overloaded) is a security risk and unnecessary. Clients need to know their limits and when to retry, not your internal system structure."
+    },
+    {
+      "id": "rate-097",
+      "type": "ordering",
+      "question": "Rank these from easiest to hardest to implement correctly:",
+      "items": [
+        "Fixed window rate limiting (counter per window)",
+        "Token bucket (with burst)",
+        "Sliding window (weighted across windows)",
+        "Adaptive rate limiting (based on system load)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Fixed window is just increment a counter. Token bucket adds refill logic. Sliding window needs window overlap calculations. Adaptive needs system health monitoring and dynamic adjustment — most complex."
+    },
+    {
+      "id": "rate-098",
+      "type": "multi-select",
+      "question": "Which are valid testing strategies for rate limiting?",
+      "options": [
+        "Unit test the rate limiting logic",
+        "Load test to verify limits are enforced under traffic",
+        "Test client behavior when rate limited",
+        "Test failover when rate limit storage fails"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Test the algorithm logic (unit). Verify enforcement under real load (integration). Test client SDKs handle 429s gracefully. Test failure modes (what happens when Redis goes down). Comprehensive testing prevents surprises."
+    },
+    {
+      "id": "rate-099",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're documenting rate limits. What's essential to include?",
+          "options": [
+            "The limit values (requests per minute)",
+            "What counts as a request (do errors count? batch items?)",
+            "Rate limit headers and their meaning",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Document limits, what counts against them (errors, batch elements, retries?), headers clients should use, retry strategies, and how to request higher limits. Clear documentation prevents frustration."
+        },
+        {
+          "question": "Should you document exactly how rate limiting is implemented (algorithm, Redis, etc.)?",
+          "options": [
+            "Yes — transparency builds trust",
+            "No — it's an implementation detail that might change",
+            "Only at a high level (e.g., 'sliding window')",
+            "C — explain behavior, not implementation"
+          ],
+          "correct": 3,
+          "explanation": "Clients need to understand behavior (bursts allowed? window type?), not implementation (Redis key structure). High-level algorithm description helps set expectations without tying you to specific implementations."
+        }
+      ]
+    },
+    {
+      "id": "rate-100",
+      "type": "multiple-choice",
+      "question": "What's the key principle behind rate limiting?",
+      "options": [
+        "Making the API slower for security",
+        "Protecting shared resources by limiting individual consumption",
+        "Maximizing revenue from API usage",
+        "Preventing any API abuse"
+      ],
+      "correct": 1,
+      "explanation": "Rate limiting protects shared resources (servers, databases, dependencies) from any single consumer using too much. It's about fairness and stability. Security, revenue, and abuse prevention are benefits, but resource protection is the core principle."
+    }
+  ]
+}

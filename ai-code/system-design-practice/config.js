@@ -44,7 +44,7 @@ export const CONFIG = {
         { num: 1, title: 'REST Fundamentals', ready: true },
         { num: 2, title: 'API Modeling', ready: true },
         { num: 3, title: 'Pagination & Filtering', ready: true },
-        { num: 4, title: 'Rate Limiting & Quotas', ready: false },
+        { num: 4, title: 'Rate Limiting & Quotas', ready: true },
         { num: 5, title: 'Versioning & Evolution', ready: false },
         { num: 6, title: 'Error Handling', ready: false },
         { num: 7, title: 'GraphQL & Alternatives', ready: false },
