@@ -50,6 +50,20 @@ export const CONFIG = {
         { num: 7, title: 'GraphQL & Alternatives', ready: true },
         { num: 8, title: 'API Design Scenarios', ready: true }
       ]
+    },
+    {
+      id: 4,
+      title: 'Storage Selection',
+      chapters: [
+        { num: 1, title: 'Relational Databases', ready: true },
+        { num: 2, title: 'Document Stores', ready: false },
+        { num: 3, title: 'Key-Value Stores', ready: false },
+        { num: 4, title: 'Wide-Column & Time-Series', ready: false },
+        { num: 5, title: 'Graph & Search Engines', ready: false },
+        { num: 6, title: 'Object Storage', ready: false },
+        { num: 7, title: 'Hybrid Architectures', ready: false },
+        { num: 8, title: 'Storage Selection Scenarios', ready: false }
+      ]
     }
   ]
 };

@@ -1,0 +1,1434 @@
+{
+  "unit": 4,
+  "unitTitle": "Storage Selection",
+  "chapter": 1,
+  "chapterTitle": "Relational Databases",
+  "chapterDescription": "ACID properties, transactions, isolation levels, and when SQL is the right choice.",
+  "problems": [
+    {
+      "id": "rdb-001",
+      "type": "multiple-choice",
+      "question": "What does the 'A' in ACID stand for?",
+      "options": ["Availability", "Atomicity", "Asynchronous", "Accessibility"],
+      "correct": 1,
+      "explanation": "Atomicity means transactions are 'all or nothing' — either all operations in a transaction complete successfully, or none of them do. A partial failure rolls back the entire transaction."
+    },
+    {
+      "id": "rdb-002",
+      "type": "multi-select",
+      "question": "Which are properties guaranteed by ACID transactions?",
+      "options": ["Atomicity", "Consistency", "Isolation", "Distribution"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "ACID = Atomicity, Consistency, Isolation, Durability. Distribution is not an ACID property — in fact, distributed systems often sacrifice some ACID guarantees for availability and partition tolerance."
+    },
+    {
+      "id": "rdb-003",
+      "type": "multiple-choice",
+      "question": "What does 'Durability' mean in ACID?",
+      "options": [
+        "The database can handle high load for a long time",
+        "Committed transactions survive system crashes",
+        "Data is replicated across multiple nodes",
+        "Transactions can last indefinitely"
+      ],
+      "correct": 1,
+      "explanation": "Durability guarantees that once a transaction commits, its changes persist even if the system crashes immediately afterward. This is typically achieved by writing to a transaction log (WAL) before acknowledging the commit."
+    },
+    {
+      "id": "rdb-004",
+      "type": "multiple-choice",
+      "question": "What does 'Consistency' mean in ACID?",
+      "options": [
+        "All replicas have the same data",
+        "The database moves from one valid state to another, respecting all constraints",
+        "Queries always return the same result",
+        "Transactions are processed in order"
+      ],
+      "correct": 1,
+      "explanation": "ACID Consistency means transactions maintain database invariants — constraints, foreign keys, triggers, etc. are all satisfied before and after the transaction. Note: this is different from CAP's 'consistency' which refers to replica agreement."
+    },
+    {
+      "id": "rdb-005",
+      "type": "multiple-choice",
+      "question": "What does 'Isolation' mean in ACID?",
+      "options": [
+        "The database runs on an isolated network",
+        "Concurrent transactions don't interfere with each other",
+        "Each table is stored separately",
+        "Transactions can only access their own data"
+      ],
+      "correct": 1,
+      "explanation": "Isolation ensures concurrent transactions execute as if they were serial — one after another. The database may actually run them in parallel, but the result is equivalent to some sequential ordering."
+    },
+    {
+      "id": "rdb-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A bank transfer moves $100 from Account A to Account B. If the system crashes after debiting A but before crediting B, which ACID property ensures the $100 isn't lost?",
+          "options": ["Atomicity", "Consistency", "Isolation", "Durability"],
+          "correct": 0,
+          "explanation": "Atomicity guarantees 'all or nothing.' The transaction either completes entirely (both debit and credit) or is rolled back entirely. A crash in the middle triggers a rollback, returning A to its original balance."
+        },
+        {
+          "question": "After the system recovers from the crash and the rollback completes, Account A has its original balance. Which ACID property guarantees that this restored state persists?",
+          "options": ["Atomicity", "Consistency", "Isolation", "Durability"],
+          "correct": 3,
+          "explanation": "Durability ensures the rollback (or commit) is permanent. Once the database confirms the transaction outcome, it survives subsequent crashes. The restored balance of Account A is now the durable state."
+        }
+      ]
+    },
+    {
+      "id": "rdb-007",
+      "type": "ordering",
+      "question": "Rank these isolation levels from least to most strict:",
+      "items": ["Read Uncommitted", "Serializable", "Read Committed", "Repeatable Read"],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Read Uncommitted (can see uncommitted changes) → Read Committed (only sees committed data) → Repeatable Read (locks prevent changes to rows you've read) → Serializable (full isolation, as if transactions were sequential)."
+    },
+    {
+      "id": "rdb-008",
+      "type": "multiple-choice",
+      "question": "What is a 'dirty read'?",
+      "options": [
+        "Reading from a corrupted disk sector",
+        "Reading uncommitted changes from another transaction",
+        "Reading stale data from a cache",
+        "Reading data that was later rolled back"
+      ],
+      "correct": 1,
+      "explanation": "A dirty read occurs when Transaction A reads data that Transaction B has modified but not yet committed. If B rolls back, A has read data that never officially existed. Only Read Uncommitted allows dirty reads."
+    },
+    {
+      "id": "rdb-009",
+      "type": "multiple-choice",
+      "question": "Which isolation level prevents dirty reads but allows non-repeatable reads?",
+      "options": ["Read Uncommitted", "Read Committed", "Repeatable Read", "Serializable"],
+      "correct": 1,
+      "explanation": "Read Committed only sees committed data (no dirty reads), but if you read the same row twice, another transaction might have committed changes in between (non-repeatable read). This is the default in PostgreSQL and Oracle."
+    },
+    {
+      "id": "rdb-010",
+      "type": "multiple-choice",
+      "question": "What is a 'phantom read'?",
+      "options": [
+        "Reading a row that was deleted",
+        "Reading data that doesn't match the query",
+        "A query returns different rows on re-execution because another transaction inserted/deleted matching rows",
+        "Reading from a replica that's behind the primary"
+      ],
+      "correct": 2,
+      "explanation": "A phantom read occurs when a range query returns different rows on re-execution within the same transaction. Another transaction inserted or deleted rows matching your WHERE clause. Only Serializable fully prevents phantoms."
+    },
+    {
+      "id": "rdb-011",
+      "type": "multi-select",
+      "question": "Which phenomena can occur at the Read Committed isolation level?",
+      "options": ["Dirty reads", "Non-repeatable reads", "Phantom reads", "Lost updates"],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Read Committed prevents dirty reads only. Non-repeatable reads, phantom reads, and lost updates can still occur because committed changes from other transactions become visible during your transaction."
+    },
+    {
+      "id": "rdb-012",
+      "type": "multiple-choice",
+      "question": "What is a 'non-repeatable read'?",
+      "options": [
+        "A query that can't be re-executed",
+        "Reading the same row twice and getting different values because another transaction modified it",
+        "A query that returns no results",
+        "Reading from a table without a primary key"
+      ],
+      "correct": 1,
+      "explanation": "A non-repeatable read occurs when you SELECT a row, another transaction UPDATE/COMMITs it, and your second SELECT of the same row returns different values. Repeatable Read and Serializable prevent this."
+    },
+    {
+      "id": "rdb-013",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Two transactions both read balance = $100, then each tries to add $50. Without proper isolation, both write $150, losing one update. What's this called?",
+          "options": ["Dirty read", "Non-repeatable read", "Phantom read", "Lost update"],
+          "correct": 3,
+          "explanation": "A lost update occurs when two transactions read the same value, compute new values independently, and one write overwrites the other. The final balance is $150 instead of the correct $200."
+        },
+        {
+          "question": "Which approach prevents lost updates in this scenario?",
+          "options": [
+            "Read Committed isolation level",
+            "SELECT ... FOR UPDATE (pessimistic locking)",
+            "Faster transaction processing",
+            "Using a NoSQL database"
+          ],
+          "correct": 1,
+          "explanation": "SELECT ... FOR UPDATE acquires a lock on the row, blocking other transactions from reading/modifying it until your transaction completes. This serializes access and prevents lost updates. Alternatively, optimistic locking with version checks works."
+        }
+      ]
+    },
+    {
+      "id": "rdb-014",
+      "type": "multiple-choice",
+      "question": "What is the default isolation level in PostgreSQL?",
+      "options": ["Read Uncommitted", "Read Committed", "Repeatable Read", "Serializable"],
+      "correct": 1,
+      "explanation": "PostgreSQL defaults to Read Committed. Most applications find this sufficient — it prevents dirty reads while allowing higher concurrency than stricter levels. MySQL/InnoDB defaults to Repeatable Read."
+    },
+    {
+      "id": "rdb-015",
+      "type": "multiple-choice",
+      "question": "What is the default isolation level in MySQL with InnoDB?",
+      "options": ["Read Uncommitted", "Read Committed", "Repeatable Read", "Serializable"],
+      "correct": 2,
+      "explanation": "MySQL/InnoDB defaults to Repeatable Read, which prevents dirty reads and non-repeatable reads. InnoDB also prevents phantom reads at this level using next-key locking, making it stricter than the SQL standard's Repeatable Read."
+    },
+    {
+      "id": "rdb-016",
+      "type": "ordering",
+      "question": "Rank these isolation levels from highest concurrency (most parallel transactions) to lowest:",
+      "items": ["Serializable", "Read Uncommitted", "Read Committed", "Repeatable Read"],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "Read Uncommitted allows maximum parallelism (no locking for reads). Read Committed adds minimal blocking. Repeatable Read holds read locks longer. Serializable may block or abort transactions to maintain serial equivalence — lowest concurrency but strongest guarantees."
+    },
+    {
+      "id": "rdb-017",
+      "type": "multiple-choice",
+      "question": "Why do most production databases NOT use Serializable isolation by default?",
+      "options": [
+        "It's not supported by modern databases",
+        "It has lower concurrency and higher latency",
+        "It doesn't prevent all anomalies",
+        "It's only useful for read-only workloads"
+      ],
+      "correct": 1,
+      "explanation": "Serializable ensures perfect isolation but at a cost: more locks, longer waits, more transaction aborts due to conflicts. For many applications, the weaker guarantees of Read Committed are sufficient and allow much higher throughput."
+    },
+    {
+      "id": "rdb-018",
+      "type": "multiple-choice",
+      "question": "What is a Write-Ahead Log (WAL)?",
+      "options": [
+        "A log of all SQL queries for auditing",
+        "A record of changes written to disk before the actual data pages, ensuring durability",
+        "A log of failed transactions",
+        "A buffer for write operations"
+      ],
+      "correct": 1,
+      "explanation": "The WAL (also called redo log or transaction log) records changes before they're applied to data pages. If the system crashes, the WAL replays committed transactions to recover. This is how durability is implemented efficiently."
+    },
+    {
+      "id": "rdb-019",
+      "type": "multiple-choice",
+      "question": "Why is writing to WAL faster than writing directly to data pages?",
+      "options": [
+        "WAL uses a special fast disk",
+        "WAL is sequential writes; data pages require random I/O",
+        "WAL compresses the data",
+        "WAL writes are asynchronous"
+      ],
+      "correct": 1,
+      "explanation": "WAL appends records sequentially, which is much faster on both HDDs and SSDs than the random I/O required to update scattered data pages. The database can acknowledge commits quickly, then lazily flush data pages in the background."
+    },
+    {
+      "id": "rdb-020",
+      "type": "multiple-choice",
+      "question": "What is a 'checkpoint' in database terminology?",
+      "options": [
+        "A savepoint within a transaction",
+        "A point where dirty pages are flushed to disk and WAL can be truncated",
+        "A backup of the database",
+        "A query execution milestone"
+      ],
+      "correct": 1,
+      "explanation": "A checkpoint flushes dirty (modified) pages from memory to disk, then records a marker in the WAL. Recovery only needs to replay WAL entries after the last checkpoint, limiting recovery time and allowing old WAL files to be archived/deleted."
+    },
+    {
+      "id": "rdb-021",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A transaction does: BEGIN; UPDATE accounts SET balance = 0; (no COMMIT yet). The system crashes. What happens to the update?",
+          "options": [
+            "It's committed automatically",
+            "It's rolled back during recovery",
+            "It's partially applied",
+            "It depends on the isolation level"
+          ],
+          "correct": 1,
+          "explanation": "An uncommitted transaction is rolled back during crash recovery. The WAL contains the changes, but without a commit record, the database knows to undo them. Only committed transactions are guaranteed to persist."
+        },
+        {
+          "question": "Now consider: BEGIN; UPDATE accounts SET balance = 0; COMMIT; (crash immediately after COMMIT). What happens?",
+          "options": [
+            "It's rolled back",
+            "It's guaranteed to be applied after recovery",
+            "It may or may not be applied",
+            "It's applied to a backup copy only"
+          ],
+          "correct": 1,
+          "explanation": "Durability guarantees that a committed transaction persists. The COMMIT writes a commit record to WAL (and flushes it, for synchronous commits). Recovery replays the WAL and ensures the update is applied."
+        }
+      ]
+    },
+    {
+      "id": "rdb-022",
+      "type": "multiple-choice",
+      "question": "What is the difference between pessimistic and optimistic locking?",
+      "options": [
+        "Pessimistic uses row locks; optimistic uses table locks",
+        "Pessimistic locks during read; optimistic checks for conflicts at commit time",
+        "Pessimistic is faster; optimistic is safer",
+        "Pessimistic is for reads; optimistic is for writes"
+      ],
+      "correct": 1,
+      "explanation": "Pessimistic locking (SELECT ... FOR UPDATE) acquires locks upfront, blocking others. Optimistic locking reads without locking, then checks at commit (e.g., using a version column) if anything changed — if so, it aborts and retries."
+    },
+    {
+      "id": "rdb-023",
+      "type": "multiple-choice",
+      "question": "When is pessimistic locking preferred over optimistic locking?",
+      "options": [
+        "When conflicts are rare",
+        "When conflicts are frequent and retry cost is high",
+        "When using NoSQL databases",
+        "When reads far outnumber writes"
+      ],
+      "correct": 1,
+      "explanation": "Pessimistic locking is better when conflicts are likely. Locking upfront avoids wasted work that would be aborted on conflict. Optimistic locking shines when conflicts are rare — it avoids lock overhead for the common case."
+    },
+    {
+      "id": "rdb-024",
+      "type": "multiple-choice",
+      "question": "What is a deadlock?",
+      "options": [
+        "A transaction that runs forever",
+        "Two or more transactions waiting for each other to release locks",
+        "A lock that can never be acquired",
+        "A transaction that blocks all other transactions"
+      ],
+      "correct": 1,
+      "explanation": "A deadlock occurs when Transaction A holds Lock 1 and waits for Lock 2, while Transaction B holds Lock 2 and waits for Lock 1. Neither can proceed. Databases detect this and abort one transaction to break the cycle."
+    },
+    {
+      "id": "rdb-025",
+      "type": "multi-select",
+      "question": "Which strategies help prevent deadlocks?",
+      "options": [
+        "Always acquire locks in the same order",
+        "Use shorter transactions",
+        "Use Read Uncommitted isolation",
+        "Use timeout-based lock acquisition"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Consistent lock ordering prevents circular waits. Shorter transactions hold locks briefly. Timeouts let transactions fail fast instead of waiting forever. Read Uncommitted doesn't prevent deadlocks — write locks can still deadlock."
+    },
+    {
+      "id": "rdb-026",
+      "type": "multiple-choice",
+      "question": "What does SELECT ... FOR UPDATE do?",
+      "options": [
+        "Updates the selected rows immediately",
+        "Acquires exclusive locks on selected rows until the transaction ends",
+        "Selects rows that are currently being updated",
+        "Prepares rows for a future UPDATE statement"
+      ],
+      "correct": 1,
+      "explanation": "SELECT ... FOR UPDATE reads rows and acquires exclusive (write) locks on them. Other transactions cannot read (with FOR UPDATE) or modify those rows until the lock-holder commits or rolls back. This implements pessimistic locking."
+    },
+    {
+      "id": "rdb-027",
+      "type": "multiple-choice",
+      "question": "What does SELECT ... FOR SHARE (or FOR READ) do?",
+      "options": [
+        "Shares the query results with other transactions",
+        "Acquires shared locks that allow other reads but block writes",
+        "Makes the select visible to all users",
+        "Reads from a shared buffer pool"
+      ],
+      "correct": 1,
+      "explanation": "SELECT ... FOR SHARE acquires shared (read) locks. Multiple transactions can hold shared locks simultaneously, but they block exclusive (write) locks. Use this to prevent modifications while allowing concurrent reads."
+    },
+    {
+      "id": "rdb-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Transaction A: SELECT balance FROM accounts WHERE id=1 FOR UPDATE; Then Transaction B: SELECT balance FROM accounts WHERE id=1 FOR UPDATE; What happens to Transaction B?",
+          "options": [
+            "It reads the old balance immediately",
+            "It blocks until A commits or rolls back",
+            "It gets an error immediately",
+            "It reads A's uncommitted changes"
+          ],
+          "correct": 1,
+          "explanation": "FOR UPDATE is an exclusive lock. B's request blocks because A already holds the lock. B waits until A releases the lock (commits or rolls back), then acquires its own lock and proceeds."
+        },
+        {
+          "question": "If A holds the lock for 30 seconds, what risk does this create?",
+          "options": [
+            "Data corruption",
+            "Lock contention reducing throughput and potentially causing timeouts",
+            "Memory exhaustion",
+            "Index corruption"
+          ],
+          "correct": 1,
+          "explanation": "Long-held locks cause lock contention: other transactions queue up waiting, reducing concurrency and throughput. If many transactions wait too long, they may timeout or the system may seem unresponsive. Keep transactions short."
+        }
+      ]
+    },
+    {
+      "id": "rdb-029",
+      "type": "multiple-choice",
+      "question": "What is a row-level lock?",
+      "options": [
+        "A lock on all rows in a table",
+        "A lock on a specific row, allowing other rows in the same table to be modified",
+        "A lock on the row's primary key only",
+        "A lock that spans multiple rows"
+      ],
+      "correct": 1,
+      "explanation": "Row-level locking locks individual rows, not the whole table. This maximizes concurrency — different transactions can modify different rows simultaneously. PostgreSQL and MySQL/InnoDB both support row-level locking."
+    },
+    {
+      "id": "rdb-030",
+      "type": "multiple-choice",
+      "question": "When might a database escalate row locks to a table lock?",
+      "options": [
+        "Never — row locks are always used",
+        "When a transaction locks many rows, making row-level tracking expensive",
+        "When using Serializable isolation",
+        "When the table has no primary key"
+      ],
+      "correct": 1,
+      "explanation": "Lock escalation occurs when the overhead of tracking thousands of row locks exceeds the cost of one table lock. The database trades granularity for efficiency. This can surprise developers who expect fine-grained locking."
+    },
+    {
+      "id": "rdb-031",
+      "type": "multiple-choice",
+      "question": "What is MVCC (Multi-Version Concurrency Control)?",
+      "options": [
+        "A backup strategy using multiple versions",
+        "A technique where readers see a snapshot while writers create new versions, reducing lock contention",
+        "Version control for database schemas",
+        "A way to run multiple database instances"
+      ],
+      "correct": 1,
+      "explanation": "MVCC maintains multiple versions of each row. Readers see a consistent snapshot without blocking writers; writers create new versions without blocking readers. PostgreSQL, MySQL/InnoDB, and Oracle all use MVCC. It enables high concurrency."
+    },
+    {
+      "id": "rdb-032",
+      "type": "multi-select",
+      "question": "Which databases use MVCC?",
+      "options": ["PostgreSQL", "MySQL (InnoDB)", "SQLite", "Oracle"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All of these use MVCC. PostgreSQL stores old row versions in the main table (requiring VACUUM). MySQL/InnoDB uses undo logs. SQLite uses a simpler MVCC for readers. Oracle pioneered MVCC commercially. MVCC is the dominant concurrency approach."
+    },
+    {
+      "id": "rdb-033",
+      "type": "multiple-choice",
+      "question": "In PostgreSQL, what does VACUUM do?",
+      "options": [
+        "Compresses the database files",
+        "Cleans up dead row versions (tuples) created by MVCC",
+        "Removes empty tables",
+        "Optimizes query plans"
+      ],
+      "correct": 1,
+      "explanation": "PostgreSQL's MVCC leaves old row versions (dead tuples) behind after updates/deletes. VACUUM reclaims this space, making it available for reuse. Without vacuuming, tables bloat and performance degrades. Autovacuum handles this automatically."
+    },
+    {
+      "id": "rdb-034",
+      "type": "multiple-choice",
+      "question": "What is a foreign key constraint?",
+      "options": [
+        "A key imported from another database",
+        "A constraint ensuring a column's values must exist in another table's column",
+        "A key that can be null",
+        "A secondary index on a table"
+      ],
+      "correct": 1,
+      "explanation": "A foreign key enforces referential integrity: the referencing column's values must exist in the referenced (parent) table. For example, orders.customer_id must reference an existing customers.id. The database rejects invalid inserts/updates."
+    },
+    {
+      "id": "rdb-035",
+      "type": "multi-select",
+      "question": "What actions can a foreign key trigger when the referenced row is deleted?",
+      "options": [
+        "CASCADE (delete referencing rows too)",
+        "SET NULL (set foreign key column to null)",
+        "RESTRICT (prevent deletion if references exist)",
+        "IGNORE (silently leave orphaned references)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "CASCADE deletes child rows. SET NULL nullifies the FK column. RESTRICT/NO ACTION prevents deletion. There's no standard IGNORE — orphaned references would violate referential integrity, defeating the purpose of foreign keys."
+    },
+    {
+      "id": "rdb-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have orders referencing customers with ON DELETE CASCADE. You accidentally delete a customer with 10,000 orders. What happens?",
+          "options": [
+            "The delete fails",
+            "All 10,000 orders are also deleted",
+            "The orders' customer_id becomes null",
+            "Only the customer is deleted"
+          ],
+          "correct": 1,
+          "explanation": "CASCADE means child rows are deleted when the parent is deleted. All 10,000 orders are deleted along with the customer. This is often desirable (e.g., deleting a user and their data), but can be dangerous for accidental deletes."
+        },
+        {
+          "question": "What would be a safer foreign key setting if accidental customer deletion shouldn't cascade?",
+          "options": [
+            "ON DELETE CASCADE",
+            "ON DELETE RESTRICT",
+            "ON DELETE SET NULL",
+            "Remove the foreign key"
+          ],
+          "correct": 1,
+          "explanation": "RESTRICT prevents deleting a customer who has orders. The delete fails with an error: 'cannot delete because orders reference this customer.' This forces explicit cleanup of orders before deleting the customer."
+        }
+      ]
+    },
+    {
+      "id": "rdb-037",
+      "type": "multiple-choice",
+      "question": "What is a CHECK constraint?",
+      "options": [
+        "A constraint that checks if a query is valid",
+        "A constraint that validates column values against a condition (e.g., age >= 0)",
+        "A constraint that checks foreign keys",
+        "A constraint that checks for duplicates"
+      ],
+      "correct": 1,
+      "explanation": "CHECK constraints enforce domain rules at the database level. Examples: CHECK (age >= 0), CHECK (status IN ('pending', 'active', 'closed')). Invalid inserts/updates are rejected. This guarantees data validity regardless of application bugs."
+    },
+    {
+      "id": "rdb-038",
+      "type": "multiple-choice",
+      "question": "Why enforce constraints in the database rather than just in application code?",
+      "options": [
+        "Database constraints are faster",
+        "They're enforced regardless of which application or script accesses the data",
+        "Application code can't validate data",
+        "Database constraints are easier to write"
+      ],
+      "correct": 1,
+      "explanation": "Database constraints are enforced for all writes: your app, admin scripts, data migrations, direct SQL. If validation is only in app code, other access paths can corrupt data. Constraints are the last line of defense for data integrity."
+    },
+    {
+      "id": "rdb-039",
+      "type": "multi-select",
+      "question": "Which are valid SQL constraints?",
+      "options": ["NOT NULL", "UNIQUE", "PRIMARY KEY", "INDEXED"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "NOT NULL, UNIQUE, and PRIMARY KEY are constraints. INDEXED is not a constraint — indexes are separate structures for query performance. An index can enforce uniqueness (via UNIQUE index), but 'INDEXED' alone isn't a constraint keyword."
+    },
+    {
+      "id": "rdb-040",
+      "type": "multiple-choice",
+      "question": "What is a composite primary key?",
+      "options": [
+        "A primary key made of concatenated strings",
+        "A primary key consisting of multiple columns together",
+        "A primary key shared across tables",
+        "A primary key with a hash function"
+      ],
+      "correct": 1,
+      "explanation": "A composite primary key uses multiple columns to uniquely identify a row. Example: (student_id, course_id) for an enrollment table. Neither column alone is unique, but the combination is. Common in many-to-many junction tables."
+    },
+    {
+      "id": "rdb-041",
+      "type": "multiple-choice",
+      "question": "When is a natural key preferred over a surrogate key?",
+      "options": [
+        "Always — surrogate keys are an anti-pattern",
+        "When the natural key is stable, unique, and commonly used in queries",
+        "When you need auto-increment IDs",
+        "Never — always use surrogate keys"
+      ],
+      "correct": 1,
+      "explanation": "Natural keys (e.g., ISBN, SSN, email) are preferred when stable and uniquely identifying. But if natural keys can change (email), contain sensitive data (SSN), or don't exist, a surrogate key (auto-increment, UUID) is better."
+    },
+    {
+      "id": "rdb-042",
+      "type": "multiple-choice",
+      "question": "What is a B-tree index?",
+      "options": [
+        "A binary tree stored in memory",
+        "A balanced tree structure enabling O(log n) lookups, range scans, and ordered access",
+        "A tree of backups",
+        "An index for boolean columns"
+      ],
+      "correct": 1,
+      "explanation": "B-tree is the default index type in most databases. It's a balanced tree (not binary) optimized for disk access. It supports equality lookups, range queries, and ordering efficiently. Most primary keys and unique constraints use B-tree indexes."
+    },
+    {
+      "id": "rdb-043",
+      "type": "multi-select",
+      "question": "Which queries can efficiently use a B-tree index on column 'email'?",
+      "options": [
+        "WHERE email = 'test@example.com'",
+        "WHERE email LIKE 'test%'",
+        "WHERE email LIKE '%example.com'",
+        "ORDER BY email"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "B-tree supports equality (=), prefix LIKE ('test%'), and ORDER BY efficiently. Leading wildcard LIKE ('%example.com') cannot use the index because there's no prefix to search for — it requires a full scan."
+    },
+    {
+      "id": "rdb-044",
+      "type": "multiple-choice",
+      "question": "What is a covering index?",
+      "options": [
+        "An index on all columns of a table",
+        "An index that includes all columns needed by a query, avoiding table access",
+        "An index that covers multiple tables",
+        "A backup of an index"
+      ],
+      "correct": 1,
+      "explanation": "A covering index includes all columns a query needs. The database answers the query from the index alone (index-only scan) without fetching the actual table rows. This is much faster for read-heavy queries."
+    },
+    {
+      "id": "rdb-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A query runs: SELECT name, email FROM users WHERE status = 'active'. You have an index on (status). Is this a covering index for the query?",
+          "options": [
+            "Yes — it covers the WHERE clause",
+            "No — the query also needs name and email columns",
+            "It depends on the table size",
+            "It depends on the query planner"
+          ],
+          "correct": 1,
+          "explanation": "A covering index must include all columns in SELECT, WHERE, and ORDER BY. The index on (status) doesn't include name and email, so the database must look up each matching row in the table. It's not covering."
+        },
+        {
+          "question": "What index would make this a covering query?",
+          "options": [
+            "CREATE INDEX ON users (status)",
+            "CREATE INDEX ON users (name, email)",
+            "CREATE INDEX ON users (status) INCLUDE (name, email)",
+            "CREATE INDEX ON users (name, email, status)"
+          ],
+          "correct": 2,
+          "explanation": "An index on (status) INCLUDE (name, email) covers the query: status is searchable, and name/email are stored in the index for retrieval. Some databases use 'INCLUDE' syntax; others put all columns in the key. Either approach works."
+        }
+      ]
+    },
+    {
+      "id": "rdb-046",
+      "type": "multiple-choice",
+      "question": "What is the primary downside of having many indexes on a table?",
+      "options": [
+        "Queries become slower",
+        "Reads become slower",
+        "Writes become slower because all indexes must be updated",
+        "The database runs out of connections"
+      ],
+      "correct": 2,
+      "explanation": "Every INSERT, UPDATE, or DELETE must update all indexes. More indexes = more write overhead. For read-heavy tables, many indexes are fine. For write-heavy tables, over-indexing hurts performance. Index judiciously."
+    },
+    {
+      "id": "rdb-047",
+      "type": "ordering",
+      "question": "Rank these operations from fastest to slowest for a table with many indexes:",
+      "items": ["SELECT with index scan", "INSERT", "SELECT with sequential scan", "UPDATE on indexed column"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Index scan is fast (O(log n)). Sequential scan reads every row but does simple I/O. INSERT updates all indexes after adding the row. UPDATE on indexed column is slowest — it updates the row AND the affected indexes."
+    },
+    {
+      "id": "rdb-048",
+      "type": "multiple-choice",
+      "question": "What is a JOIN in SQL?",
+      "options": [
+        "Combining two tables into one permanent table",
+        "Combining rows from two or more tables based on a related column",
+        "Adding new columns to a table",
+        "Merging duplicate rows"
+      ],
+      "correct": 1,
+      "explanation": "A JOIN combines rows from multiple tables based on a condition (usually matching foreign key to primary key). The result is a virtual table containing columns from both tables. JOINs are fundamental to querying normalized relational data."
+    },
+    {
+      "id": "rdb-049",
+      "type": "multi-select",
+      "question": "Which are valid SQL JOIN types?",
+      "options": ["INNER JOIN", "LEFT OUTER JOIN", "CROSS JOIN", "BETWEEN JOIN"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "INNER JOIN (matching rows only), LEFT OUTER JOIN (all from left + matching from right), and CROSS JOIN (Cartesian product) are valid. There's no BETWEEN JOIN — BETWEEN is a condition operator, not a join type."
+    },
+    {
+      "id": "rdb-050",
+      "type": "multiple-choice",
+      "question": "What does a LEFT OUTER JOIN return?",
+      "options": [
+        "Only rows that match in both tables",
+        "All rows from the left table, with nulls for unmatched right table columns",
+        "All rows from the right table",
+        "The left half of the result set"
+      ],
+      "correct": 1,
+      "explanation": "LEFT OUTER JOIN returns all rows from the left table. For each left row, it includes matching right table columns; if no match, right columns are NULL. Useful for 'show all X, even those without related Y.'"
+    },
+    {
+      "id": "rdb-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 100 customers and 1,000 orders. An INNER JOIN between them produces 1,000 rows. What if 10 customers have no orders — how many rows does LEFT JOIN (customers LEFT JOIN orders) produce?",
+          "options": [
+            "1,000 (same as INNER)",
+            "1,010 (1,000 orders + 10 orderless customers)",
+            "990 (excluding orderless customers)",
+            "100 (one per customer)"
+          ],
+          "correct": 1,
+          "explanation": "LEFT JOIN includes all 100 customers. The 90 with orders contribute 1,000 rows (with order data). The 10 without orders contribute 10 rows (with NULLs for order columns). Total: 1,010 rows."
+        },
+        {
+          "question": "Now you want only the 10 customers with no orders. How do you modify the query?",
+          "options": [
+            "Use INNER JOIN instead",
+            "Add WHERE orders.id IS NULL",
+            "Use RIGHT JOIN",
+            "Add HAVING COUNT(orders) = 0"
+          ],
+          "correct": 1,
+          "explanation": "After LEFT JOIN, customers without orders have NULL for all order columns. Filtering WHERE orders.id IS NULL (or any NOT NULL order column) returns only the unmatched customers. This is an anti-join pattern."
+        }
+      ]
+    },
+    {
+      "id": "rdb-052",
+      "type": "multiple-choice",
+      "question": "What is a CROSS JOIN?",
+      "options": [
+        "A join between columns",
+        "A Cartesian product — every row from one table paired with every row from the other",
+        "A join across databases",
+        "A join that crosses out duplicates"
+      ],
+      "correct": 1,
+      "explanation": "CROSS JOIN produces the Cartesian product: if table A has 100 rows and table B has 50 rows, the result has 5,000 rows (every possible pairing). It's rarely used intentionally except for generating combinations."
+    },
+    {
+      "id": "rdb-053",
+      "type": "multiple-choice",
+      "question": "What is an N+1 query problem?",
+      "options": [
+        "A query that returns N+1 rows",
+        "Fetching a list of N items, then making N additional queries to fetch related data for each",
+        "A query with N+1 joins",
+        "A query that runs N+1 times due to retry logic"
+      ],
+      "correct": 1,
+      "explanation": "N+1 occurs when you fetch N parent rows, then loop and query each child separately: 1 query for parents + N queries for children. Solution: use a JOIN or IN clause to batch the child queries into 1. The penalty: (N+1) round trips vs. 1-2."
+    },
+    {
+      "id": "rdb-054",
+      "type": "multiple-choice",
+      "question": "What is a subquery?",
+      "options": [
+        "A partial query that can't run on its own",
+        "A query nested inside another query",
+        "A query on a subset of columns",
+        "A query saved for later execution"
+      ],
+      "correct": 1,
+      "explanation": "A subquery is a SELECT within another SQL statement. Examples: SELECT * FROM users WHERE id IN (SELECT user_id FROM orders), or SELECT (SELECT COUNT(*) FROM orders) as order_count. The inner query runs first (or is correlated row-by-row)."
+    },
+    {
+      "id": "rdb-055",
+      "type": "multiple-choice",
+      "question": "What is a correlated subquery?",
+      "options": [
+        "A subquery that references columns from the outer query",
+        "A subquery with a correlation ID",
+        "A subquery that runs in parallel",
+        "A subquery on correlated tables"
+      ],
+      "correct": 0,
+      "explanation": "A correlated subquery references the outer query's current row: SELECT * FROM users u WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id). It executes once per outer row, which can be slow compared to a JOIN."
+    },
+    {
+      "id": "rdb-056",
+      "type": "multiple-choice",
+      "question": "What is a CTE (Common Table Expression)?",
+      "options": [
+        "A type of index",
+        "A named temporary result set defined with WITH that can be referenced in the main query",
+        "A constraint type",
+        "A connection pooling technique"
+      ],
+      "correct": 1,
+      "explanation": "CTEs use WITH syntax: WITH active_users AS (SELECT * FROM users WHERE status = 'active') SELECT * FROM active_users WHERE ... They improve readability for complex queries and can be recursive (for hierarchies, graphs)."
+    },
+    {
+      "id": "rdb-057",
+      "type": "multi-select",
+      "question": "What are window functions used for?",
+      "options": [
+        "Calculating aggregates over a 'window' of rows without collapsing them",
+        "Ranking rows (ROW_NUMBER, RANK, DENSE_RANK)",
+        "Running totals and moving averages",
+        "Creating database windows for GUI access"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Window functions compute values across a set of rows related to the current row. ROW_NUMBER() ranks, SUM() OVER gives running totals, LAG/LEAD access adjacent rows. They don't collapse rows like GROUP BY — you keep all rows with the computed value."
+    },
+    {
+      "id": "rdb-058",
+      "type": "multiple-choice",
+      "question": "What does the SQL query 'SELECT *, ROW_NUMBER() OVER (ORDER BY created_at) as rn FROM orders' do?",
+      "options": [
+        "Groups orders by creation date",
+        "Adds a sequential number to each row based on creation date order",
+        "Counts total orders",
+        "Deletes numbered rows"
+      ],
+      "correct": 1,
+      "explanation": "ROW_NUMBER() OVER (ORDER BY created_at) assigns 1, 2, 3, ... to each row in order of created_at. The original rows are preserved; each just gets an additional column 'rn'. Useful for pagination, ranking, deduplication."
+    },
+    {
+      "id": "rdb-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to get the most recent order for each customer. Which approach is most efficient?",
+          "options": [
+            "GROUP BY customer_id with MAX(created_at), then JOIN back to orders",
+            "Correlated subquery for each customer",
+            "Window function with ROW_NUMBER() partitioned by customer_id",
+            "All are equally efficient"
+          ],
+          "correct": 2,
+          "explanation": "Window function approach: SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC) as rn FROM orders) t WHERE rn = 1. This scans once and assigns ranks. JOIN or correlated subquery typically requires multiple passes."
+        },
+        {
+          "question": "What does PARTITION BY do in the window function?",
+          "options": [
+            "Splits the table into separate physical partitions",
+            "Restarts the row numbering for each partition (each customer)",
+            "Filters out some partitions",
+            "Creates parallel query execution"
+          ],
+          "correct": 1,
+          "explanation": "PARTITION BY divides rows into groups (partitions). The window function resets for each partition. ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC) gives each customer's orders numbered 1, 2, 3... with 1 being the most recent."
+        }
+      ]
+    },
+    {
+      "id": "rdb-060",
+      "type": "multiple-choice",
+      "question": "What does GROUP BY do?",
+      "options": [
+        "Groups rows into physical storage groups",
+        "Collapses rows with the same values in the grouped columns into a single output row",
+        "Orders results by the grouped column",
+        "Creates groups that can be selected later"
+      ],
+      "correct": 1,
+      "explanation": "GROUP BY collapses rows: SELECT customer_id, COUNT(*) FROM orders GROUP BY customer_id returns one row per customer_id with the count. Non-aggregated columns must be in GROUP BY. Use HAVING (not WHERE) to filter groups."
+    },
+    {
+      "id": "rdb-061",
+      "type": "multiple-choice",
+      "question": "What is the difference between WHERE and HAVING?",
+      "options": [
+        "WHERE is for numbers, HAVING is for strings",
+        "WHERE filters rows before grouping, HAVING filters groups after aggregation",
+        "HAVING is deprecated in favor of WHERE",
+        "They're interchangeable"
+      ],
+      "correct": 1,
+      "explanation": "WHERE filters individual rows before GROUP BY. HAVING filters groups after aggregation. Example: WHERE status = 'active' (filter rows) vs HAVING COUNT(*) > 10 (filter groups with more than 10 rows)."
+    },
+    {
+      "id": "rdb-062",
+      "type": "multiple-choice",
+      "question": "What does EXPLAIN (or EXPLAIN ANALYZE) do?",
+      "options": [
+        "Explains SQL syntax errors",
+        "Shows the query execution plan and estimated/actual costs",
+        "Explains what the query results mean",
+        "Documents the query for future reference"
+      ],
+      "correct": 1,
+      "explanation": "EXPLAIN shows how the database plans to execute a query: which indexes, join types, sort methods, estimated rows. EXPLAIN ANALYZE actually runs the query and shows actual times/rows. Essential for debugging slow queries."
+    },
+    {
+      "id": "rdb-063",
+      "type": "multi-select",
+      "question": "What can you learn from EXPLAIN output?",
+      "options": [
+        "Whether indexes are being used",
+        "Estimated vs. actual row counts",
+        "Join order and method",
+        "Which user ran the query"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "EXPLAIN shows index usage (Index Scan vs. Seq Scan), row estimates, join strategy (Nested Loop, Hash Join, Merge Join), and sort methods. It doesn't show who ran the query — that's in access logs, not the query plan."
+    },
+    {
+      "id": "rdb-064",
+      "type": "multiple-choice",
+      "question": "What does 'Seq Scan' in an EXPLAIN plan indicate?",
+      "options": [
+        "Sequential access using an index",
+        "A sequential (full) table scan — reading every row",
+        "A scan of sequences",
+        "An optimized sequential access pattern"
+      ],
+      "correct": 1,
+      "explanation": "Seq Scan means the database reads the entire table. This is fine for small tables or queries that need most rows. For large tables with selective WHERE clauses, Seq Scan suggests a missing index or index not being used."
+    },
+    {
+      "id": "rdb-065",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A query on 10M rows runs slowly. EXPLAIN shows 'Seq Scan on users' with a filter on 'status'. What's the likely issue?",
+          "options": [
+            "The table is too large",
+            "No index on 'status' column",
+            "The query is syntactically wrong",
+            "Too many concurrent connections"
+          ],
+          "correct": 1,
+          "explanation": "Seq Scan with a filter means the database reads all 10M rows and filters in memory. An index on 'status' would enable Index Scan — jumping directly to matching rows. For selective filters (few match), this is dramatically faster."
+        },
+        {
+          "question": "You add an index on 'status' but EXPLAIN still shows Seq Scan. What could cause this?",
+          "options": [
+            "The index is corrupt",
+            "The query matches most rows, so the planner chose Seq Scan as cheaper",
+            "Indexes don't work on string columns",
+            "The database needs to be restarted"
+          ],
+          "correct": 1,
+          "explanation": "If status = 'active' matches 90% of rows, Index Scan plus row fetches is slower than one Seq Scan. The query planner uses statistics to choose. For low selectivity, Seq Scan wins. You might also need ANALYZE to update stats."
+        }
+      ]
+    },
+    {
+      "id": "rdb-066",
+      "type": "multiple-choice",
+      "question": "What is the purpose of ANALYZE (the command, not EXPLAIN ANALYZE)?",
+      "options": [
+        "Analyze query syntax",
+        "Collect statistics about table contents for the query planner",
+        "Analyze database performance",
+        "Find and fix corruption"
+      ],
+      "correct": 1,
+      "explanation": "ANALYZE gathers statistics: row counts, data distribution, most common values. The query planner uses these to estimate costs and choose execution plans. Outdated stats → bad plans. Most databases auto-analyze, but manual runs can help after large data changes."
+    },
+    {
+      "id": "rdb-067",
+      "type": "multiple-choice",
+      "question": "What is query plan caching?",
+      "options": [
+        "Caching query results",
+        "Storing compiled query plans to avoid re-planning identical queries",
+        "Caching database connections",
+        "Storing queries in a file"
+      ],
+      "correct": 1,
+      "explanation": "Plan caching saves the compiled execution plan for reuse. Re-planning is expensive for complex queries. Most databases cache plans automatically; prepared statements often benefit from better caching. Beware: cached plans can become suboptimal as data changes."
+    },
+    {
+      "id": "rdb-068",
+      "type": "multiple-choice",
+      "question": "What is the main advantage of relational databases over NoSQL for complex queries?",
+      "options": [
+        "Faster write performance",
+        "Ability to perform ad-hoc JOINs and aggregations across normalized data",
+        "Easier horizontal scaling",
+        "Schema-less flexibility"
+      ],
+      "correct": 1,
+      "explanation": "Relational databases excel at ad-hoc queries: JOIN across tables, aggregate, filter, sort — without knowing the queries upfront. NoSQL often requires denormalization or can't support JOINs at all. SQL's query flexibility is unmatched."
+    },
+    {
+      "id": "rdb-069",
+      "type": "multi-select",
+      "question": "Which workloads are relational databases particularly well-suited for?",
+      "options": [
+        "Transactions requiring ACID guarantees",
+        "Complex reporting with ad-hoc queries",
+        "High-write time-series data",
+        "Applications with well-defined schemas"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Relational databases excel at ACID transactions, complex queries (joins, aggregations), and structured data with known schemas. High-write time-series is typically better served by specialized time-series databases that optimize for append-only workloads."
+    },
+    {
+      "id": "rdb-070",
+      "type": "multiple-choice",
+      "question": "What is the main scaling limitation of relational databases?",
+      "options": [
+        "They can't handle more than 1GB of data",
+        "JOINs and ACID make horizontal scaling (sharding) complex",
+        "They only run on single-core CPUs",
+        "They can't be replicated"
+      ],
+      "correct": 1,
+      "explanation": "JOINs across shards require network hops and coordination. Distributed transactions need 2PC (slow). Relational DBs scale vertically well but horizontal scaling is hard without giving up some features. NoSQL trades features for easier sharding."
+    },
+    {
+      "id": "rdb-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your PostgreSQL database handles 10,000 TPS on a single server. Load doubles. What's the first scaling approach to consider?",
+          "options": [
+            "Shard the database across multiple servers",
+            "Add read replicas for read-heavy workloads; upgrade hardware for writes",
+            "Switch to NoSQL",
+            "Remove all indexes"
+          ],
+          "correct": 1,
+          "explanation": "Vertical scaling (bigger server) and read replicas are simpler than sharding. Many read-heavy apps scale well with replicas. Sharding adds significant complexity — it's a last resort after optimizing queries, adding replicas, and upgrading hardware."
+        },
+        {
+          "question": "You've added read replicas and queries are served there. But write load is still too high for the primary. What's the next option?",
+          "options": [
+            "Add more read replicas",
+            "Upgrade to a bigger primary server",
+            "Consider sharding, write batching, or async processing",
+            "Cache all writes"
+          ],
+          "correct": 2,
+          "explanation": "Read replicas don't help with write scaling. Options: bigger server (vertical scaling has limits), shard (complex but effective), batch writes (reduce per-write overhead), async processing (move some writes to background jobs). Sharding is the nuclear option."
+        }
+      ]
+    },
+    {
+      "id": "rdb-072",
+      "type": "multiple-choice",
+      "question": "What is read replication?",
+      "options": [
+        "Caching read queries",
+        "Copying data from a primary database to one or more read-only replicas",
+        "Reading from multiple tables simultaneously",
+        "Duplicating read requests"
+      ],
+      "correct": 1,
+      "explanation": "Read replication streams changes from a primary (leader) to replica(s) (followers). Replicas serve read queries, distributing load. Writes still go to the primary. This scales reads horizontally while maintaining a single source of truth for writes."
+    },
+    {
+      "id": "rdb-073",
+      "type": "multiple-choice",
+      "question": "What is replication lag?",
+      "options": [
+        "Slow network between application and database",
+        "The delay between a write on the primary and its appearance on replicas",
+        "Time to establish replication",
+        "Lag in the replication configuration"
+      ],
+      "correct": 1,
+      "explanation": "Replication lag is the delay between the primary committing a write and replicas receiving it. With async replication, lag can be milliseconds to minutes. Reading from a lagging replica gives stale data — a read-after-write consistency issue."
+    },
+    {
+      "id": "rdb-074",
+      "type": "multi-select",
+      "question": "What issues can replication lag cause?",
+      "options": [
+        "User updates profile, refreshes, sees old data",
+        "Data loss if primary fails",
+        "Read replicas returning different results",
+        "Slower write performance"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Lag causes stale reads: users see old data after updates, or different replicas return different results. Async replicas can lose data if primary fails before replicating (not caused by lag per se, but related). Lag doesn't slow writes — it's one-way."
+    },
+    {
+      "id": "rdb-075",
+      "type": "multiple-choice",
+      "question": "How do you ensure a user sees their own writes immediately, despite replication lag?",
+      "options": [
+        "Disable replication",
+        "Read from the primary for that user/session, or use synchronous replication",
+        "Add more replicas",
+        "Use longer cache TTLs"
+      ],
+      "correct": 1,
+      "explanation": "For read-your-writes consistency: route that user's reads to the primary after a write, or wait until their write propagates to the replica, or use synchronous replication (slower but consistent). Many apps route authenticated user reads to primary."
+    },
+    {
+      "id": "rdb-076",
+      "type": "multiple-choice",
+      "question": "What is synchronous vs. asynchronous replication?",
+      "options": [
+        "Sync is faster; async is more reliable",
+        "Sync waits for replica acknowledgment before commit; async doesn't wait",
+        "Sync uses more CPU; async uses more memory",
+        "They're the same performance with different APIs"
+      ],
+      "correct": 1,
+      "explanation": "Synchronous: primary waits for at least one replica to confirm before acknowledging commit. Guarantees replica has the data but adds latency. Asynchronous: primary commits immediately, streams to replica later. Faster but risk of data loss if primary fails."
+    },
+    {
+      "id": "rdb-077",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A database primary fails. With async replication, the replica is 5 seconds behind. What's the consequence?",
+          "options": [
+            "The replica takes over seamlessly",
+            "Up to 5 seconds of committed transactions may be lost",
+            "All data is lost",
+            "The replica catches up automatically before promotion"
+          ],
+          "correct": 1,
+          "explanation": "With async replication, the replica doesn't have the last 5 seconds of writes. When promoted to primary, those transactions are lost. The clients thought they committed (primary acknowledged), but the data didn't reach the replica."
+        },
+        {
+          "question": "How would you prevent this data loss for critical transactions?",
+          "options": [
+            "Use faster network",
+            "Use synchronous replication for critical writes",
+            "Don't use replicas",
+            "Write to both primary and replica from the application"
+          ],
+          "correct": 1,
+          "explanation": "Synchronous replication ensures at least one replica confirms the write before the primary acknowledges commit. If the primary fails, the synced replica has all committed data. Trade-off: higher latency. Some databases allow per-transaction sync mode."
+        }
+      ]
+    },
+    {
+      "id": "rdb-078",
+      "type": "multiple-choice",
+      "question": "What is connection pooling?",
+      "options": [
+        "Combining multiple databases",
+        "Maintaining a pool of database connections to reuse, avoiding per-request connection overhead",
+        "Pooling queries together",
+        "Sharing connections between databases"
+      ],
+      "correct": 1,
+      "explanation": "Connection pooling (via PgBouncer, HikariCP, etc.) maintains open connections. App requests get an already-open connection instead of establishing a new one. This avoids TCP/TLS handshake and database authentication overhead per request — often 10-100ms saved."
+    },
+    {
+      "id": "rdb-079",
+      "type": "multiple-choice",
+      "question": "Why do databases have connection limits?",
+      "options": [
+        "Licensing restrictions",
+        "Each connection consumes memory and OS resources (threads/processes)",
+        "Connections slow down queries",
+        "There's no real limit"
+      ],
+      "correct": 1,
+      "explanation": "Each database connection consumes memory (for session state, buffers) and OS resources. PostgreSQL forks a process per connection (~5-10MB each). Thousands of connections can exhaust memory. Connection limits protect the database; pooling multiplexes app connections."
+    },
+    {
+      "id": "rdb-080",
+      "type": "multi-select",
+      "question": "Which are benefits of connection pooling?",
+      "options": [
+        "Reduced connection establishment overhead",
+        "Multiplexing many app threads onto fewer database connections",
+        "Faster query execution",
+        "Protection against connection exhaustion"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Pooling avoids connection setup overhead and allows N app threads to share M < N database connections. It protects against exhaustion by queuing requests when at capacity. It doesn't make queries faster — just the connection acquisition."
+    },
+    {
+      "id": "rdb-081",
+      "type": "multiple-choice",
+      "question": "What is a prepared statement?",
+      "options": [
+        "A query template that's parsed and planned once, then executed multiple times with different parameters",
+        "A statement that prepares the database for shutdown",
+        "A read-only query",
+        "A statement that runs in a transaction"
+      ],
+      "correct": 0,
+      "explanation": "Prepared statements separate query structure from parameters: PREPARE sel AS SELECT * FROM users WHERE id = $1. Then EXECUTE sel(42). The database parses/plans once, reuses for different parameter values. Also prevents SQL injection."
+    },
+    {
+      "id": "rdb-082",
+      "type": "multi-select",
+      "question": "What are benefits of prepared statements?",
+      "options": [
+        "Prevention of SQL injection attacks",
+        "Reduced parsing/planning overhead for repeated queries",
+        "Better query plan caching",
+        "Elimination of all database errors"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Prepared statements parameterize queries, preventing SQL injection. They parse/plan once and reuse, saving CPU. Plan caching is more effective. They don't prevent all errors — constraint violations, connection issues, etc. still occur."
+    },
+    {
+      "id": "rdb-083",
+      "type": "multiple-choice",
+      "question": "What is SQL injection?",
+      "options": [
+        "Inserting SQL code into the database schema",
+        "Malicious input that alters the intended SQL query structure",
+        "Injecting performance improvements into SQL",
+        "Adding SQL to non-SQL databases"
+      ],
+      "correct": 1,
+      "explanation": "SQL injection: if you build SQL via string concatenation with user input, malicious input can alter the query. 'SELECT * FROM users WHERE name = '' + input + ''' with input = \"'; DROP TABLE users; --\" executes the drop. Parameterized queries prevent this."
+    },
+    {
+      "id": "rdb-084",
+      "type": "multiple-choice",
+      "question": "Which prevents SQL injection?",
+      "options": [
+        "String escaping user input",
+        "Using parameterized queries/prepared statements",
+        "Validating input format",
+        "All of these help, but parameterized queries are the most reliable"
+      ],
+      "correct": 3,
+      "explanation": "Parameterized queries are the gold standard — they separate code from data structurally. Escaping can miss edge cases. Validation helps but isn't foolproof. Defense in depth: parameterized queries + input validation + least privilege. Never rely on escaping alone."
+    },
+    {
+      "id": "rdb-085",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your database has 1TB of data. Queries run daily reports but production is mostly OLTP (online transaction processing — many small reads/writes). How should you separate these workloads?",
+          "options": [
+            "Run reports during off-peak hours",
+            "Use a read replica dedicated to reporting",
+            "Run reports and OLTP on the same server",
+            "Delete old data to speed up reports"
+          ],
+          "correct": 1,
+          "explanation": "Reporting queries (analytical, full scans) compete with OLTP (fast, indexed lookups). A dedicated reporting replica keeps heavy analytics off the primary. OLTP stays fast; reports can take time without impacting users."
+        },
+        {
+          "question": "Reports need near-real-time data. Replica lag is 30 seconds. Is this acceptable?",
+          "options": [
+            "No — reports will be meaningless",
+            "Depends on reporting requirements, but 30-second lag is often acceptable for dashboards",
+            "Yes — reports should use yesterday's data",
+            "No — you must use the primary for reports"
+          ],
+          "correct": 1,
+          "explanation": "30-second lag is often fine for dashboards and reports — they show trends, not real-time state. If truly real-time is needed, you might query the primary for the latest few minutes and the replica for historical data, or accept more primary load."
+        }
+      ]
+    },
+    {
+      "id": "rdb-086",
+      "type": "multiple-choice",
+      "question": "What is partitioning (in a relational database context)?",
+      "options": [
+        "Splitting a database across multiple servers",
+        "Dividing a table into smaller pieces based on a column (e.g., date), still on the same server",
+        "Creating separate schemas",
+        "Splitting queries across threads"
+      ],
+      "correct": 1,
+      "explanation": "Partitioning divides a table by a key (date, region, etc.) into partitions (separate physical storage) on the same server. Queries can scan only relevant partitions. This helps with large tables — faster queries, easier data lifecycle management (drop old partitions)."
+    },
+    {
+      "id": "rdb-087",
+      "type": "multiple-choice",
+      "question": "What is sharding?",
+      "options": [
+        "Same as partitioning",
+        "Distributing data across multiple database servers based on a shard key",
+        "Breaking up large queries",
+        "Storing shards of deleted data"
+      ],
+      "correct": 1,
+      "explanation": "Sharding distributes data across multiple servers: user 1-1000 on shard A, 1001-2000 on shard B, etc. Unlike partitioning (one server), sharding scales horizontally. Trade-off: cross-shard queries are complex or impossible. Sharding is a last resort for scale."
+    },
+    {
+      "id": "rdb-088",
+      "type": "multi-select",
+      "question": "What challenges does sharding introduce?",
+      "options": [
+        "Cross-shard JOINs are complex or impossible",
+        "Distributed transactions are slow",
+        "Rebalancing shards when load is uneven",
+        "Query routing must know which shard has the data"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All of these are sharding challenges. JOINs across shards require scatter-gather. Distributed transactions need 2PC. Hot shards need rebalancing. Applications must route queries correctly. Sharding trades relational features for horizontal scale."
+    },
+    {
+      "id": "rdb-089",
+      "type": "multiple-choice",
+      "question": "What is a hot shard?",
+      "options": [
+        "A shard with corrupted data",
+        "A shard receiving disproportionately high load due to uneven data distribution",
+        "A recently created shard",
+        "A shard in a hot standby configuration"
+      ],
+      "correct": 1,
+      "explanation": "A hot shard is overloaded. If you shard by user_id and a celebrity user has 100x normal activity, their shard is 'hot.' Choosing a good shard key with even distribution is critical. Resharding to split hot shards is complex."
+    },
+    {
+      "id": "rdb-090",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You shard a users table by user_id. A query needs to list all users ordered by signup_date. How do you execute this?",
+          "options": [
+            "Query one shard (they're all the same)",
+            "Query all shards, merge and sort results in the application",
+            "This query is impossible with sharding",
+            "The database handles it automatically"
+          ],
+          "correct": 1,
+          "explanation": "Without the shard key in the query, you must scatter-gather: query all shards for users ordered by signup_date, merge results, and re-sort. This is expensive — O(N) shards queried. Sharding works best when queries include the shard key."
+        },
+        {
+          "question": "A new feature queries users by email. The table is sharded by user_id. What's the impact?",
+          "options": [
+            "No impact — indexes work across shards",
+            "You must query all shards to find an email (scatter-gather)",
+            "Email queries will automatically use the right shard",
+            "You need to create an email shard"
+          ],
+          "correct": 1,
+          "explanation": "Without user_id, the application doesn't know which shard has the email. It must broadcast to all shards. Solutions: maintain a separate email→user_id lookup (index table), or shard differently. Sharding requires knowing your access patterns upfront."
+        }
+      ]
+    },
+    {
+      "id": "rdb-091",
+      "type": "multiple-choice",
+      "question": "What is an OLTP workload?",
+      "options": [
+        "Online Table Processing",
+        "Online Transaction Processing — many small, fast transactions (reads/writes)",
+        "Offline Transaction Processing",
+        "Large analytical queries"
+      ],
+      "correct": 1,
+      "explanation": "OLTP (Online Transaction Processing) is the typical web app pattern: lots of small, fast transactions — read a user, update a balance, insert an order. Optimized for low latency and high concurrency on individual rows."
+    },
+    {
+      "id": "rdb-092",
+      "type": "multiple-choice",
+      "question": "What is an OLAP workload?",
+      "options": [
+        "Online Analysis Processing",
+        "Online Analytical Processing — complex queries over large datasets for reporting/analytics",
+        "Offline Login Authentication Protocol",
+        "Large batch inserts"
+      ],
+      "correct": 1,
+      "explanation": "OLAP (Online Analytical Processing) involves complex analytical queries: aggregations, JOINs over large datasets, trend analysis. Optimized for throughput and scan performance, not low-latency individual lookups. Data warehouses serve OLAP workloads."
+    },
+    {
+      "id": "rdb-093",
+      "type": "ordering",
+      "question": "Rank these from most suited for a relational OLTP database to least:",
+      "items": ["E-commerce orders and inventory", "Log aggregation (100K events/sec)", "Banking transactions", "User authentication and sessions"],
+      "correctOrder": [2, 0, 3, 1],
+      "explanation": "Banking needs ACID — perfect for RDBMS. E-commerce also needs transactions and JOINs. Auth/sessions are OK in RDBMS but often simpler in Redis. Log aggregation at 100K/sec is write-heavy and better in a time-series or log store (Elasticsearch, ClickHouse)."
+    },
+    {
+      "id": "rdb-094",
+      "type": "multi-select",
+      "question": "When should you NOT use a relational database?",
+      "options": [
+        "Write-heavy workloads exceeding single-server capacity",
+        "Highly connected graph data requiring deep traversals",
+        "Simple key-value lookups at massive scale",
+        "Transaction processing with strong consistency requirements"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "RDBMS struggles with: (1) write-heavy beyond vertical scaling (sharding is hard), (2) graph traversals (JOINs for each hop are inefficient), (3) simple KV at scale (overhead of SQL is unnecessary). Transaction processing with ACID is where RDBMS excels."
+    },
+    {
+      "id": "rdb-095",
+      "type": "multiple-choice",
+      "question": "What is a materialized view?",
+      "options": [
+        "A view stored in memory",
+        "A query result stored as a physical table, refreshed periodically or on demand",
+        "A view that can be modified",
+        "A view with row-level security"
+      ],
+      "correct": 1,
+      "explanation": "A materialized view stores query results as a physical table. Unlike regular views (computed on each query), materialized views are fast to read but stale until refreshed. Good for expensive aggregations that don't need real-time data."
+    },
+    {
+      "id": "rdb-096",
+      "type": "multiple-choice",
+      "question": "When are triggers useful?",
+      "options": [
+        "Replacing all application logic",
+        "Enforcing complex business rules, auditing changes, or maintaining derived data",
+        "Improving query performance",
+        "Replacing indexes"
+      ],
+      "correct": 1,
+      "explanation": "Triggers fire on INSERT/UPDATE/DELETE. Use cases: audit logging, enforcing complex constraints, updating denormalized columns. Avoid over-reliance — triggers hide logic and can cause surprising side effects. Keep them simple and documented."
+    },
+    {
+      "id": "rdb-097",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have an 'orders' table and want to keep 'customers.total_orders' up to date automatically. What's one approach?",
+          "options": [
+            "A trigger that increments customers.total_orders on INSERT to orders",
+            "Recalculate total_orders on every customer query",
+            "Store total_orders in application memory",
+            "Use a view"
+          ],
+          "correct": 0,
+          "explanation": "A trigger on orders INSERT (and DELETE) can update the customer's total_orders automatically. This keeps the denormalized count consistent at the database level, regardless of which application writes the order."
+        },
+        {
+          "question": "What's the risk of this trigger-based approach?",
+          "options": [
+            "Triggers can't access other tables",
+            "Lock contention on the customer row for concurrent order inserts",
+            "Triggers are too slow for any workload",
+            "PostgreSQL doesn't support triggers"
+          ],
+          "correct": 1,
+          "explanation": "Every order insert locks the customer row to update total_orders. High-volume orders for one customer serialize. For write-heavy scenarios, async aggregation (periodic recalculation, or a separate counter service) may perform better."
+        }
+      ]
+    },
+    {
+      "id": "rdb-098",
+      "type": "multiple-choice",
+      "question": "What is the difference between a database schema and a database instance?",
+      "options": [
+        "Schema is the structure (tables, columns, types); instance is the running process/data",
+        "Schema is for development; instance is for production",
+        "They're the same thing",
+        "Instance is the structure; schema is the data"
+      ],
+      "correct": 0,
+      "explanation": "Schema defines structure: table names, columns, types, constraints, indexes. Instance is the running database server with actual data. Multiple instances can share a schema (dev, staging, prod all having the same table structure but different data)."
+    },
+    {
+      "id": "rdb-099",
+      "type": "multi-select",
+      "question": "Which are signs that a relational database is the right choice?",
+      "options": [
+        "Data has clear relationships (foreign keys between entities)",
+        "You need flexible ad-hoc queries not known at design time",
+        "ACID transactions are required for correctness",
+        "Data is naturally key-value with simple lookups"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Relationships (JOINs), ad-hoc queries (SQL flexibility), and ACID (transactions, constraints) are relational strengths. Simple key-value lookups don't need SQL's power and might be better served by a key-value store like Redis or DynamoDB."
+    },
+    {
+      "id": "rdb-100",
+      "type": "ordering",
+      "question": "Rank these database types from most to least ACID-compliant by default:",
+      "items": ["PostgreSQL", "MongoDB", "Redis", "MySQL (InnoDB)"],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "PostgreSQL has excellent ACID compliance. MySQL/InnoDB is fully ACID. MongoDB (4.0+) supports multi-document ACID transactions but isn't ACID by default. Redis is not ACID by design — it's an in-memory store with optional persistence, not transactional in the RDBMS sense."
+    }
+  ]
+}
