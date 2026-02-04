@@ -1,14 +1,27 @@
 # System Design Practice Roadmap
 
+## Done
+
+- [x] **Unit 1: Estimation** — 8 chapters, 1,007 problems
+- [x] **Unit 2: Data Modeling** — 8 chapters, 800 problems
+- [x] **Unit 3: API Design** — 8 chapters, 800 problems
+- [x] **Unit 4: Storage Selection** — 8 chapters, 800 problems
+
 ## Now (In Progress)
 
-- [ ] **Unit 3: API Design** — REST vs GraphQL, versioning, pagination, rate limiting, error handling
 - [ ] **Weighting system** — Ensure numeric, ordering, multi-select, two-stage appear proportionally despite MC dominance
 
-## Next (Units 4-6)
+## Next (Units 5-6)
 
-- [ ] **Unit 4: Storage Selection** — SQL vs NoSQL vs blob vs cache, when to use what
-- [ ] **Unit 5: Caching** — Layers, invalidation strategies, cache-aside vs write-through, TTLs
+- [ ] **Unit 5: Caching**
+  - Chapter 1: Cache Fundamentals — Hit/miss ratios, latency benefits, cache hierarchy (CPU, in-memory, distributed)
+  - Chapter 2: Cache Placement — Browser, CDN, reverse proxy, application-level, database query cache
+  - Chapter 3: Caching Strategies — Cache-aside, read-through, refresh-ahead, write-through, write-behind, write-around
+  - Chapter 4: TTLs & Expiration — Time-to-live design, absolute vs sliding expiration, stale-while-revalidate
+  - Chapter 5: Cache Invalidation — Event-driven invalidation, cache busting, versioned keys, invalidation cascades
+  - Chapter 6: Eviction Policies — LRU, LFU, FIFO, random, ARC, size-based eviction
+  - Chapter 7: Distributed Caching — Redis vs Memcached, consistent hashing, cache stampede, hot keys, replication
+  - Chapter 8: Caching Scenarios — When to cache, sizing decisions, debugging cache issues, multi-tier caching
 - [ ] **Unit 6: Messaging & Async** — Queues, pub/sub, event-driven architecture, exactly-once delivery
 
 ## Later (Units 7-10)
