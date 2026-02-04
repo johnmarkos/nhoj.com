@@ -1,0 +1,1494 @@
+{
+  "unit": 4,
+  "unitTitle": "Storage Selection",
+  "chapter": 2,
+  "chapterTitle": "Document Stores",
+  "chapterDescription": "Schema flexibility, embedded data, and when to choose document databases like MongoDB or Firestore.",
+  "problems": [
+    {
+      "id": "doc-001",
+      "type": "multiple-choice",
+      "question": "What is the primary data structure in a document database?",
+      "options": [
+        "Tables with rows and columns",
+        "JSON-like documents with nested fields",
+        "Key-value pairs only",
+        "Nodes and edges"
+      ],
+      "correct": 1,
+      "explanation": "Document databases store data as JSON-like documents (or BSON in MongoDB). Documents can have nested objects and arrays, unlike flat relational rows. Each document is a self-contained unit with flexible structure."
+    },
+    {
+      "id": "doc-002",
+      "type": "multi-select",
+      "question": "Which are document databases?",
+      "options": ["MongoDB", "PostgreSQL", "Firestore", "CouchDB"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "MongoDB, Firestore, and CouchDB are document databases. PostgreSQL is a relational database, though it supports JSON columns for semi-structured data. True document databases organize data around documents as the primary unit."
+    },
+    {
+      "id": "doc-003",
+      "type": "multiple-choice",
+      "question": "What does 'schema-on-read' mean in document databases?",
+      "options": [
+        "The database enforces a schema when reading",
+        "The application interprets structure when reading; the database doesn't enforce a schema on write",
+        "A schema is created automatically when you read data",
+        "Reading requires a schema file"
+      ],
+      "correct": 1,
+      "explanation": "Schema-on-read means the database accepts any document structure on write. The application interprets the schema when reading. This contrasts with relational 'schema-on-write' where the database enforces structure at insert/update time."
+    },
+    {
+      "id": "doc-004",
+      "type": "multiple-choice",
+      "question": "What is an advantage of schema flexibility in document databases?",
+      "options": [
+        "Queries are always faster",
+        "Easier evolution — no schema migrations to add new fields",
+        "Data is always consistent",
+        "Storage is more efficient"
+      ],
+      "correct": 1,
+      "explanation": "With flexible schemas, adding a new field is trivial — just start writing documents with the field. No ALTER TABLE or migrations needed. This enables rapid iteration, especially early in development when data models evolve frequently."
+    },
+    {
+      "id": "doc-005",
+      "type": "multiple-choice",
+      "question": "What is a disadvantage of schema flexibility?",
+      "options": [
+        "You can't store nested data",
+        "Applications must handle inconsistent document structures and missing fields",
+        "You can't index documents",
+        "Documents can only be small"
+      ],
+      "correct": 1,
+      "explanation": "Without enforced schemas, different documents may have different fields or types. Applications must handle missing fields, type mismatches, and legacy document formats. This shifts validation burden from database to application code."
+    },
+    {
+      "id": "doc-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "In a relational database, adding a new column requires:",
+          "options": [
+            "Just inserting documents with the new field",
+            "An ALTER TABLE migration, potentially locking the table",
+            "Creating a new table",
+            "No action needed"
+          ],
+          "correct": 1,
+          "explanation": "Relational databases require schema changes via ALTER TABLE. This may lock the table (especially in older MySQL), require data backfills, and needs deployment coordination. It's more rigorous but also more ceremony."
+        },
+        {
+          "question": "In MongoDB, adding a new field to documents requires:",
+          "options": [
+            "A collection migration",
+            "Recreating the collection",
+            "Nothing — just start writing documents with the new field",
+            "Updating the schema definition"
+          ],
+          "correct": 2,
+          "explanation": "In MongoDB, you simply write documents with the new field. Old documents without it still exist (and return undefined/null for that field when read). No migration needed. Application code must handle the transition period."
+        }
+      ]
+    },
+    {
+      "id": "doc-007",
+      "type": "multiple-choice",
+      "question": "What is a 'collection' in MongoDB?",
+      "options": [
+        "A set of related databases",
+        "A group of documents, analogous to a table in relational databases",
+        "A cache of query results",
+        "A backup set"
+      ],
+      "correct": 1,
+      "explanation": "A MongoDB collection is like a table — it holds related documents. Unlike tables, collections don't enforce a schema: documents in the same collection can have different fields. You'd typically have users, orders, products collections."
+    },
+    {
+      "id": "doc-008",
+      "type": "multiple-choice",
+      "question": "What is the '_id' field in MongoDB?",
+      "options": [
+        "An optional document identifier",
+        "A required unique identifier for each document, auto-generated if not provided",
+        "A reference to the parent document",
+        "An internal-only system field"
+      ],
+      "correct": 1,
+      "explanation": "_id is the primary key in MongoDB. Every document must have one, and it must be unique within the collection. If you don't provide it, MongoDB auto-generates an ObjectId. You can set it explicitly (e.g., for idempotent upserts)."
+    },
+    {
+      "id": "doc-009",
+      "type": "multiple-choice",
+      "question": "What is an ObjectId in MongoDB?",
+      "options": [
+        "A UUID",
+        "A 12-byte identifier with timestamp, machine ID, process ID, and counter components",
+        "An auto-incrementing integer",
+        "A hash of the document"
+      ],
+      "correct": 1,
+      "explanation": "ObjectId is MongoDB's default ID type: 12 bytes encoding timestamp, machine identifier, process ID, and a counter. It's globally unique without coordination, roughly sortable by creation time, and more compact than UUID."
+    },
+    {
+      "id": "doc-010",
+      "type": "multi-select",
+      "question": "Which data types are typically supported in document databases?",
+      "options": ["Strings", "Nested objects", "Arrays", "Binary data"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Document databases support rich types: primitives (string, number, boolean), nested objects (sub-documents), arrays, and binary data. This flexibility allows representing complex data structures in a single document."
+    },
+    {
+      "id": "doc-011",
+      "type": "multiple-choice",
+      "question": "When is embedding data (nesting) in a document preferred over referencing another document?",
+      "options": [
+        "When the embedded data is large and frequently updated",
+        "When the embedded data is read together with the parent and rarely updated independently",
+        "When many documents share the same embedded data",
+        "Always — referencing is an anti-pattern"
+      ],
+      "correct": 1,
+      "explanation": "Embed data that's always accessed with the parent (e.g., shipping address in an order). Embedding gives single-document atomicity and no extra lookups. Avoid embedding large or frequently-updated sub-documents, or data shared by many parents."
+    },
+    {
+      "id": "doc-012",
+      "type": "multiple-choice",
+      "question": "When should you reference another document instead of embedding?",
+      "options": [
+        "When the data is never accessed",
+        "When the related data is large, frequently updated independently, or shared by multiple parents",
+        "When you want faster reads",
+        "Referencing is always preferred over embedding"
+      ],
+      "correct": 1,
+      "explanation": "Reference when: (1) embedded data would make the document too large, (2) the child is updated frequently and independently, (3) multiple parents share the same child (e.g., author referenced by many books). Trade-off: extra lookups required."
+    },
+    {
+      "id": "doc-013",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce product has a name, price, and an array of reviews (each with author, rating, text). You expect 10-50 reviews per product. Should reviews be embedded or referenced?",
+          "options": [
+            "Embedded — reviews are always read with the product",
+            "Referenced — reviews might grow unbounded",
+            "Stored in a separate SQL database",
+            "Use a key-value store for reviews"
+          ],
+          "correct": 0,
+          "explanation": "With 10-50 reviews, embedding is reasonable. Reviews are typically displayed with the product, and 50 small review objects won't exceed document size limits. Embedding avoids extra lookups. If reviews could grow to thousands, reconsider."
+        },
+        {
+          "question": "Same product, but now each product can have 10,000+ reviews. What's the better approach?",
+          "options": [
+            "Still embed all 10,000 reviews",
+            "Reference reviews — store them in a separate collection with product_id",
+            "Paginate by embedding only the first 10",
+            "Either referencing or embedding recent + referencing old"
+          ],
+          "correct": 3,
+          "explanation": "At 10,000+ reviews, embedding all would exceed size limits and slow reads. Options: (1) reference all reviews in a separate collection, (2) hybrid — embed recent/top reviews, reference the rest. Hybrid gives fast access to common data while handling scale."
+        }
+      ]
+    },
+    {
+      "id": "doc-014",
+      "type": "multiple-choice",
+      "question": "What is the document size limit in MongoDB?",
+      "options": ["1 MB", "16 MB", "64 MB", "No limit"],
+      "correct": 1,
+      "explanation": "MongoDB documents are limited to 16 MB. This prevents pathological cases like embedding millions of items. For larger data (files, images), use GridFS or a blob store. The 16 MB limit rarely constrains normal use cases."
+    },
+    {
+      "id": "doc-015",
+      "type": "multiple-choice",
+      "question": "What is denormalization in document databases?",
+      "options": [
+        "Removing duplicate data",
+        "Duplicating data across documents to avoid joins and enable single-document reads",
+        "Converting to normal form",
+        "Splitting documents"
+      ],
+      "correct": 1,
+      "explanation": "Denormalization stores redundant copies to avoid cross-document lookups. Example: storing author name in each blog post (not just author_id). Trade-off: updates must change all copies. Denormalize for read patterns; keep normalized data for writes."
+    },
+    {
+      "id": "doc-016",
+      "type": "multi-select",
+      "question": "What are risks of aggressive denormalization?",
+      "options": [
+        "Data inconsistency if updates miss some copies",
+        "Increased storage usage",
+        "More complex update logic",
+        "Faster read performance"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Denormalization risks: (1) inconsistency if you update one copy but not others, (2) more storage for duplicated data, (3) complex update code to maintain all copies. Faster reads is a benefit, not a risk."
+    },
+    {
+      "id": "doc-017",
+      "type": "multiple-choice",
+      "question": "A document contains a 'tags' array: [\"mongodb\", \"nosql\", \"database\"]. How do you find all documents with the 'nosql' tag?",
+      "options": [
+        "db.posts.find({tags: \"nosql\"})",
+        "db.posts.find({tags: [\"nosql\"]})",
+        "db.posts.find({tags: {$contains: \"nosql\"}})",
+        "db.posts.find({$arrayContains: {tags: \"nosql\"}})"
+      ],
+      "correct": 0,
+      "explanation": "MongoDB queries match array elements directly: {tags: \"nosql\"} matches documents where 'nosql' is in the tags array. This is implicit — no special operator needed for simple 'contains' queries on arrays."
+    },
+    {
+      "id": "doc-018",
+      "type": "multiple-choice",
+      "question": "What does the MongoDB $in operator do?",
+      "options": [
+        "Checks if a field is inside a document",
+        "Matches documents where the field's value is in a specified array of values",
+        "Inserts documents",
+        "Indexes a field"
+      ],
+      "correct": 1,
+      "explanation": "$in matches if the field's value is any of the specified values: {status: {$in: [\"pending\", \"active\"]}} finds documents where status is either 'pending' or 'active'. It's the SQL equivalent of 'WHERE status IN (...)'."
+    },
+    {
+      "id": "doc-019",
+      "type": "multi-select",
+      "question": "Which are valid MongoDB query operators?",
+      "options": ["$gt (greater than)", "$regex (pattern matching)", "$elemMatch (array element matching)", "$join (document join)"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "$gt, $regex, and $elemMatch are real MongoDB operators. There's no $join — MongoDB doesn't have built-in joins in the SQL sense. You use $lookup in aggregation pipelines for join-like behavior, or denormalize data."
+    },
+    {
+      "id": "doc-020",
+      "type": "multiple-choice",
+      "question": "What is the MongoDB aggregation pipeline?",
+      "options": [
+        "A way to batch insert documents",
+        "A series of stages that transform and analyze documents (filter, group, project, etc.)",
+        "A replication mechanism",
+        "A backup tool"
+      ],
+      "correct": 1,
+      "explanation": "The aggregation pipeline processes documents through stages: $match (filter), $group (aggregate), $project (reshape), $sort, $limit, $lookup (join), etc. It's MongoDB's answer to complex SQL queries with GROUP BY, JOINs, and transformations."
+    },
+    {
+      "id": "doc-021",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to count orders by status. In SQL, you'd write: SELECT status, COUNT(*) FROM orders GROUP BY status. What's the MongoDB equivalent approach?",
+          "options": [
+            "db.orders.find({}).groupBy(\"status\")",
+            "db.orders.aggregate([{$group: {_id: \"$status\", count: {$sum: 1}}}])",
+            "db.orders.count({$group: \"status\"})",
+            "You can't group in MongoDB"
+          ],
+          "correct": 1,
+          "explanation": "Use the aggregation pipeline with $group stage. _id specifies the grouping key (\"$status\" means the status field), and you apply accumulators like $sum: 1 to count documents per group."
+        },
+        {
+          "question": "You want only groups with count > 100, sorted by count descending. What stages do you add?",
+          "options": [
+            "$match and $sort before $group",
+            "$match after $group (to filter groups) and $sort",
+            "$having (like SQL HAVING)",
+            "$filter and $order"
+          ],
+          "correct": 1,
+          "explanation": "$match after $group filters the aggregated results (like SQL HAVING): {$match: {count: {$gt: 100}}}. Then $sort: {$sort: {count: -1}}. Pipeline stages execute in order, so post-group stages operate on the grouped results."
+        }
+      ]
+    },
+    {
+      "id": "doc-022",
+      "type": "multiple-choice",
+      "question": "What is $lookup in MongoDB aggregation?",
+      "options": [
+        "Finding documents by ID",
+        "A left outer join — combining documents from two collections",
+        "Looking up index statistics",
+        "A text search operator"
+      ],
+      "correct": 1,
+      "explanation": "$lookup performs a left outer join between collections. You specify the 'from' collection, the local and foreign fields to match, and an 'as' field for the joined documents. It enables relational-style queries when needed."
+    },
+    {
+      "id": "doc-023",
+      "type": "multiple-choice",
+      "question": "What is the trade-off of using $lookup frequently?",
+      "options": [
+        "No trade-off — it's as fast as embedded data",
+        "$lookup is expensive — it requires cross-collection access, potentially defeating the benefits of document model",
+        "$lookup only works on sharded collections",
+        "$lookup corrupts indexes"
+      ],
+      "correct": 1,
+      "explanation": "$lookup requires reading from another collection — extra I/O, no single-document atomicity, and can't be indexed like embedded data. If you $lookup constantly, you might be better off with a relational database or denormalizing data."
+    },
+    {
+      "id": "doc-024",
+      "type": "multiple-choice",
+      "question": "What guarantees does MongoDB provide for single-document operations?",
+      "options": [
+        "No guarantees",
+        "Atomicity — the entire document is written or read atomically",
+        "Distributed transaction guarantees",
+        "Only durability, no atomicity"
+      ],
+      "correct": 1,
+      "explanation": "MongoDB guarantees atomicity at the document level: a document write either fully succeeds or fully fails. This covers updates to nested fields and arrays within one document. Multi-document operations require explicit transactions (4.0+)."
+    },
+    {
+      "id": "doc-025",
+      "type": "multiple-choice",
+      "question": "Before MongoDB 4.0, how did you handle operations that needed to update multiple documents atomically?",
+      "options": [
+        "Use transactions",
+        "Design data models to fit related data in a single document, or accept eventual consistency",
+        "Use a relational database for those operations",
+        "MongoDB always supported multi-document transactions"
+      ],
+      "correct": 1,
+      "explanation": "Pre-4.0 MongoDB had no multi-document transactions. Best practice: embed related data in one document for atomicity, or accept that multi-document updates might partially fail. Many applications designed around single-document atomicity."
+    },
+    {
+      "id": "doc-026",
+      "type": "multi-select",
+      "question": "Since MongoDB 4.0, what transaction capabilities are supported?",
+      "options": [
+        "Multi-document ACID transactions",
+        "Transactions spanning multiple collections",
+        "Transactions spanning shards (4.2+)",
+        "Unlimited transaction duration"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "MongoDB 4.0+ supports multi-document ACID transactions, including across collections. 4.2 extended this to sharded clusters. Transactions have a time limit (default 60 seconds) to prevent long-held locks. Not unlimited."
+    },
+    {
+      "id": "doc-027",
+      "type": "multiple-choice",
+      "question": "Should you use MongoDB transactions for all operations?",
+      "options": [
+        "Yes — always use transactions for safety",
+        "No — transactions have overhead; use them only when atomicity across documents is required",
+        "Yes — it's required for data integrity",
+        "Only for read operations"
+      ],
+      "correct": 1,
+      "explanation": "Transactions add overhead (lock acquisition, commit processing). Single-document operations are already atomic. Use transactions when you genuinely need multi-document atomicity. For simple updates, skip the transaction overhead."
+    },
+    {
+      "id": "doc-028",
+      "type": "multiple-choice",
+      "question": "What is MongoDB's default write concern?",
+      "options": [
+        "w: 0 (fire and forget)",
+        "w: 1 (acknowledged by primary)",
+        "w: majority (acknowledged by majority of replicas)",
+        "w: all (acknowledged by all replicas)"
+      ],
+      "correct": 1,
+      "explanation": "Default write concern is w: 1: the primary acknowledges the write before returning. This doesn't guarantee durability on crash or replication. For critical data, use w: majority (waits for majority of replica set) or j: true (waits for journal)."
+    },
+    {
+      "id": "doc-029",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A write to MongoDB returns success with w: 1 (default). The primary crashes before replicating. What happens to that write?",
+          "options": [
+            "It's guaranteed to persist",
+            "It may be lost — the new primary doesn't have it",
+            "It's stored in the journal",
+            "The write is automatically retried"
+          ],
+          "correct": 1,
+          "explanation": "With w: 1, the write was acknowledged by the primary but not replicated. If the primary fails before replication, the new primary (promoted from a replica) doesn't have that write. Data loss occurs for that operation."
+        },
+        {
+          "question": "How do you prevent this data loss for critical writes?",
+          "options": [
+            "Disable replication",
+            "Use w: majority to require acknowledgment from a majority of nodes before returning",
+            "Write faster",
+            "Use a single server"
+          ],
+          "correct": 1,
+          "explanation": "w: majority waits for the write to be acknowledged by a majority of replica set members. If the primary fails, a node with the write can be elected. This ensures the committed write survives primary failure. Trade-off: higher latency."
+        }
+      ]
+    },
+    {
+      "id": "doc-030",
+      "type": "multiple-choice",
+      "question": "What is a read concern in MongoDB?",
+      "options": [
+        "Concerns about reading too much data",
+        "A setting that controls what data a read operation can see (e.g., only majority-committed data)",
+        "A way to prioritize read operations",
+        "An error handling mechanism"
+      ],
+      "correct": 1,
+      "explanation": "Read concern specifies what data is visible: 'local' sees the latest data on that node (may not be majority-committed), 'majority' sees only majority-committed data (won't see data that could be rolled back). Similar to isolation levels."
+    },
+    {
+      "id": "doc-031",
+      "type": "multiple-choice",
+      "question": "What is a replica set in MongoDB?",
+      "options": [
+        "A backup of a collection",
+        "A group of MongoDB servers maintaining the same data, with one primary and multiple secondaries",
+        "A sharded cluster",
+        "A copy of an index"
+      ],
+      "correct": 1,
+      "explanation": "A replica set is MongoDB's replication unit: one primary handles writes, secondaries replicate from the primary. If the primary fails, an election promotes a secondary. This provides high availability and read scaling (reading from secondaries)."
+    },
+    {
+      "id": "doc-032",
+      "type": "multi-select",
+      "question": "What are benefits of MongoDB replica sets?",
+      "options": [
+        "High availability (automatic failover)",
+        "Read scaling (read from secondaries)",
+        "Data redundancy (multiple copies)",
+        "Automatic sharding"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Replica sets provide HA (automatic primary election on failure), read scaling (offload reads to secondaries), and redundancy (data on multiple nodes). Sharding is separate — it requires a sharded cluster, not just replica sets."
+    },
+    {
+      "id": "doc-033",
+      "type": "multiple-choice",
+      "question": "What is a sharded cluster in MongoDB?",
+      "options": [
+        "A replica set with many nodes",
+        "A way to distribute data across multiple servers using a shard key",
+        "A cluster of read-only servers",
+        "A backup cluster"
+      ],
+      "correct": 1,
+      "explanation": "Sharding distributes data across shards (each shard is a replica set). A shard key determines which shard holds each document. This enables horizontal scaling — more shards = more capacity. Mongos routers direct queries to the right shards."
+    },
+    {
+      "id": "doc-034",
+      "type": "multiple-choice",
+      "question": "What is a shard key?",
+      "options": [
+        "An encryption key for shards",
+        "A field (or fields) used to determine which shard a document belongs to",
+        "A key to access the shard",
+        "The primary key of a sharded collection"
+      ],
+      "correct": 1,
+      "explanation": "The shard key is a field (or compound fields) MongoDB uses to partition data. Documents with similar shard key values live on the same shard. Choosing a good shard key is critical — it affects query routing, data distribution, and performance."
+    },
+    {
+      "id": "doc-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You shard a collection by user_id. A query filters by user_id = 123. How does MongoDB route this query?",
+          "options": [
+            "Broadcasts to all shards",
+            "Routes directly to the shard containing user_id = 123",
+            "Queries a random shard",
+            "Queries the primary shard only"
+          ],
+          "correct": 1,
+          "explanation": "When the query includes the shard key, MongoDB routes directly to the target shard. This is called a 'targeted query' — efficient because only one shard is involved. The mongos router knows the shard key ranges and routes accordingly."
+        },
+        {
+          "question": "Same sharded collection, but now you query by email (not the shard key). How is this routed?",
+          "options": [
+            "Routed to one shard based on email hash",
+            "Broadcasted to all shards (scatter-gather)",
+            "Returns an error — must include shard key",
+            "Uses an automatic index lookup"
+          ],
+          "correct": 1,
+          "explanation": "Without the shard key, MongoDB can't determine which shard has the document. It broadcasts to all shards (scatter-gather), each shard returns matches, and mongos merges results. This is less efficient than targeted queries."
+        }
+      ]
+    },
+    {
+      "id": "doc-036",
+      "type": "multi-select",
+      "question": "What makes a good shard key?",
+      "options": [
+        "High cardinality (many unique values)",
+        "Evenly distributed across documents",
+        "Frequently included in query filters",
+        "Always monotonically increasing (like timestamps)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Good shard keys have high cardinality (enables fine distribution), even distribution (no hot shards), and match query patterns (enables targeted queries). Monotonically increasing keys cause all writes to hit one shard (hot shard) — avoid them."
+    },
+    {
+      "id": "doc-037",
+      "type": "multiple-choice",
+      "question": "Why is a monotonically increasing shard key (like auto-increment ID or timestamp) problematic?",
+      "options": [
+        "It's not unique",
+        "All new writes go to the same shard (the one handling the current range)",
+        "It can't be indexed",
+        "It's too large"
+      ],
+      "correct": 1,
+      "explanation": "Monotonically increasing keys mean new documents always have the highest value, landing on the shard handling the high range. This creates a 'hot shard' receiving all writes while others are idle. Use hashed shard keys or compound keys instead."
+    },
+    {
+      "id": "doc-038",
+      "type": "multiple-choice",
+      "question": "What is Google Firestore?",
+      "options": [
+        "A relational database",
+        "A document database with real-time synchronization and offline support, designed for mobile/web apps",
+        "A file storage service",
+        "A message queue"
+      ],
+      "correct": 1,
+      "explanation": "Firestore is Google's document database designed for mobile and web apps. Key features: real-time listeners (get updates automatically), offline support (syncs when reconnected), automatic scaling. It's a managed NoSQL solution in Firebase/GCP."
+    },
+    {
+      "id": "doc-039",
+      "type": "multi-select",
+      "question": "What are Firestore's key features compared to MongoDB?",
+      "options": [
+        "Real-time listeners for live updates",
+        "Built-in offline support",
+        "More flexible aggregation pipeline",
+        "Fully managed (serverless)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Firestore excels at real-time sync, offline mode, and being fully managed. MongoDB has a more powerful aggregation pipeline and query capabilities. Firestore is simpler for mobile apps; MongoDB is more flexible for complex queries."
+    },
+    {
+      "id": "doc-040",
+      "type": "multiple-choice",
+      "question": "In Firestore, data is organized as:",
+      "options": [
+        "Tables and rows",
+        "Collections and documents, with documents able to contain subcollections",
+        "Buckets and objects",
+        "Nodes and edges"
+      ],
+      "correct": 1,
+      "explanation": "Firestore uses collections (groups of documents) and documents (JSON-like objects). Uniquely, documents can contain subcollections, creating a hierarchical structure: /users/{userId}/orders/{orderId}. This enables nested data organization."
+    },
+    {
+      "id": "doc-041",
+      "type": "multiple-choice",
+      "question": "What is a Firestore subcollection?",
+      "options": [
+        "A filtered view of a collection",
+        "A collection nested under a document, enabling hierarchical data organization",
+        "A backup of a collection",
+        "A subset of documents"
+      ],
+      "correct": 1,
+      "explanation": "Subcollections are collections within documents. A user document at /users/123 can have a subcollection /users/123/orders containing that user's orders. Subcollections don't count toward the 1MB document limit and can be queried independently."
+    },
+    {
+      "id": "doc-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "In Firestore, you have /users/{userId}/orders/{orderId}. You want all orders across all users placed today. Can you query this directly?",
+          "options": [
+            "Yes — just query the orders subcollection",
+            "No — subcollection queries are scoped to their parent document",
+            "Yes — using a regular collection query",
+            "No — you must read each user's orders individually"
+          ],
+          "correct": 3,
+          "explanation": "Standard Firestore queries on subcollections are scoped to one parent: /users/123/orders. To query across all users' orders, you'd need to read each user's subcollection individually (N+1 pattern) — inefficient."
+        },
+        {
+          "question": "Firestore has 'collection group queries.' How do these help?",
+          "options": [
+            "They group collections by name",
+            "They query all subcollections with the same name across all documents",
+            "They create grouped indexes",
+            "They merge collections"
+          ],
+          "correct": 1,
+          "explanation": "Collection group queries let you query all 'orders' subcollections across all users in one query. You must create a collection group index first. This solves the cross-parent query problem but requires planning — not all queries are supported."
+        }
+      ]
+    },
+    {
+      "id": "doc-043",
+      "type": "multiple-choice",
+      "question": "What is CouchDB's unique replication model?",
+      "options": [
+        "Master-slave replication",
+        "Multi-master replication with conflict resolution",
+        "No replication support",
+        "Streaming replication only"
+      ],
+      "correct": 1,
+      "explanation": "CouchDB supports multi-master replication: any node can accept writes, and changes sync bidirectionally. Conflicts are detected and stored; applications choose a winning revision. This enables offline-first apps where multiple clients can write independently."
+    },
+    {
+      "id": "doc-044",
+      "type": "multiple-choice",
+      "question": "When is CouchDB's multi-master replication particularly useful?",
+      "options": [
+        "When you need strong consistency",
+        "For offline-capable apps where devices sync when reconnected",
+        "When all writes go to one server",
+        "For read-only data"
+      ],
+      "correct": 1,
+      "explanation": "CouchDB's replication shines for offline-first apps: mobile apps, field workers, IoT. Each device has a local CouchDB, works offline, and syncs when connected. Conflicts are expected and handled. This is fundamentally different from always-connected models."
+    },
+    {
+      "id": "doc-045",
+      "type": "multiple-choice",
+      "question": "What is a common use case for document databases?",
+      "options": [
+        "Banking transactions requiring strict ACID",
+        "Content management systems with varying content types",
+        "Data warehousing with complex JOINs",
+        "High-frequency trading"
+      ],
+      "correct": 1,
+      "explanation": "CMS is ideal for documents: each article/product/page can have different fields (some have videos, some have recipes, some have specs). The flexible schema accommodates varying content without sparse columns or complex inheritance hierarchies."
+    },
+    {
+      "id": "doc-046",
+      "type": "multi-select",
+      "question": "Which use cases are well-suited for document databases?",
+      "options": [
+        "Product catalogs with varying attributes",
+        "User profiles with optional/varied fields",
+        "Event logging with evolving schemas",
+        "Multi-table JOINs for complex reporting"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Documents excel when entities have varying structure: products (TVs vs. clothing have different attributes), user profiles (optional fields), event logs (evolving schemas over time). Complex JOINs suggest relational might be better."
+    },
+    {
+      "id": "doc-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a product catalog. Electronics have specs (screen size, CPU), clothing has size/color, books have ISBN/author. In a relational model, how would you handle this?",
+          "options": [
+            "One table with columns for every possible attribute (lots of NULLs)",
+            "Entity-Attribute-Value (EAV) pattern — flexible but complex queries",
+            "Separate tables per product type with common base table",
+            "Any of these, each with trade-offs"
+          ],
+          "correct": 3,
+          "explanation": "All are valid relational approaches: (1) sparse columns (simple but wasteful), (2) EAV (flexible but queries are complex), (3) inheritance/polymorphism (clean but many tables). Each has trade-offs, and none is as natural as document storage."
+        },
+        {
+          "question": "How would a document database handle this catalog?",
+          "options": [
+            "Same challenges as relational",
+            "Each product is a document with whatever fields it needs — no schema enforcement",
+            "Separate collections for each product type",
+            "Products must have identical structure"
+          ],
+          "correct": 1,
+          "explanation": "In a document database, each product document contains only the relevant fields. A TV document has screen_size, a shirt document has size/color. No NULL columns, no EAV complexity. Query and index the fields you need."
+        }
+      ]
+    },
+    {
+      "id": "doc-048",
+      "type": "multiple-choice",
+      "question": "What is the main indexing approach in MongoDB?",
+      "options": [
+        "Only primary key indexing",
+        "B-tree indexes on specified fields, similar to relational databases",
+        "Full-text indexing only",
+        "No indexing — full scans only"
+      ],
+      "correct": 1,
+      "explanation": "MongoDB uses B-tree indexes on specified fields. You create indexes with createIndex(). Indexes can be on single fields, compound (multiple fields), multikey (arrays), text (full-text search), and more. Without indexes, queries scan all documents."
+    },
+    {
+      "id": "doc-049",
+      "type": "multiple-choice",
+      "question": "What is a multikey index in MongoDB?",
+      "options": [
+        "An index on multiple fields",
+        "An index on an array field that indexes each element of the array",
+        "Multiple indexes on one field",
+        "A distributed index across shards"
+      ],
+      "correct": 1,
+      "explanation": "Multikey indexes index each element in an array field. If a document has tags: [\"a\", \"b\", \"c\"], the multikey index has entries for each tag. This enables efficient queries like {tags: \"b\"} — finding documents containing a specific array element."
+    },
+    {
+      "id": "doc-050",
+      "type": "multi-select",
+      "question": "Which index types does MongoDB support?",
+      "options": [
+        "Single field indexes",
+        "Compound indexes (multiple fields)",
+        "Text indexes (full-text search)",
+        "Geospatial indexes"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "MongoDB has rich indexing: single field, compound (multiple fields in order), text (full-text search with stemming), geospatial (2d/2dsphere for location queries), hashed (for shard keys), and more."
+    },
+    {
+      "id": "doc-051",
+      "type": "multiple-choice",
+      "question": "You need to enforce that a field is unique across all documents. How do you do this in MongoDB?",
+      "options": [
+        "Use a UNIQUE constraint",
+        "Create a unique index on that field",
+        "Use validation rules",
+        "It's not possible — document databases don't support uniqueness"
+      ],
+      "correct": 1,
+      "explanation": "Create a unique index: db.collection.createIndex({email: 1}, {unique: true}). This rejects inserts/updates that would create duplicates. It's the document database equivalent of a UNIQUE constraint."
+    },
+    {
+      "id": "doc-052",
+      "type": "multiple-choice",
+      "question": "What is MongoDB schema validation?",
+      "options": [
+        "Automatic schema migration",
+        "Rules that validate documents on insert/update, enforcing structure even in 'schemaless' MongoDB",
+        "A tool to generate schemas from documents",
+        "Validation of query syntax"
+      ],
+      "correct": 1,
+      "explanation": "MongoDB supports JSON Schema validation: define required fields, types, enums, etc. Documents that don't match are rejected. This provides optional schema enforcement when you want guarantees. You can set validation level (strict vs. warn)."
+    },
+    {
+      "id": "doc-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A document database is often called 'schemaless.' Is this accurate?",
+          "options": [
+            "Yes — there's no schema at all",
+            "No — there's always an implicit schema in how your application interprets data",
+            "Yes — and that's always a problem",
+            "No — document databases require explicit schema definitions"
+          ],
+          "correct": 1,
+          "explanation": "'Schemaless' is misleading. The database doesn't enforce a schema, but your application code assumes a structure. If code expects doc.user.email and it's missing, you get errors. The schema exists — it's just in application code, not the database."
+        },
+        {
+          "question": "As your application evolves, old documents don't have new fields. How do you handle this?",
+          "options": [
+            "Backfill all old documents immediately",
+            "Write application code that handles missing fields gracefully",
+            "Delete old documents",
+            "Either backfill or handle in code — depends on the situation"
+          ],
+          "correct": 3,
+          "explanation": "Two valid approaches: (1) backfill old documents with the new field (migration), (2) write code that handles optional/missing fields. Small datasets might backfill; large ones often handle in code. This is the flexibility — and responsibility — of schema-on-read."
+        }
+      ]
+    },
+    {
+      "id": "doc-054",
+      "type": "multiple-choice",
+      "question": "What is the 'polymorphic pattern' in document modeling?",
+      "options": [
+        "Storing different types of documents in the same collection with a 'type' field to distinguish them",
+        "Using inheritance hierarchies",
+        "Creating multiple collections",
+        "Linking documents dynamically"
+      ],
+      "correct": 0,
+      "explanation": "The polymorphic pattern stores varied document types in one collection: products might be {type: 'book', isbn: ...} or {type: 'electronics', specs: ...}. A type field distinguishes them. Queries can filter by type or span all types."
+    },
+    {
+      "id": "doc-055",
+      "type": "multiple-choice",
+      "question": "What is the 'bucket pattern' in document modeling?",
+      "options": [
+        "Storing all data in one bucket",
+        "Grouping related data into fixed-size buckets (e.g., time-series data in hourly documents)",
+        "Using cloud storage buckets",
+        "Separating data by access frequency"
+      ],
+      "correct": 1,
+      "explanation": "The bucket pattern groups related entries into a single document. For time-series: instead of one document per sensor reading, store 1 hour of readings in one document. This reduces document count, enables efficient range queries, and optimizes storage."
+    },
+    {
+      "id": "doc-056",
+      "type": "multi-select",
+      "question": "What are benefits of the bucket pattern for time-series data?",
+      "options": [
+        "Fewer documents (reduced index overhead)",
+        "More efficient batch reads (one document per time range)",
+        "Atomic writes to all readings in the bucket",
+        "Automatic data retention"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Bucketing reduces document count (less index overhead), enables efficient range reads (one fetch vs. many), and atomically updates the bucket document. Data retention isn't automatic — you'd still need to delete old buckets — but it's easier."
+    },
+    {
+      "id": "doc-057",
+      "type": "multiple-choice",
+      "question": "What is the 'extended reference pattern'?",
+      "options": [
+        "Using extra-long references",
+        "Storing frequently-accessed fields from a referenced document alongside the reference ID",
+        "Extending the reference type",
+        "Creating bidirectional references"
+      ],
+      "correct": 1,
+      "explanation": "Extended reference: store the reference ID plus commonly-read fields. Order might store {customer_id: 123, customer_name: 'Alice', customer_email: 'alice@...'} — avoiding a JOIN to get the name. Denormalization for read performance; updates must sync."
+    },
+    {
+      "id": "doc-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An order document references a customer by ID. You display order lists showing customer name. Each display requires fetching the customer. What's the impact?",
+          "options": [
+            "No impact",
+            "N+1 problem — fetching N orders requires N additional customer fetches",
+            "Faster reads",
+            "Database automatically optimizes this"
+          ],
+          "correct": 1,
+          "explanation": "This is the N+1 problem: 1 query for orders, then N queries for customers. In document databases without JOINs, this means N round-trips. For lists of 100 orders, that's 101 database calls."
+        },
+        {
+          "question": "How does the extended reference pattern help?",
+          "options": [
+            "It doesn't help",
+            "Store customer_name in the order document — one fetch gets all display data",
+            "Create an index on customer_id",
+            "Use batch fetching"
+          ],
+          "correct": 1,
+          "explanation": "Embed the display-needed fields: {customer_id: 123, customer_name: 'Alice'}. Now order display requires no customer fetch. Trade-off: if customer name changes, you must update all orders. Choose based on read vs. write frequency."
+        }
+      ]
+    },
+    {
+      "id": "doc-059",
+      "type": "multiple-choice",
+      "question": "What is the 'computed pattern' in document modeling?",
+      "options": [
+        "Storing computed values in documents to avoid recalculating on every read",
+        "Computing queries in JavaScript",
+        "Using computed indexes",
+        "Calculating storage requirements"
+      ],
+      "correct": 0,
+      "explanation": "The computed pattern pre-calculates and stores derived data: total_price in an order (sum of line items), running_count on a summary document. Update computed fields when source data changes. Trades write complexity for read performance."
+    },
+    {
+      "id": "doc-060",
+      "type": "multi-select",
+      "question": "When is the computed pattern useful?",
+      "options": [
+        "Expensive calculations that would slow down every read",
+        "Values that change frequently",
+        "Aggregations over many child documents",
+        "Values that are displayed but rarely recalculated"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Compute pattern helps for: expensive calculations (save compute on reads), aggregations (avoid scanning children), rarely-changing values. Frequently-changing values would require constant updates to the computed field, negating the benefit."
+    },
+    {
+      "id": "doc-061",
+      "type": "multiple-choice",
+      "question": "What is BSON?",
+      "options": [
+        "A JavaScript object format",
+        "Binary JSON — MongoDB's binary-encoded document format with additional types",
+        "A schema language",
+        "A query language"
+      ],
+      "correct": 1,
+      "explanation": "BSON (Binary JSON) is MongoDB's storage format. It's like JSON but binary-encoded (efficient parsing) and supports more types: Date, ObjectId, binary data, Decimal128. Documents are stored and transmitted as BSON."
+    },
+    {
+      "id": "doc-062",
+      "type": "multiple-choice",
+      "question": "What is an upsert?",
+      "options": [
+        "Updating and setting a field",
+        "An operation that updates if the document exists, or inserts if it doesn't",
+        "An uppercase insert",
+        "An update that sets fields upward"
+      ],
+      "correct": 1,
+      "explanation": "Upsert = update + insert. If the document matching the query exists, update it; otherwise, insert a new document. Useful for ensuring a document exists with certain values: updateOne({_id: 123}, {$set: {name: 'Alice'}}, {upsert: true})."
+    },
+    {
+      "id": "doc-063",
+      "type": "multiple-choice",
+      "question": "What is a partial index in MongoDB?",
+      "options": [
+        "An incomplete index",
+        "An index that only includes documents matching a filter condition",
+        "A partially-built index",
+        "An index on part of a field"
+      ],
+      "correct": 1,
+      "explanation": "Partial indexes only index documents matching a filter: createIndex({email: 1}, {partialFilterExpression: {status: 'active'}}). This reduces index size and update overhead when you only query a subset. Also called filtered indexes in other databases."
+    },
+    {
+      "id": "doc-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 10 million user documents, but only 100,000 have status: 'premium'. You frequently query premium users by email. What's the optimal indexing approach?",
+          "options": [
+            "Index on email for all users",
+            "Partial index on email where status: 'premium'",
+            "Index on status only",
+            "No index needed"
+          ],
+          "correct": 1,
+          "explanation": "A partial index on email for premium users only. The index is 100x smaller (100K vs 10M entries), faster to maintain, and sufficient for your query pattern. Queries on non-premium users won't use this index — ensure that's acceptable."
+        },
+        {
+          "question": "A query runs: db.users.find({email: 'test@example.com', status: 'free'}). Will the partial index be used?",
+          "options": [
+            "Yes — it's on the email field",
+            "No — the query filter doesn't match the partial index condition (status: 'premium')",
+            "Partially — for email only",
+            "It depends on the query planner"
+          ],
+          "correct": 1,
+          "explanation": "Partial indexes only apply when the query matches the partialFilterExpression. This query has status: 'free', not 'premium', so the index can't be used. The query will scan or use another index. Design partial indexes for your actual query patterns."
+        }
+      ]
+    },
+    {
+      "id": "doc-065",
+      "type": "multiple-choice",
+      "question": "What is TTL (Time-To-Live) index in MongoDB?",
+      "options": [
+        "An index that expires",
+        "A special index that automatically deletes documents after a specified time",
+        "A temporary index",
+        "An index with limited entries"
+      ],
+      "correct": 1,
+      "explanation": "TTL indexes automatically delete documents after a specified duration. Create on a date field: createIndex({createdAt: 1}, {expireAfterSeconds: 86400}). Useful for session data, logs, temporary records. MongoDB runs a background job to delete expired docs."
+    },
+    {
+      "id": "doc-066",
+      "type": "multi-select",
+      "question": "What are good use cases for TTL indexes?",
+      "options": [
+        "Session tokens that expire",
+        "Temporary cache entries",
+        "Event logs with retention policies",
+        "Permanent user profiles"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "TTL is perfect for ephemeral data: sessions (expire after inactivity), caches (auto-cleanup), logs (30-day retention). Permanent data like user profiles shouldn't use TTL — you don't want users disappearing."
+    },
+    {
+      "id": "doc-067",
+      "type": "multiple-choice",
+      "question": "What is change streams in MongoDB?",
+      "options": [
+        "A logging feature",
+        "Real-time notification of data changes — applications can subscribe to insert/update/delete events",
+        "A data transformation pipeline",
+        "A backup stream"
+      ],
+      "correct": 1,
+      "explanation": "Change streams let applications subscribe to real-time data changes. When a document is inserted/updated/deleted, subscribers receive events. Useful for: real-time sync to other systems, triggering downstream processes, event-driven architectures."
+    },
+    {
+      "id": "doc-068",
+      "type": "multiple-choice",
+      "question": "What is the difference between embedding and using DBRefs in MongoDB?",
+      "options": [
+        "They're the same",
+        "Embedding stores data inline; DBRef is a convention for storing references to documents in other collections",
+        "DBRef is faster",
+        "Embedding is only for arrays"
+      ],
+      "correct": 1,
+      "explanation": "Embedding nests the data directly. DBRef is a convention: {$ref: 'collection', $id: ObjectId(...)} pointing to another document. DBRefs aren't auto-resolved — you must fetch the referenced document separately. Most prefer simple ID references over DBRef."
+    },
+    {
+      "id": "doc-069",
+      "type": "multiple-choice",
+      "question": "Should you always use MongoDB's DBRef for references?",
+      "options": [
+        "Yes — it's the official way",
+        "No — simple ID fields are often preferred; DBRef adds overhead without database-level enforcement",
+        "Yes — it enables automatic joins",
+        "Only for cross-database references"
+      ],
+      "correct": 1,
+      "explanation": "DBRef adds structure but no enforcement — MongoDB doesn't auto-resolve or validate them. A simple customer_id field is often cleaner. Use DBRef if you need the collection name stored (for polymorphic references) or cross-database refs. Otherwise, keep it simple."
+    },
+    {
+      "id": "doc-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're migrating from PostgreSQL to MongoDB. The relational model has users, orders, and order_items tables with foreign keys. What's the first design decision?",
+          "options": [
+            "Create three collections mirroring the tables",
+            "Decide what to embed vs. reference based on access patterns",
+            "Put everything in one collection",
+            "Use DBRefs for all relationships"
+          ],
+          "correct": 1,
+          "explanation": "Don't just mirror tables — that ignores document model benefits. Analyze access patterns: are order_items always read with orders? Embed them. Are orders fetched independently of users? Reference users. Design around how data is accessed."
+        },
+        {
+          "question": "Orders and order_items are always displayed together. Users are often queried independently. What structure?",
+          "options": [
+            "Three collections like the relational model",
+            "Orders collection with embedded items array, referencing users collection by user_id",
+            "One collection with all data embedded in users",
+            "Two collections: users and order_items"
+          ],
+          "correct": 1,
+          "explanation": "Embed order_items in orders (always accessed together, one-to-many within bounds). Reference users by ID (queried independently, shared across many orders). This matches access patterns — single fetch for order display, separate fetch for user details."
+        }
+      ]
+    },
+    {
+      "id": "doc-071",
+      "type": "multiple-choice",
+      "question": "What is the 'outlier pattern' in document modeling?",
+      "options": [
+        "Removing outlier data",
+        "Storing exceptional cases (documents that exceed normal size limits) differently",
+        "Finding anomalies",
+        "Using different document formats"
+      ],
+      "correct": 1,
+      "explanation": "The outlier pattern handles the rare case that breaks your normal design. Example: most products have 10-50 reviews (embed them), but viral products have 100K+ reviews. For outliers, use overflow documents or reference a reviews collection. Don't let exceptions drive normal design."
+    },
+    {
+      "id": "doc-072",
+      "type": "multiple-choice",
+      "question": "What happens if you try to insert a document larger than 16MB in MongoDB?",
+      "options": [
+        "It's automatically chunked",
+        "The insert fails with an error",
+        "It's stored in a separate large object store",
+        "The document is truncated"
+      ],
+      "correct": 1,
+      "explanation": "MongoDB rejects documents exceeding 16MB. The operation fails with an error. For large data, use GridFS (MongoDB's chunking solution) or store in blob storage (S3) with a reference in the document. Design to stay under 16MB."
+    },
+    {
+      "id": "doc-073",
+      "type": "multiple-choice",
+      "question": "What is MongoDB GridFS?",
+      "options": [
+        "A distributed file system",
+        "A specification for storing large files by chunking them into smaller documents",
+        "A grid-based data structure",
+        "A geographic data format"
+      ],
+      "correct": 1,
+      "explanation": "GridFS stores large files by splitting them into chunks (default 255KB) stored as documents, plus a metadata document. This bypasses the 16MB limit. Use for files that don't fit in documents: videos, large PDFs. For most cases, blob storage (S3) is simpler."
+    },
+    {
+      "id": "doc-074",
+      "type": "multi-select",
+      "question": "When should you consider alternatives to GridFS for file storage?",
+      "options": [
+        "Files are very large (GB+)",
+        "Files need CDN distribution",
+        "Files need direct HTTP access",
+        "Files are small (<1MB) and always read with document"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "For large files, CDN needs, or direct HTTP access, blob storage (S3, GCS) is typically better than GridFS. GridFS is MongoDB-specific and adds complexity. Small files read with documents can embed directly. GridFS is a middle ground, but rarely the best choice now."
+    },
+    {
+      "id": "doc-075",
+      "type": "multiple-choice",
+      "question": "What is Amazon DocumentDB?",
+      "options": [
+        "MongoDB running on AWS",
+        "An AWS-managed database with MongoDB-compatible API, but different implementation",
+        "A document storage service like S3",
+        "A MongoDB plugin"
+      ],
+      "correct": 1,
+      "explanation": "Amazon DocumentDB is AWS-managed and MongoDB-compatible (implements the API), but it's not MongoDB — it uses a different engine. Good for AWS-native deployments. Some MongoDB features aren't supported. Check compatibility for your use case."
+    },
+    {
+      "id": "doc-076",
+      "type": "ordering",
+      "question": "Rank these storage approaches for a social media app's user posts from most read-optimized to most write-optimized:",
+      "items": ["Embed all posts in user document", "Reference posts in separate collection", "Hybrid: embed recent 10, reference older", "Store in a relational database with JOINs"],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Full embedding is most read-optimized (one fetch). Hybrid balances recent reads (fast) with unlimited posts. Relational JOINs are efficient for complex queries but add overhead. Pure referencing is most write-optimized (no document updates on new posts) but requires multiple fetches."
+    },
+    {
+      "id": "doc-077",
+      "type": "multiple-choice",
+      "question": "What is the 'attribute pattern' in document modeling?",
+      "options": [
+        "Using attributes instead of fields",
+        "Storing a set of key-value pairs in an array when fields are numerous and sparse",
+        "Adding attributes to collections",
+        "Tagging documents with attributes"
+      ],
+      "correct": 1,
+      "explanation": "The attribute pattern stores varied properties as an array: specs: [{k: 'color', v: 'red'}, {k: 'size', v: 'large'}]. Useful when products have many different properties. Enables indexing all attributes together and querying by key-value pairs."
+    },
+    {
+      "id": "doc-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Products have many optional specifications: color, size, weight, power, etc. Different products have different specs. How would you model this in MongoDB?",
+          "options": [
+            "Separate field for each possible spec (lots of nulls)",
+            "specs: {color: 'red', size: 'L'} — object with variable keys",
+            "specs: [{key: 'color', value: 'red'}, ...] — array of key-value pairs",
+            "Either object or array approach works, with trade-offs"
+          ],
+          "correct": 3,
+          "explanation": "Object style is simpler for access (product.specs.color). Array style is better for indexing all specs uniformly and querying 'any spec equals X'. Choose based on query patterns. The attribute pattern (array) is better for search; object is better for specific field access."
+        },
+        {
+          "question": "You need to find all products where any spec equals 'waterproof'. Which model makes this easier?",
+          "options": [
+            "Object style: specs: {key: value}",
+            "Array style: specs: [{k, v}, ...]",
+            "They're equally easy",
+            "Neither — you need a separate specs collection"
+          ],
+          "correct": 1,
+          "explanation": "Array style: create an index on specs.v and query {specs: {$elemMatch: {v: 'waterproof'}}}. Object style would require knowing which key is 'waterproof' (color? material?) — you can't easily query 'any value equals X' when keys vary."
+        }
+      ]
+    },
+    {
+      "id": "doc-079",
+      "type": "multiple-choice",
+      "question": "What is the primary trade-off between document and relational databases for complex queries?",
+      "options": [
+        "Document databases can't do complex queries at all",
+        "Relational databases optimize for ad-hoc JOINs; documents optimize for pre-modeled access patterns",
+        "They're equally capable",
+        "Document databases are always faster"
+      ],
+      "correct": 1,
+      "explanation": "Relational databases excel at ad-hoc queries: JOIN any tables, GROUP BY any way. Document databases optimize for known access patterns (embed what you read together). If your queries change frequently, relational is more flexible. If patterns are stable, documents can be faster."
+    },
+    {
+      "id": "doc-080",
+      "type": "multi-select",
+      "question": "Which are signs that a document database is a good fit?",
+      "options": [
+        "Data has natural hierarchical structure",
+        "Schema varies between records",
+        "Most queries fetch entire documents, not JOINs across many tables",
+        "Complex reporting with many ad-hoc GROUP BYs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Documents work well for: hierarchical data (naturally nests), schema variation (flexible), document-centric reads (one fetch). Complex reporting with GROUP BY and JOINs is SQL's strength — consider a relational database or data warehouse."
+    },
+    {
+      "id": "doc-081",
+      "type": "multiple-choice",
+      "question": "What is MongoDB Atlas?",
+      "options": [
+        "A mapping library",
+        "MongoDB's managed cloud database service",
+        "A schema design tool",
+        "An on-premise MongoDB distribution"
+      ],
+      "correct": 1,
+      "explanation": "MongoDB Atlas is the official managed MongoDB cloud service. It handles provisioning, replication, backups, monitoring, and scaling. Available on AWS, GCP, Azure. For production workloads, Atlas is easier than self-managing MongoDB."
+    },
+    {
+      "id": "doc-082",
+      "type": "multiple-choice",
+      "question": "What is the 'approximation pattern' in document modeling?",
+      "options": [
+        "Using approximate data types",
+        "Storing approximate counts/aggregates updated periodically rather than exact values",
+        "Approximating query results",
+        "Using fuzzy matching"
+      ],
+      "correct": 1,
+      "explanation": "The approximation pattern avoids expensive real-time counting. Instead of COUNT(*) on every read, maintain an approximate count updated periodically or on each Nth write. Example: page view counter updated every 100 views. Trade-off: eventual accuracy for performance."
+    },
+    {
+      "id": "doc-083",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A blog post shows 'like count.' Updating the post document for every like causes write contention. What's a better approach?",
+          "options": [
+            "Don't show like counts",
+            "Increment the count every 10th like, or update periodically",
+            "Use a separate likes collection and COUNT(*) on every read",
+            "Cache the count forever"
+          ],
+          "correct": 1,
+          "explanation": "The approximation pattern: increment every Nth like, or use a separate counter service that batches updates. Users see slightly stale counts (indistinguishable at scale), but write contention is dramatically reduced."
+        },
+        {
+          "question": "If exact counts matter (e.g., voting where every vote counts), what's the approach?",
+          "options": [
+            "Approximation is fine for voting too",
+            "Store individual votes in a collection, compute count atomically when needed",
+            "Use a relational database",
+            "Accept some lost votes"
+          ],
+          "correct": 1,
+          "explanation": "For exact counts, store individual votes (separate collection or array). The count is derived from the data, not a potentially-stale approximation. Use aggregation to count, or increment a counter transactionally with the vote insert."
+        }
+      ]
+    },
+    {
+      "id": "doc-084",
+      "type": "multiple-choice",
+      "question": "What is the 'pre-allocation pattern'?",
+      "options": [
+        "Pre-allocating storage space",
+        "Pre-creating document structure to avoid document growth and migration",
+        "Allocating memory upfront",
+        "Pre-reserving IDs"
+      ],
+      "correct": 1,
+      "explanation": "Pre-allocation creates the full document structure upfront with placeholder values. In older MongoDB, documents grew and moved on disk. Pre-allocation avoided moves. Less relevant in modern WiredTiger storage, but can still help with fixed-size bucketing patterns."
+    },
+    {
+      "id": "doc-085",
+      "type": "multiple-choice",
+      "question": "What is the WiredTiger storage engine in MongoDB?",
+      "options": [
+        "The old deprecated engine",
+        "The default storage engine since MongoDB 3.2, with document-level locking and compression",
+        "A tiger mascot",
+        "A query engine"
+      ],
+      "correct": 1,
+      "explanation": "WiredTiger is MongoDB's default storage engine since 3.2. It provides document-level concurrency control (finer than old collection-level), compression, and better performance for modern workloads. It replaced the older MMAPv1 engine."
+    },
+    {
+      "id": "doc-086",
+      "type": "multi-select",
+      "question": "What are advantages of WiredTiger over the old MMAPv1?",
+      "options": [
+        "Document-level locking (vs. collection-level)",
+        "Built-in compression",
+        "No journal required",
+        "Better cache management"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "WiredTiger improved locking granularity (document vs. collection), added compression (snappy, zlib, zstd), and has more efficient cache management. It still uses journaling for durability — that's not eliminated, just more efficient."
+    },
+    {
+      "id": "doc-087",
+      "type": "multiple-choice",
+      "question": "What is a capped collection in MongoDB?",
+      "options": [
+        "A collection with a maximum document count or size that automatically removes oldest documents",
+        "A read-only collection",
+        "A collection with a cap on field size",
+        "A collection with encryption"
+      ],
+      "correct": 0,
+      "explanation": "Capped collections have a fixed size or count. When full, oldest documents are removed automatically (FIFO). Useful for logs, queues, recent activity. Operations are fast because no deletions are needed — it's a circular buffer. Documents can't be deleted or resized."
+    },
+    {
+      "id": "doc-088",
+      "type": "multiple-choice",
+      "question": "When would you use a capped collection?",
+      "options": [
+        "For any collection",
+        "When you want automatic old data deletion and FIFO access, like logs or recent events",
+        "When you need maximum flexibility",
+        "For transactional data"
+      ],
+      "correct": 1,
+      "explanation": "Capped collections are ideal for: logs (keep recent, auto-expire old), activity feeds (show last N), caches (fixed size, auto-eviction). Limitations: can't delete individual documents, can't grow documents. For transactional or permanent data, use regular collections."
+    },
+    {
+      "id": "doc-089",
+      "type": "ordering",
+      "question": "Rank these document database features from most to least important for a typical e-commerce catalog:",
+      "items": ["Schema flexibility for varied product types", "Real-time sync to mobile", "Multi-document transactions", "Horizontal scaling (sharding)"],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "Schema flexibility is key — products vary widely. Sharding matters for scale. Transactions are nice for inventory management but often worked around. Real-time sync to mobile is less critical for a catalog (vs. a chat app). Priorities vary by use case."
+    },
+    {
+      "id": "doc-090",
+      "type": "multiple-choice",
+      "question": "What is the difference between updateOne and replaceOne in MongoDB?",
+      "options": [
+        "They're the same",
+        "updateOne modifies specific fields; replaceOne replaces the entire document",
+        "updateOne is for one document; replaceOne is for multiple",
+        "replaceOne is deprecated"
+      ],
+      "correct": 1,
+      "explanation": "updateOne uses update operators ($set, $inc, etc.) to modify specific fields. replaceOne replaces the entire document (except _id) with the provided document. Use updateOne for partial updates; replaceOne when you have the full new document."
+    },
+    {
+      "id": "doc-091",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to increment a 'viewCount' field by 1 atomically. Which operation?",
+          "options": [
+            "Find the document, add 1, save it back",
+            "updateOne with $inc: {viewCount: 1}",
+            "replaceOne with the new viewCount",
+            "Insert a new document"
+          ],
+          "correct": 1,
+          "explanation": "$inc is an atomic operator: updateOne({_id: id}, {$inc: {viewCount: 1}}). This is atomic — no race conditions from read-modify-write. Find-modify-save risks lost updates if concurrent writes occur."
+        },
+        {
+          "question": "You want to add a tag to a tags array if it doesn't already exist. Which operator?",
+          "options": [
+            "$push — adds even if it exists",
+            "$addToSet — adds only if not present",
+            "$append — adds to end",
+            "$insertUnique — inserts unique values"
+          ],
+          "correct": 1,
+          "explanation": "$addToSet adds a value to an array only if it's not already present. Perfect for tags, followers, etc. $push always appends (allowing duplicates). No $append or $insertUnique operators exist in MongoDB."
+        }
+      ]
+    },
+    {
+      "id": "doc-092",
+      "type": "multiple-choice",
+      "question": "What does $unset do in a MongoDB update?",
+      "options": [
+        "Sets a field to null",
+        "Removes a field from the document entirely",
+        "Unsets a variable",
+        "Clears an array"
+      ],
+      "correct": 1,
+      "explanation": "$unset removes a field from the document: {$unset: {legacyField: ''}}. The value (empty string) is ignored — just the field name matters. The field is completely removed, not set to null. Useful for schema cleanup and evolution."
+    },
+    {
+      "id": "doc-093",
+      "type": "multi-select",
+      "question": "Which are valid MongoDB update operators?",
+      "options": ["$set (set a field)", "$push (add to array)", "$rename (rename a field)", "$delete (delete document)"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "$set, $push, and $rename are update operators used within updateOne/updateMany. $delete is not an operator — you delete documents with deleteOne/deleteMany. Other operators include $inc, $unset, $pull, $addToSet."
+    },
+    {
+      "id": "doc-094",
+      "type": "multiple-choice",
+      "question": "What is a compound index in MongoDB?",
+      "options": [
+        "An index stored in multiple locations",
+        "An index on multiple fields, useful for queries filtering or sorting by those fields together",
+        "A chemically-bonded index",
+        "An index on embedded documents only"
+      ],
+      "correct": 1,
+      "explanation": "A compound index covers multiple fields: createIndex({status: 1, createdAt: -1}). It supports queries filtering by status, or by status + createdAt, or sorting by status then createdAt. Field order matters — queries must match a prefix."
+    },
+    {
+      "id": "doc-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You create a compound index on {a: 1, b: 1, c: 1}. Which queries can use this index efficiently?",
+          "options": [
+            "Queries on a, ab, or abc — prefixes only",
+            "Any combination: a, b, c, ab, bc, ac, abc",
+            "Only queries on all three: abc",
+            "Only the exact match on {a: 1, b: 1, c: 1}"
+          ],
+          "correct": 0,
+          "explanation": "Compound indexes support prefix queries: {a} ✓, {a, b} ✓, {a, b, c} ✓. Non-prefix queries ({b}, {c}, {b, c}) can't use this index efficiently — they'd require a different index or a full scan."
+        },
+        {
+          "question": "A query filters {b: X, c: Y} — fields b and c but not a. Will the compound index {a, b, c} help?",
+          "options": [
+            "Yes — b and c are in the index",
+            "Partially — the index can be scanned but not seeked",
+            "No — the query doesn't include the first field (a)",
+            "Only for sorting, not filtering"
+          ],
+          "correct": 2,
+          "explanation": "Without the prefix field 'a', the compound index {a, b, c} is not useful. The index is organized by 'a' first — to find documents with specific 'b' and 'c', you'd need to scan all 'a' values. Create a separate index on {b, c}."
+        }
+      ]
+    },
+    {
+      "id": "doc-096",
+      "type": "multiple-choice",
+      "question": "What is 'explain' in MongoDB?",
+      "options": [
+        "A command that explains MongoDB features",
+        "A method that shows query execution plan, index usage, and statistics",
+        "Documentation generator",
+        "An error explanation"
+      ],
+      "correct": 1,
+      "explanation": "The explain method shows how MongoDB executes a query: which indexes it uses (or if it's a collection scan), how many documents it examines vs. returns, execution stages. Essential for debugging slow queries. Usage: db.collection.find(...).explain('executionStats')."
+    },
+    {
+      "id": "doc-097",
+      "type": "multiple-choice",
+      "question": "You see 'COLLSCAN' in explain output. What does this mean?",
+      "options": [
+        "The query used a collection-level lock",
+        "MongoDB scanned the entire collection (no index used)",
+        "The collection was scanned for corruption",
+        "A collision occurred in the index"
+      ],
+      "correct": 1,
+      "explanation": "COLLSCAN means a full collection scan — every document was read to find matches. This is slow for large collections. 'IXSCAN' means an index was used. If you see COLLSCAN for a selective query on a large collection, add an index."
+    },
+    {
+      "id": "doc-098",
+      "type": "multi-select",
+      "question": "When is COLLSCAN acceptable?",
+      "options": [
+        "Very small collections where an index adds overhead without benefit",
+        "Queries that return most of the collection anyway",
+        "One-time or rare analytical queries",
+        "High-throughput production queries on large collections"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "COLLSCAN is fine for: tiny collections (index overhead exceeds scan cost), queries returning 80%+ of documents (index helps little), rare analytics (not worth maintaining an index). It's not acceptable for frequent production queries on large collections."
+    },
+    {
+      "id": "doc-099",
+      "type": "ordering",
+      "question": "Rank these from most common document database use case to least:",
+      "items": ["Content management / catalogs", "Session storage", "Banking ledgers", "Mobile app sync"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Content/catalogs are the classic document use case (varied structure). Sessions are common (simple, TTL-friendly). Mobile sync (Firestore/Couchbase) is growing. Banking ledgers typically need ACID transactions — relational is usually preferred, though MongoDB 4.0+ can work."
+    },
+    {
+      "id": "doc-100",
+      "type": "multiple-choice",
+      "question": "What is the most important consideration when choosing between a document database and a relational database?",
+      "options": [
+        "Document databases are always faster",
+        "Your data access patterns — documents for hierarchical reads, relational for flexible JOINs",
+        "Relational databases can't scale",
+        "Document databases have better tooling"
+      ],
+      "correct": 1,
+      "explanation": "The key is access patterns. If you read/write self-contained units (user profiles, products), documents excel. If you need flexible ad-hoc queries with JOINs across entities, relational is better. Neither is universally faster or more scalable — it depends on your specific use case."
+    }
+  ]
+}
