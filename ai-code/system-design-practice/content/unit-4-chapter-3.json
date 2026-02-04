@@ -1,0 +1,1554 @@
+{
+  "unit": 4,
+  "unitTitle": "Storage Selection",
+  "chapter": 3,
+  "chapterTitle": "Key-Value Stores",
+  "chapterDescription": "Simple lookups, high throughput, and when to use Redis, DynamoDB, or Memcached.",
+  "problems": [
+    {
+      "id": "kv-001",
+      "type": "multiple-choice",
+      "question": "What is the fundamental operation model of a key-value store?",
+      "options": [
+        "SQL queries",
+        "Get, Set, Delete by key — O(1) lookups",
+        "Graph traversals",
+        "Document queries with filters"
+      ],
+      "correct": 1,
+      "explanation": "Key-value stores provide simple operations: GET(key) → value, SET(key, value), DELETE(key). Lookups are O(1) hash-based. This simplicity enables extremely high performance but limits query flexibility."
+    },
+    {
+      "id": "kv-002",
+      "type": "multi-select",
+      "question": "Which are key-value stores?",
+      "options": ["Redis", "DynamoDB", "PostgreSQL", "Memcached"],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Redis, DynamoDB, and Memcached are key-value stores. PostgreSQL is a relational database. While DynamoDB supports more than basic key-value (with sort keys and secondary indexes), it's fundamentally key-value oriented."
+    },
+    {
+      "id": "kv-003",
+      "type": "multiple-choice",
+      "question": "What is the primary advantage of key-value stores over relational databases?",
+      "options": [
+        "Support for complex JOINs",
+        "Sub-millisecond latency for simple lookups and horizontal scaling",
+        "ACID transactions",
+        "Flexible schema queries"
+      ],
+      "correct": 1,
+      "explanation": "Key-value stores excel at speed and scale. Simple operations (GET/SET) on a hash table are extremely fast — often sub-millisecond. Horizontal scaling is easier because data partitions by key. They sacrifice query flexibility for performance."
+    },
+    {
+      "id": "kv-004",
+      "type": "multiple-choice",
+      "question": "What is Redis?",
+      "options": [
+        "A relational database",
+        "An in-memory data structure store with optional persistence",
+        "A message queue only",
+        "A distributed file system"
+      ],
+      "correct": 1,
+      "explanation": "Redis is an in-memory data structure store. It's primarily used as a cache, session store, and real-time data store. Unlike simple key-value stores, Redis supports rich data structures (lists, sets, hashes, sorted sets)."
+    },
+    {
+      "id": "kv-005",
+      "type": "multi-select",
+      "question": "What data structures does Redis support?",
+      "options": ["Strings", "Lists", "Sets and Sorted Sets", "Hashes (field-value maps)"],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Redis supports: strings (basic key-value), lists (queues), sets (unique collections), sorted sets (ranked data like leaderboards), hashes (field-value maps for objects). This makes Redis more than a simple key-value store."
+    },
+    {
+      "id": "kv-006",
+      "type": "multiple-choice",
+      "question": "What is a Redis hash?",
+      "options": [
+        "A cryptographic hash of data",
+        "A key that maps to field-value pairs, like a mini object",
+        "A hash table index",
+        "An encrypted key"
+      ],
+      "correct": 1,
+      "explanation": "Redis hashes store field-value pairs under a single key: HSET user:123 name 'Alice' email 'a@b.com'. They're efficient for objects — you can get/set individual fields without fetching the entire object. Memory-efficient compared to many string keys."
+    },
+    {
+      "id": "kv-007",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to store user session data: user_id, name, email, last_active. Which Redis data structure is most appropriate?",
+          "options": [
+            "String (JSON serialized)",
+            "Hash (field-value pairs)",
+            "List",
+            "Set"
+          ],
+          "correct": 1,
+          "explanation": "A hash is ideal: HSET session:abc123 user_id 42 name 'Alice' email '...' last_active 1234567890. You can update individual fields (HSET session:abc123 last_active ...) without reading and rewriting the entire session."
+        },
+        {
+          "question": "You want the session to expire after 30 minutes of inactivity. How do you implement this?",
+          "options": [
+            "Delete it manually",
+            "Use EXPIRE to set a TTL, reset it on each activity",
+            "Store the expiration time in a field",
+            "Redis doesn't support expiration"
+          ],
+          "correct": 1,
+          "explanation": "Use EXPIRE session:abc123 1800 (30 minutes in seconds). On each user activity, call EXPIRE again to reset the countdown. Redis automatically deletes expired keys. This is the standard session expiration pattern."
+        }
+      ]
+    },
+    {
+      "id": "kv-008",
+      "type": "multiple-choice",
+      "question": "What is a Redis sorted set?",
+      "options": [
+        "A set that's automatically sorted alphabetically",
+        "A set where each member has a score, enabling ranked retrieval",
+        "A sorted list",
+        "A set with timestamps"
+      ],
+      "correct": 1,
+      "explanation": "Sorted sets (ZSET) associate a score with each member. Members are unique; scores can repeat. You can query by rank (ZRANGE), by score range, or get a member's rank. Perfect for leaderboards, rate limiting windows, priority queues."
+    },
+    {
+      "id": "kv-009",
+      "type": "multiple-choice",
+      "question": "You're building a real-time leaderboard showing top 10 players by score. Which Redis data structure?",
+      "options": [
+        "List — store top 10",
+        "Sorted Set — scores are ranks, get top N efficiently",
+        "Hash — one field per player",
+        "String — JSON array"
+      ],
+      "correct": 1,
+      "explanation": "Sorted sets are perfect: ZADD leaderboard 1000 'player:1' 1500 'player:2'. Get top 10 with ZREVRANGE leaderboard 0 9 WITHSCORES. Updates are O(log N); rank queries are O(log N). Much more efficient than re-sorting a list."
+    },
+    {
+      "id": "kv-010",
+      "type": "multi-select",
+      "question": "What are common use cases for Redis sorted sets?",
+      "options": [
+        "Leaderboards and rankings",
+        "Rate limiting with sliding windows",
+        "Priority queues",
+        "Simple key-value caching"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Sorted sets excel at: leaderboards (rank by score), rate limiting (score = timestamp, remove old entries), priority queues (score = priority, pop lowest). Simple caching uses strings — sorted sets are for ranked or time-windowed data."
+    },
+    {
+      "id": "kv-011",
+      "type": "multiple-choice",
+      "question": "What is a Redis list?",
+      "options": [
+        "A list of Redis servers",
+        "A linked list supporting push/pop from both ends — useful for queues",
+        "A sorted list",
+        "A list of keys matching a pattern"
+      ],
+      "correct": 1,
+      "explanation": "Redis lists are linked lists. LPUSH/RPUSH add to left/right ends; LPOP/RPOP remove. This makes them ideal for queues (RPUSH to enqueue, LPOP to dequeue) or stacks. Blocking operations (BLPOP) enable consumer patterns."
+    },
+    {
+      "id": "kv-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need a simple job queue: producers add jobs, workers consume them. Which Redis data structure?",
+          "options": [
+            "String",
+            "List — RPUSH to add, BLPOP to consume",
+            "Hash",
+            "Set"
+          ],
+          "correct": 1,
+          "explanation": "Use a list: producers RPUSH jobs '{...job data...}'. Workers BLPOP jobs 0 (blocking pop with infinite timeout) — blocks until a job is available, then returns and removes it. Simple, reliable queue pattern."
+        },
+        {
+          "question": "A worker pops a job but crashes before completing it. The job is lost. How do you make this reliable?",
+          "options": [
+            "Use non-blocking pop",
+            "Use RPOPLPUSH to move jobs to a 'processing' list; delete from processing on completion",
+            "Store jobs in PostgreSQL",
+            "Increase Redis persistence frequency"
+          ],
+          "correct": 1,
+          "explanation": "RPOPLPUSH (or BRPOPLPUSH for blocking) atomically moves the job to a processing list. If the worker completes, it removes from processing. If it crashes, a monitor can move stale jobs back to the queue. This is the reliable queue pattern."
+        }
+      ]
+    },
+    {
+      "id": "kv-013",
+      "type": "multiple-choice",
+      "question": "What is BLPOP in Redis?",
+      "options": [
+        "Block list pop — blocks until an element is available or timeout",
+        "Bulk pop — pops multiple elements",
+        "Backup list pop",
+        "Boolean list pop"
+      ],
+      "correct": 0,
+      "explanation": "BLPOP is blocking left pop: the client blocks (waits) until an element is available in the list or timeout expires. Perfect for worker processes consuming from a queue — they sleep until work arrives, avoiding polling."
+    },
+    {
+      "id": "kv-014",
+      "type": "multiple-choice",
+      "question": "What is the difference between Redis sets and sorted sets?",
+      "options": [
+        "Sets are ordered; sorted sets are unordered",
+        "Sets are unordered unique collections; sorted sets add a score for ranking",
+        "Sets support strings only; sorted sets support any type",
+        "They're the same"
+      ],
+      "correct": 1,
+      "explanation": "Sets (SET) are unordered collections of unique strings. Sorted sets (ZSET) add a score to each member, enabling queries by rank or score range. Use sets for membership tests; sorted sets when ordering/ranking matters."
+    },
+    {
+      "id": "kv-015",
+      "type": "multi-select",
+      "question": "What operations can you perform on Redis sets?",
+      "options": [
+        "SADD — add members",
+        "SISMEMBER — check membership",
+        "SINTER — intersection of sets",
+        "ZRANK — get rank by score"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "SADD adds, SISMEMBER tests membership (O(1)), SINTER computes intersection. ZRANK is for sorted sets, not regular sets. Sets also support union (SUNION), difference (SDIFF), and random member (SRANDMEMBER)."
+    },
+    {
+      "id": "kv-016",
+      "type": "multiple-choice",
+      "question": "What is Redis pub/sub?",
+      "options": [
+        "Publishing data to a database",
+        "A messaging pattern where publishers send to channels and subscribers receive",
+        "Public/subscription pricing",
+        "A persistence mode"
+      ],
+      "correct": 1,
+      "explanation": "Redis pub/sub enables real-time messaging. Publishers PUBLISH to channels; subscribers SUBSCRIBE to channels and receive messages. It's fire-and-forget — if no subscriber is listening, the message is lost. Good for real-time notifications, not reliable queuing."
+    },
+    {
+      "id": "kv-017",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to broadcast events to multiple subscribers in real-time. Is Redis pub/sub suitable?",
+          "options": [
+            "Yes — it's designed for this: publish once, deliver to all subscribers",
+            "No — Redis can only do point-to-point messaging",
+            "Yes — but only for 2 subscribers",
+            "No — Redis doesn't support messaging"
+          ],
+          "correct": 0,
+          "explanation": "Redis pub/sub is perfect for fan-out: one publish, many subscribers receive. Each subscriber gets the message. It's used for real-time notifications, cache invalidation broadcasts, and live updates."
+        },
+        {
+          "question": "A subscriber disconnects briefly and misses messages. What happens?",
+          "options": [
+            "Redis queues messages for when they reconnect",
+            "Messages are lost — pub/sub is fire-and-forget",
+            "Redis retries delivery",
+            "The publisher is notified"
+          ],
+          "correct": 1,
+          "explanation": "Redis pub/sub doesn't persist messages. If no subscriber is listening, the message is gone. For reliable delivery, use Redis Streams or a proper message queue (RabbitMQ, Kafka). Pub/sub is for real-time, not guaranteed delivery."
+        }
+      ]
+    },
+    {
+      "id": "kv-018",
+      "type": "multiple-choice",
+      "question": "What are Redis Streams?",
+      "options": [
+        "Network streams for data transfer",
+        "A log-like data structure with consumer groups for reliable message processing",
+        "Streaming data to disk",
+        "Live video streams"
+      ],
+      "correct": 1,
+      "explanation": "Redis Streams (5.0+) are append-only logs with consumer groups. Unlike pub/sub, messages persist. Consumer groups track acknowledgments — if a consumer crashes, another can take over. Think lightweight Kafka."
+    },
+    {
+      "id": "kv-019",
+      "type": "multi-select",
+      "question": "What advantages do Redis Streams have over pub/sub?",
+      "options": [
+        "Message persistence — messages aren't lost if no subscriber",
+        "Consumer groups — track what each consumer has processed",
+        "Acknowledgments — confirm message processing",
+        "Simpler API"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Streams provide: persistence (messages are stored), consumer groups (distributed processing), and acknowledgments (at-least-once delivery). The API is more complex than pub/sub, but reliability is much better."
+    },
+    {
+      "id": "kv-020",
+      "type": "multiple-choice",
+      "question": "What is Redis persistence and why might you want it?",
+      "options": [
+        "Redis doesn't support persistence",
+        "Saving data to disk so it survives restarts — important for data durability",
+        "Keeping connections open",
+        "Maintaining state between commands"
+      ],
+      "correct": 1,
+      "explanation": "Redis is in-memory by default. Persistence options (RDB snapshots, AOF logs) write data to disk. Without persistence, a restart loses all data. Enable persistence if Redis stores authoritative data, not just a cache of data stored elsewhere."
+    },
+    {
+      "id": "kv-021",
+      "type": "multiple-choice",
+      "question": "What is RDB persistence in Redis?",
+      "options": [
+        "Relational database backup",
+        "Point-in-time snapshots of the dataset, saved periodically",
+        "Real-time data backup",
+        "Remote database sync"
+      ],
+      "correct": 1,
+      "explanation": "RDB (Redis Database) creates point-in-time snapshots. Configured like 'save 900 1' (snapshot if 1+ key changed in 900 seconds). Fast recovery (load the snapshot), but you can lose data since the last snapshot on crash."
+    },
+    {
+      "id": "kv-022",
+      "type": "multiple-choice",
+      "question": "What is AOF persistence in Redis?",
+      "options": [
+        "Append-Only File — logs every write operation for replay on restart",
+        "Always On Failover",
+        "Automatic Overwrite Format",
+        "A compression algorithm"
+      ],
+      "correct": 0,
+      "explanation": "AOF logs each write command to a file. On restart, Redis replays the log to rebuild state. More durable than RDB (can sync every write), but slower recovery and larger files. Can be compacted (rewritten) to reduce size."
+    },
+    {
+      "id": "kv-023",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You use Redis as a cache for data stored in PostgreSQL. If Redis loses data on crash, you can repopulate from PostgreSQL. Which persistence mode?",
+          "options": [
+            "AOF with fsync every write",
+            "No persistence — it's just a cache",
+            "RDB snapshots",
+            "Both AOF and RDB"
+          ],
+          "correct": 1,
+          "explanation": "For a pure cache, no persistence is needed — the source of truth is PostgreSQL. If Redis restarts, it starts empty and cache misses repopulate it. This is simpler and faster. Persistence adds I/O overhead for no benefit."
+        },
+        {
+          "question": "Now Redis stores session data — losing sessions logs users out. Which persistence mode?",
+          "options": [
+            "No persistence",
+            "AOF with frequent fsync — sessions are important",
+            "RDB only — snapshots are sufficient",
+            "Store sessions elsewhere — Redis is only for caching"
+          ],
+          "correct": 1,
+          "explanation": "Sessions are authoritative data — losing them has user impact. AOF with appendfsync everysec (or always for max durability) minimizes data loss. RDB alone could lose minutes of sessions. Alternatively, use a replicated Redis setup for HA."
+        }
+      ]
+    },
+    {
+      "id": "kv-024",
+      "type": "multi-select",
+      "question": "What are disadvantages of Redis AOF persistence?",
+      "options": [
+        "Larger files than RDB snapshots",
+        "Slower recovery (replay all operations)",
+        "Higher I/O overhead during operation",
+        "Doesn't support all Redis commands"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "AOF files grow large (log of all operations), recovery is slower (replay vs. load snapshot), and writes incur I/O. All commands are supported. AOF rewriting compacts the file but adds processing. Trade-off: durability vs. performance."
+    },
+    {
+      "id": "kv-025",
+      "type": "multiple-choice",
+      "question": "What is Redis replication?",
+      "options": [
+        "Copying data to multiple Redis instances for HA and read scaling",
+        "Duplicating keys within a single instance",
+        "Backing up to S3",
+        "Copying data between databases"
+      ],
+      "correct": 0,
+      "explanation": "Redis replication streams changes from a primary to one or more replicas. Replicas serve reads, distributing load. If the primary fails, a replica can be promoted. Replication is asynchronous by default — replicas may lag slightly."
+    },
+    {
+      "id": "kv-026",
+      "type": "multiple-choice",
+      "question": "What is Redis Sentinel?",
+      "options": [
+        "A security feature",
+        "A system for monitoring Redis instances and automating failover",
+        "A rate limiter",
+        "A logging tool"
+      ],
+      "correct": 1,
+      "explanation": "Sentinel monitors Redis primary and replicas. If the primary fails, Sentinel orchestrates failover: promotes a replica to primary, reconfigures others. Clients ask Sentinel for the current primary. It provides high availability without manual intervention."
+    },
+    {
+      "id": "kv-027",
+      "type": "multiple-choice",
+      "question": "What is Redis Cluster?",
+      "options": [
+        "A cluster of Sentinel nodes",
+        "Automatic sharding across multiple Redis nodes for horizontal scaling",
+        "A clustering algorithm",
+        "Multiple Redis instances on one server"
+      ],
+      "correct": 1,
+      "explanation": "Redis Cluster shards data across multiple nodes. Keys are assigned to hash slots (0-16383), distributed among nodes. Each node handles a subset of slots. This enables horizontal scaling — more nodes = more memory and throughput."
+    },
+    {
+      "id": "kv-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your Redis instance has 64GB of data but your server has 64GB RAM, leaving little for the OS. What's the issue?",
+          "options": [
+            "No issue",
+            "Redis may run out of memory, crash, or trigger OOM killer",
+            "Redis will automatically compress data",
+            "Redis will spill to disk"
+          ],
+          "correct": 1,
+          "explanation": "Redis is in-memory — if data exceeds available RAM, bad things happen. The OOM killer might terminate Redis. Even before that, performance degrades as the OS swaps. Always have headroom; monitor memory usage; set maxmemory."
+        },
+        {
+          "question": "You set maxmemory 60gb. What happens when Redis reaches this limit?",
+          "options": [
+            "Redis crashes",
+            "Writes fail",
+            "It depends on the eviction policy — keys may be evicted or writes may fail",
+            "Redis automatically adds more nodes"
+          ],
+          "correct": 2,
+          "explanation": "The maxmemory-policy determines behavior: noeviction (writes fail), allkeys-lru (evict least-recently-used), volatile-lru (evict LRU among keys with TTL), etc. For caches, LRU eviction is typical. For authoritative data, noeviction prevents silent data loss."
+        }
+      ]
+    },
+    {
+      "id": "kv-029",
+      "type": "multi-select",
+      "question": "What are common Redis eviction policies?",
+      "options": [
+        "noeviction — return error when memory is full",
+        "allkeys-lru — evict least recently used keys",
+        "volatile-ttl — evict keys with shortest TTL",
+        "random-delete — delete random keys regardless of settings"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Redis supports: noeviction (error on full), allkeys-lru (LRU eviction from all keys), volatile-lru (LRU among keys with expire), volatile-ttl (shortest TTL first), and random variants. 'random-delete' isn't a real policy name."
+    },
+    {
+      "id": "kv-030",
+      "type": "multiple-choice",
+      "question": "What is Redis MULTI/EXEC?",
+      "options": [
+        "Multi-threading configuration",
+        "A way to execute multiple commands atomically as a transaction",
+        "Executing on multiple servers",
+        "Multiple key operations"
+      ],
+      "correct": 1,
+      "explanation": "MULTI starts a transaction; subsequent commands are queued. EXEC executes them atomically — no other client's commands interleave. Useful for read-modify-write patterns. Note: Redis transactions don't roll back on error; they're not like SQL transactions."
+    },
+    {
+      "id": "kv-031",
+      "type": "multiple-choice",
+      "question": "What is WATCH in Redis transactions?",
+      "options": [
+        "Monitoring Redis performance",
+        "Optimistic locking — the transaction fails if watched keys changed before EXEC",
+        "Watching for key expiration",
+        "Debugging transactions"
+      ],
+      "correct": 1,
+      "explanation": "WATCH provides optimistic locking: WATCH mykey, then MULTI/GET mykey/...modify.../EXEC. If another client changed mykey between WATCH and EXEC, EXEC returns null and nothing executes. Your code retries. This prevents lost updates."
+    },
+    {
+      "id": "kv-032",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to implement a distributed lock: only one process can hold the lock. Basic approach?",
+          "options": [
+            "SET lock:myresource owner NX EX 30 — set if not exists, with expiry",
+            "GET lock, if null then SET lock",
+            "Use a database lock",
+            "Locks aren't possible in Redis"
+          ],
+          "correct": 0,
+          "explanation": "SET with NX (only if not exists) and EX (expiry in seconds) is atomic. If the key exists, SET fails — another process has the lock. The TTL ensures locks don't persist forever if the holder crashes. This is the basic Redis lock pattern."
+        },
+        {
+          "question": "The lock holder crashes without releasing the lock. What happens?",
+          "options": [
+            "The lock is held forever",
+            "The lock expires after the TTL, allowing others to acquire it",
+            "Redis automatically detects the crash and releases",
+            "Other processes wait indefinitely"
+          ],
+          "correct": 1,
+          "explanation": "The TTL is a safety net: if the holder crashes, the key expires and others can acquire the lock. Choose TTL carefully: too short and the lock might expire during normal work; too long and recovery is slow. The holder should renew the lock if work takes longer."
+        }
+      ]
+    },
+    {
+      "id": "kv-033",
+      "type": "multiple-choice",
+      "question": "What is Redlock?",
+      "options": [
+        "A Redis lock command",
+        "A distributed locking algorithm using multiple independent Redis instances",
+        "A security feature",
+        "A Redis client library"
+      ],
+      "correct": 1,
+      "explanation": "Redlock is an algorithm for distributed locks using N independent Redis instances. You acquire the lock on a majority (N/2+1) of instances. This provides fault tolerance — if some Redis instances fail, the lock still works. More complex than single-instance locks."
+    },
+    {
+      "id": "kv-034",
+      "type": "multiple-choice",
+      "question": "What is Memcached?",
+      "options": [
+        "A Redis fork",
+        "A simple, high-performance in-memory key-value cache",
+        "A database",
+        "A memory management tool"
+      ],
+      "correct": 1,
+      "explanation": "Memcached is a simple in-memory key-value cache. Unlike Redis, it only stores strings (no data structures), has no persistence, and no replication. It's extremely fast and simple — sometimes that's all you need. Easy to shard with consistent hashing."
+    },
+    {
+      "id": "kv-035",
+      "type": "multi-select",
+      "question": "How does Memcached differ from Redis?",
+      "options": [
+        "Memcached only stores strings, Redis has rich data structures",
+        "Memcached has no persistence, Redis has optional persistence",
+        "Memcached has no replication, Redis supports replication",
+        "Memcached is faster for simple caching"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All correct: Memcached is simpler (strings only, no persistence, no replication) but often faster for pure caching due to lower overhead. Redis is more feature-rich. Use Memcached for simple caching; Redis when you need data structures or persistence."
+    },
+    {
+      "id": "kv-036",
+      "type": "multiple-choice",
+      "question": "When would you choose Memcached over Redis?",
+      "options": [
+        "When you need sorted sets",
+        "When you need simple, high-throughput caching with minimal features",
+        "When you need persistence",
+        "When you need pub/sub"
+      ],
+      "correct": 1,
+      "explanation": "Choose Memcached for simple caching: store/retrieve string values, nothing else. Its simplicity means less overhead and sometimes better raw performance. If you need data structures, persistence, or pub/sub, Redis is the better choice."
+    },
+    {
+      "id": "kv-037",
+      "type": "multiple-choice",
+      "question": "What is Amazon DynamoDB?",
+      "options": [
+        "A relational database",
+        "A fully managed NoSQL key-value and document database",
+        "An in-memory cache",
+        "A file storage service"
+      ],
+      "correct": 1,
+      "explanation": "DynamoDB is AWS's managed NoSQL database. It's primarily key-value (partition key + optional sort key) but supports document-like items with nested attributes. Fully managed: no servers, automatic scaling, built-in replication. Pay per request or provisioned capacity."
+    },
+    {
+      "id": "kv-038",
+      "type": "multi-select",
+      "question": "What are key features of DynamoDB?",
+      "options": [
+        "Fully managed — no servers to manage",
+        "Single-digit millisecond latency",
+        "Automatic scaling",
+        "Strong SQL query support"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "DynamoDB is fully managed, provides consistent single-digit ms latency, and scales automatically (on-demand mode) or via provisioned capacity. It doesn't support SQL — you query by key or use scans with filters. No JOINs."
+    },
+    {
+      "id": "kv-039",
+      "type": "multiple-choice",
+      "question": "What is a partition key in DynamoDB?",
+      "options": [
+        "A key that encrypts partitions",
+        "The primary identifier — DynamoDB uses it to determine which partition stores the item",
+        "A foreign key",
+        "An optional field"
+      ],
+      "correct": 1,
+      "explanation": "The partition key is the primary key (or part of it). DynamoDB hashes it to determine the storage partition. All items with the same partition key live together. Choosing a good partition key (high cardinality, even distribution) is critical for performance."
+    },
+    {
+      "id": "kv-040",
+      "type": "multiple-choice",
+      "question": "What is a sort key in DynamoDB?",
+      "options": [
+        "A key for sorting query results",
+        "An optional second part of the primary key, enabling range queries on items with the same partition key",
+        "An index for sorting",
+        "A timestamp"
+      ],
+      "correct": 1,
+      "explanation": "The sort key is optional. With a sort key, the primary key is composite: (partition_key, sort_key). Items with the same partition key are stored sorted by sort key. This enables range queries: all orders for user X between dates A and B."
+    },
+    {
+      "id": "kv-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're storing orders in DynamoDB. Each order has order_id, user_id, created_at, and items. What's a good primary key design for querying orders by user?",
+          "options": [
+            "Partition key: order_id only",
+            "Partition key: user_id, Sort key: created_at",
+            "Partition key: user_id, Sort key: order_id",
+            "Partition key: created_at"
+          ],
+          "correct": 1,
+          "explanation": "Partition key = user_id groups all orders by user. Sort key = created_at enables range queries: 'all orders for user X after date Y'. You can also get orders in chronological order. This matches common access patterns."
+        },
+        {
+          "question": "Now you also need to query orders by order_id directly (e.g., order details page). How?",
+          "options": [
+            "Scan the entire table",
+            "Create a Global Secondary Index (GSI) with order_id as partition key",
+            "Use the sort key",
+            "Store orders twice"
+          ],
+          "correct": 1,
+          "explanation": "A GSI creates an alternate 'view' with a different key. GSI partition key = order_id lets you query directly by order ID. DynamoDB automatically keeps the GSI in sync. You pay for GSI storage and write throughput."
+        }
+      ]
+    },
+    {
+      "id": "kv-042",
+      "type": "multiple-choice",
+      "question": "What is a Global Secondary Index (GSI) in DynamoDB?",
+      "options": [
+        "A worldwide index service",
+        "An index with a different partition and/or sort key than the base table",
+        "An index on global attributes",
+        "A security index"
+      ],
+      "correct": 1,
+      "explanation": "GSIs let you query by attributes other than the primary key. The GSI has its own partition key (and optional sort key), different from the table. DynamoDB automatically replicates data to the GSI. It's like having multiple access patterns on the same data."
+    },
+    {
+      "id": "kv-043",
+      "type": "multiple-choice",
+      "question": "What is a Local Secondary Index (LSI) in DynamoDB?",
+      "options": [
+        "An index stored locally on the client",
+        "An index with the same partition key as the table but a different sort key",
+        "A local cache",
+        "An index on local attributes only"
+      ],
+      "correct": 1,
+      "explanation": "LSIs share the table's partition key but have a different sort key. This lets you query the same partition by different sort attributes. LSIs must be created at table creation time and share the partition's 10GB limit. GSIs are more flexible."
+    },
+    {
+      "id": "kv-044",
+      "type": "multi-select",
+      "question": "What are differences between GSI and LSI in DynamoDB?",
+      "options": [
+        "GSI can have a different partition key; LSI shares the table's partition key",
+        "GSI can be created anytime; LSI must be created with the table",
+        "GSI has its own throughput capacity; LSI shares the table's",
+        "GSI is more expensive; LSI is free"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "GSIs are more flexible: different partition key, create anytime, separate capacity. LSIs are limited: same partition key, create at table creation, share capacity. LSIs aren't free — they consume storage and table capacity. GSIs are generally preferred."
+    },
+    {
+      "id": "kv-045",
+      "type": "multiple-choice",
+      "question": "What is 'single-table design' in DynamoDB?",
+      "options": [
+        "Using only one attribute per item",
+        "Storing all entity types in one table, using key prefixes to distinguish them",
+        "Having only one table in your account",
+        "A minimalist approach to databases"
+      ],
+      "correct": 1,
+      "explanation": "Single-table design puts all entities (users, orders, products) in one table with prefixed keys: PK='USER#123', PK='ORDER#456'. This enables efficient queries across entity types with GSIs and reduces the number of tables to manage. It's a DynamoDB best practice for complex apps."
+    },
+    {
+      "id": "kv-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "In single-table design, you have users and orders. Keys: User PK='USER#123', Order PK='USER#123' SK='ORDER#456'. What can you query efficiently?",
+          "options": [
+            "All orders for a user",
+            "A specific order by order_id",
+            "All users",
+            "Both A and B with the right query patterns"
+          ],
+          "correct": 0,
+          "explanation": "With PK='USER#123', you can query all items for that user (user record + their orders) and filter by SK prefix. To get an order by order_id alone, you need a GSI on order_id. The design supports 'get user and their orders' efficiently."
+        },
+        {
+          "question": "You need to query all orders across all users by created_at range. How?",
+          "options": [
+            "Scan the entire table with a filter",
+            "Create a GSI with entity_type as PK and created_at as SK",
+            "Use the primary table key",
+            "It's not possible in DynamoDB"
+          ],
+          "correct": 1,
+          "explanation": "Add a GSI: GSI_PK='ORDER' (all orders share this), GSI_SK=created_at. Now you can query all orders by date range. Single-table design often uses GSIs with 'type' partitions to enable cross-entity queries while keeping the main table optimized."
+        }
+      ]
+    },
+    {
+      "id": "kv-047",
+      "type": "multiple-choice",
+      "question": "What is DynamoDB's pricing model?",
+      "options": [
+        "Fixed monthly fee",
+        "Pay per read/write request (on-demand) or provision capacity units (provisioned mode)",
+        "Free tier only",
+        "Pay per GB stored only"
+      ],
+      "correct": 1,
+      "explanation": "Two modes: On-demand (pay per request, auto-scales) or Provisioned (set read/write capacity units, pay for reserved capacity). On-demand is simpler but can be expensive at high volumes. Provisioned is cheaper for predictable workloads. Storage is billed separately."
+    },
+    {
+      "id": "kv-048",
+      "type": "multiple-choice",
+      "question": "What is a 'hot partition' in DynamoDB?",
+      "options": [
+        "A partition with high temperature",
+        "A partition receiving disproportionately high traffic, potentially causing throttling",
+        "A recently created partition",
+        "A partition with hot data"
+      ],
+      "correct": 1,
+      "explanation": "If one partition key is queried/written much more than others, that partition becomes 'hot' and may exceed its throughput allocation, causing throttling. Even with auto-scaling, single-partition limits apply. Design keys to spread load evenly."
+    },
+    {
+      "id": "kv-049",
+      "type": "multi-select",
+      "question": "How do you avoid hot partitions in DynamoDB?",
+      "options": [
+        "Choose partition keys with high cardinality",
+        "Add random suffixes to low-cardinality keys (write sharding)",
+        "Use date as partition key for time-series data",
+        "Distribute load evenly across partition key values"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "High cardinality spreads data across partitions. Write sharding (appending random suffixes) spreads writes. Distributing load is the goal. Using date as partition key creates hot partitions — today's date gets all traffic. Add randomness or user_id to date keys."
+    },
+    {
+      "id": "kv-050",
+      "type": "multiple-choice",
+      "question": "What consistency levels does DynamoDB support for reads?",
+      "options": [
+        "Strong consistency only",
+        "Eventual consistency only",
+        "Eventually consistent (default) or strongly consistent reads",
+        "Linearizable reads only"
+      ],
+      "correct": 2,
+      "explanation": "DynamoDB defaults to eventually consistent reads (faster, half the capacity cost) but offers strongly consistent reads (guaranteed latest data, full capacity cost). Choose based on need: eventual for non-critical reads, strong when you need the latest data."
+    },
+    {
+      "id": "kv-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A user updates their profile, then immediately reads it. With eventual consistency, what might happen?",
+          "options": [
+            "They always see the update",
+            "They might see stale (pre-update) data",
+            "The read fails",
+            "They see a mix of old and new"
+          ],
+          "correct": 1,
+          "explanation": "Eventual consistency means replicas may not have the update yet. The read might hit a replica that hasn't received the write. Usually consistency is achieved within milliseconds, but there's a window where stale data is returned."
+        },
+        {
+          "question": "How do you ensure the user sees their own update immediately?",
+          "options": [
+            "Use eventual consistency with a retry",
+            "Use a strongly consistent read for that operation",
+            "Cache the update locally",
+            "Either strongly consistent read or local cache can work"
+          ],
+          "correct": 3,
+          "explanation": "Strongly consistent read guarantees the latest data. Alternatively, cache the update locally after write and display from cache — avoids the read entirely. For read-your-writes consistency, either approach works. Strong reads cost more but are simpler."
+        }
+      ]
+    },
+    {
+      "id": "kv-052",
+      "type": "multiple-choice",
+      "question": "What is DynamoDB Streams?",
+      "options": [
+        "Streaming video service",
+        "A feature that captures item changes and enables change data capture (CDC)",
+        "Network streaming to DynamoDB",
+        "Log streaming"
+      ],
+      "correct": 1,
+      "explanation": "DynamoDB Streams records item-level changes (insert, update, delete) in near-real-time. You can trigger Lambda functions on changes, replicate to other systems, or maintain materialized views. It's DynamoDB's change data capture mechanism."
+    },
+    {
+      "id": "kv-053",
+      "type": "multi-select",
+      "question": "What can you do with DynamoDB Streams?",
+      "options": [
+        "Trigger Lambda functions on data changes",
+        "Replicate data to other regions or systems",
+        "Build materialized views or denormalized copies",
+        "Run SQL queries on stream data"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Streams enable: Lambda triggers (process changes as they happen), replication (sync to other systems), materialized views (update aggregates on change). You can't run SQL on streams directly — you'd process events in Lambda or consume with Kinesis."
+    },
+    {
+      "id": "kv-054",
+      "type": "multiple-choice",
+      "question": "What is DynamoDB's transaction support?",
+      "options": [
+        "No transaction support",
+        "ACID transactions across multiple items and tables (TransactWriteItems, TransactGetItems)",
+        "Single-item transactions only",
+        "Eventually consistent transactions"
+      ],
+      "correct": 1,
+      "explanation": "DynamoDB supports ACID transactions since 2018. TransactWriteItems atomically writes up to 100 items; TransactGetItems reads up to 100 items consistently. Transactions cost 2x capacity units. Useful when you need all-or-nothing across items."
+    },
+    {
+      "id": "kv-055",
+      "type": "multiple-choice",
+      "question": "What is etcd?",
+      "options": [
+        "A Redis alternative",
+        "A distributed key-value store for configuration and service discovery, used by Kubernetes",
+        "An etc directory daemon",
+        "A time-series database"
+      ],
+      "correct": 1,
+      "explanation": "etcd is a distributed, strongly consistent key-value store. It uses Raft for consensus. Primary use: configuration, service discovery, leader election. Kubernetes uses etcd to store cluster state. It's not for high-throughput app data — it's for coordination."
+    },
+    {
+      "id": "kv-056",
+      "type": "multi-select",
+      "question": "What is etcd commonly used for?",
+      "options": [
+        "Kubernetes cluster state storage",
+        "Service discovery and configuration",
+        "Distributed locking and leader election",
+        "High-throughput web session storage"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "etcd is for coordination: Kubernetes state, config, service discovery, distributed locking. It's strongly consistent (Raft) but not designed for high throughput. For sessions, use Redis or DynamoDB. etcd handles small, critical data."
+    },
+    {
+      "id": "kv-057",
+      "type": "multiple-choice",
+      "question": "What is the difference between etcd and Redis?",
+      "options": [
+        "They're the same",
+        "etcd is strongly consistent (Raft); Redis prioritizes performance with async replication",
+        "Redis is for coordination; etcd is for caching",
+        "etcd only stores strings"
+      ],
+      "correct": 1,
+      "explanation": "etcd uses Raft consensus for strong consistency — all nodes agree before acknowledging writes. It's slower but safe for coordination. Redis uses async replication — faster but can lose recent writes on failover. Different tools for different jobs."
+    },
+    {
+      "id": "kv-058",
+      "type": "multiple-choice",
+      "question": "What is a common pattern for rate limiting using Redis?",
+      "options": [
+        "Store rate limits in PostgreSQL",
+        "Use sorted sets with timestamps as scores, or fixed window counters with INCR",
+        "Rate limiting isn't possible with Redis",
+        "Use Redis lists"
+      ],
+      "correct": 1,
+      "explanation": "Two patterns: (1) Fixed window: INCR key, check if > limit, SET expiry on first INCR. (2) Sliding window: sorted set with timestamps, ZREMRANGEBYSCORE old entries, ZCARD to count recent. Redis's atomic operations make rate limiting efficient."
+    },
+    {
+      "id": "kv-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Implement a simple rate limiter: 100 requests per minute per user. What Redis operations?",
+          "options": [
+            "For each request: INCR user:123:count, if first request SET EX 60, if count > 100 reject",
+            "Store all timestamps in a list",
+            "Use a database transaction",
+            "Use Redis pub/sub"
+          ],
+          "correct": 0,
+          "explanation": "Fixed window approach: INCR user:123:minute:202312011430 (key includes minute). INCR returns the new count. If it's the first request (count=1), EXPIRE 60 to auto-delete. If count > 100, reject. Key expires after the minute, resetting the window."
+        },
+        {
+          "question": "The fixed window approach has an edge case: 100 requests at 11:59:59 and 100 at 12:00:01 both pass (200 in 2 seconds). How to fix?",
+          "options": [
+            "Use a smaller window",
+            "Use sliding window with a sorted set",
+            "Accept the edge case",
+            "Use a database"
+          ],
+          "correct": 1,
+          "explanation": "Sliding window: ZADD user:123:requests <timestamp> <unique_id>, ZREMRANGEBYSCORE to remove entries > 60 seconds ago, ZCARD to count. This smooths the window — no edge case. More complex but accurate. Some implementations combine fixed + sliding."
+        }
+      ]
+    },
+    {
+      "id": "kv-060",
+      "type": "multiple-choice",
+      "question": "What is cache-aside (lazy loading) pattern?",
+      "options": [
+        "Caching only when cache is full",
+        "App checks cache first; on miss, loads from database and stores in cache",
+        "Cache loads all data on startup",
+        "Database automatically fills cache"
+      ],
+      "correct": 1,
+      "explanation": "Cache-aside: read from cache → on miss, read from DB, write to cache, return. Data is loaded into cache lazily (only when requested). This is the most common caching pattern. Trade-off: first request for each key is slow (cache miss)."
+    },
+    {
+      "id": "kv-061",
+      "type": "multi-select",
+      "question": "What are advantages of the cache-aside pattern?",
+      "options": [
+        "Only caches data that's actually accessed",
+        "Cache can fail without breaking the application",
+        "Cache is always in sync with database",
+        "Simple to implement"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Cache-aside only caches accessed data (efficient memory use), tolerates cache failure (falls back to DB), and is simple. The cache is NOT always in sync — updates to DB don't automatically update cache. You must invalidate/update cache on writes."
+    },
+    {
+      "id": "kv-062",
+      "type": "multiple-choice",
+      "question": "What is write-through caching?",
+      "options": [
+        "Writing directly to cache only",
+        "Writing to cache and database synchronously — cache is always consistent",
+        "Writing through cache to bypass it",
+        "Writing to database only"
+      ],
+      "correct": 1,
+      "explanation": "Write-through: on write, update both cache and database synchronously. Cache always reflects the database. Advantage: cache is always consistent. Disadvantage: every write hits both systems (slower writes), and you cache data that may never be read."
+    },
+    {
+      "id": "kv-063",
+      "type": "multiple-choice",
+      "question": "What is write-behind (write-back) caching?",
+      "options": [
+        "Writing cache updates behind the scenes",
+        "Writing to cache immediately, async writing to database later",
+        "Writing behind a firewall",
+        "Backup writes"
+      ],
+      "correct": 1,
+      "explanation": "Write-behind: write to cache, acknowledge immediately, queue database write for async processing. Advantages: fast writes, can batch database writes. Disadvantages: data loss risk if cache fails before database write, complexity. Used for high-write-throughput scenarios."
+    },
+    {
+      "id": "kv-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're using cache-aside. A user updates their profile in the database. What's the problem?",
+          "options": [
+            "No problem",
+            "The cache still has the old profile — stale data until TTL expires or cache is invalidated",
+            "The cache is automatically updated",
+            "The write fails"
+          ],
+          "correct": 1,
+          "explanation": "Cache-aside doesn't automatically invalidate on database updates. The cache has stale data. Readers get old profile until: TTL expires, someone explicitly invalidates the cache key, or a cache miss triggers reload."
+        },
+        {
+          "question": "How do you handle this staleness?",
+          "options": [
+            "Accept staleness if it's tolerable (eventual consistency)",
+            "Invalidate or update the cache key on every database write",
+            "Use write-through caching",
+            "Any of these depending on consistency requirements"
+          ],
+          "correct": 3,
+          "explanation": "Options: (1) Accept staleness if seconds/minutes of old data is OK. (2) Invalidate cache on write — next read repopulates. (3) Update cache on write (write-through). (4) Use short TTLs. Choose based on consistency needs and complexity tolerance."
+        }
+      ]
+    },
+    {
+      "id": "kv-065",
+      "type": "multiple-choice",
+      "question": "What is cache stampede (thundering herd)?",
+      "options": [
+        "Many cache entries expiring at once",
+        "Many requests hitting the database simultaneously when a cache key expires",
+        "Cache memory overflow",
+        "Concurrent cache writes"
+      ],
+      "correct": 1,
+      "explanation": "When a popular cache key expires, many concurrent requests see a cache miss and all hit the database simultaneously to repopulate. This can overload the database. Solutions: lock during refresh (only one request fetches), preemptive refresh, staggered TTLs."
+    },
+    {
+      "id": "kv-066",
+      "type": "multi-select",
+      "question": "How do you prevent cache stampede?",
+      "options": [
+        "Use a lock so only one request refreshes the cache",
+        "Refresh cache before expiration (proactive refresh)",
+        "Use probabilistic early expiration (PER)",
+        "Never expire cache keys"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Lock prevents duplicate fetches. Proactive refresh updates before expiration (cron or on access when near expiry). Probabilistic early expiration has random chance of refresh before TTL, spreading load. Never expiring avoids stampede but causes staleness."
+    },
+    {
+      "id": "kv-067",
+      "type": "multiple-choice",
+      "question": "What is a cache hit ratio?",
+      "options": [
+        "The ratio of cache size to data size",
+        "The percentage of requests served from cache vs. total requests",
+        "The ratio of hits to misses in bytes",
+        "Cache performance score"
+      ],
+      "correct": 1,
+      "explanation": "Hit ratio = cache hits / (hits + misses). A 95% hit ratio means 95% of requests are served from cache, only 5% hit the database. Higher is better — more traffic offloaded from the database. Monitor this to ensure caching is effective."
+    },
+    {
+      "id": "kv-068",
+      "type": "ordering",
+      "question": "Rank these cache hit ratios from best to worst for a typical caching use case:",
+      "items": ["95%", "50%", "99%", "80%"],
+      "correctOrder": [2, 0, 3, 1],
+      "explanation": "99% is excellent (most requests cached). 95% is very good. 80% is decent. 50% means half your requests hit the database — caching is barely helping. Low ratios suggest wrong data being cached, TTL too short, or insufficient cache size."
+    },
+    {
+      "id": "kv-069",
+      "type": "multiple-choice",
+      "question": "What is TTL (Time To Live) in caching?",
+      "options": [
+        "Total Time Loaded",
+        "The duration a cached value is valid before expiration",
+        "Time the cache takes to load",
+        "Time until cache is full"
+      ],
+      "correct": 1,
+      "explanation": "TTL is how long a cached item is considered valid. After TTL expires, the item is evicted (or treated as stale). Short TTL = fresher data but more cache misses. Long TTL = stale data risk but fewer misses. Choose based on data update frequency and staleness tolerance."
+    },
+    {
+      "id": "kv-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache user profiles with a 1-hour TTL. Users update profiles rarely (once per month). Is this TTL appropriate?",
+          "options": [
+            "TTL is too short — profiles rarely change",
+            "TTL is too long — data will be stale",
+            "TTL is about right for this access pattern",
+            "Should not cache at all"
+          ],
+          "correct": 0,
+          "explanation": "For rarely-changing data, longer TTL (24 hours, or even days) could work, reducing cache misses. 1-hour TTL causes unnecessary refreshes for data that changes monthly. Increase TTL and invalidate on update for best of both worlds."
+        },
+        {
+          "question": "You switch to a 24-hour TTL and invalidate on update. What happens when a user updates their profile?",
+          "options": [
+            "They see stale data for 24 hours",
+            "The cache is invalidated; next read repopulates with fresh data",
+            "The cache is automatically updated",
+            "The update fails"
+          ],
+          "correct": 1,
+          "explanation": "On update, invalidate (delete) the cache key. The next read finds no cache entry, fetches fresh data from DB, and caches it. This gives you long TTL benefits (fewer misses) with immediate consistency on updates."
+        }
+      ]
+    },
+    {
+      "id": "kv-071",
+      "type": "multiple-choice",
+      "question": "What is consistent hashing?",
+      "options": [
+        "Hashing that always produces the same result",
+        "A technique for distributing keys across nodes where adding/removing nodes minimizes key remapping",
+        "Hashing for consistency checks",
+        "A Redis feature"
+      ],
+      "correct": 1,
+      "explanation": "Consistent hashing maps keys to positions on a ring. Nodes own ring segments. When a node is added/removed, only keys in its segment are remapped — most keys stay put. This is crucial for scaling cache clusters without invalidating everything."
+    },
+    {
+      "id": "kv-072",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have a 4-node Memcached cluster. Using simple modulo hashing (key_hash % 4), you add a 5th node. What happens?",
+          "options": [
+            "Only 20% of keys remap",
+            "Most keys remap — key_hash % 4 ≠ key_hash % 5 for most keys",
+            "No keys remap",
+            "All keys are invalidated"
+          ],
+          "correct": 1,
+          "explanation": "With modulo hashing, key 5 goes to node 5%4=1 but now 5%5=0. Roughly 80% of keys remap to different nodes, causing cache misses. This is why modulo hashing is bad for elastic clusters."
+        },
+        {
+          "question": "How does consistent hashing improve this?",
+          "options": [
+            "It doesn't — same problem",
+            "Only keys assigned to the new node remap (~20% with 5 nodes)",
+            "All keys still remap but faster",
+            "Consistent hashing isn't for caching"
+          ],
+          "correct": 1,
+          "explanation": "With consistent hashing, adding node 5 only moves keys from adjacent nodes to node 5 — roughly 1/N of keys. Other keys stay on their nodes. Much better cache hit ratio during scaling. Most cache clients support consistent hashing."
+        }
+      ]
+    },
+    {
+      "id": "kv-073",
+      "type": "multi-select",
+      "question": "What are common use cases for key-value stores?",
+      "options": [
+        "Session storage",
+        "Caching database queries",
+        "Complex reporting with ad-hoc JOINs",
+        "Real-time leaderboards"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Key-value stores excel at: sessions (simple get/set by session ID), caching (fast lookups), leaderboards (Redis sorted sets). Complex reporting with JOINs needs a relational database or data warehouse — key-value stores don't support JOINs."
+    },
+    {
+      "id": "kv-074",
+      "type": "multiple-choice",
+      "question": "What is Redis SETNX?",
+      "options": [
+        "Set a key to NX value",
+        "Set a key only if it does Not eXist — atomic check-and-set",
+        "Set a key to next value",
+        "Deprecated command"
+      ],
+      "correct": 1,
+      "explanation": "SETNX (SET if Not eXists) atomically sets a key only if it doesn't exist. Returns 1 if set, 0 if key existed. Useful for distributed locks, deduplication. Modern Redis uses SET with NX option: SET key value NX EX seconds."
+    },
+    {
+      "id": "kv-075",
+      "type": "multiple-choice",
+      "question": "What is Redis INCR?",
+      "options": [
+        "Increment a string key's numeric value atomically",
+        "Increase key TTL",
+        "Include a key in results",
+        "Incremental backup"
+      ],
+      "correct": 0,
+      "explanation": "INCR atomically increments a key's value by 1 (INCRBY for arbitrary amounts). If the key doesn't exist, it's created with value 0 then incremented. Perfect for counters: rate limiting, view counts, unique ID generation."
+    },
+    {
+      "id": "kv-076",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to count page views. The simple approach: read count, add 1, write back. What's the problem?",
+          "options": [
+            "No problem",
+            "Race condition: concurrent reads get the same count, both write +1, losing one increment",
+            "Too slow",
+            "Database doesn't support this"
+          ],
+          "correct": 1,
+          "explanation": "Read-modify-write is not atomic. Two requests read count=100, both compute 101, both write 101. One view is lost. At high concurrency, many views are lost. This is the lost update problem."
+        },
+        {
+          "question": "How does Redis INCR solve this?",
+          "options": [
+            "It doesn't",
+            "INCR is atomic — the increment happens in one step without reading first",
+            "INCR uses locks",
+            "INCR is just faster"
+          ],
+          "correct": 1,
+          "explanation": "INCR is a single atomic operation. Redis increments the value internally without a separate read-modify-write. No race condition. Both requests INCR → values become 101, 102. Perfect for counters."
+        }
+      ]
+    },
+    {
+      "id": "kv-077",
+      "type": "multiple-choice",
+      "question": "What is Redis LUA scripting?",
+      "options": [
+        "A configuration language",
+        "Running Lua scripts atomically on the Redis server for complex operations",
+        "A query language",
+        "A logging format"
+      ],
+      "correct": 1,
+      "explanation": "Redis executes Lua scripts atomically — the entire script runs without other commands interleaving. Use for complex operations that can't be done with a single command: conditional updates, multi-key operations. EVAL runs scripts; EVALSHA uses cached scripts."
+    },
+    {
+      "id": "kv-078",
+      "type": "multi-select",
+      "question": "When would you use Redis Lua scripts?",
+      "options": [
+        "Complex atomic operations (read-modify-write)",
+        "Operations on multiple keys that must be atomic",
+        "Simple GET/SET operations",
+        "Implementing custom data structures"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Lua scripts are for complex atomic operations: multi-key updates, conditional logic, custom data structures. Simple GET/SET doesn't need Lua — standard commands suffice. Lua adds overhead, so use only when atomicity across multiple operations is needed."
+    },
+    {
+      "id": "kv-079",
+      "type": "multiple-choice",
+      "question": "What is the time complexity of Redis operations like GET, SET, SADD?",
+      "options": [
+        "O(N) — depends on data size",
+        "O(1) — constant time hash table lookups",
+        "O(log N) — tree-based",
+        "O(N²) — comparing all values"
+      ],
+      "correct": 1,
+      "explanation": "Basic Redis operations are O(1): GET, SET, SADD, SISMEMBER use hash table lookups. Some operations are O(N) or O(log N): KEYS (O(N), avoid in production), ZRANK (O(log N) in sorted sets). Check complexity in docs for each command."
+    },
+    {
+      "id": "kv-080",
+      "type": "multiple-choice",
+      "question": "Why should you avoid the KEYS command in production Redis?",
+      "options": [
+        "It's deprecated",
+        "KEYS scans all keys (O(N)), blocking Redis during execution",
+        "It reveals sensitive data",
+        "It's slow to type"
+      ],
+      "correct": 1,
+      "explanation": "KEYS pattern scans every key, taking O(N) time. Redis is single-threaded, so KEYS blocks all other operations. On a large dataset, this can freeze Redis for seconds. Use SCAN instead — it iterates incrementally without blocking."
+    },
+    {
+      "id": "kv-081",
+      "type": "multiple-choice",
+      "question": "What is SCAN in Redis?",
+      "options": [
+        "Security scan",
+        "An incremental iterator over keys that doesn't block Redis",
+        "Disk scan",
+        "Memory scan"
+      ],
+      "correct": 1,
+      "explanation": "SCAN iterates over keys incrementally: each call returns some keys and a cursor for the next batch. It doesn't block Redis — O(1) per call. Use SCAN instead of KEYS for production. There's also SSCAN, HSCAN, ZSCAN for sets, hashes, sorted sets."
+    },
+    {
+      "id": "kv-082",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to delete all keys matching 'session:*'. In development (small dataset), you use KEYS + DEL. What's better for production?",
+          "options": [
+            "KEYS is fine for production",
+            "Use SCAN to iterate and DEL in batches",
+            "Use DELETE session:*",
+            "Drop the database"
+          ],
+          "correct": 1,
+          "explanation": "Use SCAN with a pattern, then DEL each batch. SCAN doesn't block Redis; you delete incrementally. For very high volumes, consider UNLINK (async delete) instead of DEL. Some Redis versions support SCAN + DELETE patterns natively."
+        },
+        {
+          "question": "What is UNLINK in Redis?",
+          "options": [
+            "Remove a link between keys",
+            "Async delete — removes the key and frees memory in background",
+            "Unlink a replica",
+            "Delete a symbolic link"
+          ],
+          "correct": 1,
+          "explanation": "UNLINK is like DEL but async: it removes the key immediately but frees memory in a background thread. For large values (big lists, sets), DEL can block Redis briefly. UNLINK avoids this. Use UNLINK for large value deletions."
+        }
+      ]
+    },
+    {
+      "id": "kv-083",
+      "type": "multiple-choice",
+      "question": "What is Redis pipelining?",
+      "options": [
+        "Connecting multiple Redis instances",
+        "Sending multiple commands without waiting for each response, then reading all responses",
+        "Piping Redis to another process",
+        "A persistence mode"
+      ],
+      "correct": 1,
+      "explanation": "Pipelining batches commands: send 100 commands at once, then read 100 responses. This eliminates network round-trip latency per command. Instead of 100 round trips, you have 1. Huge performance gain for batch operations."
+    },
+    {
+      "id": "kv-084",
+      "type": "ordering",
+      "question": "Rank these from most to least important when choosing between Redis and Memcached:",
+      "items": ["Data structure needs (lists, sets, sorted sets)", "Simple caching with minimal features", "Persistence requirements", "Raw performance for string caching"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "If you need data structures (lists, sorted sets) or persistence, choose Redis — Memcached doesn't have them. If you only need simple string caching and want minimal complexity, Memcached is fine. Raw performance is similar; it's features that differ most."
+    },
+    {
+      "id": "kv-085",
+      "type": "multiple-choice",
+      "question": "What is Amazon ElastiCache?",
+      "options": [
+        "A new caching algorithm",
+        "Managed Redis or Memcached clusters on AWS",
+        "A caching library",
+        "Elastic storage"
+      ],
+      "correct": 1,
+      "explanation": "ElastiCache is AWS's managed caching service. You can run Redis or Memcached. AWS handles provisioning, patching, scaling, and replication. Easier to operate than self-managed Redis. Available in node types from small to memory-optimized."
+    },
+    {
+      "id": "kv-086",
+      "type": "multi-select",
+      "question": "What factors should you consider when sizing a Redis cluster?",
+      "options": [
+        "Total data size (must fit in memory)",
+        "Read/write throughput requirements",
+        "Persistence requirements (affects memory and I/O)",
+        "Number of tables needed"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Size for: memory (data + overhead must fit), throughput (more traffic may need replicas or cluster shards), persistence (RDB/AOF need disk I/O and memory during snapshots). Redis doesn't have tables — it's key-value."
+    },
+    {
+      "id": "kv-087",
+      "type": "multiple-choice",
+      "question": "How does Redis handle replication?",
+      "options": [
+        "Synchronous replication only",
+        "Async replication — replicas stream from primary with possible lag",
+        "No replication support",
+        "File-based replication"
+      ],
+      "correct": 1,
+      "explanation": "Redis replication is asynchronous: replicas connect to the primary and receive a stream of write commands. There's replication lag — replicas may be behind. For HA, use Sentinel for failover. Sync replication is possible with WAIT command for critical operations."
+    },
+    {
+      "id": "kv-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 100GB of data for Redis. A single Redis instance can have ~20GB usable memory. What's the solution?",
+          "options": [
+            "Compress the data",
+            "Use Redis Cluster to shard across multiple nodes",
+            "Redis can't handle 100GB",
+            "Use multiple databases in one instance"
+          ],
+          "correct": 1,
+          "explanation": "Redis Cluster shards data across nodes. With 6 nodes (3 primaries, 3 replicas for HA), each primary holds ~33GB. Data is partitioned by hash slot. Redis Cluster provides both horizontal scaling and high availability."
+        },
+        {
+          "question": "In Redis Cluster, you have keys user:123 and user:456. Are they guaranteed to be on the same node?",
+          "options": [
+            "Yes — same key prefix",
+            "No — hash slot is computed per key, they may land on different nodes",
+            "Only if you configure it",
+            "Redis Cluster doesn't allow similar keys"
+          ],
+          "correct": 1,
+          "explanation": "Redis Cluster hashes the entire key to determine the slot. Different keys (even with same prefix) hash to potentially different slots. To force co-location, use hash tags: {user}:123 and {user}:456 hash only 'user', landing on the same slot/node."
+        }
+      ]
+    },
+    {
+      "id": "kv-089",
+      "type": "multiple-choice",
+      "question": "What are hash tags in Redis Cluster?",
+      "options": [
+        "Hashtags for social features",
+        "Curly braces {tag} in key names that force keys to the same slot",
+        "Tags for hash data structures",
+        "Metadata tags"
+      ],
+      "correct": 1,
+      "explanation": "Hash tags: keys containing {tag} hash only the tag portion. {user:123}:orders and {user:123}:profile both hash 'user:123', landing on the same slot. This enables multi-key operations (MGET, transactions) which require same-slot keys in Redis Cluster."
+    },
+    {
+      "id": "kv-090",
+      "type": "multiple-choice",
+      "question": "What happens if you try MGET on keys in different slots in Redis Cluster?",
+      "options": [
+        "It works across nodes automatically",
+        "Redis returns an error — multi-key commands require same-slot keys",
+        "It returns partial results",
+        "It redirects to the correct node"
+      ],
+      "correct": 1,
+      "explanation": "Redis Cluster doesn't support cross-slot multi-key operations. MGET key1 key2 fails if they're in different slots. Solutions: use hash tags to co-locate related keys, or handle in your client with multiple single-key commands."
+    },
+    {
+      "id": "kv-091",
+      "type": "multi-select",
+      "question": "What are limitations of Redis Cluster?",
+      "options": [
+        "No cross-slot multi-key operations",
+        "No Lua scripts accessing multiple slots",
+        "More complex client configuration",
+        "No support for strings"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cluster limitations: multi-key ops must be same slot, Lua scripts can't access multiple slots (error), clients need cluster-aware configuration. Strings are fully supported — the limitations are about cross-slot operations, not data types."
+    },
+    {
+      "id": "kv-092",
+      "type": "multiple-choice",
+      "question": "What is Redis JSON?",
+      "options": [
+        "Converting Redis data to JSON",
+        "A Redis module for native JSON document storage and querying",
+        "JSON serialization format",
+        "A JSON configuration file"
+      ],
+      "correct": 1,
+      "explanation": "RedisJSON (part of Redis Stack) adds native JSON support. Store JSON documents, query with JSONPath, update nested fields atomically. More efficient than serializing JSON to strings when you need partial reads/updates. Available as a Redis module."
+    },
+    {
+      "id": "kv-093",
+      "type": "multiple-choice",
+      "question": "What is Redis Search?",
+      "options": [
+        "Searching for Redis servers",
+        "A Redis module for full-text search and secondary indexing",
+        "Finding keys by pattern",
+        "Database search feature"
+      ],
+      "correct": 1,
+      "explanation": "RediSearch adds full-text search, secondary indexes, and aggregation to Redis. Query hashes/JSON by any field, not just key. Useful when you need search capabilities on Redis data. Part of Redis Stack."
+    },
+    {
+      "id": "kv-094",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You store user data in Redis hashes. You need to find all users in a specific city. Can you do this with basic Redis?",
+          "options": [
+            "Yes — query by any field",
+            "No — you can only look up by key, not by hash field values",
+            "Yes — use HSCAN",
+            "Yes — use KEYS"
+          ],
+          "correct": 1,
+          "explanation": "Basic Redis is key-value: you can get a hash by key, but can't search 'all hashes where city field = X'. You'd need to maintain a secondary index manually (a set of keys per city) or use RediSearch module."
+        },
+        {
+          "question": "How would you implement this secondary index manually?",
+          "options": [
+            "Use KEYS command",
+            "Maintain a set city:NYC containing user IDs, update it when users change city",
+            "Use PostgreSQL",
+            "It's not possible"
+          ],
+          "correct": 1,
+          "explanation": "Manual secondary index: set city:NYC contains all user IDs in NYC. When adding user in NYC, SADD city:NYC user:123. When user moves, SREM old city, SADD new city. To query, SMEMBERS city:NYC gives all users. You maintain the index on writes."
+        }
+      ]
+    },
+    {
+      "id": "kv-095",
+      "type": "multiple-choice",
+      "question": "What is the Redis single-threaded execution model?",
+      "options": [
+        "Redis can only run one command per second",
+        "Redis processes commands sequentially in one thread, ensuring atomicity without locks",
+        "Redis requires single-core servers",
+        "Redis can't handle concurrent clients"
+      ],
+      "correct": 1,
+      "explanation": "Redis is single-threaded for command execution. Commands run one at a time — no need for locks, and each command is atomic. This simplifies Redis but means long commands (KEYS, large SORT) block everything. Recent Redis offloads I/O to threads but still processes commands serially."
+    },
+    {
+      "id": "kv-096",
+      "type": "multi-select",
+      "question": "What are implications of Redis's single-threaded execution?",
+      "options": [
+        "Commands are naturally atomic",
+        "Long-running commands block all other commands",
+        "No need for locks or transactions for single commands",
+        "Redis can only handle 1 request per second"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Single-threaded means: natural atomicity (no races), blocking on slow commands (avoid KEYS), no locking needed. Redis handles hundreds of thousands of requests per second — single-threaded doesn't mean slow, it means sequential processing."
+    },
+    {
+      "id": "kv-097",
+      "type": "ordering",
+      "question": "Rank these key-value stores from most feature-rich to most minimal:",
+      "items": ["Redis (data structures, persistence, pub/sub)", "etcd (strong consistency, watch)", "DynamoDB (secondary indexes, transactions)", "Memcached (pure caching)"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Redis has the most features (data structures, streams, modules). DynamoDB has indexes, transactions, streams. etcd has strong consistency and watches but fewer features. Memcached is intentionally minimal — just caching."
+    },
+    {
+      "id": "kv-098",
+      "type": "multiple-choice",
+      "question": "You need sub-millisecond latency for a high-traffic API. Which storage is most likely to achieve this?",
+      "options": [
+        "PostgreSQL with good indexes",
+        "Redis or in-memory key-value store",
+        "MongoDB",
+        "S3"
+      ],
+      "correct": 1,
+      "explanation": "In-memory stores like Redis deliver sub-millisecond latency — data is in RAM, no disk I/O. PostgreSQL can be fast with indexes but typically 1-10ms. MongoDB varies. S3 is for blob storage, not low-latency key-value. For speed, memory is key."
+    },
+    {
+      "id": "kv-099",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your team debates Redis vs. DynamoDB for session storage. What's a key difference?",
+          "options": [
+            "Redis is AWS, DynamoDB is not",
+            "Redis is in-memory (fast, limited by memory); DynamoDB is managed, scales storage infinitely",
+            "DynamoDB is faster",
+            "They're identical"
+          ],
+          "correct": 1,
+          "explanation": "Redis: in-memory (very fast, bounded by RAM, you manage scaling). DynamoDB: fully managed (auto-scales storage and throughput, pay per use). Redis has richer data structures; DynamoDB has built-in HA and less operational burden."
+        },
+        {
+          "question": "For a startup with unpredictable traffic and minimal ops capacity, which would you lean toward?",
+          "options": [
+            "Self-managed Redis for full control",
+            "DynamoDB or managed Redis (ElastiCache) — less ops burden",
+            "PostgreSQL for sessions",
+            "Store sessions in cookies only"
+          ],
+          "correct": 1,
+          "explanation": "With unpredictable traffic and minimal ops, managed services win. DynamoDB on-demand scales automatically. ElastiCache Redis is also managed. Self-managed Redis requires capacity planning and monitoring. Reduce ops burden when you're small."
+        }
+      ]
+    },
+    {
+      "id": "kv-100",
+      "type": "multi-select",
+      "question": "When is a key-value store the right choice?",
+      "options": [
+        "You access data by key (no complex queries needed)",
+        "You need very high throughput and low latency",
+        "Data is well-suited to denormalization (sessions, caches, counters)",
+        "You need complex JOINs across entities"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Key-value stores excel when: access is by key (not complex filters), speed matters, data fits the model (sessions, caches, feature flags). If you need JOINs, flexible queries, or strong relational integrity, use a relational database instead."
+    }
+  ]
+}

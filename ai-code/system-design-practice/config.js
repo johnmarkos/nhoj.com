@@ -57,7 +57,7 @@ export const CONFIG = {
       chapters: [
         { num: 1, title: 'Relational Databases', ready: true },
         { num: 2, title: 'Document Stores', ready: true },
-        { num: 3, title: 'Key-Value Stores', ready: false },
+        { num: 3, title: 'Key-Value Stores', ready: true },
         { num: 4, title: 'Wide-Column & Time-Series', ready: false },
         { num: 5, title: 'Graph & Search Engines', ready: false },
         { num: 6, title: 'Object Storage', ready: false },
