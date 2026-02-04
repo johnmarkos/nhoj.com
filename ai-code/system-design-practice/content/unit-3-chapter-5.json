@@ -1,0 +1,1700 @@
+{
+  "unit": 3,
+  "unitTitle": "API Design",
+  "chapter": 5,
+  "chapterTitle": "Versioning & Evolution",
+  "chapterDescription": "URL vs header versioning, breaking vs non-breaking changes, deprecation strategies.",
+  "problems": [
+    {
+      "id": "version-001",
+      "type": "multiple-choice",
+      "question": "Why do APIs need versioning?",
+      "options": [
+        "To track which developer made changes",
+        "To allow breaking changes without disrupting existing clients",
+        "To improve API performance",
+        "It's required by HTTP"
+      ],
+      "correct": 1,
+      "explanation": "Versioning lets you evolve the API (fix mistakes, add features, change behavior) without breaking clients relying on the old contract. Clients can upgrade at their own pace."
+    },
+    {
+      "id": "version-002",
+      "type": "multi-select",
+      "question": "Which are common API versioning strategies?",
+      "options": [
+        "URL path versioning: /v1/users",
+        "Query parameter: /users?version=1",
+        "Custom header: X-API-Version: 1",
+        "Accept header: Accept: application/vnd.api+json;version=1"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are used. URL path is most common and visible. Query params work but pollute the URL. Custom headers are clean but less discoverable. Accept header is RESTful but complex. Each has tradeoffs."
+    },
+    {
+      "id": "version-003",
+      "type": "ordering",
+      "question": "Rank these versioning strategies from most to least commonly used in public APIs:",
+      "items": [
+        "URL path: /v1/users",
+        "Accept header: Accept: application/vnd.api.v1+json",
+        "Query parameter: /users?version=1",
+        "Custom header: X-API-Version: 1"
+      ],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "URL path versioning dominates (GitHub, Stripe, Twitter). Custom headers are second (Microsoft). Query params are less common. Accept header versioning is the most RESTful but rarely used due to complexity."
+    },
+    {
+      "id": "version-004",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "What's the main advantage of URL path versioning (/v1/users)?",
+          "options": [
+            "It's the most RESTful approach",
+            "It's visible, simple, and works with all HTTP clients",
+            "It allows more versions than other methods",
+            "It's the only method that supports caching"
+          ],
+          "correct": 1,
+          "explanation": "URL versioning is simple: no special headers, easy to test in a browser, easy to document. Everyone can see and understand /v1/users vs /v2/users. Simplicity and visibility are its strengths."
+        },
+        {
+          "question": "What's a disadvantage of URL path versioning?",
+          "options": [
+            "It doesn't work with REST",
+            "The version is part of the resource identifier, which some argue is incorrect",
+            "Browsers can't handle versioned URLs",
+            "It prevents caching"
+          ],
+          "correct": 1,
+          "explanation": "Purists argue that /v1/users and /v2/users should be the same resource with different representations, not different resources. The URL identifies the resource; version is metadata about the representation."
+        }
+      ]
+    },
+    {
+      "id": "version-005",
+      "type": "multiple-choice",
+      "question": "What's the RESTful argument for header-based versioning?",
+      "options": [
+        "Headers are more secure",
+        "The resource (/users) stays the same; version is a representation detail",
+        "Headers are faster to parse",
+        "Headers can contain more information"
+      ],
+      "correct": 1,
+      "explanation": "In REST, a URI identifies a resource. /users is the resource; how it's represented (v1 format vs v2 format) is separate. Header versioning keeps URIs clean and treats version as content negotiation."
+    },
+    {
+      "id": "version-006",
+      "type": "multi-select",
+      "question": "What are disadvantages of header-based versioning?",
+      "options": [
+        "Harder to test in a browser (need tools to set headers)",
+        "Less visible/discoverable",
+        "Clients must remember to include the header",
+        "Doesn't work with HTTP"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Header versioning is less visible (can't see version in the URL), harder to test casually (need curl or Postman to set headers), and clients can forget the header. But it works fine with HTTP."
+    },
+    {
+      "id": "version-007",
+      "type": "multiple-choice",
+      "question": "What should happen if a client doesn't specify an API version?",
+      "options": [
+        "Return an error requiring version specification",
+        "Use the latest version",
+        "Use the oldest supported version",
+        "Use a default version (often v1 or explicitly documented)"
+      ],
+      "correct": 3,
+      "explanation": "Having a default reduces friction for new clients. Whether it's the oldest (stability) or latest (features) depends on your philosophy. Document the default clearly. Requiring a version is stricter but adds friction."
+    },
+    {
+      "id": "version-008",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Stripe's API uses dated versions like '2023-10-16' instead of v1, v2. Why?",
+          "options": [
+            "It's a bug in their system",
+            "Each date represents a snapshot; clients pin to a date and get that behavior",
+            "They release too frequently for version numbers",
+            "Dates are easier to sort"
+          ],
+          "correct": 1,
+          "explanation": "Stripe's approach: clients pin to a date (e.g., '2023-10-16'). Any API change after that date doesn't affect them. They can upgrade by changing their pinned date. It's versioning per-change rather than per-major-release."
+        },
+        {
+          "question": "What's the advantage of date-based versioning like Stripe's?",
+          "options": [
+            "Clients can adopt changes individually rather than upgrading to whole new versions",
+            "It's simpler than numbered versions",
+            "It automatically deprecates old versions",
+            "It prevents breaking changes entirely"
+          ],
+          "correct": 0,
+          "explanation": "Clients on '2023-01-01' can upgrade to '2023-06-15' and get only the changes between those dates. It's granular — no 'v1 to v2' cliff where many things change at once. Clients can adopt incrementally."
+        }
+      ]
+    },
+    {
+      "id": "version-009",
+      "type": "multiple-choice",
+      "question": "What's a 'breaking change' in an API?",
+      "options": [
+        "Any change to the API",
+        "A change that could cause existing clients to fail",
+        "A change that improves performance",
+        "A change that adds new features"
+      ],
+      "correct": 1,
+      "explanation": "A breaking change is one that might break existing clients: removing fields, changing types, altering behavior they depend on. Clients built for the old API may fail on the new one without updates."
+    },
+    {
+      "id": "version-010",
+      "type": "multi-select",
+      "question": "Which are breaking changes?",
+      "options": [
+        "Removing a field from responses",
+        "Adding a new optional field to responses",
+        "Changing a field's type (string to integer)",
+        "Adding a new required field to requests"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Removing or changing field types breaks clients expecting the old format. Adding required request fields breaks clients not sending them. Adding optional response fields is safe — clients ignore unknown fields."
+    },
+    {
+      "id": "version-011",
+      "type": "ordering",
+      "question": "Rank these changes from least to most likely to break clients:",
+      "items": [
+        "Adding a new optional response field",
+        "Adding a new endpoint",
+        "Renaming a field",
+        "Removing an endpoint"
+      ],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "New endpoints don't affect existing code. New optional fields are usually safe (clients ignore them). Renaming breaks clients reading the old name. Removing endpoints breaks all clients using them."
+    },
+    {
+      "id": "version-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Is adding a new value to an enum (e.g., status: 'active'|'pending'|'NEW_VALUE') a breaking change?",
+          "options": [
+            "No — it's just adding options",
+            "Yes — clients with exhaustive switch statements will fail",
+            "Only if it's required",
+            "B — defensive clients handle unknown values, but many don't"
+          ],
+          "correct": 3,
+          "explanation": "Clients with switch(status) { case 'active':... case 'pending':... } will hit their default case (or crash if no default). Adding enum values can break clients. Defensive clients should handle unknown values."
+        },
+        {
+          "question": "How should clients handle enum fields to be resilient to new values?",
+          "options": [
+            "Use a switch with a default case that handles unknowns",
+            "Check the API version before parsing",
+            "Reject responses with unknown values",
+            "A — always handle the 'unknown' case gracefully"
+          ],
+          "correct": 3,
+          "explanation": "Clients should have a default/else case: 'if I don't recognize this value, treat it as [something reasonable].' This prevents crashes when new values are added. It's defensive programming against API evolution."
+        }
+      ]
+    },
+    {
+      "id": "version-013",
+      "type": "multiple-choice",
+      "question": "Which change is definitely NOT breaking?",
+      "options": [
+        "Changing error message text",
+        "Changing error codes",
+        "Changing HTTP status codes",
+        "A is probably safe; B and C are breaking"
+      ],
+      "correct": 3,
+      "explanation": "Error message text is for humans; changing wording is usually safe. Error codes and HTTP status codes are for programmatic handling — changing them breaks clients that check for specific codes."
+    },
+    {
+      "id": "version-014",
+      "type": "multi-select",
+      "question": "Which practices help avoid breaking changes?",
+      "options": [
+        "Add fields as optional, not required",
+        "Use strings for IDs (not integers that might overflow)",
+        "Document which fields may be added",
+        "Never change anything"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Optional fields don't break existing clients. Strings for IDs prevent integer overflow when IDs grow. Documenting extensibility sets expectations. 'Never change' isn't practical — APIs must evolve."
+    },
+    {
+      "id": "version-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API returns user IDs as integers. The largest ID is approaching 2^31 (JavaScript's safe integer limit). What should you do?",
+          "options": [
+            "Nothing — 2^31 is huge",
+            "Switch to returning IDs as strings in the next version",
+            "Switch to strings now and maintain both for transition",
+            "C, or add string IDs as a new field while keeping numeric for compatibility"
+          ],
+          "correct": 3,
+          "explanation": "Changing the type is breaking. Options: add a new field (id_str alongside id) for transition, or release a new version with string IDs. Twitter did this when tweet IDs exceeded JavaScript's safe range."
+        },
+        {
+          "question": "Twitter added id_str alongside id for this reason. What's the transition strategy?",
+          "options": [
+            "Immediately remove the integer id",
+            "Add id_str, document clients should use it, eventually deprecate id",
+            "Only return id_str to new clients",
+            "B — gradual transition with both fields"
+          ],
+          "correct": 3,
+          "explanation": "Add the new field (id_str), tell clients to migrate, give them time, then eventually deprecate the old field. This parallel period lets clients upgrade gradually without breaking immediately."
+        }
+      ]
+    },
+    {
+      "id": "version-016",
+      "type": "multiple-choice",
+      "question": "What's 'additive change' in API evolution?",
+      "options": [
+        "Adding new servers",
+        "Changes that only add (new fields, endpoints) without modifying existing behavior",
+        "Incrementing the version number",
+        "Adding authentication"
+      ],
+      "correct": 1,
+      "explanation": "Additive changes only add: new optional fields, new endpoints, new parameters. They don't remove or change existing things. Additive changes are typically non-breaking if clients ignore unknown fields."
+    },
+    {
+      "id": "version-017",
+      "type": "ordering",
+      "question": "Rank these API evolution strategies from most to least disruptive to clients:",
+      "items": [
+        "Major version bump (v1 → v2) with breaking changes",
+        "Add new fields alongside old ones, deprecate later",
+        "Add new endpoint, deprecate old one later",
+        "Add optional field (purely additive)"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Major version bumps require client work. New endpoints require migration. Parallel fields need eventual migration. Purely additive changes need no client action — least disruptive."
+    },
+    {
+      "id": "version-018",
+      "type": "multiple-choice",
+      "question": "What does 'deprecation' mean for an API?",
+      "options": [
+        "The API is broken",
+        "The API is marked for future removal; clients should migrate",
+        "The API has been deleted",
+        "The API has a bug"
+      ],
+      "correct": 1,
+      "explanation": "Deprecation is a warning: 'this still works, but we plan to remove it. Migrate to the replacement.' It's a transition period — the feature works but is discouraged."
+    },
+    {
+      "id": "version-019",
+      "type": "multi-select",
+      "question": "How should API deprecation be communicated?",
+      "options": [
+        "Documentation updates",
+        "Deprecation headers in responses (Deprecation, Sunset)",
+        "Email/changelog notifications to API consumers",
+        "Immediately returning errors for deprecated endpoints"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Documentation, response headers, and proactive notification all communicate deprecation. Immediate errors defeat the purpose of deprecation — the point is to give clients time to migrate."
+    },
+    {
+      "id": "version-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "What's the 'Sunset' HTTP header?",
+          "options": [
+            "A header indicating the API goes offline at night",
+            "An RFC-proposed header indicating when a resource will be removed",
+            "A header for time-limited access tokens",
+            "A header for caching expiration"
+          ],
+          "correct": 1,
+          "explanation": "The Sunset header (RFC 8594) provides a date when the endpoint will be removed: 'Sunset: Sat, 01 Jun 2024 00:00:00 GMT'. Clients can detect upcoming removal programmatically."
+        },
+        {
+          "question": "Along with Sunset, what should the response include?",
+          "options": [
+            "The new endpoint to migrate to",
+            "A link to migration documentation",
+            "Both — make migration as easy as possible",
+            "Nothing else is needed"
+          ],
+          "correct": 2,
+          "explanation": "Include a Link header pointing to the replacement or migration docs. The Sunset says 'this is ending'; the Link says 'here's what to use instead.' Make migration easy."
+        }
+      ]
+    },
+    {
+      "id": "version-021",
+      "type": "multiple-choice",
+      "question": "How long should the deprecation period be before removing an API?",
+      "options": [
+        "1 week",
+        "30 days minimum",
+        "Depends on the API's usage patterns and consumer base",
+        "No standard — remove immediately when deprecated"
+      ],
+      "correct": 2,
+      "explanation": "Deprecation periods vary. Mission-critical APIs used by many enterprises might need 12+ months. Internal APIs might need 30 days. Consider your consumers' ability to update and the impact of the change."
+    },
+    {
+      "id": "version-022",
+      "type": "ordering",
+      "question": "Rank these deprecation periods from shortest to longest (typical/appropriate):",
+      "items": [
+        "Internal microservice API",
+        "Public API with few users",
+        "Popular public API (thousands of integrations)",
+        "Critical infrastructure API (AWS, Stripe)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Internal can move fast (days/weeks). Small public API (months). Popular API (6-12 months). Critical infrastructure (12-24+ months). More dependents = longer deprecation."
+    },
+    {
+      "id": "version-023",
+      "type": "multi-select",
+      "question": "What information should deprecation notices include?",
+      "options": [
+        "What is deprecated and when it will be removed",
+        "Why it's being deprecated",
+        "What to use instead (migration path)",
+        "Who made the decision"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Clients need: what's changing, the timeline, why (helps them understand), and how to migrate. Who decided it is internal information that doesn't help clients migrate."
+    },
+    {
+      "id": "version-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to rename a response field from 'userName' to 'username'. How should you handle this?",
+          "options": [
+            "Just rename it — clients should update",
+            "Return both fields during a transition period",
+            "Create a new API version",
+            "B is simplest for a minor change; C if part of larger changes"
+          ],
+          "correct": 3,
+          "explanation": "For a single rename, returning both fields temporarily is pragmatic. Announce the transition, return both, deprecate the old, eventually remove it. A version bump for one rename might be overkill."
+        },
+        {
+          "question": "How long should both fields be returned?",
+          "options": [
+            "One deployment",
+            "Long enough for clients to update",
+            "Forever",
+            "B — monitor usage of old field to gauge readiness"
+          ],
+          "correct": 3,
+          "explanation": "Keep both until clients have migrated. Monitor which clients still use the old field. Communicate the timeline. Remove when usage drops to zero (or after the announced sunset date)."
+        }
+      ]
+    },
+    {
+      "id": "version-025",
+      "type": "multiple-choice",
+      "question": "What's 'semantic versioning' (SemVer)?",
+      "options": [
+        "MAJOR.MINOR.PATCH — breaking.feature.fix",
+        "A way to version based on meaning rather than numbers",
+        "Versioning using words instead of numbers",
+        "Automatic version detection"
+      ],
+      "correct": 0,
+      "explanation": "SemVer: MAJOR.MINOR.PATCH (e.g., 2.3.1). MAJOR = breaking changes. MINOR = new features, backwards compatible. PATCH = bug fixes. Consumers know: major bump means review needed."
+    },
+    {
+      "id": "version-026",
+      "type": "multi-select",
+      "question": "According to SemVer, which changes warrant a MAJOR version bump?",
+      "options": [
+        "Removing an endpoint",
+        "Changing a field's type",
+        "Adding a new optional field",
+        "Changing behavior in a backwards-incompatible way"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "MAJOR is for breaking changes: removing things, changing types, incompatible behavior changes. Adding optional fields is backwards compatible — MINOR bump at most."
+    },
+    {
+      "id": "version-027",
+      "type": "ordering",
+      "question": "Rank these changes by appropriate SemVer bump (PATCH → MINOR → MAJOR):",
+      "items": [
+        "Fix a bug in validation logic",
+        "Add a new optional query parameter",
+        "Add a new endpoint",
+        "Remove a deprecated field"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Bug fix = PATCH. New optional param = MINOR (new feature, compatible). New endpoint = MINOR. Removing a field = MAJOR (breaking). Though adding an endpoint is debatable — often MINOR."
+    },
+    {
+      "id": "version-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Most public APIs use simple version numbers (v1, v2) not full SemVer (1.2.3). Why?",
+          "options": [
+            "SemVer is too complicated for APIs",
+            "Clients only care about major breaking changes; minor/patch is internal",
+            "SemVer doesn't work with REST",
+            "Public APIs don't need versioning"
+          ],
+          "correct": 1,
+          "explanation": "For HTTP APIs, clients primarily care about 'will this break me?' — that's the major version. Minor and patch versions are internal details. v1, v2 is simpler and sufficient for most API contracts."
+        },
+        {
+          "question": "When might full SemVer (1.2.3) be useful for an API?",
+          "options": [
+            "For SDKs/client libraries that wrap the API",
+            "For APIs with very frequent releases",
+            "For internal documentation",
+            "A is most common"
+          ],
+          "correct": 3,
+          "explanation": "SDKs (npm packages, gems, pip packages) use SemVer because dependency managers understand it. The SDK version is 3.2.1 (SemVer), but it might target API version 'v2' (simple)."
+        }
+      ]
+    },
+    {
+      "id": "version-029",
+      "type": "multiple-choice",
+      "question": "How should API documentation be versioned?",
+      "options": [
+        "One set of docs; always show the latest",
+        "Separate docs for each supported version",
+        "Docs for latest with 'version differences' notes",
+        "B is clearest, though C can work for similar versions"
+      ],
+      "correct": 3,
+      "explanation": "Each supported version should have its own docs — a v1 client needs v1 docs. Showing only latest or mixing versions causes confusion. Version differences notes work when versions are similar."
+    },
+    {
+      "id": "version-030",
+      "type": "multi-select",
+      "question": "What should versioned API documentation include?",
+      "options": [
+        "Clearly labeled version in the docs",
+        "Differences from previous/next versions",
+        "Deprecation warnings for old versions",
+        "Which version is recommended for new integrations"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are helpful. Clear version label prevents confusion. Version differences help migration. Deprecation warnings prevent new usage. Recommending a version guides new clients to the right starting point."
+    },
+    {
+      "id": "version-031",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You maintain v1 and v2 of an API. A security fix is needed. Which versions need patching?",
+          "options": [
+            "Only v2 — v1 is old",
+            "Both — supported versions need security fixes",
+            "Only if customers request it",
+            "B — security affects all users of all versions"
+          ],
+          "correct": 3,
+          "explanation": "Security fixes must go to all supported versions. Telling v1 users 'upgrade to get security' is bad practice. If v1 is still supported, it gets security patches. If you can't maintain it, deprecate it."
+        },
+        {
+          "question": "What's the cost of maintaining multiple API versions?",
+          "options": [
+            "No cost — just keep old code around",
+            "Bug fixes, security patches, tests, docs for each version",
+            "Only documentation updates",
+            "B — each version is a maintenance burden"
+          ],
+          "correct": 3,
+          "explanation": "Each version needs: bug fixes, security patches, updated dependencies, tests, documentation, monitoring. This multiplies engineering effort. Minimize concurrent versions to reduce maintenance burden."
+        }
+      ]
+    },
+    {
+      "id": "version-032",
+      "type": "ordering",
+      "question": "Rank these strategies for reducing API version maintenance burden (most to least effective):",
+      "items": [
+        "Keep only one version (no backwards compatibility)",
+        "Version internally but present consistent interface",
+        "Strict deprecation timelines to sunset old versions",
+        "Maintain all versions forever"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "One version = no maintenance burden (but breaks clients). Internal versioning with stable interface = low burden. Strict sunsets = bounded burden. Maintaining forever = unbounded growing burden."
+    },
+    {
+      "id": "version-033",
+      "type": "multiple-choice",
+      "question": "What's 'API evolution without versioning'?",
+      "options": [
+        "Never changing the API",
+        "Making only additive, compatible changes so no version bump is needed",
+        "Ignoring version numbers",
+        "Letting clients handle all changes"
+      ],
+      "correct": 1,
+      "explanation": "Some APIs evolve without formal versions by only making compatible changes: add fields (don't remove), add endpoints (don't remove), extend behaviors (don't change). Clients never break, so no version needed."
+    },
+    {
+      "id": "version-034",
+      "type": "multi-select",
+      "question": "Which practices enable API evolution without explicit versioning?",
+      "options": [
+        "Tolerant readers (ignore unknown fields)",
+        "Only additive changes (never remove or change types)",
+        "Strong contracts for what won't change",
+        "Weekly breaking changes"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Tolerant readers plus additive-only changes means clients never break. Contracts about stability set expectations. This requires discipline but avoids versioning complexity. Weekly breaking changes would require versioning."
+    },
+    {
+      "id": "version-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "GraphQL typically doesn't have version numbers. Why?",
+          "options": [
+            "GraphQL can't be versioned",
+            "GraphQL's field selection means clients only get what they request",
+            "GraphQL changes are always backwards compatible",
+            "B — clients aren't affected by fields they don't request"
+          ],
+          "correct": 3,
+          "explanation": "In GraphQL, clients explicitly request fields. Adding new fields doesn't affect existing queries — clients don't get what they didn't ask for. This enables evolution without traditional versioning."
+        },
+        {
+          "question": "How does GraphQL handle breaking changes like removing a field?",
+          "options": [
+            "It can't — fields are permanent",
+            "@deprecated directive marks fields, then they're removed after transition",
+            "Remove immediately and update all clients",
+            "B — same deprecation pattern as REST, just with GraphQL syntax"
+          ],
+          "correct": 3,
+          "explanation": "GraphQL uses @deprecated(reason: '...') to mark fields. Clients can see the warning. After a transition period, the field is removed. Same evolution pattern as REST, different mechanism."
+        }
+      ]
+    },
+    {
+      "id": "version-036",
+      "type": "multiple-choice",
+      "question": "What's a 'tolerant reader' pattern?",
+      "options": [
+        "A human who reviews API changes",
+        "Client code that ignores unknown fields and handles missing optional fields",
+        "An API that accepts malformed requests",
+        "A logging system for API errors"
+      ],
+      "correct": 1,
+      "explanation": "Tolerant reader: parse what you understand, ignore what you don't. If the API adds a new field, you ignore it. If an optional field is missing, you use a default. This makes clients resilient to evolution."
+    },
+    {
+      "id": "version-037",
+      "type": "multi-select",
+      "question": "What should a tolerant reader do?",
+      "options": [
+        "Ignore unknown fields in responses",
+        "Use default values for missing optional fields",
+        "Handle unknown enum values gracefully",
+        "Crash on any unexpected response format"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Tolerant readers handle surprises gracefully: unknown fields (ignore), missing optional (default), unknown enums (handle). Crashing on unexpected data is the opposite — it's a brittle reader."
+    },
+    {
+      "id": "version-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Postel's Law states: 'Be conservative in what you send, be liberal in what you accept.' How does this apply to APIs?",
+          "options": [
+            "APIs should accept any request format",
+            "APIs should send strict responses but accept varied requests",
+            "Both clients and servers should be tolerant of minor deviations",
+            "Clients should be tolerant; servers should return strict, well-formed responses"
+          ],
+          "correct": 3,
+          "explanation": "Servers: send clean, predictable responses. Clients: be tolerant of evolution (new fields, etc.). The combination enables smooth evolution. If both are strict, everything breaks on any change."
+        },
+        {
+          "question": "What's a criticism of Postel's Law in practice?",
+          "options": [
+            "It's too strict",
+            "Being 'liberal in what you accept' can mask bugs and create ambiguity",
+            "It doesn't work with REST",
+            "It requires too much documentation"
+          ],
+          "correct": 1,
+          "explanation": "If servers accept malformed requests, bugs go unnoticed and clients depend on quirks. Some argue for being strict on input ('be strict in what you accept') to catch errors early. Balance is needed."
+        }
+      ]
+    },
+    {
+      "id": "version-039",
+      "type": "multiple-choice",
+      "question": "What's 'schema evolution' in the context of APIs?",
+      "options": [
+        "Changing the database schema",
+        "How the API's data structure changes over time",
+        "Upgrading the JSON specification",
+        "Migrating between JSON and XML"
+      ],
+      "correct": 1,
+      "explanation": "Schema evolution is how your API's data structures (request/response shapes) change over time. A good schema evolution strategy ensures changes are backwards compatible or properly versioned."
+    },
+    {
+      "id": "version-040",
+      "type": "ordering",
+      "question": "Rank these schema changes by backwards-compatibility risk (safest to riskiest):",
+      "items": [
+        "Add optional field with default",
+        "Add required field (requests)",
+        "Change field type",
+        "Remove field"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Optional field with default is safe (clients ignore it). Required field breaks clients not sending it. Changing types breaks parsing. Removing breaks anyone using it. Risk increases with each."
+    },
+    {
+      "id": "version-041",
+      "type": "multi-select",
+      "question": "Which help ensure backwards compatibility in schema changes?",
+      "options": [
+        "JSON Schema validation in tests",
+        "Contract testing (client and server agree on schema)",
+        "Consumer-driven contract testing",
+        "Just hoping clients don't break"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Schema validation catches unintended changes. Contract testing ensures client/server alignment. Consumer-driven contracts let clients specify what they need. Hope is not a strategy."
+    },
+    {
+      "id": "version-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "What's 'consumer-driven contract testing'?",
+          "options": [
+            "Clients write contracts specifying what they need from the API",
+            "The API team writes tests for each consumer",
+            "A legal contract between API provider and consumer",
+            "Testing that consumers are rate limited"
+          ],
+          "correct": 0,
+          "explanation": "In consumer-driven contracts, each API client defines what it needs (fields, behaviors). The API runs these contracts as tests. If a change breaks any consumer's contract, the test fails — preventing accidental breakage."
+        },
+        {
+          "question": "A consumer-driven contract test fails after your change. What should you do?",
+          "options": [
+            "Delete the failing contract",
+            "Push the change anyway",
+            "Either revert the change, or coordinate with the affected consumer to update their contract",
+            "Ignore it — consumer tests are their problem"
+          ],
+          "correct": 2,
+          "explanation": "A failing contract means you'll break that consumer. Either revert (if the change isn't critical) or work with the consumer to update their expectations. Don't ignore or override — that defeats the purpose."
+        }
+      ]
+    },
+    {
+      "id": "version-043",
+      "type": "multiple-choice",
+      "question": "What's a 'changelog' in the context of APIs?",
+      "options": [
+        "A log of authentication changes",
+        "A document listing all API changes, typically organized by date or version",
+        "A log of API errors",
+        "A log of database transactions"
+      ],
+      "correct": 1,
+      "explanation": "A changelog documents what changed in each API update: new endpoints, modified behaviors, deprecations, fixes. It's essential for clients to understand what's new or different."
+    },
+    {
+      "id": "version-044",
+      "type": "multi-select",
+      "question": "What should be included in an API changelog?",
+      "options": [
+        "New features and endpoints",
+        "Breaking changes (clearly marked)",
+        "Deprecations and removals",
+        "Internal implementation details"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Changelogs should cover what clients care about: new features, breaking changes (especially!), and deprecations. Internal implementation isn't relevant to API consumers unless it affects behavior."
+    },
+    {
+      "id": "version-045",
+      "type": "ordering",
+      "question": "Rank these changelog practices from worst to best:",
+      "items": [
+        "No changelog",
+        "Changelog with only major releases",
+        "Detailed changelog with all changes categorized",
+        "Auto-generated changelog from commit messages"
+      ],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "No changelog is worst — clients are blind to changes. Auto-generated is noisy and not curated. Major-only misses details. Detailed, categorized (Breaking/Added/Fixed/Deprecated) is most helpful."
+    },
+    {
+      "id": "version-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're planning a v2 that's a complete redesign. What's the best migration strategy?",
+          "options": [
+            "Release v2, immediately turn off v1",
+            "Release v2, run both, sunset v1 after a period",
+            "Gradually move v1 features to v2 over many releases",
+            "B, with clear migration guides"
+          ],
+          "correct": 3,
+          "explanation": "Run v1 and v2 in parallel, giving clients time to migrate. Provide migration guides explaining what changed and how to update. Set a clear sunset date for v1. Immediate turnoff is too disruptive."
+        },
+        {
+          "question": "What should migration documentation include?",
+          "options": [
+            "Every changed field mapped old → new",
+            "Code examples in popular languages",
+            "Common migration patterns and gotchas",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Great migration docs include: field mappings, code examples, patterns (how to do X in v2), gotchas (common mistakes), and a migration checklist. Make upgrading as easy as possible."
+        }
+      ]
+    },
+    {
+      "id": "version-047",
+      "type": "multiple-choice",
+      "question": "What's 'feature flagging' in the context of API evolution?",
+      "options": [
+        "Marking features as deprecated",
+        "Releasing features behind flags that clients opt into",
+        "Flagging problematic API calls",
+        "A system for reporting bugs"
+      ],
+      "correct": 1,
+      "explanation": "Feature flags let you release new behavior behind opt-in flags. Clients can enable the flag to test new features before they're default. This allows gradual rollout and easy rollback."
+    },
+    {
+      "id": "version-048",
+      "type": "multi-select",
+      "question": "How can feature flags help with API evolution?",
+      "options": [
+        "Test new behavior with willing clients before full release",
+        "Roll out changes gradually, reducing risk",
+        "Allow different clients to use different behaviors",
+        "Automatically version the API"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Feature flags enable testing with early adopters, gradual rollout, and per-client customization. They don't automatically version — you still need to decide when flags become default and how to sunset old behavior."
+    },
+    {
+      "id": "version-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're adding a new search algorithm. How might you use feature flags?",
+          "options": [
+            "Release the new algorithm and hope it works",
+            "Let clients opt into 'search_v2' flag to test",
+            "Keep the new algorithm internal until it's perfect",
+            "B — controlled exposure with opt-in"
+          ],
+          "correct": 3,
+          "explanation": "A feature flag lets you release search_v2 for testing. Interested clients opt in. You gather feedback, fix issues, and gradually roll out. Less risky than a big-bang release."
+        },
+        {
+          "question": "After testing, you want search_v2 to become the default. What's the process?",
+          "options": [
+            "Remove search_v1 immediately",
+            "Make v2 default, allow clients to flag for v1 temporarily, sunset v1",
+            "Keep both forever",
+            "B — flip default, deprecate old with transition period"
+          ],
+          "correct": 3,
+          "explanation": "Flip the default to v2. Provide a 'use_legacy_search' flag for clients who need time to adapt. Announce deprecation timeline. Remove the flag after sunset. Gradual transition."
+        }
+      ]
+    },
+    {
+      "id": "version-050",
+      "type": "multiple-choice",
+      "question": "What's 'expansion-only' API design?",
+      "options": [
+        "An API that only adds features, never removes",
+        "An API that grows in response size over time",
+        "An API that expands to more endpoints automatically",
+        "An API design principle where you only add, never remove or change"
+      ],
+      "correct": 3,
+      "explanation": "Expansion-only: you may add fields, endpoints, and enum values, but never remove or change them. This guarantees backwards compatibility. Constraints are traded for stability."
+    },
+    {
+      "id": "version-051",
+      "type": "ordering",
+      "question": "Rank these by how much discipline they require to maintain backwards compatibility (least to most):",
+      "items": [
+        "Version everything, break freely within versions",
+        "Expansion-only (never remove or change)",
+        "Additive changes only, but can deprecate/remove with notice",
+        "No rules, fix forward"
+      ],
+      "correctOrder": [3, 0, 2, 1],
+      "explanation": "No rules requires no discipline (but causes chaos). Versioned breaking changes are structured. Additive with deprecation requires thought. Expansion-only is strictest — you can never undo a mistake."
+    },
+    {
+      "id": "version-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API field was named 'crated_at' (typo). Expansion-only means you can't rename it. What are your options?",
+          "options": [
+            "Just rename it — typos are special cases",
+            "Add 'created_at' field, document 'crated_at' as deprecated alias",
+            "Leave the typo forever",
+            "B — add the correct name, keep the wrong one for compatibility"
+          ],
+          "correct": 3,
+          "explanation": "With expansion-only, you add 'created_at' and keep 'crated_at' as an alias. Document that both work. New clients use the correct name. You're stuck with the typo forever, but nothing breaks."
+        },
+        {
+          "question": "What's the cost of strict expansion-only?",
+          "options": [
+            "API responses grow over time with cruft",
+            "You can't fix design mistakes",
+            "Complexity accumulates",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Expansion-only accumulates cruft: old fields, mistakes, deprecated-but-present code. The API grows and never shrinks. Some teams accept this for stability; others prefer versioning to occasionally clean up."
+        }
+      ]
+    },
+    {
+      "id": "version-053",
+      "type": "multiple-choice",
+      "question": "When is a complete API rewrite (v1 → v2 with no migration path) acceptable?",
+      "options": [
+        "Never — always provide migration",
+        "When v1 has fundamental flaws that can't be incrementally fixed",
+        "When there are fewer than 10 clients",
+        "Any time the team wants to"
+      ],
+      "correct": 1,
+      "explanation": "Sometimes v1 is so flawed (security issues, impossible constraints) that incremental evolution is impractical. A v2 rewrite can be justified, but it's a significant cost to clients. Use sparingly."
+    },
+    {
+      "id": "version-054",
+      "type": "multi-select",
+      "question": "What makes a v1 → v2 migration painful for clients?",
+      "options": [
+        "Different resource structures",
+        "Different authentication mechanisms",
+        "Different endpoint patterns",
+        "Better documentation in v2"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Structural changes, auth changes, and endpoint pattern changes require code rewrites. Better documentation is helpful, not painful. The more different v2 is, the more work for clients."
+    },
+    {
+      "id": "version-055",
+      "type": "ordering",
+      "question": "Rank these migration scenarios by difficulty for clients (easiest to hardest):",
+      "items": [
+        "Field renamed, same structure",
+        "Endpoint moved, same payload",
+        "Entire resource model changed",
+        "Auth mechanism changed"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Field rename: find-replace. Endpoint move: update URL. Auth change: update SDK/configuration (can be complex). Resource model change: rewrite business logic — hardest."
+    },
+    {
+      "id": "version-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You manage a public API. Usage analytics show 99% of traffic on v2, 1% still on v1. v1 is deprecated. What should you do?",
+          "options": [
+            "Turn off v1 immediately — only 1%",
+            "Reach out to v1 users, help them migrate, then sunset",
+            "Keep v1 forever for that 1%",
+            "B — proactive communication before removal"
+          ],
+          "correct": 3,
+          "explanation": "1% might be significant in absolute numbers. Reach out: 'We're sunsetting v1 on [date]. Here's migration help.' Some may need extensions. After good-faith outreach, sunset with notice."
+        },
+        {
+          "question": "A v1 user says they can't migrate by the deadline. What should you do?",
+          "options": [
+            "Extend the deadline for everyone",
+            "Extend just for them",
+            "Hold firm — the deadline was announced",
+            "Evaluate case-by-case; extensions are sometimes appropriate"
+          ],
+          "correct": 3,
+          "explanation": "Case-by-case: Are they actively migrating or just ignoring it? Is this a major customer? Small extensions for engaged customers building goodwill. But don't extend indefinitely — you need to sunset eventually."
+        }
+      ]
+    },
+    {
+      "id": "version-057",
+      "type": "multiple-choice",
+      "question": "What's 'API stability' in software development?",
+      "options": [
+        "The API never crashes",
+        "The API contract changes rarely or predictably",
+        "The API has high uptime",
+        "The API handles errors gracefully"
+      ],
+      "correct": 1,
+      "explanation": "Stability means the contract (endpoints, fields, behaviors) is predictable. Clients can rely on it not changing unexpectedly. Stability isn't about uptime or crashes — it's about the interface remaining consistent."
+    },
+    {
+      "id": "version-058",
+      "type": "multi-select",
+      "question": "What indicates a stable API?",
+      "options": [
+        "Long deprecation periods",
+        "Semantic versioning followed",
+        "Breaking changes are rare and well-communicated",
+        "No documentation (nothing to change)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Long deprecation, SemVer, and rare/communicated breaking changes indicate stability. Lack of documentation indicates poor API management, not stability."
+    },
+    {
+      "id": "version-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API is labeled 'beta'. What does this typically mean for versioning and stability?",
+          "options": [
+            "The API will never change",
+            "Breaking changes can happen without warning",
+            "Breaking changes can happen, but should still be communicated",
+            "C — beta means less stability, not no communication"
+          ],
+          "correct": 3,
+          "explanation": "Beta = less stability guarantee. You can iterate faster. But communication is still professional: announce changes, give some notice. 'Beta' isn't license for chaos, just lower stability expectations."
+        },
+        {
+          "question": "When should an API move from 'beta' to 'stable'?",
+          "options": [
+            "After a fixed time period",
+            "When breaking changes become rare and you're ready to commit to stability",
+            "When the first customer uses it",
+            "When all bugs are fixed"
+          ],
+          "correct": 1,
+          "explanation": "Stable means you're committing to the contract. Move out of beta when: the design is validated, breaking changes are unlikely, you're ready for deprecation periods, and you can maintain it long-term."
+        }
+      ]
+    },
+    {
+      "id": "version-060",
+      "type": "ordering",
+      "question": "Rank these API maturity levels from least to most stable:",
+      "items": [
+        "Alpha (internal testing)",
+        "Beta (external testing, changes expected)",
+        "General Availability (stable, versioned)",
+        "Long-Term Support (extended stability guarantees)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Alpha: anything goes. Beta: testing, changes likely. GA: stable contract, versioned changes. LTS: extended support, even stricter compatibility. Each level adds more stability commitment."
+    },
+    {
+      "id": "version-061",
+      "type": "multiple-choice",
+      "question": "What's the 'one version' policy (used by Google internally)?",
+      "options": [
+        "Only one version of any software exists",
+        "All clients must upgrade to the latest version immediately",
+        "New commits to shared code must not break any clients in the monorepo",
+        "C — breaking changes require updating all callers atomically"
+      ],
+      "correct": 3,
+      "explanation": "Google's 'one version' rule: the entire codebase uses one version of each library. Breaking changes require updating all callers in the same commit. This avoids version divergence but requires monorepo and atomic changes."
+    },
+    {
+      "id": "version-062",
+      "type": "multi-select",
+      "question": "What are challenges of the 'one version' rule for public APIs?",
+      "options": [
+        "You don't control client code",
+        "Clients can't all update simultaneously",
+        "Different clients have different update cycles",
+        "It works perfectly for public APIs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "One version works internally (you control all code). For public APIs, clients are external, have their own timelines, and can't be forced to update. Versioning accommodates this reality."
+    },
+    {
+      "id": "version-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Should API versions be immutable (once released, never changed)?",
+          "options": [
+            "Yes — v1.0.0 should never change",
+            "No — bug fixes should go into existing versions",
+            "Bug fixes yes, feature additions no",
+            "C — security and bug fixes are typically allowed"
+          ],
+          "correct": 3,
+          "explanation": "Strict immutability is impractical — you need to fix bugs. Common practice: bug fixes and security patches are allowed within a version. New features typically require a new version (at least minor)."
+        },
+        {
+          "question": "A bug fix changes observable behavior. Is it breaking?",
+          "options": [
+            "No — it's a bug fix",
+            "Yes — some clients might depend on the buggy behavior",
+            "Depends on how many clients are affected",
+            "B — Hyrum's Law: any observable behavior will be depended on"
+          ],
+          "correct": 3,
+          "explanation": "Hyrum's Law: with enough users, every observable behavior will be relied upon. Even 'fixing a bug' can break someone. Evaluate impact: if the bug is obvious and unlikely to be depended on, fix it. Otherwise, version it."
+        }
+      ]
+    },
+    {
+      "id": "version-064",
+      "type": "multiple-choice",
+      "question": "What's 'Hyrum's Law'?",
+      "options": [
+        "APIs always have bugs",
+        "With enough users, someone depends on every observable behavior",
+        "Every API must have documentation",
+        "Breaking changes always break someone"
+      ],
+      "correct": 1,
+      "explanation": "Hyrum's Law: given enough users, any observable behavior (even bugs, side effects, or undocumented behaviors) will be relied upon. This makes all changes potentially breaking for someone. Design accordingly."
+    },
+    {
+      "id": "version-065",
+      "type": "ordering",
+      "question": "Rank these changes by risk of breaking someone due to Hyrum's Law (lowest to highest):",
+      "items": [
+        "Add new optional field",
+        "Fix typo in error message",
+        "Change order of fields in JSON response",
+        "Fix bug in sorting algorithm"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "New field: very low risk. Error message typo: low (but someone might parse it). Field order: some clients rely on order even though they shouldn't. Sorting algorithm: affects any client depending on order. All carry some risk."
+    },
+    {
+      "id": "version-066",
+      "type": "multi-select",
+      "question": "What helps mitigate Hyrum's Law risks?",
+      "options": [
+        "Clear documentation of what's guaranteed",
+        "Not guaranteeing things that might change (field order, error messages)",
+        "Consumer-driven contract tests",
+        "Releasing changes slowly with monitoring"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All help. Document what's stable. Explicitly don't guarantee changeable things. Contract tests catch dependencies. Slow rollout reveals problems before full exposure. Mitigation is multi-layered."
+    },
+    {
+      "id": "version-067",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API returns results in a consistent order, but it's not documented. Should you document it?",
+          "options": [
+            "Yes — clients may depend on it anyway",
+            "No — if you document it, you can never change it",
+            "Document it with a caveat that it may change",
+            "B or C — consider carefully before committing"
+          ],
+          "correct": 3,
+          "explanation": "Documenting the order creates a contract you must maintain. If it might change, either: don't document (clients use at own risk), or document with explicit instability notice. Think before committing."
+        },
+        {
+          "question": "Clients are already depending on the undocumented order. You want to change it. What should you do?",
+          "options": [
+            "Change it — it's not documented",
+            "Announce the change, give transition period, then change",
+            "Never change it — they're depending on it",
+            "B — respect real usage even if undocumented"
+          ],
+          "correct": 3,
+          "explanation": "Real-world usage trumps documentation. If clients depend on it, changing it breaks them regardless of docs. Communicate the change, provide a sort parameter for clients who need explicit order, then change the default."
+        }
+      ]
+    },
+    {
+      "id": "version-068",
+      "type": "multiple-choice",
+      "question": "What's 'API contract testing'?",
+      "options": [
+        "Legal review of API terms of service",
+        "Testing that implementations match the specified API contract",
+        "Testing performance under contract load",
+        "Testing with paid customers only"
+      ],
+      "correct": 1,
+      "explanation": "Contract testing verifies that the API implementation matches its specification. It can be provider-side (does my API match my spec?) or consumer-side (does the API give me what I need?)."
+    },
+    {
+      "id": "version-069",
+      "type": "multi-select",
+      "question": "Which tools help with API contract testing?",
+      "options": [
+        "Pact (consumer-driven contracts)",
+        "OpenAPI/Swagger validation",
+        "Postman/Newman collections",
+        "Load testing tools like k6"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Pact tests consumer contracts. OpenAPI validators check against the spec. Postman collections can verify responses match expectations. Load testing (k6) is for performance, not contracts."
+    },
+    {
+      "id": "version-070",
+      "type": "ordering",
+      "question": "Rank these testing approaches by when they catch breaking changes (earliest to latest):",
+      "items": [
+        "Static analysis/linting of API definitions",
+        "Unit tests against schema",
+        "Integration tests with real clients",
+        "Production monitoring for errors"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Static analysis catches before code runs. Schema tests catch at build time. Integration tests catch pre-deployment. Production monitoring catches after deployment — too late, but still useful."
+    },
+    {
+      "id": "version-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're using OpenAPI/Swagger. How can it help with versioning?",
+          "options": [
+            "Automatically versions your API",
+            "Provides a machine-readable spec you can diff between versions",
+            "Prevents breaking changes",
+            "B — you can detect changes by comparing specs"
+          ],
+          "correct": 3,
+          "explanation": "OpenAPI specs are diffable. Tools can compare v1.yaml and v2.yaml, highlight changes, and identify which are breaking. This automates part of version management. It doesn't prevent breaking changes, just helps detect them."
+        },
+        {
+          "question": "What's 'spectral' or 'openapi-diff'?",
+          "options": [
+            "Alternative to OpenAPI",
+            "Tools that analyze OpenAPI specs for issues or changes",
+            "A versioning strategy",
+            "B — linters and diff tools for OpenAPI"
+          ],
+          "correct": 3,
+          "explanation": "Spectral is an OpenAPI linter (checks style, consistency). openapi-diff compares two specs and identifies breaking changes. These tools integrate into CI/CD to catch issues before release."
+        }
+      ]
+    },
+    {
+      "id": "version-072",
+      "type": "multiple-choice",
+      "question": "What's 'forward compatibility'?",
+      "options": [
+        "Old clients work with new servers",
+        "New clients work with old servers",
+        "The ability to fast-forward through API versions",
+        "Both A and B"
+      ],
+      "correct": 1,
+      "explanation": "Forward compatibility: new clients can work with old servers. Backward compatibility: old clients work with new servers. Forward compatibility is about clients being resilient to older server versions."
+    },
+    {
+      "id": "version-073",
+      "type": "multi-select",
+      "question": "How can clients achieve forward compatibility?",
+      "options": [
+        "Don't require fields that might not exist in older servers",
+        "Have fallbacks for features that might be missing",
+        "Check API version before using new features",
+        "Only use features from v1"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Forward-compatible clients: don't require new fields (fallback), check capabilities before using, gracefully degrade. Only using v1 works but misses improvements. True forward compatibility is feature-aware."
+    },
+    {
+      "id": "version-074",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A mobile app (v1.5) connects to backend (v1.0). The app uses a v1.5 API feature. What happens?",
+          "options": [
+            "It works — backends are always newest",
+            "Error — server doesn't know the feature",
+            "Depends on how the client handles missing features",
+            "C — forward compatibility is about client resilience"
+          ],
+          "correct": 3,
+          "explanation": "If the client requires v1.5 features, it fails against v1.0. If it checks capabilities and falls back gracefully, it works with degraded functionality. This matters in mobile where app updates and server updates aren't synchronized."
+        },
+        {
+          "question": "How should mobile apps handle backend version lag?",
+          "options": [
+            "Force users to update the app",
+            "Check backend version and adjust behavior",
+            "Feature detection: try features, handle failures",
+            "B or C — be resilient to version mismatches"
+          ],
+          "correct": 3,
+          "explanation": "Mobile apps can't always control server versions (enterprise customers running old versions). Version checks or feature detection (try feature, fall back if unsupported) enable resilience. Forcing updates isn't always possible."
+        }
+      ]
+    },
+    {
+      "id": "version-075",
+      "type": "multiple-choice",
+      "question": "What's 'capability negotiation' for APIs?",
+      "options": [
+        "Negotiating a contract with API provider",
+        "Client and server agreeing on supported features at runtime",
+        "Negotiating rate limits",
+        "Negotiating authentication methods"
+      ],
+      "correct": 1,
+      "explanation": "Capability negotiation: client asks what the server supports, or advertises its own capabilities. They agree on a common feature set. This enables forward/backward compatibility without strict versioning."
+    },
+    {
+      "id": "version-076",
+      "type": "ordering",
+      "question": "Rank these versioning documentation artifacts by importance (most to least):",
+      "items": [
+        "Migration guide for breaking changes",
+        "Changelog",
+        "Deprecation notices",
+        "Historical version snapshots"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Migration guides are critical for major upgrades. Deprecation notices prevent surprises. Changelog tracks all changes. Historical snapshots are nice for reference but less immediately useful."
+    },
+    {
+      "id": "version-077",
+      "type": "multi-select",
+      "question": "What belongs in an API migration guide?",
+      "options": [
+        "Summary of breaking changes",
+        "Step-by-step upgrade instructions",
+        "Code examples before/after",
+        "Internal architecture changes"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Breaking changes summary, upgrade steps, and code examples help clients migrate. Internal architecture is irrelevant to clients — they care about the interface, not the implementation."
+    },
+    {
+      "id": "version-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to test that a breaking change is feasible. How might you assess impact?",
+          "options": [
+            "Just make the change and see who complains",
+            "Analyze API logs to see who uses the affected feature",
+            "Ask clients directly",
+            "B and C — data-driven assessment plus direct outreach"
+          ],
+          "correct": 3,
+          "explanation": "Analyze usage: who calls the affected endpoints? How often? With what parameters? Then reach out to significant users. Data shows scope; outreach reveals concerns. Both inform whether/how to proceed."
+        },
+        {
+          "question": "Logs show the deprecated endpoint gets 10 requests per day from 2 clients. What should you do?",
+          "options": [
+            "Safe to remove — very low usage",
+            "Reach out to those 2 clients specifically",
+            "Still need full deprecation period",
+            "B — direct outreach is efficient with few users"
+          ],
+          "correct": 3,
+          "explanation": "With only 2 clients, direct outreach is practical. Explain the change, help them migrate, set a timeline. This is more personal than a mass deprecation notice and often faster."
+        }
+      ]
+    },
+    {
+      "id": "version-079",
+      "type": "multiple-choice",
+      "question": "What's 'rolling deployment' in the context of API versioning?",
+      "options": [
+        "Deploying API updates gradually across servers",
+        "Rolling back to previous versions",
+        "A naming convention for versions",
+        "Deploying on a schedule"
+      ],
+      "correct": 0,
+      "explanation": "Rolling deployment: deploy new version to a subset of servers, gradually increasing. This allows testing in production and easy rollback. During rollout, clients might hit old or new servers — ensure compatibility."
+    },
+    {
+      "id": "version-080",
+      "type": "multi-select",
+      "question": "What challenges arise from rolling deployments for APIs?",
+      "options": [
+        "Mixed versions serving traffic simultaneously",
+        "Breaking changes can't be deployed gradually",
+        "Client requests might hit different versions",
+        "Database schema changes are tricky"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "During rollout, old and new coexist. Breaking changes break clients hitting new servers. Mixed versions cause inconsistent responses. DB schema changes must work with both versions. Rolling requires compatibility."
+    },
+    {
+      "id": "version-081",
+      "type": "ordering",
+      "question": "Rank these deployment strategies by risk for API changes (lowest to highest):",
+      "items": [
+        "Feature flags (opt-in new behavior)",
+        "Canary (1% traffic to new version)",
+        "Blue-green (instant switch, easy rollback)",
+        "Big bang (deploy everywhere at once)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Feature flags expose new behavior gradually with full control. Canary catches issues with minimal impact. Blue-green is instant but rollback is easy. Big bang is riskiest — problems affect everyone immediately."
+    },
+    {
+      "id": "version-082",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "During rolling deployment, your DB schema changes. Old version expects column A; new version expects column B. What's the problem?",
+          "options": [
+            "No problem — databases handle this",
+            "Old servers break when schema changes",
+            "New servers break on old schema",
+            "B and C — schema change breaks whichever version doesn't expect it"
+          ],
+          "correct": 3,
+          "explanation": "If you change the schema, old servers don't understand the new schema, and new servers don't work with the old one. During rollout, both are running. The schema change must be compatible with both."
+        },
+        {
+          "question": "How do you handle DB schema changes during rolling deployment?",
+          "options": [
+            "Deploy schema change after all servers are new",
+            "Multi-phase: add new column, deploy code to use it, drop old column",
+            "Don't use rolling deployments",
+            "B — expand-contract pattern for schema changes"
+          ],
+          "correct": 3,
+          "explanation": "Expand-contract: 1) Add new column (expand) — both old/new code works. 2) Deploy new code to use new column. 3) Drop old column (contract) when old code is gone. Each step is safe."
+        }
+      ]
+    },
+    {
+      "id": "version-083",
+      "type": "multiple-choice",
+      "question": "What's the 'expand-contract' pattern?",
+      "options": [
+        "A way to scale APIs",
+        "A schema migration pattern: add new, migrate data, remove old",
+        "A versioning strategy",
+        "A testing approach"
+      ],
+      "correct": 1,
+      "explanation": "Expand-contract: 1) Expand — add new structure alongside old. 2) Migrate — move data/code to use new structure. 3) Contract — remove old structure. Each step is independently deployable and reversible."
+    },
+    {
+      "id": "version-084",
+      "type": "multi-select",
+      "question": "Where does expand-contract apply?",
+      "options": [
+        "Database schema changes",
+        "API field changes",
+        "Service interface changes",
+        "Only database migrations"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Expand-contract works for any schema evolution: database columns, API fields, service contracts. It's a general pattern for making changes without breaking running systems."
+    },
+    {
+      "id": "version-085",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your team wants to rename a field from 'userName' to 'username'. Using expand-contract, what's step 1?",
+          "options": [
+            "Rename the field",
+            "Add 'username' field, keep 'userName', return both",
+            "Document the coming change",
+            "B — expand by adding the new field"
+          ],
+          "correct": 3,
+          "explanation": "Step 1 (expand): Add 'username' while keeping 'userName'. Return both in responses. Accept both in requests. Old clients continue working; new clients can use the new name."
+        },
+        {
+          "question": "After expansion, when can you contract (remove 'userName')?",
+          "options": [
+            "Immediately",
+            "After all clients have migrated to 'username'",
+            "After the deprecation period expires",
+            "B or C — when removing won't break clients"
+          ],
+          "correct": 3,
+          "explanation": "Contract when it's safe: either all clients have migrated (check usage logs) or the deprecation period has passed (clients were warned). Then remove 'userName'. Document the removal."
+        }
+      ]
+    },
+    {
+      "id": "version-086",
+      "type": "multiple-choice",
+      "question": "What's 'API governance'?",
+      "options": [
+        "Government regulation of APIs",
+        "Policies and processes for managing API design, versioning, and lifecycle",
+        "Authentication and authorization",
+        "API monetization"
+      ],
+      "correct": 1,
+      "explanation": "API governance: standards for design consistency, versioning policies, review processes, deprecation rules, documentation requirements. It ensures APIs are consistent, maintainable, and well-managed across an organization."
+    },
+    {
+      "id": "version-087",
+      "type": "multi-select",
+      "question": "What should API governance policies cover?",
+      "options": [
+        "Versioning strategy and deprecation timelines",
+        "Naming conventions and design patterns",
+        "Review and approval process for changes",
+        "Personal preferences of each developer"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Governance should standardize versioning, naming, design patterns, and change processes. Personal preferences create inconsistency — governance provides organizational standards."
+    },
+    {
+      "id": "version-088",
+      "type": "ordering",
+      "question": "Rank these by how much organizational discipline they require (least to most):",
+      "items": [
+        "No versioning policy (ad-hoc)",
+        "Documented versioning guidelines",
+        "Automated versioning checks in CI/CD",
+        "API review board for all changes"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Ad-hoc requires no discipline (chaos). Documented guidelines require following docs. Automated checks enforce rules. Review boards require process and people. More discipline = more consistency, higher overhead."
+    },
+    {
+      "id": "version-089",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A developer wants to release a breaking change immediately. API governance says 6-month deprecation. What should happen?",
+          "options": [
+            "Developer's urgency overrides policy",
+            "Follow the policy — deprecation period applies",
+            "Escalate to get an exception",
+            "B, unless there's a compelling reason for an exception"
+          ],
+          "correct": 3,
+          "explanation": "Policies exist for a reason. Follow them unless there's genuine justification (security vulnerability, critical bug). Exceptions should be deliberate and documented, not routine. Policy ensures consistency."
+        },
+        {
+          "question": "The breaking change is a security fix. What should happen?",
+          "options": [
+            "Still follow 6-month deprecation",
+            "Immediate fix, but communicate clearly",
+            "Get management approval first",
+            "B — security trumps deprecation policy"
+          ],
+          "correct": 3,
+          "explanation": "Security vulnerabilities justify fast-tracking. Fix immediately, but communicate: explain the breaking change, why it was urgent, migration steps. Document the exception. Security is a valid policy override."
+        }
+      ]
+    },
+    {
+      "id": "version-090",
+      "type": "multiple-choice",
+      "question": "What's 'API lifecycle management'?",
+      "options": [
+        "Managing API uptime",
+        "The full journey from API design through deprecation and retirement",
+        "Managing developer accounts",
+        "Monitoring API performance"
+      ],
+      "correct": 1,
+      "explanation": "API lifecycle: design → development → testing → release → maintenance → deprecation → retirement. Lifecycle management is planning and executing this journey. Versioning is a key part of lifecycle management."
+    },
+    {
+      "id": "version-091",
+      "type": "ordering",
+      "question": "Rank these API lifecycle stages in order:",
+      "items": [
+        "Design",
+        "Beta release",
+        "General availability",
+        "Deprecation",
+        "Retirement"
+      ],
+      "correctOrder": [0, 1, 2, 3, 4],
+      "explanation": "Design comes first. Beta for testing. GA for stable release. Deprecation when sunset is planned. Retirement when it's finally turned off. Each stage has different stability and versioning implications."
+    },
+    {
+      "id": "version-092",
+      "type": "multi-select",
+      "question": "What should happen at API retirement (end of life)?",
+      "options": [
+        "Stop serving requests (return 410 Gone)",
+        "Redirect to the replacement if available",
+        "Archive documentation for reference",
+        "Delete all related code immediately"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Return 410 or redirect (helpful). Archive docs (future reference). Don't delete code immediately — keep it for a while in case rollback is needed or for historical reference."
+    },
+    {
+      "id": "version-093",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API was retired 6 months ago. A customer claims they still need it. What should you do?",
+          "options": [
+            "Bring it back for them",
+            "Explain it's retired, offer migration help to current version",
+            "Charge them extra to maintain it",
+            "B — retirement means retired, but be helpful"
+          ],
+          "correct": 3,
+          "explanation": "Retirement was announced and executed. Reversing it sets a bad precedent and incurs maintenance costs. Offer migration assistance, but the retired version stays retired. Clear policies, compassionate execution."
+        },
+        {
+          "question": "The customer is a major enterprise paying significant fees. Does this change things?",
+          "options": [
+            "Yes — money talks, bring it back",
+            "No — policies apply to everyone",
+            "Consider: can they fund dedicated maintenance?",
+            "Evaluate business impact, but be cautious of precedent"
+          ],
+          "correct": 3,
+          "explanation": "Business reality matters. A major customer might justify special arrangements (paid extended support). But consider: does this undermine your policies? Set clear terms if you make exceptions. Balance revenue and sustainability."
+        }
+      ]
+    },
+    {
+      "id": "version-094",
+      "type": "multiple-choice",
+      "question": "What's 'API-first' development?",
+      "options": [
+        "Building the API before any UI",
+        "Designing and agreeing on the API contract before implementation",
+        "Prioritizing API speed over features",
+        "Only building APIs, no other interfaces"
+      ],
+      "correct": 1,
+      "explanation": "API-first: design and document the API contract before writing implementation code. Teams agree on the interface, then build to it. This prevents implementation details from leaking into the API design."
+    },
+    {
+      "id": "version-095",
+      "type": "multi-select",
+      "question": "How does API-first development help with versioning?",
+      "options": [
+        "Contract is stable before implementation begins",
+        "Changes are deliberate design decisions, not accidents",
+        "Easier to review breaking changes before they're coded",
+        "It doesn't — API-first is unrelated to versioning"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "API-first means the contract is designed thoughtfully upfront. Changes are intentional. Reviews catch breaking changes before coding. This reduces accidental breakage and improves versioning hygiene."
+    },
+    {
+      "id": "version-096",
+      "type": "ordering",
+      "question": "Rank these by how well they support API evolution (worst to best):",
+      "items": [
+        "No specification (implement as you go)",
+        "Specification written after implementation",
+        "API-first (spec before implementation)",
+        "API-first with automated compatibility checks"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "No spec: chaos, hard to track changes. Spec-after: documents reality but doesn't guide design. API-first: intentional design. API-first with automation: catches breaking changes automatically. More structure = better evolution."
+    },
+    {
+      "id": "version-097",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API has 'stringly typed' fields where different string values are actually different types (e.g., 'type': 'user' vs 'type': 'admin'). You want to add a new type. Is this breaking?",
+          "options": [
+            "No — it's just a new string value",
+            "Yes — clients with exhaustive handling might break",
+            "Only if the new type changes behavior",
+            "B — new enum values can break clients"
+          ],
+          "correct": 3,
+          "explanation": "If clients switch on 'type' exhaustively, they'll hit an unexpected case with the new value. This is effectively adding an enum value — same Hyrum's Law problem. New 'type' values can break clients."
+        },
+        {
+          "question": "How should you design type fields to be evolution-friendly?",
+          "options": [
+            "Document that new types may be added",
+            "Require clients to handle unknown types",
+            "Use versioning when adding types",
+            "A and B — set expectations and require defensive handling"
+          ],
+          "correct": 3,
+          "explanation": "Document that the 'type' field may have new values in the future. Require clients to have an 'else' case for unknown types. This sets expectations and makes clients resilient to evolution."
+        }
+      ]
+    },
+    {
+      "id": "version-098",
+      "type": "multiple-choice",
+      "question": "What's the relationship between API versioning and microservices?",
+      "options": [
+        "Microservices don't need versioning",
+        "Each microservice's API needs versioning, compounding complexity",
+        "Microservices use a single shared version",
+        "B — more services means more APIs to version"
+      ],
+      "correct": 3,
+      "explanation": "In microservices, each service has its own API. Each might evolve independently. Versioning multiplies: service A v2 might depend on service B v3. Coordination is complex. Good governance is essential."
+    },
+    {
+      "id": "version-099",
+      "type": "multi-select",
+      "question": "What helps manage versioning across microservices?",
+      "options": [
+        "Consistent versioning policies across all services",
+        "Contract testing between services",
+        "Allowing each team to version independently without standards",
+        "Service mesh with version-aware routing"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Consistent policies reduce confusion. Contract testing catches inter-service breakage. Version-aware routing (service mesh) manages traffic during transitions. Independent versioning without standards creates chaos."
+    },
+    {
+      "id": "version-100",
+      "type": "multiple-choice",
+      "question": "What's the fundamental goal of API versioning?",
+      "options": [
+        "To make the API more complex",
+        "To allow the API to evolve while maintaining reliability for existing clients",
+        "To charge clients for upgrades",
+        "To track who made changes"
+      ],
+      "correct": 1,
+      "explanation": "Versioning exists so APIs can improve (fix mistakes, add features, modernize) without breaking existing clients. It balances progress with stability. The goal is controlled evolution, not complexity for its own sake."
+    }
+  ]
+}
