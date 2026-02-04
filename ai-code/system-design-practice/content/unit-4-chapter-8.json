@@ -1,0 +1,1546 @@
+{
+  "id": "unit-4-chapter-8",
+  "chapterTitle": "Storage Selection Scenarios",
+  "problems": [
+    {
+      "id": "u4c8-001",
+      "type": "multiple-choice",
+      "question": "You're building a ride-sharing app that needs to match drivers to riders in real-time based on location. Which primary data store is best suited?",
+      "options": [
+        "PostgreSQL with PostGIS extension",
+        "Redis with geospatial commands",
+        "MongoDB with 2dsphere indexes",
+        "Either A, B, or C depending on scale"
+      ],
+      "correct": 3,
+      "explanation": "All three support geospatial queries. PostgreSQL/PostGIS is most full-featured; Redis is fastest for real-time but limited query complexity; MongoDB balances both. At small scale, any works. At massive scale, specialized choices matter."
+    },
+    {
+      "id": "u4c8-002",
+      "type": "multiple-choice",
+      "question": "You're designing a banking system that processes wire transfers. What's the most important storage characteristic?",
+      "options": [
+        "Low latency queries",
+        "Horizontal scalability",
+        "Strong ACID guarantees",
+        "Schema flexibility"
+      ],
+      "correct": 2,
+      "explanation": "Wire transfers require strong ACID guarantees—money can't be created or destroyed by race conditions or failures. Partial transfers or duplicate charges are unacceptable. PostgreSQL or similar RDBMS with full transaction support is essential."
+    },
+    {
+      "id": "u4c8-003",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building an IoT platform receiving 1 million sensor readings per second. Which storage type is most appropriate?",
+          "options": [
+            "PostgreSQL",
+            "MongoDB",
+            "Time-series database (InfluxDB/TimescaleDB)",
+            "Redis"
+          ],
+          "correct": 2,
+          "explanation": "Time-series databases are optimized for high write throughput of timestamped data, efficient time-range queries, automatic downsampling, and retention policies—exactly what IoT sensor data needs."
+        },
+        {
+          "question": "Your IoT data needs to be retained for 7 years for compliance but queried frequently only for the last 30 days. What strategy helps?",
+          "options": [
+            "Keep all data in the time-series DB",
+            "Tiered storage: hot (30 days) in TSDB, cold in S3/Parquet",
+            "Delete data older than 30 days",
+            "Move all data to S3 immediately"
+          ],
+          "correct": 1,
+          "explanation": "Tiered storage keeps recent data in the fast TSDB for queries while archiving older data to cheaper storage (S3 with Parquet format). This balances query performance, compliance, and cost."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-004",
+      "type": "multiple-choice",
+      "question": "You're building a social media feed that shows posts from followed users, sorted by time. What storage approach supports this efficiently?",
+      "options": [
+        "Query all followed users' posts on each request (fan-out on read)",
+        "Pre-compute and store each user's feed (fan-out on write)",
+        "Hybrid: fan-out on write for active users, on read for inactive",
+        "All approaches work equally well"
+      ],
+      "correct": 2,
+      "explanation": "Hybrid is common: active users get pre-computed feeds (fast reads, written on post), inactive users compute on read (saves storage for rarely-accessed feeds). Twitter uses this approach."
+    },
+    {
+      "id": "u4c8-005",
+      "type": "multiple-choice",
+      "question": "You're designing a document management system for a law firm. Documents need full-text search, version history, and access control. What storage combination works?",
+      "options": [
+        "Elasticsearch for everything",
+        "PostgreSQL for metadata/ACL, S3 for files, Elasticsearch for search",
+        "MongoDB for everything",
+        "S3 with metadata tags"
+      ],
+      "correct": 1,
+      "explanation": "PostgreSQL handles structured metadata and ACLs with ACID guarantees. S3 stores the actual documents cost-effectively with versioning. Elasticsearch provides full-text search. Each component does what it's best at."
+    },
+    {
+      "id": "u4c8-006",
+      "type": "multi-select",
+      "question": "A gaming company needs to store player profiles, real-time session state, leaderboards, and match history. Which stores would you recommend?",
+      "options": [
+        "PostgreSQL for player profiles and match history",
+        "Redis for session state and leaderboards",
+        "DynamoDB for all of the above",
+        "MongoDB for player profiles with embedded match history"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "PostgreSQL provides ACID for profiles and durable history storage. Redis excels at real-time session state and sorted set leaderboards. While DynamoDB could handle some of this, the combination of PostgreSQL + Redis is more purpose-built for each workload."
+    },
+    {
+      "id": "u4c8-007",
+      "type": "multiple-choice",
+      "question": "You're building a URL shortener that needs to handle 100K writes/day and 10M reads/day. What's the best primary storage?",
+      "options": [
+        "Redis for everything",
+        "PostgreSQL for everything",
+        "PostgreSQL for writes, Redis cache for reads",
+        "DynamoDB"
+      ],
+      "correct": 2,
+      "explanation": "PostgreSQL handles the moderate write load and provides durability. Redis caches the read-heavy lookups (short code → URL). This is a classic cache-aside pattern for read-heavy workloads. Pure Redis risks data loss; pure PostgreSQL might struggle with read load."
+    },
+    {
+      "id": "u4c8-008",
+      "type": "multiple-choice",
+      "question": "An e-commerce site needs to implement product recommendations based on purchase history and browsing patterns. What storage helps compute recommendations?",
+      "options": [
+        "PostgreSQL with complex joins",
+        "Graph database for user-product relationships",
+        "Redis for caching computed recommendations",
+        "B and C together"
+      ],
+      "correct": 3,
+      "explanation": "Graph databases excel at relationship-based queries ('users who bought X also bought Y'). Redis caches the computed recommendations for fast serving. PostgreSQL can do this but graph traversal queries are more natural in a graph DB."
+    },
+    {
+      "id": "u4c8-009",
+      "type": "multiple-choice",
+      "question": "You're designing a multi-tenant SaaS application. Each tenant has isolated data but the same schema. What database approach works?",
+      "options": [
+        "Separate database per tenant",
+        "Shared database with tenant_id column",
+        "Shared database with schema per tenant",
+        "Any of the above depending on requirements"
+      ],
+      "correct": 3,
+      "explanation": "All are valid: separate DBs provide strongest isolation but operational overhead; shared DB with tenant_id is simplest but requires careful query filtering; schema-per-tenant is middle ground. Choice depends on isolation needs, tenant count, and compliance requirements."
+    },
+    {
+      "id": "u4c8-010",
+      "type": "ordering",
+      "question": "Order these multi-tenancy approaches from strongest to weakest isolation:",
+      "items": [
+        "Row-level with tenant_id column",
+        "Separate database per tenant",
+        "Separate schema per tenant",
+        "Shared table with tenant column"
+      ],
+      "correctOrder": [1, 2, 0, 3],
+      "explanation": "Separate database (complete isolation) → Separate schema (same DB, different namespaces) → Row-level/shared table (logical separation only). Row-level and shared table with tenant column are essentially the same—weakest isolation."
+    },
+    {
+      "id": "u4c8-011",
+      "type": "multiple-choice",
+      "question": "You're building a chat application with 10M daily active users. Messages need to be stored and retrieved by conversation. What's the primary storage consideration?",
+      "options": [
+        "ACID transactions for message ordering",
+        "Write throughput and partition strategy",
+        "Complex query support",
+        "Join performance"
+      ],
+      "correct": 1,
+      "explanation": "At 10M DAU, write throughput is critical. Partitioning by conversation_id ensures messages in a conversation are co-located. Wide-column stores (Cassandra) or sharded SQL (CockroachDB, Vitess) work. Complex queries and joins are secondary to throughput."
+    },
+    {
+      "id": "u4c8-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building an email service. Each user has thousands of emails organized in folders with labels. What storage model fits?",
+          "options": [
+            "Relational: emails table with folder foreign key",
+            "Document: email documents with embedded labels",
+            "Wide-column: user_id as partition, timestamp as cluster",
+            "Key-value: email_id → email blob"
+          ],
+          "correct": 2,
+          "explanation": "Wide-column (Cassandra) partitions by user_id and clusters by timestamp for efficient 'fetch recent emails for user' queries. Document could work but wide-column handles the time-series nature better at scale."
+        },
+        {
+          "question": "Users also need full-text search across their emails. What do you add?",
+          "options": [
+            "Build search into Cassandra queries",
+            "Add Elasticsearch with per-user indexes",
+            "Use PostgreSQL full-text search",
+            "Search on the client side"
+          ],
+          "correct": 1,
+          "explanation": "Elasticsearch provides full-text search. Per-user indexing (or user_id field in queries) scopes searches to a user's emails. Cassandra isn't designed for full-text search. Client-side search doesn't scale."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-013",
+      "type": "multiple-choice",
+      "question": "A logistics company needs to optimize delivery routes. They have millions of locations and need to find shortest paths. What storage helps?",
+      "options": [
+        "PostgreSQL with recursive CTEs",
+        "Graph database optimized for pathfinding",
+        "Redis for caching routes",
+        "MongoDB with geospatial indexes"
+      ],
+      "correct": 1,
+      "explanation": "Graph databases (Neo4j, TigerGraph) with native graph algorithms (Dijkstra, A*) efficiently compute shortest paths across millions of nodes. PostgreSQL can do graph queries but isn't optimized for them. Geospatial indexes help with location but not route optimization."
+    },
+    {
+      "id": "u4c8-014",
+      "type": "multiple-choice",
+      "question": "You're building a real-time bidding platform for ads. Bids must be processed in under 100ms. What's the primary data store for bid decisioning?",
+      "options": [
+        "PostgreSQL",
+        "Redis",
+        "Cassandra",
+        "S3"
+      ],
+      "correct": 1,
+      "explanation": "Redis provides sub-millisecond reads for bid parameters (user segments, campaign budgets). The 100ms budget includes network latency—local Redis reads are essential. Persistent storage (PostgreSQL, Cassandra) is for logging, not real-time decisioning."
+    },
+    {
+      "id": "u4c8-015",
+      "type": "multi-select",
+      "question": "A financial trading platform needs to store trade executions for regulatory compliance, real-time position tracking, and historical analysis. Which stores address these needs?",
+      "options": [
+        "Immutable append-only log (Kafka) for trade events",
+        "Redis for real-time position aggregates",
+        "PostgreSQL or time-series DB for trade records",
+        "Data warehouse for historical analysis"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All address different needs: Kafka provides immutable audit log for compliance, Redis for real-time positions, PostgreSQL/TSDB for queryable trade records, and data warehouse for historical analytics. This is a polyglot persistence architecture."
+    },
+    {
+      "id": "u4c8-016",
+      "type": "multiple-choice",
+      "question": "You're designing a content delivery network (CDN) that needs to cache content at edge locations. What determines which storage technology for edge caches?",
+      "options": [
+        "Strong consistency requirements",
+        "Low latency and high read throughput",
+        "Complex query patterns",
+        "Transaction support"
+      ],
+      "correct": 1,
+      "explanation": "Edge caches prioritize low latency and high read throughput—users expect fast content delivery. Strong consistency, complex queries, and transactions are handled at origin, not edge. In-memory stores (Redis, in-process caches) dominate edge caching."
+    },
+    {
+      "id": "u4c8-017",
+      "type": "multiple-choice",
+      "question": "A hospital system needs to store patient records with strict access controls and full audit trails. What storage characteristic is most critical?",
+      "options": [
+        "Horizontal scalability",
+        "Schemaless flexibility",
+        "ACID compliance with audit logging",
+        "Low latency"
+      ],
+      "correct": 2,
+      "explanation": "Healthcare data (PHI) requires strong ACID guarantees, row-level security, and immutable audit trails for HIPAA compliance. PostgreSQL with proper access controls and audit triggers is typical. Scalability and flexibility are secondary to compliance."
+    },
+    {
+      "id": "u4c8-018",
+      "type": "multiple-choice",
+      "question": "You're building a video streaming platform. Where should you store video files?",
+      "options": [
+        "PostgreSQL as bytea columns",
+        "MongoDB GridFS",
+        "Object storage (S3) with CDN",
+        "Local filesystem on each server"
+      ],
+      "correct": 2,
+      "explanation": "Object storage (S3, GCS) is designed for large files with high durability. CDN edges cache popular content globally for low-latency streaming. Databases aren't designed for multi-GB video files. Local filesystem doesn't provide redundancy or global distribution."
+    },
+    {
+      "id": "u4c8-019",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a feature flag system that evaluates rules to determine which users see which features. What's the primary read store?",
+          "options": [
+            "PostgreSQL for rule evaluation",
+            "In-memory cache or Redis for fast lookups",
+            "S3 for flag configuration",
+            "MongoDB for flexible rules"
+          ],
+          "correct": 1,
+          "explanation": "Feature flags are read on every request—they must be fast. In-memory cache or Redis provides sub-millisecond reads. The configuration can be stored in PostgreSQL and synced to cache. S3 is for static assets, not real-time lookups."
+        },
+        {
+          "question": "Flag rules change infrequently but must propagate to all servers within seconds. What pattern helps?",
+          "options": [
+            "Poll the database every request",
+            "Pub/sub notification with cache invalidation",
+            "Restart servers on config change",
+            "Long TTL caching with eventual consistency"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub (Redis pub/sub, Kafka) notifies all servers of changes, triggering cache refresh. Polling is wasteful. Restarting is disruptive. Long TTL means delayed flag changes. Pub/sub provides fast, efficient propagation."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-020",
+      "type": "multiple-choice",
+      "question": "An analytics company ingests 50TB of log data daily for batch processing. What's the appropriate storage?",
+      "options": [
+        "PostgreSQL",
+        "MongoDB",
+        "Data lake (S3 + Parquet/ORC)",
+        "Redis"
+      ],
+      "correct": 2,
+      "explanation": "Data lakes (S3 with columnar formats like Parquet) handle massive batch data cost-effectively. Columnar formats enable efficient analytical queries. PostgreSQL and MongoDB aren't designed for this scale of write-once-read-many batch data."
+    },
+    {
+      "id": "u4c8-021",
+      "type": "multiple-choice",
+      "question": "You're building a collaborative document editor like Google Docs. Multiple users edit simultaneously. What enables real-time sync?",
+      "options": [
+        "PostgreSQL with row locking",
+        "MongoDB with optimistic concurrency",
+        "Operational transformation or CRDTs with event streaming",
+        "Redis for document storage"
+      ],
+      "correct": 2,
+      "explanation": "Collaborative editing requires specialized algorithms (OT or CRDTs) to handle concurrent edits without conflicts. These algorithms are implemented in application logic with event streaming (WebSockets, pub/sub). Database locking would serialize edits, killing the real-time experience."
+    },
+    {
+      "id": "u4c8-022",
+      "type": "multi-select",
+      "question": "A news website needs to store articles, handle traffic spikes during breaking news, and enable full-text search. Which combination works?",
+      "options": [
+        "PostgreSQL for article storage and metadata",
+        "CDN for caching rendered pages",
+        "Elasticsearch for full-text search",
+        "Redis for rate limiting during traffic spikes"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All components serve different needs: PostgreSQL for durable storage, CDN absorbs traffic spikes by serving cached pages, Elasticsearch enables article search, Redis handles rate limiting and session management. News sites commonly use all four."
+    },
+    {
+      "id": "u4c8-023",
+      "type": "multiple-choice",
+      "question": "You're designing an inventory management system for a warehouse with 100K SKUs. Stock levels change frequently with each shipment. What's the primary consideration?",
+      "options": [
+        "Schema flexibility for different product types",
+        "Accurate inventory counts with no overselling",
+        "Full-text search across product descriptions",
+        "Graph relationships between products"
+      ],
+      "correct": 1,
+      "explanation": "Inventory accuracy is critical—overselling creates customer service nightmares. ACID transactions in PostgreSQL ensure stock updates are atomic. Schema flexibility (NoSQL) and search can be added as secondary systems. Core inventory needs strong consistency."
+    },
+    {
+      "id": "u4c8-024",
+      "type": "multiple-choice",
+      "question": "An online examination platform needs to store questions, student answers, and prevent cheating by logging all activity. What's critical for the activity log?",
+      "options": [
+        "Fast query performance",
+        "Schema flexibility",
+        "Append-only immutability",
+        "Real-time aggregation"
+      ],
+      "correct": 2,
+      "explanation": "Anti-cheating logs must be tamper-proof (append-only, immutable). Once written, entries cannot be modified or deleted. Append-only logs (Kafka, immutable table designs) provide audit trails that maintain integrity for dispute resolution."
+    },
+    {
+      "id": "u4c8-025",
+      "type": "ordering",
+      "question": "Order these storage systems by typical latency from fastest to slowest:",
+      "items": [
+        "PostgreSQL query",
+        "S3 object retrieval",
+        "Redis in-memory lookup",
+        "Local in-process cache"
+      ],
+      "correctOrder": [3, 2, 0, 1],
+      "explanation": "Local cache (nanoseconds to microseconds) → Redis (sub-millisecond) → PostgreSQL (single-digit milliseconds) → S3 (tens to hundreds of milliseconds). Each layer is 10-100x slower than the previous."
+    },
+    {
+      "id": "u4c8-026",
+      "type": "multiple-choice",
+      "question": "A music streaming service needs to store user listening history for personalized recommendations. What storage model fits best?",
+      "options": [
+        "Relational with user_id and track_id foreign keys",
+        "Wide-column with user_id partition and timestamp cluster",
+        "Graph with user→track edges",
+        "Document with user profile including embedded history"
+      ],
+      "correct": 1,
+      "explanation": "Wide-column (Cassandra) partitions by user_id, allowing efficient retrieval of a user's history. Timestamp clustering enables time-range queries. Document embedding works for small histories but becomes unwieldy for active users with thousands of listens."
+    },
+    {
+      "id": "u4c8-027",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a rate limiting service that allows 100 requests per user per minute. What storage enables this?",
+          "options": [
+            "PostgreSQL with counter table",
+            "Redis with sliding window",
+            "S3 with access logs",
+            "MongoDB with TTL indexes"
+          ],
+          "correct": 1,
+          "explanation": "Redis provides atomic increment operations (INCR) with expiration (EXPIRE). Sliding window or token bucket algorithms implemented in Redis handle rate limiting at scale. PostgreSQL would bottleneck on the write load."
+        },
+        {
+          "question": "Your rate limiter must survive Redis restarts without resetting all limits. What helps?",
+          "options": [
+            "Redis persistence (RDB/AOF)",
+            "Dual write to PostgreSQL",
+            "Accept temporary reset on restart—short window",
+            "Any of the above depending on requirements"
+          ],
+          "correct": 3,
+          "explanation": "Redis persistence keeps data across restarts but adds latency. Dual-write to PostgreSQL is more durable but complex. Often, brief limit resets on restart are acceptable (1-minute windows reset anyway). Choose based on how critical exact limits are."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-028",
+      "type": "multiple-choice",
+      "question": "A ticket booking system (concerts, flights) has high contention for popular events. What prevents double-booking?",
+      "options": [
+        "Application-level locking in Redis",
+        "Database row-level locking in PostgreSQL",
+        "Optimistic concurrency with version checks",
+        "Any of the above"
+      ],
+      "correct": 3,
+      "explanation": "All can work: Redis distributed locks serialize access, PostgreSQL row locks (SELECT FOR UPDATE) prevent concurrent updates, optimistic concurrency retries on version conflicts. Choice depends on existing infrastructure and contention level."
+    },
+    {
+      "id": "u4c8-029",
+      "type": "multiple-choice",
+      "question": "You're building a machine learning feature store. Features need to be computed offline and served online with <10ms latency. What serves the online features?",
+      "options": [
+        "Data warehouse (Redshift/BigQuery)",
+        "Redis or DynamoDB",
+        "S3 with direct access",
+        "PostgreSQL with materialized views"
+      ],
+      "correct": 1,
+      "explanation": "Redis or DynamoDB provide the <10ms reads required for online serving. Data warehouses are for batch/analytical queries. S3 has too much latency. The feature store pattern: compute features offline, sync to fast online store for serving."
+    },
+    {
+      "id": "u4c8-030",
+      "type": "multi-select",
+      "question": "An e-commerce platform needs product catalog, shopping cart, order history, and search. Match appropriate stores:",
+      "options": [
+        "PostgreSQL for product catalog and order history (transactional data)",
+        "Redis for shopping cart (session-like, ephemeral until checkout)",
+        "Elasticsearch for product search (full-text, faceted)",
+        "MongoDB for everything (flexibility)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "PostgreSQL handles relational product data and orders with ACID. Redis stores ephemeral cart data with fast access. Elasticsearch powers product search with relevance ranking. While MongoDB could work, specialized stores are more effective at scale."
+    },
+    {
+      "id": "u4c8-031",
+      "type": "multiple-choice",
+      "question": "A fintech startup is building a personal finance app. Users link bank accounts and see spending analytics. Where should raw bank transaction data go?",
+      "options": [
+        "Only PostgreSQL for querying",
+        "S3 data lake for raw data, PostgreSQL for derived views",
+        "MongoDB for flexible bank formats",
+        "Redis for real-time access"
+      ],
+      "correct": 1,
+      "explanation": "Store raw transactions in S3 data lake (complete history, compliance). Derive cleaned/normalized data into PostgreSQL for the app to query. Different banks have different formats—S3 preserves originals while PostgreSQL normalizes for the app."
+    },
+    {
+      "id": "u4c8-032",
+      "type": "multiple-choice",
+      "question": "You're designing a notification system that sends emails, push notifications, and SMS. Users can configure per-channel preferences. What stores the notification queue?",
+      "options": [
+        "PostgreSQL table with pending notifications",
+        "Message queue (SQS, RabbitMQ, Kafka)",
+        "Redis lists",
+        "In-memory queue in the application"
+      ],
+      "correct": 1,
+      "explanation": "Message queues (SQS, RabbitMQ) are purpose-built for decoupling notification production from delivery. They handle retries, dead-letter queues, and scaling consumers. PostgreSQL works but isn't designed for high-throughput queuing. In-memory loses messages on crash."
+    },
+    {
+      "id": "u4c8-033",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A social network needs to store friend relationships and answer 'friends of friends' queries. What's the best primary store?",
+          "options": [
+            "PostgreSQL with a friends junction table",
+            "Graph database (Neo4j)",
+            "Redis sets per user",
+            "MongoDB embedded arrays"
+          ],
+          "correct": 1,
+          "explanation": "Graph databases are optimized for relationship traversal. 'Friends of friends' is a 2-hop query—trivial in Neo4j, expensive in SQL (self-join with millions of rows). For social graphs at scale, graph databases outperform relational."
+        },
+        {
+          "question": "Your social network also needs to detect communities and suggest connections. What capability helps?",
+          "options": [
+            "SQL window functions",
+            "Graph algorithms (Louvain, PageRank) in the graph DB",
+            "Machine learning in a separate system",
+            "MongoDB aggregation pipeline"
+          ],
+          "correct": 1,
+          "explanation": "Graph databases include built-in algorithms for community detection (Louvain), centrality (PageRank), and similarity. These run directly on the graph. While ML can enhance suggestions, graph algorithms provide the foundation."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-034",
+      "type": "multiple-choice",
+      "question": "A healthcare IoT company collects continuous vitals from patient wearables. Doctors need to see current readings and historical trends. What architecture works?",
+      "options": [
+        "PostgreSQL for everything",
+        "Time-series DB for storage, real-time pipeline for current readings",
+        "Redis for current, S3 for historical",
+        "MongoDB with capped collections"
+      ],
+      "correct": 1,
+      "explanation": "Time-series DBs (InfluxDB, TimescaleDB) handle both: recent data for real-time queries, automatic downsampling for historical trends. A streaming pipeline (Kafka, Flink) can feed real-time dashboards. This covers both current and historical needs."
+    },
+    {
+      "id": "u4c8-035",
+      "type": "multiple-choice",
+      "question": "You're building a code review tool like GitHub. What stores the file diffs and comments?",
+      "options": [
+        "Git for diffs, PostgreSQL for comments and metadata",
+        "Store everything in PostgreSQL including file contents",
+        "MongoDB for flexible document structure",
+        "S3 for all file versions"
+      ],
+      "correct": 0,
+      "explanation": "Git already stores and computes diffs efficiently—don't reinvent it. PostgreSQL stores comments, PR metadata, and references to Git commits. The code review tool is a layer on top of Git, not a replacement for it."
+    },
+    {
+      "id": "u4c8-036",
+      "type": "multi-select",
+      "question": "A ride-sharing company needs driver locations (real-time), trip history (queryable), and surge pricing (computed). Which stores fit?",
+      "options": [
+        "Redis Geo for real-time driver locations",
+        "PostgreSQL or DynamoDB for trip history",
+        "In-memory or Redis for surge pricing state",
+        "Kafka for location event streaming"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All fit: Redis Geo for fast proximity queries (nearby drivers), PostgreSQL/DynamoDB for durable trip records, in-memory for fast surge calculations, and Kafka to stream location updates from driver apps to the backend. Classic polyglot architecture."
+    },
+    {
+      "id": "u4c8-037",
+      "type": "multiple-choice",
+      "question": "You're building a dating app with user preferences and matching. What enables efficient 'users matching my criteria' queries?",
+      "options": [
+        "PostgreSQL with multi-column indexes",
+        "Elasticsearch with complex filters",
+        "Neo4j for relationship matching",
+        "Either A or B depending on query complexity"
+      ],
+      "correct": 3,
+      "explanation": "Simple criteria (age, location, gender) work well with PostgreSQL indexes. Complex multi-faceted matching with weighted scoring benefits from Elasticsearch. Neo4j helps if matching involves relationship patterns (mutual friends). Choose based on matching complexity."
+    },
+    {
+      "id": "u4c8-038",
+      "type": "multiple-choice",
+      "question": "A podcast platform stores episodes, transcripts, and user listening progress. What stores the audio files?",
+      "options": [
+        "PostgreSQL as binary column",
+        "MongoDB GridFS",
+        "S3 with CloudFront CDN",
+        "Distributed filesystem (HDFS)"
+      ],
+      "correct": 2,
+      "explanation": "S3 for storage (durable, cost-effective for large files), CloudFront CDN for global distribution and low-latency streaming. Databases aren't designed for large media files. HDFS is for batch processing, not media streaming."
+    },
+    {
+      "id": "u4c8-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building an A/B testing platform. Tests define user buckets, and you need to track which users are in which experiments. What stores the experiment assignments?",
+          "options": [
+            "PostgreSQL with user_id, experiment_id, variant",
+            "Redis hash per user with experiment→variant mapping",
+            "DynamoDB for fast lookups",
+            "Any of the above"
+          ],
+          "correct": 3,
+          "explanation": "All work: PostgreSQL for durability and analytics, Redis for fastest lookup during requests, DynamoDB for scalable key-value. Often Redis/DynamoDB serves real-time checks while PostgreSQL stores assignments for analysis."
+        },
+        {
+          "question": "Your A/B platform analyzes results across millions of users and dozens of experiments. Where do you run the statistical analysis?",
+          "options": [
+            "Real-time queries against the assignment store",
+            "Data warehouse with event/conversion data",
+            "In-application code",
+            "Spreadsheet export"
+          ],
+          "correct": 1,
+          "explanation": "Statistical analysis (conversion rates, confidence intervals) runs on aggregated data in a data warehouse. Event data (impressions, conversions) joins with assignments for analysis. This is batch analytics, not real-time queries."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-040",
+      "type": "multiple-choice",
+      "question": "A sports betting platform needs to update odds in real-time as events unfold. What characteristic is most important?",
+      "options": [
+        "Complex query support",
+        "Low-latency reads and writes",
+        "Strong consistency across regions",
+        "Schema flexibility"
+      ],
+      "correct": 1,
+      "explanation": "Odds change rapidly during live events—users need current odds instantly, and the platform must update them in real-time. Redis or in-memory stores provide the sub-millisecond updates required. Consistency and durability can be handled by background sync."
+    },
+    {
+      "id": "u4c8-041",
+      "type": "ordering",
+      "question": "Order these storage decisions by when they should be made in a project (earliest to latest):",
+      "items": [
+        "Add specialized search (Elasticsearch)",
+        "Choose primary operational database",
+        "Add caching layer (Redis)",
+        "Add data warehouse for analytics"
+      ],
+      "correctOrder": [1, 2, 0, 3],
+      "explanation": "Start with primary operational DB (core functionality). Add caching when performance needs improvement. Add search when needed. Add data warehouse when analytics requirements mature. Don't over-engineer upfront; add complexity when justified."
+    },
+    {
+      "id": "u4c8-042",
+      "type": "multiple-choice",
+      "question": "You're building a calendar application. Events have start/end times, recurrence rules, and attendees. What's the primary storage challenge?",
+      "options": [
+        "Storing large binary attachments",
+        "Expanding recurring events for queries",
+        "Graph relationships between attendees",
+        "Full-text search in event descriptions"
+      ],
+      "correct": 1,
+      "explanation": "Recurring events (daily standup, weekly meeting) are defined by rules but queried by date range. Expanding 'show my events this week' for all recurring events is non-trivial. Solutions: materialize instances ahead of time or expand at query time with efficient algorithms."
+    },
+    {
+      "id": "u4c8-043",
+      "type": "multiple-choice",
+      "question": "A hotel booking system needs room availability queries for date ranges across thousands of properties. What enables efficient 'show available rooms from date X to Y' queries?",
+      "options": [
+        "Check all existing bookings for overlap",
+        "Pre-computed availability calendar per room",
+        "Reservation table with date indexes",
+        "Either B or C with proper indexing"
+      ],
+      "correct": 3,
+      "explanation": "Pre-computed calendars are fast but need updating on each booking. Date-indexed reservation tables with gap-finding queries work too. The choice depends on read/write ratio—high read favors pre-computed; balanced workload favors reservation queries."
+    },
+    {
+      "id": "u4c8-044",
+      "type": "multi-select",
+      "question": "A real-time multiplayer game needs to store player positions, game state, and match results. Which stores fit each need?",
+      "options": [
+        "In-memory (game server RAM) for real-time positions",
+        "Redis for game state that persists across server hops",
+        "PostgreSQL for final match results",
+        "S3 for replay files"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "In-memory is fastest for real-time positions (frame-by-frame updates). Redis backs up state for failover. PostgreSQL stores durable match history for stats/rankings. S3 stores recorded replays as binary files. Each layer has different latency/durability tradeoffs."
+    },
+    {
+      "id": "u4c8-045",
+      "type": "multiple-choice",
+      "question": "You're designing a cryptocurrency exchange. Trade matching must be fast, and the order book changes constantly. What stores the live order book?",
+      "options": [
+        "PostgreSQL with frequent updates",
+        "Redis sorted sets for bid/ask levels",
+        "In-memory data structure in the matching engine",
+        "Kafka for order events"
+      ],
+      "correct": 2,
+      "explanation": "The matching engine keeps the order book in-memory for microsecond matching. Redis or PostgreSQL can't match that speed. The in-memory state is replicated/persisted via an event log (Kafka) for recovery and audit. Core matching is pure in-memory."
+    },
+    {
+      "id": "u4c8-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a customer support ticketing system. Tickets have history, assignments, tags, and customer info. What's the primary store?",
+          "options": [
+            "PostgreSQL for structured ticket data",
+            "MongoDB for flexible ticket schemas",
+            "Elasticsearch for ticket search",
+            "Redis for ticket queues"
+          ],
+          "correct": 0,
+          "explanation": "PostgreSQL handles the relational nature: tickets→customers, tickets→agents, tickets→comments. ACID ensures updates don't lose data. MongoDB could work but tickets are fairly structured. Elasticsearch is for search, not primary storage."
+        },
+        {
+          "question": "Support agents need to search tickets by content, customer, status, and tags. What improves search?",
+          "options": [
+            "PostgreSQL full-text search",
+            "Add Elasticsearch alongside PostgreSQL",
+            "More PostgreSQL indexes",
+            "Application-level filtering"
+          ],
+          "correct": 1,
+          "explanation": "Elasticsearch provides rich full-text search with relevance ranking, faceting, and highlighting. PostgreSQL FTS works for simple cases but Elasticsearch excels for complex search UX that support tools need. Sync from PostgreSQL to Elasticsearch via CDC."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-047",
+      "type": "multiple-choice",
+      "question": "A weather service collects readings from 10K sensors every minute and serves forecasts to millions of users. What handles the write load?",
+      "options": [
+        "Sharded PostgreSQL",
+        "Cassandra or InfluxDB",
+        "Redis for all sensor data",
+        "MongoDB with auto-sharding"
+      ],
+      "correct": 1,
+      "explanation": "10K sensors × 1/minute = ~170 writes/second—modest for time-series DBs (InfluxDB) or Cassandra. They're optimized for this write pattern. Sharded PostgreSQL works but adds operational complexity. Time-series DBs also provide automatic downsampling and retention."
+    },
+    {
+      "id": "u4c8-048",
+      "type": "multiple-choice",
+      "question": "You're building an e-signature platform like DocuSign. Signed documents must be legally immutable once completed. What storage characteristic matters most?",
+      "options": [
+        "Fast query performance",
+        "Immutability and tamper-evident storage",
+        "Horizontal scalability",
+        "Schema flexibility"
+      ],
+      "correct": 1,
+      "explanation": "Legal e-signatures require proof that documents haven't changed post-signing. Append-only storage, cryptographic hashing, and possibly blockchain for audit trails ensure immutability. The signed document becomes a legal record that must be tamper-proof."
+    },
+    {
+      "id": "u4c8-049",
+      "type": "multiple-choice",
+      "question": "A retail chain with 5000 stores wants to sync POS transactions to headquarters for analytics. Stores have intermittent internet. What pattern helps?",
+      "options": [
+        "Direct database replication",
+        "Store-and-forward with local SQLite and eventual sync",
+        "Real-time streaming only",
+        "Nightly batch uploads"
+      ],
+      "correct": 1,
+      "explanation": "Store-and-forward: each store runs a local database (SQLite) for offline operation. When connected, transactions sync to headquarters. This handles intermittent connectivity. Real-time streaming fails during outages; nightly batches delay visibility too much."
+    },
+    {
+      "id": "u4c8-050",
+      "type": "multi-select",
+      "question": "An HR system stores employee records, org structure, and access permissions. Which storage aspects matter?",
+      "options": [
+        "Row-level security for sensitive data",
+        "Graph traversal for org hierarchy",
+        "Audit logging for compliance",
+        "Schema flexibility for custom fields"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Row-level security restricts access (managers see their reports only). Audit logging tracks who accessed what (compliance). Custom fields per company are common. Org hierarchy can be handled with recursive CTEs—a graph DB is nice but not essential."
+    },
+    {
+      "id": "u4c8-051",
+      "type": "multiple-choice",
+      "question": "You're building a SaaS analytics tool that ingests customer data and provides dashboards. What stores the raw customer data for reprocessing?",
+      "options": [
+        "PostgreSQL tables",
+        "Data lake (S3 with Parquet)",
+        "Elasticsearch indexes",
+        "Redis caches"
+      ],
+      "correct": 1,
+      "explanation": "Data lake preserves raw data for reprocessing—if aggregation logic changes, you can re-derive dashboards. PostgreSQL for intermediate results, but raw data in S3/Parquet is more cost-effective and flexible for batch reprocessing."
+    },
+    {
+      "id": "u4c8-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a food delivery app. Restaurants, menus, orders, and delivery tracking are key entities. What's the primary operational store?",
+          "options": [
+            "PostgreSQL for relational data",
+            "MongoDB for menu flexibility",
+            "DynamoDB for scalability",
+            "Any can work at modest scale"
+          ],
+          "correct": 3,
+          "explanation": "At modest scale, PostgreSQL, MongoDB, or DynamoDB all work. PostgreSQL excels at relational queries (orders→items→restaurants), MongoDB handles varied menu structures, DynamoDB scales easily. Start with team expertise; optimize later."
+        },
+        {
+          "question": "Delivery drivers need to see nearby orders to pick up. What enables fast 'orders near driver' queries?",
+          "options": [
+            "Full table scan with distance calculation",
+            "Geospatial index (PostgreSQL PostGIS, MongoDB 2dsphere, Redis Geo)",
+            "In-memory cache of all orders",
+            "Pre-computed delivery zones"
+          ],
+          "correct": 1,
+          "explanation": "Geospatial indexes enable efficient proximity queries. PostGIS, MongoDB 2dsphere, or Redis Geo all support 'find records within X km of point'. Full table scans don't scale. Pre-computed zones work but are less flexible than real-time queries."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-053",
+      "type": "multiple-choice",
+      "question": "A legal research platform stores millions of court documents. Users need full-text search with exact phrase matching and filters by date, court, and case type. What's the primary search store?",
+      "options": [
+        "PostgreSQL full-text search",
+        "Elasticsearch",
+        "MongoDB text indexes",
+        "Custom inverted index"
+      ],
+      "correct": 1,
+      "explanation": "Elasticsearch excels at complex legal search: full-text with exact phrase matching, boolean queries, relevance ranking, and faceted filtering. PostgreSQL FTS handles basic search but Elasticsearch's features match legal research needs better."
+    },
+    {
+      "id": "u4c8-054",
+      "type": "multiple-choice",
+      "question": "You're architecting a SaaS platform where enterprise customers can export their data at any time (data portability). What enables efficient exports?",
+      "options": [
+        "Query production database directly",
+        "Pre-generate exports nightly to S3",
+        "Read replica with export-specific queries",
+        "C: read replica is usually the right choice"
+      ],
+      "correct": 2,
+      "explanation": "Read replica isolates export load from production. Large exports can be slow—running them against production risks impacting other users. Nightly pre-generation is wasteful if exports are infrequent. Read replica + on-demand export is the common pattern."
+    },
+    {
+      "id": "u4c8-055",
+      "type": "ordering",
+      "question": "Order these data stores by typical cost per GB (cheapest to most expensive):",
+      "items": [
+        "Redis (in-memory)",
+        "S3 Standard",
+        "S3 Glacier",
+        "PostgreSQL on RDS"
+      ],
+      "correctOrder": [2, 1, 3, 0],
+      "explanation": "Glacier (~$0.004/GB) → S3 Standard (~$0.023/GB) → PostgreSQL RDS (compute + storage, ~$0.10+/GB equivalent) → Redis (RAM cost, $2+/GB equivalent). Memory is expensive; cold archive storage is cheap."
+    },
+    {
+      "id": "u4c8-056",
+      "type": "multiple-choice",
+      "question": "A genomics company stores DNA sequences (each 3+ GB). Researchers run batch analyses. What stores the sequence data?",
+      "options": [
+        "PostgreSQL with TOAST",
+        "S3 with specialized bioinformatics formats",
+        "MongoDB GridFS",
+        "Cassandra blobs"
+      ],
+      "correct": 1,
+      "explanation": "Genomic data uses specialized formats (FASTA, BAM, VCF) stored in S3. Bioinformatics tools read these formats directly from object storage. PostgreSQL isn't designed for multi-GB scientific data. S3 provides the scale and cost-effectiveness needed."
+    },
+    {
+      "id": "u4c8-057",
+      "type": "multi-select",
+      "question": "A bank needs to detect fraudulent transactions in real-time. Which components enable this?",
+      "options": [
+        "Stream processing (Kafka Streams, Flink) for real-time analysis",
+        "ML model serving with low-latency predictions",
+        "Graph analysis for network patterns (ring detection)",
+        "Data warehouse for historical pattern mining"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All contribute: stream processing for real-time analysis, ML models for scoring transactions, graph analysis to detect fraud rings (connected accounts), and data warehouse for training models on historical patterns. Fraud detection is multi-faceted."
+    },
+    {
+      "id": "u4c8-058",
+      "type": "multiple-choice",
+      "question": "You're building a recipe sharing app. Users can save, rate, and search recipes by ingredients. What enables 'find recipes containing chicken AND mushrooms BUT NOT cream'?",
+      "options": [
+        "PostgreSQL array column with GIN index",
+        "Elasticsearch with boolean queries",
+        "MongoDB array queries",
+        "All of the above"
+      ],
+      "correct": 3,
+      "explanation": "All support ingredient matching: PostgreSQL with GIN-indexed arrays and containment operators, Elasticsearch with must/must_not boolean queries, MongoDB with $all and $nin array operators. Choose based on other requirements (full-text search depth, existing stack)."
+    },
+    {
+      "id": "u4c8-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An airline needs to store flight schedules, bookings, and passenger manifests. What's the primary storage for bookings?",
+          "options": [
+            "PostgreSQL with ACID transactions",
+            "MongoDB for flexibility",
+            "DynamoDB for scale",
+            "Cassandra for write throughput"
+          ],
+          "correct": 0,
+          "explanation": "Airline bookings require strong ACID—double-booking a seat is unacceptable. Financial transactions (payment + seat allocation) must be atomic. PostgreSQL provides the transaction guarantees needed for airline reservation systems."
+        },
+        {
+          "question": "The airline wants to offer personalized upgrade suggestions based on past travel. What additional store helps?",
+          "options": [
+            "Keep everything in PostgreSQL",
+            "Data warehouse for customer analytics",
+            "Redis for real-time preferences",
+            "Both B and C"
+          ],
+          "correct": 3,
+          "explanation": "Data warehouse aggregates travel history for analytics and ML models. Redis caches computed preferences for real-time suggestions at check-in. The core booking stays in PostgreSQL; analytics and personalization use specialized stores."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-060",
+      "type": "multiple-choice",
+      "question": "A photo sharing app needs to store images at multiple resolutions (thumbnail, medium, full). How should images be stored?",
+      "options": [
+        "Single S3 bucket with resolution in filename",
+        "Separate S3 bucket per resolution",
+        "Generate resolutions on-demand from original",
+        "A or B with possible C for rare sizes"
+      ],
+      "correct": 3,
+      "explanation": "Common resolutions (thumbnail, medium) should be pre-generated and stored (A or B—separate buckets help with CDN caching). Rare or unusual sizes can be generated on-demand to save storage. This balances performance and storage cost."
+    },
+    {
+      "id": "u4c8-061",
+      "type": "multiple-choice",
+      "question": "You're building an event ticketing system. Events have variable attributes (concerts have artists, sports have teams, conferences have speakers). What storage handles this flexibility?",
+      "options": [
+        "Separate table per event type",
+        "Single events table with JSON column for variable attributes",
+        "Entity-Attribute-Value (EAV) pattern",
+        "Either B (PostgreSQL JSONB) or MongoDB"
+      ],
+      "correct": 3,
+      "explanation": "JSON columns (PostgreSQL JSONB, MongoDB documents) handle variable attributes cleanly. Common fields are columns; type-specific data is in JSON. EAV is complex and slow. Separate tables proliferate for each event type. JSON is the modern approach."
+    },
+    {
+      "id": "u4c8-062",
+      "type": "multi-select",
+      "question": "A telecom company bills customers monthly based on usage (calls, data, SMS). What stores usage data for billing?",
+      "options": [
+        "Time-series DB for raw usage events",
+        "PostgreSQL for aggregated billing records",
+        "Data warehouse for usage analytics",
+        "Message queue for ingesting usage events"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Message queue ingests usage events from network. Time-series DB stores raw events with efficient aggregation. PostgreSQL stores monthly billing records (transactional accuracy). Data warehouse enables usage pattern analytics. Each component serves a purpose."
+    },
+    {
+      "id": "u4c8-063",
+      "type": "multiple-choice",
+      "question": "A supply chain system tracks shipments across carriers, warehouses, and delivery stages. Each shipment has dozens of status updates. What enables efficient 'show shipment history' queries?",
+      "options": [
+        "Wide-column: shipment_id partition, timestamp cluster",
+        "PostgreSQL: shipment_events table with shipment_id index",
+        "Document: shipment document with embedded events array",
+        "Any of these with proper modeling"
+      ],
+      "correct": 3,
+      "explanation": "All work: wide-column for high write throughput across many shipments, PostgreSQL for ACID and joins to related data, document for co-located reads. Dozens of events per shipment isn't extreme—most databases handle this well with proper indexing."
+    },
+    {
+      "id": "u4c8-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a job board. Employers post jobs; candidates search and apply. What enables 'jobs matching my skills within 50km' queries?",
+          "options": [
+            "PostgreSQL with skill tags and PostGIS",
+            "Elasticsearch with skill matching and geo queries",
+            "MongoDB with arrays and 2dsphere",
+            "Any of these"
+          ],
+          "correct": 3,
+          "explanation": "All support skill matching + geospatial. Elasticsearch excels if you need relevance scoring and faceted search (salary ranges, industries). PostgreSQL or MongoDB work for simpler matching. The choice depends on how sophisticated the matching needs to be."
+        },
+        {
+          "question": "Candidates want job alerts when new matching jobs are posted. What enables this efficiently?",
+          "options": [
+            "Poll the job table every minute",
+            "Trigger on new job → match against saved searches → notify",
+            "Let candidates manually refresh",
+            "Send all jobs to all candidates"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven: when a job is posted, match it against saved candidate searches and send notifications. Polling is wasteful; manual refresh is poor UX; broadcasting everything is spam. Saved searches enable targeted matching."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-065",
+      "type": "multiple-choice",
+      "question": "A messaging app stores conversation history. Users expect messages to sync instantly across devices. What ensures fast sync?",
+      "options": [
+        "Poll for new messages every second",
+        "Push new messages via WebSocket or push notification",
+        "Store all messages client-side only",
+        "Email-style 'refresh to check' UX"
+      ],
+      "correct": 1,
+      "explanation": "Push-based sync (WebSocket for active app, push notification for background) delivers messages instantly without polling overhead. Storage-wise, the server keeps authoritative history; clients pull history on connect and receive pushes for new messages."
+    },
+    {
+      "id": "u4c8-066",
+      "type": "multiple-choice",
+      "question": "You're building a crowdsourced map (like Waze). Users report traffic incidents in real-time. What stores and serves incident data?",
+      "options": [
+        "PostgreSQL with PostGIS for all queries",
+        "Redis Geo for real-time, PostgreSQL for historical",
+        "Elasticsearch with geo queries",
+        "Cassandra with geospatial extensions"
+      ],
+      "correct": 1,
+      "explanation": "Real-time incidents need fast reads/writes—Redis Geo handles 'show incidents near me' with low latency. Historical data (for analytics, patterns) goes to PostgreSQL. The real-time layer is ephemeral; incidents expire quickly. Persistence is for longer-term analysis."
+    },
+    {
+      "id": "u4c8-067",
+      "type": "ordering",
+      "question": "Order these by typical write throughput capacity (lowest to highest):",
+      "items": [
+        "Single PostgreSQL instance",
+        "Kafka cluster",
+        "Cassandra cluster",
+        "Redis Cluster"
+      ],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "PostgreSQL (10K-50K writes/sec on good hardware) → Redis Cluster (100K+/sec) → Cassandra (100K-1M+/sec) → Kafka (millions/sec). Kafka is an append-only log optimized for throughput. Cassandra scales writes linearly. PostgreSQL has single-leader writes."
+    },
+    {
+      "id": "u4c8-068",
+      "type": "multiple-choice",
+      "question": "A document collaboration tool like Notion stores pages with nested blocks (text, tables, embeds). What storage model fits?",
+      "options": [
+        "Relational: pages and blocks tables with parent references",
+        "Document: page documents with nested block structure",
+        "Graph: pages and blocks as nodes with edges",
+        "B is most natural for hierarchical content"
+      ],
+      "correct": 3,
+      "explanation": "Document databases naturally represent hierarchical nested structures. A page with nested blocks maps directly to a JSON document. Relational can work with recursive queries but is less natural. The document model matches the data structure."
+    },
+    {
+      "id": "u4c8-069",
+      "type": "multi-select",
+      "question": "A fleet management system tracks 50K vehicles with GPS updates every 10 seconds. What storage needs?",
+      "options": [
+        "High write throughput for GPS ingestion",
+        "Fast current position queries",
+        "Historical route queries",
+        "Geofence alerting capabilities"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are needs: 50K vehicles × 6/minute = 300K writes/minute (time-series or wide-column), current positions for fleet view (Redis or time-series latest), historical routes for replay (time-series), geofence alerts for real-time monitoring (stream processing)."
+    },
+    {
+      "id": "u4c8-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a survey platform. Surveys have varied question types (multiple choice, text, rating, matrix). What stores survey definitions?",
+          "options": [
+            "Fixed schema with all question types",
+            "JSON/document with flexible question structure",
+            "Separate tables per question type",
+            "B is the natural fit for varied schemas"
+          ],
+          "correct": 3,
+          "explanation": "Survey questions vary widely—document storage (JSONB in PostgreSQL, MongoDB) handles flexible schemas elegantly. The survey definition is essentially a document. Fixed schemas or tables-per-type become unwieldy as question types grow."
+        },
+        {
+          "question": "The platform also needs to aggregate responses for analysis ('60% chose option A'). Where does aggregation happen?",
+          "options": [
+            "Real-time in the response store",
+            "Pre-computed aggregates updated on each response",
+            "Data warehouse with batch aggregation",
+            "B for simple surveys, C for complex analytics"
+          ],
+          "correct": 3,
+          "explanation": "Simple aggregates (response counts) can be pre-computed incrementally. Complex analytics (cross-tabulation, statistical tests) need a data warehouse. Most survey tools do both: quick summaries in the app, deep analytics in a warehouse."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-071",
+      "type": "multiple-choice",
+      "question": "A content moderation system flags user-generated content for review. Moderators need a queue of items to review. What stores the moderation queue?",
+      "options": [
+        "PostgreSQL with status column and indexes",
+        "Redis list or sorted set",
+        "Kafka topic for queue semantics",
+        "Any can work; PostgreSQL is simplest"
+      ],
+      "correct": 3,
+      "explanation": "For moderate volumes, PostgreSQL with status flags (pending, approved, rejected) and indexes works well. Redis or Kafka add complexity. The queue is the set of pending items—a query, not a separate store. Keep it simple unless scale demands otherwise."
+    },
+    {
+      "id": "u4c8-072",
+      "type": "multiple-choice",
+      "question": "You're designing a system that stores and serves 100M product images. What's the total storage cost consideration?",
+      "options": [
+        "Database storage is cheapest",
+        "Object storage (S3) is most cost-effective for large files",
+        "CDN storage costs dominate",
+        "Storage cost is negligible"
+      ],
+      "correct": 1,
+      "explanation": "Object storage (S3 at ~$0.023/GB) is designed for large files at scale. 100M images at 500KB each = 50TB = ~$1200/month in S3. Database storage would cost 10x more. CDN caches frequently accessed images; storage is the larger cost."
+    },
+    {
+      "id": "u4c8-073",
+      "type": "multiple-choice",
+      "question": "A real estate platform stores property listings with 50+ attributes and complex search (price range, bedrooms, amenities, location). What's the best search approach?",
+      "options": [
+        "PostgreSQL with compound indexes",
+        "Elasticsearch with nested filters",
+        "Redis for simple lookups",
+        "B is best for faceted real estate search"
+      ],
+      "correct": 3,
+      "explanation": "Elasticsearch excels at faceted search with many attributes: price ranges, multiple amenities, location radius, plus relevance scoring and aggregations for facet counts. PostgreSQL works for simple searches but Elasticsearch handles the complexity better."
+    },
+    {
+      "id": "u4c8-074",
+      "type": "multi-select",
+      "question": "An online education platform stores courses, videos, quizzes, and student progress. Which stores fit?",
+      "options": [
+        "S3 for video files",
+        "PostgreSQL for course structure and progress",
+        "Redis for session state during video playback",
+        "Elasticsearch for course search"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "S3 for videos (large files, CDN integration), PostgreSQL for course metadata/progress (relational, ACID), Redis for playback session (ephemeral, fast), Elasticsearch for search (course discovery). Each component specializes."
+    },
+    {
+      "id": "u4c8-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a loyalty points system. Customers earn and redeem points. What's the critical storage requirement?",
+          "options": [
+            "Fast read performance",
+            "Accurate point balances (no double-spend)",
+            "Flexible schema",
+            "High write throughput"
+          ],
+          "correct": 1,
+          "explanation": "Points are like money—balances must be accurate. Double-spending (redeeming points you don't have due to race conditions) is unacceptable. ACID transactions ensure balance updates are atomic and consistent."
+        },
+        {
+          "question": "Points expire after 12 months. What enables efficient expiration?",
+          "options": [
+            "Check expiration on every balance query",
+            "Track points with earn date, run nightly expiration job",
+            "Store only unexpired points total",
+            "Let customers track their own expirations"
+          ],
+          "correct": 1,
+          "explanation": "Track each point-earning transaction with timestamp. Nightly (or more frequent) batch job expires old points. This maintains accurate history for auditing while automating expiration. Storing only totals loses the ability to expire correctly."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-076",
+      "type": "multiple-choice",
+      "question": "A meeting scheduling tool like Calendly needs to show available time slots. Each user has busy times from calendar integrations. What stores availability?",
+      "options": [
+        "PostgreSQL with time range columns",
+        "Redis for fast availability lookups",
+        "Compute availability on-demand from busy times",
+        "C with PostgreSQL storing busy times"
+      ],
+      "correct": 3,
+      "explanation": "Store busy times (from calendar sync) in PostgreSQL. Compute available slots on-demand by inverting busy times within the user's configured hours. Pre-computing availability is wasteful since calendars change frequently. Compute on each request."
+    },
+    {
+      "id": "u4c8-077",
+      "type": "multiple-choice",
+      "question": "You're building a commenting system like Disqus. Comments are threaded (replies to replies). What storage model handles threading?",
+      "options": [
+        "parent_id column with recursive queries",
+        "Materialized path (path column like '1.2.3')",
+        "Nested set model",
+        "Any of these work; parent_id is simplest"
+      ],
+      "correct": 3,
+      "explanation": "Parent_id is simplest and sufficient for most comment threads. Recursive CTEs fetch entire threads. Materialized path and nested sets optimize specific queries but add complexity. Start with parent_id; optimize if performance requires."
+    },
+    {
+      "id": "u4c8-078",
+      "type": "multiple-choice",
+      "question": "An insurance company stores policy documents (PDFs) that must be retained for 30 years. What's the most cost-effective storage?",
+      "options": [
+        "S3 Standard for all documents",
+        "S3 Glacier for archive with lifecycle policies",
+        "On-premises tape backup",
+        "Database BLOB storage"
+      ],
+      "correct": 1,
+      "explanation": "S3 Glacier (~$0.004/GB) is designed for long-term archival. Lifecycle policies automatically transition documents from Standard to Glacier after X days. 30-year retention at Glacier costs is cost-effective. Standard is ~6x more expensive for rarely-accessed data."
+    },
+    {
+      "id": "u4c8-079",
+      "type": "ordering",
+      "question": "Order these data access patterns by how well PostgreSQL handles them (best to worst):",
+      "items": [
+        "Graph traversal (friends of friends of friends)",
+        "Full-text search with relevance ranking",
+        "Transactional CRUD with complex joins",
+        "Time-series with millions of inserts per second"
+      ],
+      "correctOrder": [2, 1, 0, 3],
+      "explanation": "PostgreSQL excels at transactional CRUD with joins (its core use case). FTS is good with ts_vector/GIN but not best-in-class. Graph queries work with recursive CTEs but are slow vs. graph DBs. High-volume time-series writes need specialized stores."
+    },
+    {
+      "id": "u4c8-080",
+      "type": "multi-select",
+      "question": "A logistics company needs to optimize warehouse layout based on item pick frequency. What data enables this?",
+      "options": [
+        "Pick event logs with item ID and location",
+        "Real-time inventory positions",
+        "Item dimensions and weight",
+        "Historical pick frequency analytics"
+      ],
+      "correctIndices": [0, 3],
+      "explanation": "Pick event logs provide raw data. Historical pick frequency analytics (from data warehouse) show which items are picked most often—these should be in easy-to-reach locations. Real-time inventory and dimensions are relevant but not primary for layout optimization."
+    },
+    {
+      "id": "u4c8-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a ride-sharing app that matches drivers and riders. During surge (high demand), prices increase. What stores surge pricing zones?",
+          "options": [
+            "PostgreSQL with PostGIS zones",
+            "Redis with computed surge multipliers",
+            "In-memory with frequent recalculation",
+            "Any of these; Redis or in-memory for speed"
+          ],
+          "correct": 3,
+          "explanation": "Surge pricing changes rapidly and is read on every ride request. In-memory or Redis provides fast reads. The computation (demand vs. supply per zone) runs frequently and updates the cache. PostgreSQL can store zone definitions but not serve real-time pricing."
+        },
+        {
+          "question": "Surge zones are irregular polygons, not simple circles. What enables 'which surge zone contains this GPS point'?",
+          "options": [
+            "Check distance from zone centers",
+            "Polygon containment query with spatial index",
+            "Grid-based approximation",
+            "B is most accurate for irregular polygons"
+          ],
+          "correct": 3,
+          "explanation": "PostGIS, MongoDB 2dsphere, or Redis (with polygon support) handle polygon containment queries. Irregular zones (following roads, neighborhoods) need proper polygon geometry, not circle approximations. Spatial indexes make containment queries fast."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-082",
+      "type": "multiple-choice",
+      "question": "A food delivery app tracks order status (placed → preparing → picked up → delivered). What enables real-time status updates to customers?",
+      "options": [
+        "Poll the database every 5 seconds",
+        "WebSocket push on status changes",
+        "SMS on each status change",
+        "B, with optional SMS for key stages"
+      ],
+      "correct": 3,
+      "explanation": "WebSocket provides real-time updates in the app without polling. Push on each database status change (via trigger or application event). SMS for key stages (picked up, delivered) provides redundancy if app isn't open. Both channels for best experience."
+    },
+    {
+      "id": "u4c8-083",
+      "type": "multiple-choice",
+      "question": "A CRM system stores customer interactions across email, phone, chat, and social media. What enables a unified customer view?",
+      "options": [
+        "Separate tables per channel",
+        "Unified interaction table with channel type",
+        "Document store with flexible interaction schemas",
+        "B or C depending on schema variability"
+      ],
+      "correct": 3,
+      "explanation": "If interactions are similar across channels (timestamp, content, customer_id), a unified table with channel type works. If channels have very different data shapes, document storage provides flexibility. The unified view aggregates by customer_id either way."
+    },
+    {
+      "id": "u4c8-084",
+      "type": "multiple-choice",
+      "question": "An auction platform needs to process bids in real-time and ensure the highest bid wins. What prevents race conditions in bid processing?",
+      "options": [
+        "Process all bids asynchronously",
+        "Atomic compare-and-set for current highest bid",
+        "Optimistic locking with retry",
+        "B or C depending on contention level"
+      ],
+      "correct": 3,
+      "explanation": "Atomic compare-and-set (Redis WATCH/MULTI, PostgreSQL UPDATE WHERE) ensures only higher bids succeed. Optimistic locking works too—check version, update, retry if version changed. High contention (popular auctions) may need serialization. Both patterns prevent race conditions."
+    },
+    {
+      "id": "u4c8-085",
+      "type": "multi-select",
+      "question": "A subscription box company needs to track subscriber preferences, box contents, and shipment status. Which stores fit?",
+      "options": [
+        "PostgreSQL for subscriptions and orders",
+        "Recommendation engine for preference matching",
+        "Logistics API for shipment tracking",
+        "Redis for inventory holds during box assembly"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "PostgreSQL for core subscription data (relational, transactional). Recommendation engine (internal or external) matches preferences to products. Logistics API tracks shipments (or internal table synced from carriers). Redis holds inventory during assembly to prevent overselling."
+    },
+    {
+      "id": "u4c8-086",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a code deployment pipeline. Deployments have status, logs, and artifacts. What stores deployment records?",
+          "options": [
+            "PostgreSQL for structured deployment data",
+            "S3 for logs and artifacts",
+            "Both A and B",
+            "MongoDB for flexible deployment schemas"
+          ],
+          "correct": 2,
+          "explanation": "PostgreSQL stores structured deployment records (status, timestamps, metadata). S3 stores large logs and binary artifacts (Docker images, build outputs). This is the standard pattern—relational DB for records, object storage for files."
+        },
+        {
+          "question": "Developers need to stream deployment logs in real-time. What enables live log tailing?",
+          "options": [
+            "Poll S3 for new log lines",
+            "Write logs to both S3 and a streaming service",
+            "WebSocket connection to deployment runner",
+            "C during deploy, with S3 for historical access"
+          ],
+          "correct": 3,
+          "explanation": "During active deployment, stream logs via WebSocket from the runner. After completion, logs are in S3 for historical access. Real-time streaming needs push; S3 is for storage, not streaming. The two complement each other."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-087",
+      "type": "multiple-choice",
+      "question": "A telemedicine platform stores patient-doctor video consultations. What's the primary storage consideration for video recordings?",
+      "options": [
+        "Low latency playback",
+        "HIPAA-compliant encryption and access controls",
+        "Real-time transcription",
+        "Thumbnail generation"
+      ],
+      "correct": 1,
+      "explanation": "Medical video recordings contain PHI—HIPAA compliance is non-negotiable. Encryption at rest and in transit, access logging, and strict access controls are mandatory. S3 with appropriate encryption and IAM policies is typical. Features like playback and transcription are secondary."
+    },
+    {
+      "id": "u4c8-088",
+      "type": "multiple-choice",
+      "question": "An e-commerce platform sells to customers worldwide. Product prices are in different currencies with fluctuating exchange rates. What stores exchange rates?",
+      "options": [
+        "Hardcoded in application",
+        "Database table updated from external API",
+        "Cache (Redis) with TTL, falling back to DB",
+        "C is the common pattern"
+      ],
+      "correct": 3,
+      "explanation": "Fetch exchange rates from an external API (or provider). Store in database for persistence. Cache in Redis with short TTL for fast lookups. Rates change frequently, so caching with TTL balances freshness and performance."
+    },
+    {
+      "id": "u4c8-089",
+      "type": "ordering",
+      "question": "Order these by how often data typically changes (least frequent to most frequent):",
+      "items": [
+        "User session data",
+        "Product catalog",
+        "Real-time stock prices",
+        "System configuration"
+      ],
+      "correctOrder": [3, 1, 0, 2],
+      "explanation": "System config (rarely changes, deploy-time) → Product catalog (daily/weekly updates) → User sessions (per-request changes, minutes TTL) → Stock prices (sub-second changes). This informs caching strategies—stable data benefits more from caching."
+    },
+    {
+      "id": "u4c8-090",
+      "type": "multi-select",
+      "question": "A fitness app tracks workouts, body metrics, and nutrition. Users want to see trends over time. Which stores fit?",
+      "options": [
+        "PostgreSQL or SQLite (local) for structured data",
+        "Time-series visualization from aggregated data",
+        "Cloud sync for cross-device access",
+        "S3 for workout video recordings"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Structured data (workouts, metrics) in SQLite locally and/or PostgreSQL in cloud. Time-series aggregation for trend charts. Cloud sync for multi-device. S3 for video recordings if the app supports workout videos. Standard mobile app + cloud architecture."
+    },
+    {
+      "id": "u4c8-091",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a price comparison site that scrapes competitor prices daily. What stores the scraped data?",
+          "options": [
+            "PostgreSQL with timestamp for each price",
+            "Time-series database for price history",
+            "Data lake for raw scrapes, DB for latest prices",
+            "Any of these depending on scale and query needs"
+          ],
+          "correct": 3,
+          "explanation": "At small scale, PostgreSQL with versioned prices works. At scale, time-series DB handles price history queries efficiently. Data lake + DB separates raw data from queryable latest prices. The choice depends on volume and query patterns."
+        },
+        {
+          "question": "Users want price alerts when a product drops below a threshold. What enables efficient alerting?",
+          "options": [
+            "Check all user alerts on each price update",
+            "Index alerts by product; check relevant alerts on price change",
+            "Let users poll for price changes",
+            "B is the scalable approach"
+          ],
+          "correct": 3,
+          "explanation": "When a product price changes, query alerts for that product_id and check thresholds. An index on product_id makes this fast. Checking all alerts on each update is O(alerts); indexed lookup is O(alerts_for_product). Polling shifts work to users and provides poor UX."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-092",
+      "type": "multiple-choice",
+      "question": "A B2B SaaS company wants to track product usage for customer success. What stores usage events?",
+      "options": [
+        "Production database alongside user data",
+        "Separate analytics database or data warehouse",
+        "Third-party analytics service (Amplitude, Mixpanel)",
+        "B or C depending on build vs buy decision"
+      ],
+      "correct": 3,
+      "explanation": "Usage analytics belongs in a separate system from production data. Build: stream events to a data warehouse for analysis. Buy: third-party analytics service handles collection and visualization. Don't burden the production DB with analytics writes."
+    },
+    {
+      "id": "u4c8-093",
+      "type": "multiple-choice",
+      "question": "A parking app needs to show available parking spots in real-time. Sensors report spot status. What stores and serves availability?",
+      "options": [
+        "PostgreSQL updated on each sensor event",
+        "Redis with spot status, updated by sensor events",
+        "In-memory with periodic DB sync",
+        "B or C for low-latency availability checks"
+      ],
+      "correct": 3,
+      "explanation": "Real-time availability needs fast reads/writes. Redis or in-memory stores current spot status. Sensors publish events; consumers update the availability store. PostgreSQL can be the source of truth with periodic sync, but real-time queries hit the cache."
+    },
+    {
+      "id": "u4c8-094",
+      "type": "multiple-choice",
+      "question": "An event management platform sells tickets with different tiers (GA, VIP, backstage). Each tier has limited quantity. What prevents overselling?",
+      "options": [
+        "Check availability before each purchase",
+        "Atomic decrement with count check",
+        "Queue all purchases and process sequentially",
+        "B is correct; C works but limits throughput"
+      ],
+      "correct": 3,
+      "explanation": "Atomic decrement (UPDATE tickets SET count = count - 1 WHERE tier_id = ? AND count > 0) prevents overselling. Sequential processing works but creates a bottleneck. Per-tier atomic operations allow parallel purchases across tiers while ensuring no tier oversells."
+    },
+    {
+      "id": "u4c8-095",
+      "type": "multi-select",
+      "question": "A marketplace connects buyers and sellers. Sellers list products; buyers purchase; the platform takes a commission. What data stores are needed?",
+      "options": [
+        "PostgreSQL for users, products, orders (transactional core)",
+        "Elasticsearch for product search",
+        "Payment processor integration for transactions",
+        "Data warehouse for seller analytics"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "PostgreSQL for core transactional data. Elasticsearch for product discovery (search, filters). Payment processor (Stripe, etc.) handles money movement. Data warehouse for seller dashboards and platform analytics. Standard marketplace architecture."
+    },
+    {
+      "id": "u4c8-096",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a news aggregator that collects articles from thousands of RSS feeds. What stores the aggregated articles?",
+          "options": [
+            "PostgreSQL with deduplication",
+            "Elasticsearch for search and storage",
+            "MongoDB for varied article schemas",
+            "PostgreSQL primary, Elasticsearch for search"
+          ],
+          "correct": 3,
+          "explanation": "PostgreSQL provides ACID for article ingestion and deduplication (same URL = same article). Elasticsearch enables full-text search across millions of articles. The combination handles both storage and search requirements."
+        },
+        {
+          "question": "Users want personalized feeds based on reading history. What enables personalization?",
+          "options": [
+            "Store reading history in PostgreSQL",
+            "Build user interest profiles from history",
+            "Recommendation system matching profiles to articles",
+            "All of the above working together"
+          ],
+          "correct": 3,
+          "explanation": "Reading history (PostgreSQL) feeds into interest profile computation (analytics/ML). Recommendation system matches profiles to new articles. This is a typical content personalization pipeline: collect data → compute profiles → generate recommendations."
+        }
+      ]
+    },
+    {
+      "id": "u4c8-097",
+      "type": "multiple-choice",
+      "question": "A manufacturing company needs to track equipment maintenance history and predict failures. What enables predictive maintenance?",
+      "options": [
+        "Maintenance log in PostgreSQL",
+        "Sensor data in time-series DB",
+        "ML model trained on historical failures",
+        "All: logs + sensor data feed ML model"
+      ],
+      "correct": 3,
+      "explanation": "Maintenance logs (PostgreSQL) record past issues. Sensor data (time-series DB) captures equipment state. ML model trained on historical data (when failures occurred + preceding sensor readings) predicts future failures. All three components work together."
+    },
+    {
+      "id": "u4c8-098",
+      "type": "multiple-choice",
+      "question": "A translation service stores original text and translations in multiple languages. Users can request translations on-demand. What stores translations?",
+      "options": [
+        "PostgreSQL with text columns per language",
+        "PostgreSQL with translation table (text_id, language, content)",
+        "Document store with language sub-documents",
+        "B scales better as languages grow"
+      ],
+      "correct": 3,
+      "explanation": "A translation table (text_id, language_code, content) scales to any number of languages without schema changes. Columns per language requires schema changes for each new language. For many languages, the translation table pattern is more flexible."
+    },
+    {
+      "id": "u4c8-099",
+      "type": "ordering",
+      "question": "Order these storage decisions by impact on system architecture (highest to lowest):",
+      "items": [
+        "Adding a Redis cache",
+        "Choosing SQL vs NoSQL for primary store",
+        "Object storage provider (S3 vs GCS)",
+        "Adding full-text search"
+      ],
+      "correctOrder": [1, 3, 0, 2],
+      "explanation": "Primary store choice (SQL vs NoSQL) shapes data model and access patterns—foundational. Full-text search adds a major component with sync requirements. Caching is incremental optimization. Object storage provider choice is usually interchangeable (all provide similar APIs)."
+    },
+    {
+      "id": "u4c8-100",
+      "type": "multi-select",
+      "question": "Looking back at Unit 4, which are valid principles for storage selection?",
+      "options": [
+        "Start simple; add complexity when justified by requirements",
+        "Choose storage based on access patterns, not data volume alone",
+        "Polyglot persistence increases operational complexity",
+        "The best database is the one your team knows well"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid principles: simplicity until complexity is needed, access patterns drive storage choice, multiple databases add operational burden, and team expertise reduces risk. Storage selection balances requirements, complexity, and practical constraints."
+    }
+  ]
+}

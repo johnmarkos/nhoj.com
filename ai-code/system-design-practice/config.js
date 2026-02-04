@@ -62,7 +62,7 @@ export const CONFIG = {
         { num: 5, title: 'Graph & Search Engines', ready: true },
         { num: 6, title: 'Object Storage', ready: true },
         { num: 7, title: 'Hybrid Architectures', ready: true },
-        { num: 8, title: 'Storage Selection Scenarios', ready: false }
+        { num: 8, title: 'Storage Selection Scenarios', ready: true }
       ]
     }
   ]
