@@ -59,7 +59,7 @@ export const CONFIG = {
         { num: 2, title: 'Document Stores', ready: true },
         { num: 3, title: 'Key-Value Stores', ready: true },
         { num: 4, title: 'Wide-Column & Time-Series', ready: true },
-        { num: 5, title: 'Graph & Search Engines', ready: false },
+        { num: 5, title: 'Graph & Search Engines', ready: true },
         { num: 6, title: 'Object Storage', ready: false },
         { num: 7, title: 'Hybrid Architectures', ready: false },
         { num: 8, title: 'Storage Selection Scenarios', ready: false }
