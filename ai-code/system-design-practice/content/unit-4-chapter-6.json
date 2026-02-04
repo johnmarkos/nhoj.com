@@ -1,0 +1,1604 @@
+{
+  "unit": 4,
+  "unitTitle": "Storage Selection",
+  "chapter": 6,
+  "chapterTitle": "Object Storage",
+  "chapterDescription": "S3-style blob storage for files, media, backups, and data lakes.",
+  "problems": [
+    {
+      "id": "obj-001",
+      "type": "multiple-choice",
+      "question": "What is object storage?",
+      "options": [
+        "Storing JavaScript objects",
+        "A flat storage system for blobs of data (files, images, videos) accessed by unique keys",
+        "A relational database for objects",
+        "Object-oriented programming storage"
+      ],
+      "correct": 1,
+      "explanation": "Object storage stores data as objects (blobs) with unique keys. No hierarchy like file systems (although keys can mimic paths). Designed for: large unstructured data, massive scale, high durability. Examples: S3, GCS, Azure Blob Storage."
+    },
+    {
+      "id": "obj-002",
+      "type": "multi-select",
+      "question": "Which are object storage services?",
+      "options": ["Amazon S3", "Google Cloud Storage", "Azure Blob Storage", "PostgreSQL"],
+      "correctIndices": [0, 1, 2],
+      "explanation": "S3, GCS, and Azure Blob Storage are object storage services. PostgreSQL is a relational database. Object storage is for blobs; databases are for structured data with queries."
+    },
+    {
+      "id": "obj-003",
+      "type": "multiple-choice",
+      "question": "What is a bucket in S3/GCS?",
+      "options": [
+        "A physical storage device",
+        "A container for objects with a globally unique name",
+        "A backup folder",
+        "A database table"
+      ],
+      "correct": 1,
+      "explanation": "A bucket is a container for objects. Bucket names are globally unique (no one else can use your bucket name). Objects live in buckets, addressed as: s3://bucket-name/object-key. Buckets have region and access control settings."
+    },
+    {
+      "id": "obj-004",
+      "type": "multiple-choice",
+      "question": "What is an object key in S3?",
+      "options": [
+        "An encryption key",
+        "The unique identifier/path for an object within a bucket",
+        "A primary key",
+        "An API key"
+      ],
+      "correct": 1,
+      "explanation": "The object key is the unique name within a bucket: 'images/photo.jpg', 'backups/2024/data.zip'. Keys look like paths but S3 is flat — '/' is just part of the name. The full address is: bucket + key."
+    },
+    {
+      "id": "obj-005",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "S3 has no actual folder hierarchy. When you see 'photos/2024/vacation/image.jpg' in S3, what is this?",
+          "options": [
+            "Three nested folders containing a file",
+            "One object with key 'photos/2024/vacation/image.jpg' — the slashes are just characters in the key",
+            "Four separate objects",
+            "A symbolic link"
+          ],
+          "correct": 1,
+          "explanation": "S3 is flat. 'photos/2024/vacation/image.jpg' is a single object key. The slashes are conventions that the console shows as 'folders', but there's no folder metadata. You can have 'a/b/c.jpg' without 'a/' or 'a/b/' existing."
+        },
+        {
+          "question": "How do you list 'all images in the vacation folder'?",
+          "options": [
+            "List the vacation directory",
+            "Use prefix filter: list objects with prefix 'photos/2024/vacation/'",
+            "Query the folder table",
+            "It's not possible"
+          ],
+          "correct": 1,
+          "explanation": "Use prefix: ListObjects with prefix='photos/2024/vacation/' returns all objects starting with that prefix. This is how 'folder' listing works. Delimiter='/' gives 'folder-like' grouping. But it's prefix matching, not real folders."
+        }
+      ]
+    },
+    {
+      "id": "obj-006",
+      "type": "multiple-choice",
+      "question": "What durability does S3 Standard claim?",
+      "options": [
+        "99%",
+        "99.9%",
+        "99.999999999% (eleven 9s)",
+        "100%"
+      ],
+      "correct": 2,
+      "explanation": "S3 Standard claims 99.999999999% (11 nines) durability. This means expected loss of 0.000000001% of objects per year. Achieved by replicating across multiple devices and facilities. For 10 million objects, expect to lose ~0.0001 objects per year."
+    },
+    {
+      "id": "obj-007",
+      "type": "multiple-choice",
+      "question": "What is the difference between durability and availability?",
+      "options": [
+        "They're the same",
+        "Durability: data won't be lost. Availability: data is accessible when requested",
+        "Durability is for writes; availability is for reads",
+        "Availability is more important"
+      ],
+      "correct": 1,
+      "explanation": "Durability = data safety (won't be lost). Availability = data accessibility (can read it now). S3 Standard: 11 nines durability, 99.99% availability. Highly durable but might have brief unavailability. Both matter but for different reasons."
+    },
+    {
+      "id": "obj-008",
+      "type": "multi-select",
+      "question": "What are common use cases for object storage?",
+      "options": [
+        "Static file hosting (images, CSS, JS)",
+        "Backup and archive",
+        "Data lakes for analytics",
+        "Low-latency transactional database"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Object storage use cases: static files (web assets, images), backups (cheap, durable), data lakes (store raw data, process with Spark/Athena). Not for transactional databases — too much latency, no ACID."
+    },
+    {
+      "id": "obj-009",
+      "type": "multiple-choice",
+      "question": "What is S3 Standard-IA (Infrequent Access)?",
+      "options": [
+        "Immediate access storage",
+        "A storage class for less frequently accessed data — lower storage cost, higher retrieval cost",
+        "Indexed access storage",
+        "A backup service"
+      ],
+      "correct": 1,
+      "explanation": "Standard-IA is for data accessed less often (monthly, quarterly). Lower storage cost than Standard, but higher cost per retrieval. Same durability (11 nines). Good for: backups accessed during recovery, compliance archives."
+    },
+    {
+      "id": "obj-010",
+      "type": "ordering",
+      "question": "Rank S3 storage classes from lowest to highest storage cost (per GB/month):",
+      "items": ["S3 Standard", "S3 Glacier Deep Archive", "S3 Standard-IA", "S3 Glacier Instant Retrieval"],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "Glacier Deep Archive is cheapest (long-term archive). Glacier Instant Retrieval next. Standard-IA is cheaper than Standard but more than Glacier. Standard is most expensive but most accessible. Trade-off: cost vs. access speed."
+    },
+    {
+      "id": "obj-011",
+      "type": "multiple-choice",
+      "question": "What is S3 Glacier?",
+      "options": [
+        "A cold storage service",
+        "Low-cost archive storage with slower retrieval times (minutes to hours)",
+        "A CDN service",
+        "A glacier monitoring service"
+      ],
+      "correct": 1,
+      "explanation": "Glacier is S3's archive tier. Very low storage cost, but retrieval takes time: Expedited (1-5 min), Standard (3-5 hours), Bulk (5-12 hours). For: compliance archives, rarely accessed backups, long-term storage. Glacier Deep Archive is even cheaper/slower."
+    },
+    {
+      "id": "obj-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You store 100TB of logs. Logs are queried in first 30 days, then kept for compliance for 7 years. How to optimize cost?",
+          "options": [
+            "Keep in S3 Standard forever",
+            "Lifecycle policy: Standard (30 days) → Glacier (7 years) → Delete",
+            "Delete after 30 days",
+            "Use EBS volumes"
+          ],
+          "correct": 1,
+          "explanation": "Lifecycle policy automates transitions. Keep in Standard for active use, move to Glacier for long-term compliance (much cheaper). After retention period, delete automatically. This optimizes cost across the data lifecycle."
+        },
+        {
+          "question": "What if you need to occasionally query old logs during an investigation?",
+          "options": [
+            "Keep everything in Standard",
+            "Use Glacier Instant Retrieval or accept retrieval delay from standard Glacier",
+            "Logs can't be queried from Glacier",
+            "Store a copy in both"
+          ],
+          "correct": 1,
+          "explanation": "Options: (1) Glacier Instant Retrieval — millisecond access, slightly higher cost than Deep Archive. (2) Standard Glacier — wait hours for retrieval when needed (rare investigations). (3) Keep searchable summaries in Elasticsearch, raw logs in Glacier."
+        }
+      ]
+    },
+    {
+      "id": "obj-013",
+      "type": "multiple-choice",
+      "question": "What is a lifecycle policy in S3?",
+      "options": [
+        "Insurance for data",
+        "Rules that automatically transition or delete objects based on age or other criteria",
+        "A backup schedule",
+        "A data classification scheme"
+      ],
+      "correct": 1,
+      "explanation": "Lifecycle policies automate object management: transition to cheaper storage classes after X days, delete after Y days. Apply to buckets or prefixes. Essential for cost optimization — don't pay Standard prices for 5-year-old data."
+    },
+    {
+      "id": "obj-014",
+      "type": "multi-select",
+      "question": "What actions can S3 lifecycle policies perform?",
+      "options": [
+        "Transition to different storage classes",
+        "Delete objects after a period",
+        "Delete incomplete multipart uploads",
+        "Automatically compress objects"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Lifecycle can: transition (Standard → IA → Glacier), expire (delete after N days), and clean up incomplete multipart uploads. It doesn't automatically compress — that's done at upload time or by processing."
+    },
+    {
+      "id": "obj-015",
+      "type": "multiple-choice",
+      "question": "What is S3 versioning?",
+      "options": [
+        "Different S3 API versions",
+        "Keeping multiple versions of an object, preserving previous versions on update or delete",
+        "Version control like Git",
+        "Software versioning"
+      ],
+      "correct": 1,
+      "explanation": "With versioning enabled, S3 keeps all versions of an object. Overwrites create new versions (old ones preserved). Deletes add a delete marker (previous versions remain). Essential for: recovering from accidental deletes, audit trails."
+    },
+    {
+      "id": "obj-016",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Versioning is enabled. You upload 'report.pdf', then upload a new 'report.pdf'. What happens?",
+          "options": [
+            "Old version is deleted",
+            "New version becomes current; old version is preserved with a version ID",
+            "Upload fails — name conflict",
+            "Both have the same version"
+          ],
+          "correct": 1,
+          "explanation": "Both versions exist. The new one is 'current' (returned by default GET). The old one has a version ID and can be retrieved explicitly: GET report.pdf?versionId=xxx. Storage costs include all versions."
+        },
+        {
+          "question": "You 'delete' report.pdf. What happens?",
+          "options": [
+            "All versions are permanently deleted",
+            "A delete marker is added; all versions still exist and can be recovered",
+            "Only the current version is deleted",
+            "Delete is blocked"
+          ],
+          "correct": 1,
+          "explanation": "Delete adds a delete marker (a special version saying 'this is deleted'). GET returns 404. But all previous versions remain — you can restore by deleting the delete marker or getting a specific version. To permanently delete, delete each version."
+        }
+      ]
+    },
+    {
+      "id": "obj-017",
+      "type": "multiple-choice",
+      "question": "What is S3 Object Lock?",
+      "options": [
+        "Locking objects for concurrent access",
+        "A WORM (Write Once Read Many) feature preventing deletion or modification for a retention period",
+        "Encryption at rest",
+        "Access control"
+      ],
+      "correct": 1,
+      "explanation": "Object Lock provides WORM storage. Once written, objects can't be deleted or modified for the retention period. Compliance mode: even root can't delete. Used for: regulatory compliance, ransomware protection. Requires versioning."
+    },
+    {
+      "id": "obj-018",
+      "type": "multi-select",
+      "question": "What are S3 Object Lock modes?",
+      "options": [
+        "Governance mode — can be overridden with special permissions",
+        "Compliance mode — no one can delete, including root",
+        "Legal hold — indefinite lock until removed",
+        "Encryption mode — encrypts locked objects"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Governance: locked but privileged users can override. Compliance: truly immutable (no override). Legal hold: indefinite lock regardless of retention period, for litigation. These are access modes, not encryption (that's separate)."
+    },
+    {
+      "id": "obj-019",
+      "type": "multiple-choice",
+      "question": "What is a presigned URL in S3?",
+      "options": [
+        "A permanently signed URL",
+        "A time-limited URL that grants temporary access to an object without AWS credentials",
+        "A URL that's signed before upload",
+        "A premium URL service"
+      ],
+      "correct": 1,
+      "explanation": "Presigned URLs grant temporary access. Generate with your credentials, share the URL. The recipient can GET/PUT without AWS credentials, until expiration. Use for: temporary downloads, allowing uploads without exposing credentials."
+    },
+    {
+      "id": "obj-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your app needs to let users upload avatars directly to S3 (bypassing your server). How?",
+          "options": [
+            "Give users your AWS credentials",
+            "Generate a presigned PUT URL, give it to the user, they upload directly to S3",
+            "Have users send files through your API",
+            "Make the bucket public"
+          ],
+          "correct": 1,
+          "explanation": "Presigned URL for PUT: your backend generates a URL (with expiration, size limits), gives to client. Client uploads directly to S3 using the presigned URL. Your server never handles the file. Efficient and scalable."
+        },
+        {
+          "question": "Security concern: presigned URL is leaked. Mitigation?",
+          "options": [
+            "Nothing can be done",
+            "Use short expiration times, limit to specific object keys, consider additional authentication",
+            "Don't use presigned URLs",
+            "Encrypt the URL"
+          ],
+          "correct": 1,
+          "explanation": "Mitigations: short expiration (minutes, not hours), specific object key (user can only write to their designated key), check file after upload (validate content), use POST policies for additional constraints. Defense in depth."
+        }
+      ]
+    },
+    {
+      "id": "obj-021",
+      "type": "multiple-choice",
+      "question": "What is S3 Transfer Acceleration?",
+      "options": [
+        "Faster CPU for S3",
+        "Using CloudFront edge locations to speed up transfers over long distances",
+        "Parallel uploads",
+        "A CDN replacement"
+      ],
+      "correct": 1,
+      "explanation": "Transfer Acceleration routes uploads/downloads through CloudFront edge locations. Data travels to the nearest edge over the internet, then over AWS's fast backbone to S3. Helps when uploading from far away. Has additional cost."
+    },
+    {
+      "id": "obj-022",
+      "type": "multiple-choice",
+      "question": "What is multipart upload in S3?",
+      "options": [
+        "Uploading to multiple buckets",
+        "Uploading large objects in parts for reliability and parallelism",
+        "Uploading multiple objects at once",
+        "A multi-user upload"
+      ],
+      "correct": 1,
+      "explanation": "Multipart upload splits large objects into parts (5MB - 5GB each). Upload parts in parallel, retry failed parts without restarting. Required for objects > 5GB. Benefits: faster, resumable, better network utilization."
+    },
+    {
+      "id": "obj-023",
+      "type": "multi-select",
+      "question": "What are benefits of multipart upload?",
+      "options": [
+        "Parallel uploads for speed",
+        "Resume from failure (retry individual parts)",
+        "Required for objects over 5GB",
+        "Lower storage cost"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Multipart benefits: parallel (faster), resumable (don't restart from scratch), handles large objects (up to 5TB). Storage cost is the same — multipart is about the upload process, not storage."
+    },
+    {
+      "id": "obj-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A multipart upload is started but never completed (parts uploaded, but no 'complete' call). What happens?",
+          "options": [
+            "Parts are automatically deleted",
+            "Parts remain and you're charged for storage until you abort or complete",
+            "S3 automatically completes it",
+            "The bucket is locked"
+          ],
+          "correct": 1,
+          "explanation": "Incomplete multipart uploads consume storage (and cost money). Parts stay until you explicitly abort or complete. This can accumulate surprisingly. Use lifecycle policies to abort incomplete uploads after a period (e.g., 7 days)."
+        },
+        {
+          "question": "How do you prevent accumulating incomplete multipart upload costs?",
+          "options": [
+            "Don't use multipart upload",
+            "Lifecycle rule to abort incomplete multipart uploads after X days",
+            "Manually check every week",
+            "Disable multipart in the bucket"
+          ],
+          "correct": 1,
+          "explanation": "Lifecycle rule: 'AbortIncompleteMultipartUpload' after 7 days (or your preferred period). Automatically cleans up orphaned parts. Set and forget. This is a best practice for all buckets using multipart uploads."
+        }
+      ]
+    },
+    {
+      "id": "obj-025",
+      "type": "multiple-choice",
+      "question": "What is S3 Select?",
+      "options": [
+        "Selecting which S3 region to use",
+        "Querying data inside an object using SQL, retrieving only matching data",
+        "Selecting objects to delete",
+        "A premium S3 tier"
+      ],
+      "correct": 1,
+      "explanation": "S3 Select runs SQL queries on objects (CSV, JSON, Parquet). Instead of downloading entire object, query and get matching rows. Reduces data transfer costs and latency. Example: SELECT * FROM S3Object WHERE status='active'."
+    },
+    {
+      "id": "obj-026",
+      "type": "multiple-choice",
+      "question": "What is Amazon Athena?",
+      "options": [
+        "A wisdom service",
+        "A serverless query service to analyze S3 data using SQL",
+        "A storage service",
+        "A compute service"
+      ],
+      "correct": 1,
+      "explanation": "Athena is serverless SQL for S3. Define schema over S3 data, query with SQL. Pay per query (data scanned). Good for: ad-hoc analytics, data lake queries. Uses Presto/Trino under the hood. Much more powerful than S3 Select."
+    },
+    {
+      "id": "obj-027",
+      "type": "multi-select",
+      "question": "What is the difference between S3 Select and Athena?",
+      "options": [
+        "S3 Select queries single objects; Athena queries across many objects",
+        "S3 Select is simpler/lighter; Athena supports complex SQL including JOINs",
+        "They're the same service",
+        "Athena uses a table abstraction; S3 Select is object-level"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "S3 Select: single object, simple filter, lightweight. Athena: full SQL over table (many objects), complex queries, JOINs, aggregations. Use S3 Select for simple 'just get matching rows from this file'. Athena for analytics."
+    },
+    {
+      "id": "obj-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 1TB of CSV logs in S3. You need to find all errors from the last hour. Which tool?",
+          "options": [
+            "Download all 1TB and grep locally",
+            "Use Athena with a query filtering by timestamp and status='error'",
+            "Use S3 Select on each file",
+            "Convert to a database first"
+          ],
+          "correct": 1,
+          "explanation": "Athena: define a table over the logs, query with SQL: SELECT * FROM logs WHERE timestamp > X AND status = 'error'. Only scans relevant data (if partitioned well). Pay for data scanned. Much faster than downloading everything."
+        },
+        {
+          "question": "How can you reduce Athena query costs for this log analysis?",
+          "options": [
+            "Use smaller files",
+            "Partition data by date (Athena skips irrelevant partitions) and use columnar format (Parquet)",
+            "Query less often",
+            "Use a cheaper region"
+          ],
+          "correct": 1,
+          "explanation": "Partition by date: query for last hour only scans that partition. Columnar format (Parquet): only reads columns you SELECT. Compression reduces data size. These can reduce scanned data (and cost) by 10-100x. Structure data for query patterns."
+        }
+      ]
+    },
+    {
+      "id": "obj-029",
+      "type": "multiple-choice",
+      "question": "What is a data lake?",
+      "options": [
+        "A lake monitoring system",
+        "A centralized repository storing raw data at any scale, often in object storage",
+        "A database",
+        "A water management database"
+      ],
+      "correct": 1,
+      "explanation": "A data lake stores raw data in native format (structured, semi-structured, unstructured) at scale. Object storage (S3) is common. Analysis happens in place: Athena, Spark, ML. Contrasts with data warehouse (processed, structured). Lake = raw + scale."
+    },
+    {
+      "id": "obj-030",
+      "type": "multi-select",
+      "question": "Why is object storage often used for data lakes?",
+      "options": [
+        "Virtually unlimited scale",
+        "Low cost per GB",
+        "Decoupled storage and compute",
+        "Built-in ACID transactions"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Data lake on object storage: unlimited scale (petabytes easy), cheap storage, decoupled compute (use Spark, Athena, etc. on demand). Object storage lacks ACID — that's addressed by lakehouse formats (Delta Lake, Iceberg) which add transactions."
+    },
+    {
+      "id": "obj-031",
+      "type": "multiple-choice",
+      "question": "What is the 'lakehouse' architecture?",
+      "options": [
+        "A house by a lake",
+        "Combining data lake (raw, cheap storage) with data warehouse features (transactions, schema enforcement)",
+        "A new type of database",
+        "A storage vendor"
+      ],
+      "correct": 1,
+      "explanation": "Lakehouse = data lake + warehouse features. Technologies like Delta Lake, Apache Iceberg, Apache Hudi add: ACID transactions, schema evolution, time travel to data lake storage. Get warehouse-like reliability with lake-like scale and cost."
+    },
+    {
+      "id": "obj-032",
+      "type": "multiple-choice",
+      "question": "What is Delta Lake?",
+      "options": [
+        "A change data capture tool",
+        "An open-source storage layer adding ACID transactions to data lakes (Parquet + transaction log)",
+        "A new file format",
+        "An AWS service"
+      ],
+      "correct": 1,
+      "explanation": "Delta Lake adds ACID transactions to Parquet data on S3/data lakes. It uses a transaction log to track changes. Features: ACID, time travel (query historical versions), schema enforcement. Open-source, works with Spark."
+    },
+    {
+      "id": "obj-033",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You write data to S3 in Parquet format. Concurrent writers might corrupt data. How does Delta Lake help?",
+          "options": [
+            "It doesn't — Parquet is always safe",
+            "Transaction log ensures atomic commits; concurrent writes are serialized",
+            "Delta Lake prevents writing",
+            "Uses database locks"
+          ],
+          "correct": 1,
+          "explanation": "Delta Lake's transaction log records each change atomically. Concurrent writers: optimistic concurrency — try to write, check for conflicts, retry if needed. Readers see consistent snapshots. This enables ACID on object storage."
+        },
+        {
+          "question": "You realize yesterday's ETL job wrote bad data. With Delta Lake, how do you fix it?",
+          "options": [
+            "Restore from backup",
+            "Time travel: query or restore to a previous version",
+            "Rerun the entire pipeline",
+            "It's not possible"
+          ],
+          "correct": 1,
+          "explanation": "Delta Lake time travel: each change is versioned. Query historical data: SELECT * FROM table VERSION AS OF 5. Or restore: RESTORE table TO VERSION AS OF 5. Fix bad writes without reprocessing everything. Version history is configurable."
+        }
+      ]
+    },
+    {
+      "id": "obj-034",
+      "type": "multiple-choice",
+      "question": "What is Apache Iceberg?",
+      "options": [
+        "A cold storage format",
+        "An open table format for data lakes with ACID, schema evolution, and partition evolution",
+        "An AWS service",
+        "A visualization tool"
+      ],
+      "correct": 1,
+      "explanation": "Iceberg is a table format for data lakes (like Delta Lake, Hudi). Features: ACID transactions, schema evolution, partition evolution (change partitioning without rewriting), time travel. Open-source, vendor-neutral, supported by AWS, Snowflake, Dremio."
+    },
+    {
+      "id": "obj-035",
+      "type": "multi-select",
+      "question": "What problems do lakehouse formats (Delta Lake, Iceberg) solve?",
+      "options": [
+        "ACID transactions on object storage",
+        "Schema enforcement and evolution",
+        "Time travel / versioning",
+        "Making data lakes faster than databases for OLTP"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Lakehouse formats add: ACID (consistent writes), schema enforcement (data quality), time travel (audit, rollback). They don't make lakes faster than databases for OLTP — lakes are still optimized for analytics workloads, not transactions."
+    },
+    {
+      "id": "obj-036",
+      "type": "multiple-choice",
+      "question": "What is S3 event notification?",
+      "options": [
+        "Email about S3 outages",
+        "Triggering events (Lambda, SQS, SNS) when objects are created, deleted, or modified",
+        "S3 usage reports",
+        "Notification about billing"
+      ],
+      "correct": 1,
+      "explanation": "Event notifications trigger on S3 actions: ObjectCreated, ObjectRemoved. Send to Lambda, SQS, or SNS. Use cases: process uploads (resize images), update search index, trigger workflows. Event-driven architectures with S3 as source."
+    },
+    {
+      "id": "obj-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Users upload images to S3. You need to generate thumbnails automatically. Architecture?",
+          "options": [
+            "Poll S3 for new images",
+            "S3 event triggers Lambda, Lambda creates thumbnail and saves to S3",
+            "Manual batch job nightly",
+            "Generate thumbnails in the browser"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven: S3 ObjectCreated event → Lambda function. Lambda reads image, creates thumbnail, writes to S3 (same or different bucket). Serverless, automatic, scales with upload volume. No polling needed."
+        },
+        {
+          "question": "What if thumbnail generation fails for some images?",
+          "options": [
+            "They're lost forever",
+            "Configure dead letter queue (DLQ) to capture failed events for retry/investigation",
+            "S3 automatically retries",
+            "Lambda never fails"
+          ],
+          "correct": 1,
+          "explanation": "Configure Lambda with a DLQ (SQS). Failed invocations send the event to DLQ. You can retry, investigate, or alert. Also: Lambda retries (async) before DLQ, built-in retry logic. Always plan for failures in async workflows."
+        }
+      ]
+    },
+    {
+      "id": "obj-038",
+      "type": "multiple-choice",
+      "question": "What is Amazon S3 Cross-Region Replication (CRR)?",
+      "options": [
+        "Copying files manually",
+        "Automatic asynchronous replication of objects to a bucket in another region",
+        "CDN caching",
+        "Database replication"
+      ],
+      "correct": 1,
+      "explanation": "CRR automatically replicates objects to another region. Use cases: disaster recovery (data in multiple regions), compliance (data residency), lower latency (replicate closer to users). Replication is asynchronous; uses versioning."
+    },
+    {
+      "id": "obj-039",
+      "type": "multi-select",
+      "question": "What are use cases for S3 replication?",
+      "options": [
+        "Disaster recovery (copy to another region)",
+        "Compliance (data in specific regions)",
+        "Aggregating logs from multiple accounts",
+        "Real-time synchronous access"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Replication use cases: DR (survive region failure), compliance (meet data residency), log aggregation (replicate from many sources to central). Not real-time synchronous — replication is async, typically seconds to minutes lag."
+    },
+    {
+      "id": "obj-040",
+      "type": "multiple-choice",
+      "question": "What is S3 Batch Operations?",
+      "options": [
+        "Uploading files in batches",
+        "A service to perform operations on billions of objects at scale (copy, tag, invoke Lambda)",
+        "Batch delete only",
+        "A scheduling service"
+      ],
+      "correct": 1,
+      "explanation": "Batch Operations runs large-scale operations: copy objects, add tags, invoke Lambda on each object, restore from Glacier. Provide a manifest (list of objects), specify operation, run job. Essential for bulk migrations, mass updates."
+    },
+    {
+      "id": "obj-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to add a 'department=finance' tag to 500 million S3 objects. Approach?",
+          "options": [
+            "Script that loops through all objects",
+            "S3 Batch Operations with PUT tagging operation",
+            "Manual tagging in console",
+            "It's not possible at this scale"
+          ],
+          "correct": 1,
+          "explanation": "Batch Operations: create a job specifying the operation (PUT tagging), provide manifest of objects, run. S3 handles execution at scale, reports progress and failures. Much more reliable than a custom script for 500M objects."
+        },
+        {
+          "question": "How do you generate a manifest of 500 million objects?",
+          "options": [
+            "Type them manually",
+            "Use S3 Inventory report or ListObjects",
+            "Batch Operations generates it automatically",
+            "Export from database"
+          ],
+          "correct": 1,
+          "explanation": "S3 Inventory: scheduled report of bucket contents (CSV/Parquet/ORC). Run weekly/daily. Use as manifest for Batch Operations. For smaller scales, ListObjects to generate manifest. Inventory is better for very large buckets."
+        }
+      ]
+    },
+    {
+      "id": "obj-042",
+      "type": "multiple-choice",
+      "question": "What is S3 Inventory?",
+      "options": [
+        "Tracking product inventory",
+        "A scheduled report listing objects in a bucket with metadata",
+        "A cost report",
+        "An access log"
+      ],
+      "correct": 1,
+      "explanation": "S3 Inventory generates lists of objects in your bucket: key, size, last modified, storage class, encryption status, etc. Daily or weekly. Output to S3 (CSV, Parquet, ORC). Useful for: auditing, generating manifests, understanding bucket contents."
+    },
+    {
+      "id": "obj-043",
+      "type": "multiple-choice",
+      "question": "What is object tagging in S3?",
+      "options": [
+        "Naming objects",
+        "Key-value labels on objects for organization, access control, and lifecycle policies",
+        "Hashtags for social sharing",
+        "Version tags"
+      ],
+      "correct": 1,
+      "explanation": "Tags are key-value pairs on objects: {project: 'X', owner: 'finance'}. Use for: cost allocation (filter costs by tag), access control (IAM policies based on tags), lifecycle policies (transition/delete tagged objects). Up to 10 tags per object."
+    },
+    {
+      "id": "obj-044",
+      "type": "multi-select",
+      "question": "What can you use S3 tags for?",
+      "options": [
+        "Cost allocation (AWS Cost Explorer filters by tag)",
+        "Access control (IAM policies can require tags)",
+        "Lifecycle policies (transition based on tags)",
+        "Full-text search of object contents"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Tags enable: cost allocation (attribute costs to projects), access control (policies requiring specific tags), lifecycle (transition or delete based on tags). Not for content search — tags are metadata, not content. Use S3 Select or external search for content."
+    },
+    {
+      "id": "obj-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have S3 buckets for multiple projects. Finance needs to know costs per project. How?",
+          "options": [
+            "Separate AWS accounts per project",
+            "Tag objects with project name, use Cost Explorer to filter by tag",
+            "Manual tracking",
+            "Calculate from object sizes"
+          ],
+          "correct": 1,
+          "explanation": "Tag objects (project: 'project-A', project: 'project-B'). Enable tag-based cost allocation in Billing. Cost Explorer shows costs filtered by tag. Tag at upload time via application or Batch Operations for existing data."
+        },
+        {
+          "question": "Access control: only project-A team should access project-A objects. How?",
+          "options": [
+            "Separate buckets",
+            "IAM policies that require tag project=project-A for project-A users",
+            "Trust project-B team not to look",
+            "Tags can't control access"
+          ],
+          "correct": 1,
+          "explanation": "IAM condition: {StringEquals: {s3:ExistingObjectTag/project: 'project-A'}}. Project-A users' policy allows access only to objects with matching tag. This is ABAC (Attribute-Based Access Control). Works with tags on objects."
+        }
+      ]
+    },
+    {
+      "id": "obj-046",
+      "type": "multiple-choice",
+      "question": "What is S3 encryption at rest?",
+      "options": [
+        "Encrypting data while uploading",
+        "Encrypting objects stored in S3 so they're protected on disk",
+        "HTTPS for access",
+        "Encrypting bucket names"
+      ],
+      "correct": 1,
+      "explanation": "Encryption at rest protects data on S3's storage. Options: SSE-S3 (S3-managed keys), SSE-KMS (AWS KMS keys with auditing), SSE-C (customer-provided keys). S3 encrypts on write, decrypts on read. Now enabled by default for new buckets."
+    },
+    {
+      "id": "obj-047",
+      "type": "ordering",
+      "question": "Rank S3 encryption options from simplest to most control:",
+      "items": ["SSE-S3 (S3-managed keys)", "SSE-KMS (KMS-managed keys)", "SSE-C (customer-provided keys)", "Client-side encryption"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "SSE-S3: simplest, AWS manages everything. SSE-KMS: more control, audit via CloudTrail, key policies. SSE-C: you manage keys (more work, more control). Client-side: you encrypt before upload (full control, S3 never sees plaintext)."
+    },
+    {
+      "id": "obj-048",
+      "type": "multi-select",
+      "question": "What are benefits of SSE-KMS over SSE-S3?",
+      "options": [
+        "Key usage auditing in CloudTrail",
+        "Separate key permissions (who can use which keys)",
+        "Automatic key rotation",
+        "Lower cost"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "SSE-KMS benefits: audit trail (every key use logged), granular access (IAM on keys), automatic rotation (enable for CMKs). SSE-S3 is simpler but less control. SSE-KMS has slightly higher cost (KMS API calls)."
+    },
+    {
+      "id": "obj-049",
+      "type": "multiple-choice",
+      "question": "What is a bucket policy in S3?",
+      "options": [
+        "A company policy document stored in S3",
+        "A JSON document defining access permissions for a bucket and its objects",
+        "A lifecycle policy",
+        "A replication policy"
+      ],
+      "correct": 1,
+      "explanation": "Bucket policies are JSON access policies attached to buckets. Define who can do what (Principal, Action, Resource, Condition). Used for: cross-account access, public access, enforcing encryption. Evaluated alongside IAM policies."
+    },
+    {
+      "id": "obj-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to allow another AWS account to upload to your S3 bucket. How?",
+          "options": [
+            "Give them your credentials",
+            "Bucket policy granting s3:PutObject to their account principal",
+            "Make the bucket public",
+            "It's not possible cross-account"
+          ],
+          "correct": 1,
+          "explanation": "Bucket policy: {Effect: Allow, Principal: {AWS: arn:aws:iam::ACCOUNT-ID:root}, Action: s3:PutObject, Resource: arn:aws:s3:::bucket/*}. Grant specific actions to specific accounts. Never share credentials."
+        },
+        {
+          "question": "By default, who owns objects uploaded by another account?",
+          "options": [
+            "Your account (bucket owner)",
+            "The uploading account (object owner)",
+            "Shared ownership",
+            "AWS owns them"
+          ],
+          "correct": 1,
+          "explanation": "By default, the uploading account owns the object (you can't access it without ACL). For bucket owner to have control, use: bucket-owner-full-control ACL on upload, or enable Bucket Owner Enforced (disables ACLs, bucket owner always owns)."
+        }
+      ]
+    },
+    {
+      "id": "obj-051",
+      "type": "multiple-choice",
+      "question": "What is S3 Block Public Access?",
+      "options": [
+        "Blocking public IP addresses",
+        "A set of controls to prevent buckets and objects from being made public",
+        "Blocking certain file types",
+        "Firewall for S3"
+      ],
+      "correct": 1,
+      "explanation": "Block Public Access settings prevent accidental public exposure. Can be set at account or bucket level. Even if a bucket policy or ACL grants public access, Block Public Access overrides it. Enabled by default for new buckets. Critical for security."
+    },
+    {
+      "id": "obj-052",
+      "type": "multi-select",
+      "question": "What does S3 Block Public Access control?",
+      "options": [
+        "Block public access via new bucket policies",
+        "Block public access via any bucket policies",
+        "Block public access via ACLs",
+        "Block all internet access (even presigned URLs)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Block Public Access can: block new public policies, block any public policies, block public ACLs, ignore public ACLs. It doesn't block presigned URLs (those are authenticated) or private access. It prevents accidental public exposure."
+    },
+    {
+      "id": "obj-053",
+      "type": "multiple-choice",
+      "question": "What is S3 Access Points?",
+      "options": [
+        "Physical data centers",
+        "Named endpoints with dedicated access policies, simplifying access management for shared datasets",
+        "WiFi access points",
+        "API endpoints"
+      ],
+      "correct": 1,
+      "explanation": "Access Points are named entry points to a bucket with their own policy. Instead of one complex bucket policy, create access points for different use cases: analytics-ap, etl-ap, each with tailored permissions. Simplifies management at scale."
+    },
+    {
+      "id": "obj-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A bucket is shared by 5 teams, each needing different access. Managing one bucket policy is complex. Better approach?",
+          "options": [
+            "5 separate buckets",
+            "5 access points, each with its own policy scoped to that team's needs",
+            "One complex policy with many statements",
+            "Give everyone full access"
+          ],
+          "correct": 1,
+          "explanation": "Access points: create team-a-ap, team-b-ap, etc. Each has its own policy (e.g., team-a-ap allows team-a prefix only). Teams use their access point. Simpler than one monolithic policy, easier to audit, separate concerns."
+        },
+        {
+          "question": "What if a team should only access specific prefixes?",
+          "options": [
+            "Access points can't restrict prefixes",
+            "Access point policy limits to specific prefixes; or use S3 Object Lambda to filter",
+            "Use bucket policy instead",
+            "Create separate buckets"
+          ],
+          "correct": 1,
+          "explanation": "Access point policies can scope to prefixes: {Resource: arn:aws:s3:us-east-1:123456789012:accesspoint/my-ap/object/team-a/*}. Or for more complex filtering, S3 Object Lambda can transform responses."
+        }
+      ]
+    },
+    {
+      "id": "obj-055",
+      "type": "multiple-choice",
+      "question": "What is Google Cloud Storage?",
+      "options": [
+        "A file sync service",
+        "Google's object storage service, similar to S3",
+        "A database service",
+        "Google Drive API"
+      ],
+      "correct": 1,
+      "explanation": "Google Cloud Storage (GCS) is Google's object storage: buckets, objects, storage classes (Standard, Nearline, Coldline, Archive). Similar concepts to S3. Used for: cloud apps, data analytics (with BigQuery), backups. Integrates with GCP services."
+    },
+    {
+      "id": "obj-056",
+      "type": "multi-select",
+      "question": "What are GCS storage classes?",
+      "options": [
+        "Standard (frequent access)",
+        "Nearline (monthly access)",
+        "Coldline (quarterly access)",
+        "Archive (yearly access)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "GCS classes parallel S3: Standard (hot), Nearline (~Standard-IA, 30-day min), Coldline (~Glacier Instant, 90-day min), Archive (~Glacier Deep Archive, 365-day min). Choose based on access frequency for cost optimization."
+    },
+    {
+      "id": "obj-057",
+      "type": "multiple-choice",
+      "question": "What is Azure Blob Storage?",
+      "options": [
+        "A file share service",
+        "Microsoft Azure's object storage for unstructured data",
+        "A database service",
+        "Block storage for VMs"
+      ],
+      "correct": 1,
+      "explanation": "Azure Blob Storage is Azure's object storage. Concepts: Storage Account > Container > Blob. Tiers: Hot, Cool, Archive. Used for: static files, backups, data lakes. Azure Data Lake Storage Gen2 is Blob Storage with hierarchical namespace."
+    },
+    {
+      "id": "obj-058",
+      "type": "ordering",
+      "question": "Match storage concepts: S3 bucket = GCS bucket = Azure ___",
+      "items": ["Storage Account", "Container", "Blob", "Resource Group"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "S3 Bucket = GCS Bucket ≈ Azure Container (though Azure has Storage Account above Container). S3 Object = GCS Object = Azure Blob. Azure's hierarchy: Resource Group > Storage Account > Container > Blob."
+    },
+    {
+      "id": "obj-059",
+      "type": "multiple-choice",
+      "question": "What is MinIO?",
+      "options": [
+        "A mini version of S3",
+        "An open-source, S3-compatible object storage server",
+        "A cloud service",
+        "A file compression tool"
+      ],
+      "correct": 1,
+      "explanation": "MinIO is open-source, S3-compatible object storage. Run it on your own infrastructure. Use cases: on-premise S3, air-gapped environments, avoiding cloud vendor lock-in. High performance, Kubernetes-native. Popular for private cloud and edge."
+    },
+    {
+      "id": "obj-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your company requires all data to stay on-premise (no public cloud). You want S3-compatible storage. Option?",
+          "options": [
+            "Use S3 anyway",
+            "Deploy MinIO or similar S3-compatible storage on-premise",
+            "On-premise can't have object storage",
+            "Use a NAS"
+          ],
+          "correct": 1,
+          "explanation": "MinIO provides S3 API on your hardware. Your apps use S3 SDKs; MinIO handles storage. Other options: Ceph (with RGW), OpenStack Swift. For cloud exit strategy or hybrid, S3-compatible storage enables portability."
+        },
+        {
+          "question": "You want to use the same code for on-premise MinIO and cloud S3. What makes this possible?",
+          "options": [
+            "Rewrite code for each",
+            "S3-compatible APIs — same SDKs and API calls work on both",
+            "A special translation layer",
+            "It's not possible"
+          ],
+          "correct": 1,
+          "explanation": "S3 compatibility means MinIO implements the S3 API. Use AWS SDK, change the endpoint URL to point to MinIO instead of s3.amazonaws.com. Same code works. This is the power of standardized APIs."
+        }
+      ]
+    },
+    {
+      "id": "obj-061",
+      "type": "multiple-choice",
+      "question": "What is S3 Object Lambda?",
+      "options": [
+        "Lambda functions that store data in S3",
+        "A feature to transform data as it's read from S3 (e.g., redact PII, resize images)",
+        "Lambda written in Object-oriented style",
+        "S3 event triggers"
+      ],
+      "correct": 1,
+      "explanation": "S3 Object Lambda runs a Lambda function on GET requests, transforming data on-the-fly. Use cases: redact PII for non-privileged users, resize images per request, convert formats. Store one copy, serve many variants dynamically."
+    },
+    {
+      "id": "obj-062",
+      "type": "multi-select",
+      "question": "What are use cases for S3 Object Lambda?",
+      "options": [
+        "Redacting sensitive data (PII) for certain users",
+        "Dynamically resizing images",
+        "Converting data formats (XML to JSON)",
+        "Faster uploads"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Object Lambda use cases: redaction (return data without PII), resize (return image at requested size), format conversion (return JSON from XML source). It's for read transformations, not upload processing (use triggers for that)."
+    },
+    {
+      "id": "obj-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You store customer records in S3. Some users should see full records, others should see records with SSN redacted. Options?",
+          "options": [
+            "Store two copies of every record",
+            "S3 Object Lambda to redact SSN for non-privileged users dynamically",
+            "Let application layer handle it",
+            "Don't store SSN"
+          ],
+          "correct": 1,
+          "explanation": "Object Lambda: store one copy. Create an access point with Object Lambda that redacts SSN. Non-privileged users access via that access point; privileged users access directly. One source of truth, different views."
+        },
+        {
+          "question": "Performance consideration of Object Lambda?",
+          "options": [
+            "No impact",
+            "Added latency for Lambda execution; cold starts possible",
+            "Faster than regular S3",
+            "Only works for small objects"
+          ],
+          "correct": 1,
+          "explanation": "Object Lambda adds Lambda execution time to GET latency. Cold starts can add more latency. For hot paths, consider caching the transformed result. Object Lambda is powerful but has latency implications. Balance use case needs."
+        }
+      ]
+    },
+    {
+      "id": "obj-064",
+      "type": "multiple-choice",
+      "question": "What is CloudFront integration with S3?",
+      "options": [
+        "A backup service",
+        "Using CloudFront (CDN) to cache and serve S3 content globally with low latency",
+        "Encrypting S3 data",
+        "Monitoring S3"
+      ],
+      "correct": 1,
+      "explanation": "CloudFront + S3: content is cached at edge locations worldwide. Users fetch from nearest edge, not from S3 region. Benefits: lower latency, reduced S3 costs (fewer requests to origin), DDoS protection. Common for static websites, media."
+    },
+    {
+      "id": "obj-065",
+      "type": "multi-select",
+      "question": "Benefits of putting CloudFront in front of S3?",
+      "options": [
+        "Lower latency for global users",
+        "Reduced S3 request costs (fewer origin requests)",
+        "DDoS protection",
+        "Object versioning"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "CloudFront benefits: global edge caching (low latency), fewer S3 requests (CloudFront caches), DDoS protection (AWS Shield). Versioning is an S3 feature, not related to CloudFront."
+    },
+    {
+      "id": "obj-066",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your S3 bucket serves static files. You want to keep the bucket private but serve files via CloudFront. How?",
+          "options": [
+            "Make bucket public",
+            "Use Origin Access Control (OAC) — CloudFront can access S3, but direct S3 access is blocked",
+            "Give CloudFront IAM credentials",
+            "It's not possible"
+          ],
+          "correct": 1,
+          "explanation": "Origin Access Control (formerly Origin Access Identity): CloudFront gets special access to S3, bucket policy allows only CloudFront. Direct S3 URLs are blocked. Users must go through CloudFront. Secure and enforces CDN use."
+        },
+        {
+          "question": "With OAC, what bucket policy is needed?",
+          "options": [
+            "Public access policy",
+            "Policy allowing CloudFront service principal to GetObject",
+            "No policy needed",
+            "IAM role for the bucket"
+          ],
+          "correct": 1,
+          "explanation": "Bucket policy: {Effect: Allow, Principal: {Service: cloudfront.amazonaws.com}, Action: s3:GetObject, Resource: bucket/*, Condition: {StringEquals: {AWS:SourceArn: distribution-arn}}}. Only that CloudFront distribution can access."
+        }
+      ]
+    },
+    {
+      "id": "obj-067",
+      "type": "multiple-choice",
+      "question": "What is S3 Intelligent-Tiering?",
+      "options": [
+        "Manual tier selection",
+        "Automatic cost optimization that moves objects between tiers based on access patterns",
+        "Intelligent sorting of objects",
+        "AI-powered storage"
+      ],
+      "correct": 1,
+      "explanation": "Intelligent-Tiering automatically moves objects between access tiers based on usage. Frequently accessed → hot tier; not accessed for 30 days → infrequent; 90 days → archive. No retrieval fees, small monitoring fee. Good when access patterns are unpredictable."
+    },
+    {
+      "id": "obj-068",
+      "type": "multi-select",
+      "question": "When is S3 Intelligent-Tiering a good choice?",
+      "options": [
+        "Unknown or changing access patterns",
+        "Want automatic cost optimization without lifecycle management",
+        "Data accessed very predictably (always hot or always cold)",
+        "Avoid retrieval fees on infrequently accessed data"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Intelligent-Tiering works well for: unpredictable access (auto-optimizes), hands-off approach (no manual lifecycle), avoiding retrieval fees (no fees, just monitoring). For predictable patterns, manual tiering might be cheaper."
+    },
+    {
+      "id": "obj-069",
+      "type": "multiple-choice",
+      "question": "What is the maximum object size in S3?",
+      "options": [
+        "100 MB",
+        "5 GB",
+        "5 TB",
+        "Unlimited"
+      ],
+      "correct": 2,
+      "explanation": "Maximum object size is 5 TB. Single PUT is limited to 5 GB; larger objects require multipart upload. No limit on number of objects. Individual object can be up to 5 TB, which covers most use cases."
+    },
+    {
+      "id": "obj-070",
+      "type": "ordering",
+      "question": "Rank these storage options from cheapest to most expensive per GB (approximate):",
+      "items": ["S3 Standard", "S3 Glacier Deep Archive", "EBS (SSD)", "EC2 instance storage"],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Glacier Deep Archive is cheapest (~$0.001/GB). S3 Standard is more (~$0.023/GB). Instance storage comes with EC2 (ephemeral). EBS SSD is most expensive (~$0.10/GB). Object storage is much cheaper than block storage for bulk data."
+    },
+    {
+      "id": "obj-071",
+      "type": "multiple-choice",
+      "question": "How does S3 pricing work?",
+      "options": [
+        "Flat monthly fee",
+        "Pay for storage (GB-month), requests (GET/PUT), and data transfer out",
+        "Per object fee",
+        "Free with AWS account"
+      ],
+      "correct": 1,
+      "explanation": "S3 pricing: storage (per GB-month, varies by class), requests (per 1000 GET/PUT, varies by class), data transfer (outbound to internet, intra-region is free). No upfront costs. Understand all components for cost estimation."
+    },
+    {
+      "id": "obj-072",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your S3 bill is higher than expected. Storage cost is small, but request costs are huge. What might be happening?",
+          "options": [
+            "Too much data",
+            "Excessive small object requests — many GETs/PUTs on tiny objects",
+            "Wrong region",
+            "Encryption overhead"
+          ],
+          "correct": 1,
+          "explanation": "Request costs add up: millions of GET requests on small objects can exceed storage cost. Check: is your app making excessive requests? Are there retry storms? Is there unexpected traffic (scraping)? Analyze request patterns."
+        },
+        {
+          "question": "How to reduce request costs?",
+          "options": [
+            "Store larger objects",
+            "Cache frequently accessed objects (CloudFront or app cache), batch operations",
+            "Use cheaper storage class",
+            "Request costs can't be reduced"
+          ],
+          "correct": 1,
+          "explanation": "Reduce requests: CloudFront caching (fewer origin requests), application caching, batch reads (list then filter vs. many HEAD requests), reduce unnecessary operations. Storage class doesn't affect request cost (though Glacier has different pricing)."
+        }
+      ]
+    },
+    {
+      "id": "obj-073",
+      "type": "multiple-choice",
+      "question": "What is S3 Requester Pays?",
+      "options": [
+        "AWS pays for S3",
+        "A bucket configuration where the requester pays for request and data transfer costs",
+        "Customers request payment",
+        "A billing feature"
+      ],
+      "correct": 1,
+      "explanation": "Requester Pays: normally bucket owner pays for requests and transfer. With Requester Pays enabled, the requester's AWS account is charged. Use case: sharing large datasets — recipients pay for their access. Requester must be authenticated."
+    },
+    {
+      "id": "obj-074",
+      "type": "multi-select",
+      "question": "What are common S3 anti-patterns?",
+      "options": [
+        "Using S3 as a primary database",
+        "Many small objects when larger aggregations would work",
+        "Not using lifecycle policies for aging data",
+        "Storing media files"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Anti-patterns: S3 as database (no ACID, no queries), excessive small objects (request cost, performance), no lifecycle (paying Standard for archive data). Storing media is a perfect use case — not an anti-pattern."
+    },
+    {
+      "id": "obj-075",
+      "type": "multiple-choice",
+      "question": "What is S3 consistency model (current)?",
+      "options": [
+        "Eventually consistent for all operations",
+        "Strong read-after-write consistency for all operations",
+        "Consistent for writes, eventual for reads",
+        "No consistency guarantees"
+      ],
+      "correct": 1,
+      "explanation": "Since December 2020, S3 provides strong read-after-write consistency. PUT a new object → immediate GET returns it. Overwrite → GET returns new version. DELETE → GET returns 404. This was a major improvement over the previous eventual consistency model."
+    },
+    {
+      "id": "obj-076",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Before 2020, S3 was eventually consistent for overwrites. What problem did that cause?",
+          "options": [
+            "No problem",
+            "Read after write might return old version; applications needed to handle stale reads",
+            "Writes would fail",
+            "Data corruption"
+          ],
+          "correct": 1,
+          "explanation": "Eventually consistent: write new version, immediately read, might get old version. Applications needed: retries, caching, accepting stale reads. This caused bugs and complexity. Strong consistency (now default) eliminates this."
+        },
+        {
+          "question": "With current strong consistency, do you still need to worry about stale reads?",
+          "options": [
+            "Yes — still eventually consistent",
+            "No — strong consistency means reads reflect latest writes",
+            "Only for deletes",
+            "Depends on storage class"
+          ],
+          "correct": 1,
+          "explanation": "Current S3 is strongly consistent. After successful write, reads return the new data. After successful delete, reads return 404. This applies to all storage classes. Applications can rely on consistent reads. (Replication across regions is still async.)"
+        }
+      ]
+    },
+    {
+      "id": "obj-077",
+      "type": "multiple-choice",
+      "question": "What is S3 Access Analyzer?",
+      "options": [
+        "Query analyzer for S3 Select",
+        "A tool that identifies S3 resources accessible from outside your account",
+        "Storage usage analyzer",
+        "Cost analyzer"
+      ],
+      "correct": 1,
+      "explanation": "IAM Access Analyzer (for S3) reviews bucket policies and ACLs to find resources accessible externally: public buckets, cross-account access. Helps identify unintended exposure. Part of security posture management."
+    },
+    {
+      "id": "obj-078",
+      "type": "multi-select",
+      "question": "What security features should be enabled for production S3 buckets?",
+      "options": [
+        "Block Public Access",
+        "Encryption at rest (SSE)",
+        "Server access logging or CloudTrail",
+        "Public read for all buckets"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Production best practices: Block Public Access (prevent accidental exposure), encryption at rest (data protection), logging (audit trail). Never enable public read unless specifically needed (static websites, public datasets) — and even then, use CloudFront."
+    },
+    {
+      "id": "obj-079",
+      "type": "multiple-choice",
+      "question": "What is S3 Server Access Logging?",
+      "options": [
+        "Logging in to S3",
+        "Detailed logs of requests made to a bucket, written to another bucket",
+        "Error logging",
+        "Application logging"
+      ],
+      "correct": 1,
+      "explanation": "Server access logging records all requests to a bucket: requester, object, time, action, response. Logs written to a target bucket. Use for: audit, security analysis, access pattern understanding. Alternative: CloudTrail for S3 data events (more expensive but richer)."
+    },
+    {
+      "id": "obj-080",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You suspect unauthorized access to your S3 bucket. How do you investigate?",
+          "options": [
+            "Ask AWS",
+            "Review server access logs or CloudTrail S3 data events for the bucket",
+            "It's impossible to know",
+            "Check CloudWatch metrics"
+          ],
+          "correct": 1,
+          "explanation": "Access logs show every request: IP, user agent, auth info, action, result. CloudTrail S3 data events provide similar info with AWS identity context. Look for: unusual IPs, high volume, unexpected principals, access to sensitive keys."
+        },
+        {
+          "question": "You find requests from an unknown IAM user in another account. What happened?",
+          "options": [
+            "Data breach",
+            "Check bucket policy — cross-account access may be intentionally granted",
+            "AWS internal access",
+            "Log corruption"
+          ],
+          "correct": 1,
+          "explanation": "First check: is cross-account access intended? Bucket policies can grant access to other accounts. If not intended, identify and remove the policy grant. If unexpected access, investigate further (compromised credentials, policy mistake)."
+        }
+      ]
+    },
+    {
+      "id": "obj-081",
+      "type": "multiple-choice",
+      "question": "What is S3 Storage Lens?",
+      "options": [
+        "A magnifying tool",
+        "A dashboard providing visibility into storage usage, cost, and optimization opportunities across S3",
+        "An optical storage format",
+        "A lens for photos in S3"
+      ],
+      "correct": 1,
+      "explanation": "Storage Lens provides organization-wide visibility into S3: usage trends, cost optimization recommendations, activity metrics. Dashboard shows: total storage, growth rate, request patterns, cost breakdowns. Free tier (basic) and advanced tier (additional metrics)."
+    },
+    {
+      "id": "obj-082",
+      "type": "multi-select",
+      "question": "What insights does S3 Storage Lens provide?",
+      "options": [
+        "Storage usage trends over time",
+        "Cost optimization recommendations",
+        "Activity metrics (request rates)",
+        "Object content analysis"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Storage Lens shows: usage trends (growth, distribution), cost optimization (suggest lifecycle policies, storage class changes), activity (request patterns, errors). It doesn't analyze object content — that's Macie or your own processing."
+    },
+    {
+      "id": "obj-083",
+      "type": "multiple-choice",
+      "question": "What is Amazon Macie?",
+      "options": [
+        "A data analysis service",
+        "A security service using ML to discover, classify, and protect sensitive data in S3",
+        "A storage service",
+        "A database"
+      ],
+      "correct": 1,
+      "explanation": "Macie scans S3 for sensitive data: PII, credentials, financial info. Uses ML to classify content. Alerts on: public buckets with sensitive data, policy violations. Helps with compliance (GDPR, HIPAA) and security."
+    },
+    {
+      "id": "obj-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to ensure no S3 buckets contain unencrypted PII. How?",
+          "options": [
+            "Manually review all objects",
+            "Enable Macie to scan buckets and alert on sensitive data findings",
+            "Trust developers not to store PII",
+            "It's not possible at scale"
+          ],
+          "correct": 1,
+          "explanation": "Macie automatically scans S3 content, identifies PII (SSN, credit cards, etc.), and generates findings. Configure: which buckets, how often, what to detect. Findings go to Security Hub or custom alerts. Continuous compliance monitoring."
+        },
+        {
+          "question": "Macie finds PII in a public bucket. Remediation?",
+          "options": [
+            "Delete the bucket",
+            "Remove public access, move/encrypt sensitive data, investigate how this happened",
+            "Ignore the finding",
+            "Make the bucket more public"
+          ],
+          "correct": 1,
+          "explanation": "Immediately: remove public access (Block Public Access). Then: assess exposure (who accessed?), remediate data (encrypt, delete, move), investigate root cause (how did public + PII happen?), prevent recurrence (policies, guardrails)."
+        }
+      ]
+    },
+    {
+      "id": "obj-085",
+      "type": "multiple-choice",
+      "question": "What is the difference between S3 and EBS?",
+      "options": [
+        "They're the same",
+        "S3 is object storage (files via HTTP API); EBS is block storage (volumes mounted to EC2)",
+        "EBS is for backup; S3 is for databases",
+        "S3 is faster"
+      ],
+      "correct": 1,
+      "explanation": "S3: object storage, accessed via HTTP/REST, virtually unlimited, pay per use. EBS: block storage volumes attached to EC2, like a hard drive, fixed size, better for databases/file systems. Different use cases and access patterns."
+    },
+    {
+      "id": "obj-086",
+      "type": "multi-select",
+      "question": "When to use S3 vs. EBS?",
+      "options": [
+        "S3 for static files, backups, data lakes",
+        "EBS for database storage, file systems needing mount",
+        "S3 when multiple applications need concurrent access",
+        "EBS for web content delivery"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "S3: static files (cheap, durable, scalable), shared access (multiple apps via API). EBS: databases (low latency, file system), single EC2 mount. Web content delivery often uses S3 + CloudFront, not EBS."
+    },
+    {
+      "id": "obj-087",
+      "type": "multiple-choice",
+      "question": "What is S3 for hosting a static website?",
+      "options": [
+        "Not possible",
+        "S3 bucket configured for static website hosting — serves HTML, CSS, JS directly",
+        "Requires EC2",
+        "Only for images"
+      ],
+      "correct": 1,
+      "explanation": "S3 can host static websites: enable static website hosting, upload HTML/CSS/JS, S3 serves directly. No servers to manage. For HTTPS and custom domain, add CloudFront. Perfect for: static sites, SPAs, documentation."
+    },
+    {
+      "id": "obj-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want to host a React SPA on S3 with a custom domain and HTTPS. What's the architecture?",
+          "options": [
+            "S3 alone with custom domain",
+            "S3 (static hosting) + CloudFront (CDN, HTTPS) + Route 53 (DNS)",
+            "EC2 with React",
+            "Lambda serving React"
+          ],
+          "correct": 1,
+          "explanation": "Standard architecture: S3 holds files, CloudFront serves with HTTPS (free cert via ACM), Route 53 points custom domain to CloudFront. Serverless, scalable, cheap. S3 alone doesn't support HTTPS with custom domains."
+        },
+        {
+          "question": "React SPA uses client-side routing (/about, /users). Accessing /about directly returns 404. Fix?",
+          "options": [
+            "Create /about.html file",
+            "Configure CloudFront or S3 to serve index.html for all routes (error page configuration)",
+            "Use server-side rendering",
+            "It's not fixable with S3"
+          ],
+          "correct": 1,
+          "explanation": "SPA routing: all routes should serve index.html, React handles routing client-side. Configure: S3 website error document = index.html, or CloudFront custom error response (404 → /index.html, 200). Either approach enables client-side routing."
+        }
+      ]
+    },
+    {
+      "id": "obj-089",
+      "type": "multiple-choice",
+      "question": "What is S3 Express One Zone?",
+      "options": [
+        "A delivery service",
+        "High-performance S3 storage class with single-AZ, low-latency access",
+        "A fast region",
+        "One-time zone access"
+      ],
+      "correct": 1,
+      "explanation": "S3 Express One Zone (2023): single-AZ, low-latency (single-digit ms), high throughput. For: ML training, analytics, real-time apps needing speed over multi-AZ durability. Trade-off: single AZ (less durability than standard S3)."
+    },
+    {
+      "id": "obj-090",
+      "type": "ordering",
+      "question": "Rank these storage options from highest to lowest latency for random access:",
+      "items": ["EC2 instance store (local NVMe)", "S3 Standard", "EBS SSD (gp3)", "S3 Glacier"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Instance store: local, sub-ms. EBS: network-attached, low ms. S3: HTTP API, higher latency (10-100ms typical). Glacier: retrieval takes minutes to hours. For low-latency random access, use block storage, not object storage."
+    },
+    {
+      "id": "obj-091",
+      "type": "multiple-choice",
+      "question": "What is the shared responsibility model for S3 security?",
+      "options": [
+        "AWS handles everything",
+        "Customer handles everything",
+        "AWS secures the infrastructure; customer secures their data and access controls",
+        "Security is optional"
+      ],
+      "correct": 2,
+      "explanation": "Shared responsibility: AWS secures the cloud (physical, infrastructure, durability). Customer secures in the cloud: data encryption, access policies, who can access, logging. AWS provides tools; customer must use them correctly."
+    },
+    {
+      "id": "obj-092",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An S3 bucket is accidentally made public and data is exposed. Who is responsible?",
+          "options": [
+            "AWS — they should prevent this",
+            "Customer — access configuration is customer responsibility",
+            "Shared responsibility",
+            "No one"
+          ],
+          "correct": 1,
+          "explanation": "Customer responsibility: bucket policies, ACLs, Block Public Access are customer-configured. AWS provides tools (Block Public Access enabled by default now), but if customer disables and creates public policy, that's on the customer."
+        },
+        {
+          "question": "How can organizations prevent accidental public buckets?",
+          "options": [
+            "Hope developers don't make mistakes",
+            "Account-level Block Public Access, SCPs, automated compliance checks",
+            "Disable S3",
+            "Only use on-premise storage"
+          ],
+          "correct": 1,
+          "explanation": "Preventive controls: account-level Block Public Access (overrides bucket settings), SCPs (prevent DisableBlockPublicAccess), automated checks (Config rules, Macie, Access Analyzer). Defense in depth — multiple layers of prevention."
+        }
+      ]
+    },
+    {
+      "id": "obj-093",
+      "type": "multiple-choice",
+      "question": "What is S3 Object Ownership?",
+      "options": [
+        "Tracking who created objects",
+        "A setting controlling whether ACLs are used and who owns objects in the bucket",
+        "Legal ownership of data",
+        "File metadata"
+      ],
+      "correct": 1,
+      "explanation": "Object Ownership controls: who owns objects (bucket owner vs. object writer), whether ACLs are enabled. 'Bucket Owner Enforced' disables ACLs entirely — bucket owner owns all objects, policies control access. Simplifies cross-account scenarios."
+    },
+    {
+      "id": "obj-094",
+      "type": "multi-select",
+      "question": "What are best practices for S3 bucket naming?",
+      "options": [
+        "Use globally unique names (required)",
+        "Use descriptive names (environment, purpose)",
+        "Avoid PII in bucket names",
+        "Include AWS account ID in name for uniqueness"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Bucket naming: globally unique (required), descriptive (mybucket-prod-logs), no PII (bucket names can appear in URLs), include account ID or random suffix for uniqueness. Good naming helps with management and security."
+    },
+    {
+      "id": "obj-095",
+      "type": "multiple-choice",
+      "question": "What is the eventual consistency model for S3 bucket listings?",
+      "options": [
+        "Always consistent",
+        "Eventually consistent — listing may not immediately reflect recent creates or deletes",
+        "Never consistent",
+        "Depends on storage class"
+      ],
+      "correct": 1,
+      "explanation": "While object operations are now strongly consistent, bucket listings (ListObjects) may have slight delays for very recent changes. In practice, this rarely matters. Object reads (GET, HEAD) are strongly consistent."
+    },
+    {
+      "id": "obj-096",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing a system that stores user uploads, needs global access, and must comply with GDPR (data residency). Architecture?",
+          "options": [
+            "One global S3 bucket",
+            "Regional buckets (EU for EU users), with replication only where permitted",
+            "Store in US only",
+            "Don't use S3"
+          ],
+          "correct": 1,
+          "explanation": "GDPR requires EU user data in EU. Architecture: EU bucket for EU users, possibly other regional buckets. Replicate within EU if needed. Don't replicate EU data to US unless compliant. Access controls enforce data residency."
+        },
+        {
+          "question": "How do you route users to the right regional bucket?",
+          "options": [
+            "One bucket serves all",
+            "Application layer routes based on user region; or use S3 Multi-Region Access Points",
+            "Users choose their bucket",
+            "DNS routing alone"
+          ],
+          "correct": 1,
+          "explanation": "Options: application routes to correct bucket based on user, or use S3 Multi-Region Access Points (routes to nearest bucket, supports failover). For compliance, ensure the routing respects data residency — not just latency-based."
+        }
+      ]
+    },
+    {
+      "id": "obj-097",
+      "type": "multiple-choice",
+      "question": "What is S3 Multi-Region Access Points?",
+      "options": [
+        "Multiple S3 regions",
+        "A single endpoint that routes to buckets in multiple regions based on latency or failover",
+        "Multi-account access",
+        "A replication feature"
+      ],
+      "correct": 1,
+      "explanation": "Multi-Region Access Points provide one global endpoint that routes to the closest (or available) regional bucket. Combine with replication for active-active or failover scenarios. Simplifies multi-region architectures."
+    },
+    {
+      "id": "obj-098",
+      "type": "multi-select",
+      "question": "What are use cases for Multi-Region Access Points?",
+      "options": [
+        "Global applications needing low latency",
+        "Disaster recovery (failover to another region)",
+        "Single-region applications",
+        "Active-active replication with automatic routing"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Multi-Region Access Points: global apps (route to nearest), DR (failover routing), active-active (replicate + route to any). Single-region apps don't need multi-region access points — they'd use a regular bucket in one region."
+    },
+    {
+      "id": "obj-099",
+      "type": "ordering",
+      "question": "Rank these from most to least important when choosing object storage for a new application:",
+      "items": ["Durability (data safety)", "Cost", "Latency for hot data", "Feature richness"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Data safety is paramount — losing data is unacceptable. Latency matters for user experience (hot data). Cost matters at scale. Feature richness is nice to have. Priorities may vary — a backup system might prioritize cost over latency."
+    },
+    {
+      "id": "obj-100",
+      "type": "multiple-choice",
+      "question": "What's the key takeaway about when to use object storage?",
+      "options": [
+        "Replace all databases with S3",
+        "Use for unstructured data (files, media, backups, data lakes) at scale; not for transactional workloads",
+        "Only for backups",
+        "Only for large files"
+      ],
+      "correct": 1,
+      "explanation": "Object storage is for: files/blobs (images, videos, documents), backups, data lakes, static content. Not for: transactional databases, low-latency structured queries. It's cheap, durable, scalable — for the right use cases."
+    }
+  ]
+}
