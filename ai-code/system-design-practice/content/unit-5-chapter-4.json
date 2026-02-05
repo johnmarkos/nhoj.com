@@ -1,0 +1,1683 @@
+{
+  "unit": 5,
+  "unitTitle": "Caching",
+  "chapter": 4,
+  "chapterTitle": "TTLs & Expiration",
+  "chapterDescription": "Time-to-live strategies, absolute vs sliding expiration, stale-while-revalidate, and balancing freshness with performance.",
+  "problems": [
+    {
+      "id": "ttl-001",
+      "type": "multiple-choice",
+      "question": "What is TTL (Time To Live) in caching?",
+      "options": [
+        "The time it takes to fetch data",
+        "The duration a cache entry remains valid before expiring",
+        "The network latency",
+        "The time to write to cache"
+      ],
+      "correct": 1,
+      "explanation": "TTL is the lifespan of a cache entry. After TTL expires, the entry is considered stale and should be refreshed from the source. TTL balances freshness (short) vs. cache efficiency (long)."
+    },
+    {
+      "id": "ttl-002",
+      "type": "multiple-choice",
+      "question": "What happens when a cache entry's TTL expires?",
+      "options": [
+        "The entry is immediately deleted",
+        "The entry is marked stale; next access triggers refresh or deletion",
+        "The entry remains forever",
+        "The cache crashes"
+      ],
+      "correct": 1,
+      "explanation": "TTL expiration typically marks the entry as stale. Behavior varies: some caches delete on access (lazy expiration), some have background cleanup, some serve stale while refreshing. The entry isn't necessarily deleted immediately."
+    },
+    {
+      "id": "ttl-003",
+      "type": "numeric-input",
+      "question": "A cache entry is created at 10:00:00 with TTL of 300 seconds. At what time does it expire?",
+      "answer": 10,
+      "unit": ":05:00",
+      "tolerance": "exact",
+      "explanation": "10:00:00 + 300 seconds = 10:00:00 + 5 minutes = 10:05:00. After 10:05:00, the entry is expired."
+    },
+    {
+      "id": "ttl-004",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You set TTL = 60 seconds. Data changes on average every 10 seconds. What's the problem?",
+          "options": [
+            "Cache is too small",
+            "Users may see data up to 60 seconds stale (6x the change frequency)",
+            "TTL is too short",
+            "No problem"
+          ],
+          "correct": 1,
+          "explanation": "With 60s TTL and 10s change rate, cached data can be 6 changes behind. Users see significantly stale data. TTL should be closer to change frequency for fresher data."
+        },
+        {
+          "question": "You reduce TTL to 5 seconds. What's the trade-off?",
+          "options": [
+            "Fresher data but lower hit rate (more cache misses)",
+            "Staler data",
+            "Higher hit rate",
+            "No trade-off"
+          ],
+          "correct": 0,
+          "explanation": "5s TTL means entries expire quickly — more misses, more origin fetches. Fresher data but higher origin load and latency (misses are slow). The TTL trade-off: freshness vs. cache efficiency."
+        }
+      ]
+    },
+    {
+      "id": "ttl-005",
+      "type": "ordering",
+      "question": "Rank these TTL values from highest cache hit rate to lowest (assuming constant traffic):",
+      "items": ["TTL = 1 hour", "TTL = 1 minute", "TTL = 1 second", "TTL = 1 day"],
+      "correctOrder": [3, 0, 1, 2],
+      "explanation": "Longer TTL = higher hit rate. 1 day > 1 hour > 1 minute > 1 second. Longer TTL means entries stay cached longer, more requests served from cache."
+    },
+    {
+      "id": "ttl-006",
+      "type": "multiple-choice",
+      "question": "What is 'absolute expiration'?",
+      "options": [
+        "The cache never expires",
+        "Entry expires at a fixed time after creation, regardless of access",
+        "Entry expires based on access patterns",
+        "Expiration is optional"
+      ],
+      "correct": 1,
+      "explanation": "Absolute expiration: entry expires X seconds/minutes after creation. Access doesn't extend the lifetime. Created at 10:00 with 5-minute TTL = expires at 10:05 regardless of how often it's accessed."
+    },
+    {
+      "id": "ttl-007",
+      "type": "multiple-choice",
+      "question": "What is 'sliding expiration' (also called 'sliding window TTL')?",
+      "options": [
+        "TTL slides down over time",
+        "Entry expires X time after LAST access; each access resets the timer",
+        "TTL is random",
+        "Expiration slides between caches"
+      ],
+      "correct": 1,
+      "explanation": "Sliding expiration: each access resets the TTL timer. Entry expires only after X time of NO access. Keeps frequently-accessed data in cache indefinitely; rarely-accessed data expires."
+    },
+    {
+      "id": "ttl-008",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Absolute TTL = 5 minutes. Entry created at 10:00. Accessed at 10:03. When does it expire?",
+          "options": [
+            "10:05 (5 min from creation)",
+            "10:08 (5 min from last access)",
+            "10:03 (immediately on access)",
+            "Never"
+          ],
+          "correct": 0,
+          "explanation": "Absolute expiration: expires 5 min after creation = 10:05. Access at 10:03 doesn't change anything. The entry still expires at 10:05."
+        },
+        {
+          "question": "Sliding TTL = 5 minutes. Entry created at 10:00. Accessed at 10:03. When does it expire?",
+          "options": [
+            "10:05 (5 min from creation)",
+            "10:08 (5 min from last access)",
+            "10:03 (immediately)",
+            "Never expires"
+          ],
+          "correct": 1,
+          "explanation": "Sliding expiration: each access resets the timer. Access at 10:03 resets TTL, so it now expires at 10:08 (5 min from 10:03). If accessed again at 10:07, expires at 10:12."
+        }
+      ]
+    },
+    {
+      "id": "ttl-009",
+      "type": "multi-select",
+      "question": "When is sliding expiration appropriate?",
+      "options": [
+        "User session data (keep active sessions alive)",
+        "Stock prices (must refresh even if accessed)",
+        "Frequently accessed reference data",
+        "Data that must be refreshed periodically regardless of use"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Sliding works for: sessions (extend while active), frequently-accessed reference data (stay cached if used). NOT for time-sensitive data (stocks) or data requiring periodic refresh — use absolute for those."
+    },
+    {
+      "id": "ttl-010",
+      "type": "multi-select",
+      "question": "When is absolute expiration appropriate?",
+      "options": [
+        "Data that changes on a known schedule (hourly updates)",
+        "Security-sensitive data (tokens that must expire)",
+        "User sessions (keep alive while active)",
+        "Ensuring periodic refresh from source"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Absolute works for: scheduled updates (refresh matches schedule), security tokens (must expire at fixed time), ensuring freshness (periodic refresh). User sessions typically use sliding (extend while active)."
+    },
+    {
+      "id": "ttl-011",
+      "type": "numeric-input",
+      "question": "Sliding TTL = 10 minutes. Entry is accessed every 5 minutes. After 1 hour, is the entry still cached?",
+      "answer": 1,
+      "unit": "(1=yes, 0=no)",
+      "tolerance": "exact",
+      "explanation": "Access every 5 min, sliding TTL = 10 min. Each access resets timer. Entry never reaches 10 min without access, so it never expires. Yes, still cached after 1 hour (and indefinitely if access continues)."
+    },
+    {
+      "id": "ttl-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A cache entry with sliding TTL = 1 hour is accessed constantly (every second). What's a potential problem?",
+          "options": [
+            "Entry expires too quickly",
+            "Entry never expires — could serve very stale data forever",
+            "Too many cache writes",
+            "No problem"
+          ],
+          "correct": 1,
+          "explanation": "Sliding expiration danger: frequently-accessed entries never expire. If underlying data changes, cache serves stale data indefinitely. The entry stays 'alive' forever due to constant access."
+        },
+        {
+          "question": "How do you prevent this 'immortal stale data' problem with sliding TTL?",
+          "options": [
+            "Use longer sliding TTL",
+            "Combine with absolute max TTL (e.g., slide up to 1 hour, but max 24 hours from creation)",
+            "Remove sliding TTL",
+            "Access less frequently"
+          ],
+          "correct": 1,
+          "explanation": "Hybrid approach: sliding TTL for access-based extension + absolute max TTL as a ceiling. Entry can slide up to the max, then must refresh. Balances keeping hot data cached with guaranteed refresh."
+        }
+      ]
+    },
+    {
+      "id": "ttl-013",
+      "type": "multiple-choice",
+      "question": "What is a 'hybrid TTL' strategy?",
+      "options": [
+        "Using two caches",
+        "Combining sliding and absolute expiration (e.g., extend on access, but max lifetime)",
+        "TTL that changes randomly",
+        "Different TTL for different caches"
+      ],
+      "correct": 1,
+      "explanation": "Hybrid TTL: sliding expiration with an absolute cap. Example: slide 10 min on access, max 1 hour from creation. Active entries stay cached, but guaranteed refresh within 1 hour even if constantly accessed."
+    },
+    {
+      "id": "ttl-014",
+      "type": "numeric-input",
+      "question": "Hybrid TTL: slide 15 min, max 1 hour. Entry created at 10:00, accessed at 10:15, 10:30, 10:45, 11:05. When does it expire?",
+      "answer": 11,
+      "unit": ":00 (hour)",
+      "tolerance": "exact",
+      "explanation": "Max absolute = 10:00 + 1 hour = 11:00. Sliding would extend to 11:20 (after 11:05 access), but max caps it at 11:00. Entry expires at 11:00 despite recent access."
+    },
+    {
+      "id": "ttl-015",
+      "type": "ordering",
+      "question": "Rank these data types from shortest recommended TTL to longest:",
+      "items": ["Stock prices", "User profile photo", "Product catalog", "Session token (absolute)"],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "Stock prices: seconds (real-time). Session tokens: minutes-hours (security). Product catalog: hours (changes moderately). Profile photos: days-weeks (rarely change). TTL reflects change frequency and freshness needs."
+    },
+    {
+      "id": "ttl-016",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your cache has 1 million entries all with TTL = 300 seconds, all created within the same second. What happens at second 300?",
+          "options": [
+            "Gradual expiration",
+            "1 million entries expire simultaneously (thundering herd)",
+            "Cache handles it smoothly",
+            "Only some expire"
+          ],
+          "correct": 1,
+          "explanation": "Synchronized expiration: all entries created together expire together. At second 300, 1 million cache misses hit the origin simultaneously. This is a thundering herd caused by TTL synchronization."
+        },
+        {
+          "question": "How do you prevent this synchronized expiration?",
+          "options": [
+            "Longer TTL",
+            "Add random jitter to TTL (e.g., 300 ± 30 seconds)",
+            "Shorter TTL",
+            "More cache memory"
+          ],
+          "correct": 1,
+          "explanation": "TTL jitter: add randomness. Instead of TTL=300, use TTL=270-330 (random). Entries expire over a 60-second window instead of all at once. Spreads load, prevents thundering herd."
+        }
+      ]
+    },
+    {
+      "id": "ttl-017",
+      "type": "multiple-choice",
+      "question": "What is 'TTL jitter'?",
+      "options": [
+        "Unstable network causing TTL issues",
+        "Adding random variation to TTL to prevent synchronized expiration",
+        "TTL that changes over time",
+        "Jittery cache behavior"
+      ],
+      "correct": 1,
+      "explanation": "TTL jitter: randomize TTL within a range. Base TTL 300s with ±10% jitter = 270-330s. Different entries expire at different times, spreading the load of cache misses and origin requests."
+    },
+    {
+      "id": "ttl-018",
+      "type": "numeric-input",
+      "question": "Base TTL = 600 seconds with ±20% jitter. What's the minimum possible TTL?",
+      "answer": 480,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "±20% of 600 = ±120 seconds. Minimum = 600 - 120 = 480 seconds. Maximum = 600 + 120 = 720 seconds. TTL is randomly chosen in this range."
+    },
+    {
+      "id": "ttl-019",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "10,000 entries with base TTL 60s and ±10% jitter (54-66s). Over what time window do they expire?",
+          "options": [
+            "All at 60 seconds",
+            "Over a 12-second window (54s to 66s)",
+            "Over 60 seconds",
+            "Never"
+          ],
+          "correct": 1,
+          "explanation": "With ±10% jitter, TTLs range from 54s to 66s. Entries expire over this 12-second window instead of all at 60s. This spreads 10,000 expirations over 12 seconds."
+        },
+        {
+          "question": "Without jitter, 10,000 expirations at second 60 means ~10,000 origin requests/sec. With 12s jitter window (assuming uniform distribution), approximately how many origin requests/sec?",
+          "options": [
+            "10,000/sec",
+            "~833/sec (10,000 / 12)",
+            "120/sec",
+            "1/sec"
+          ],
+          "correct": 1,
+          "explanation": "10,000 expirations spread over 12 seconds ≈ 833/second. Jitter reduced peak load from 10,000/sec to 833/sec — a 12x reduction. Much gentler on the origin."
+        }
+      ]
+    },
+    {
+      "id": "ttl-020",
+      "type": "multi-select",
+      "question": "What are benefits of TTL jitter?",
+      "options": [
+        "Prevents thundering herd from synchronized expiration",
+        "Spreads origin load over time",
+        "Makes cache behavior more predictable",
+        "Reduces peak traffic spikes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Jitter prevents herd, spreads load, reduces spikes. It makes behavior LESS predictable (random expiration) but more resilient. Trade predictability for stability."
+    },
+    {
+      "id": "ttl-021",
+      "type": "multiple-choice",
+      "question": "What is 'lazy expiration'?",
+      "options": [
+        "Expiration that happens slowly",
+        "Expired entries are not removed until accessed (then removed or refreshed)",
+        "Never expiring data",
+        "Expiration during low traffic"
+      ],
+      "correct": 1,
+      "explanation": "Lazy expiration: expired entries sit in cache until accessed. On access, check TTL → if expired, remove/refresh. Saves background processing but means expired entries occupy memory until accessed."
+    },
+    {
+      "id": "ttl-022",
+      "type": "multiple-choice",
+      "question": "What is 'active expiration' (or background expiration)?",
+      "options": [
+        "Users actively expire cache",
+        "Background process periodically scans and removes expired entries",
+        "Immediate expiration",
+        "Active caching"
+      ],
+      "correct": 1,
+      "explanation": "Active expiration: background job scans cache and removes expired entries proactively. Frees memory from expired entries even if never accessed. Redis uses a hybrid: random sampling + lazy check on access."
+    },
+    {
+      "id": "ttl-023",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache uses lazy expiration only. 50% of entries are expired but never accessed. What's the impact?",
+          "options": [
+            "No impact",
+            "50% of cache memory is wasted on expired data",
+            "Cache is faster",
+            "All entries are fresh"
+          ],
+          "correct": 1,
+          "explanation": "Lazy expiration: expired entries stay until accessed. If 50% are expired and unaccessed, they waste 50% of memory. Reduce effective cache size, potential eviction of fresh entries."
+        },
+        {
+          "question": "How do you mitigate this?",
+          "options": [
+            "Use only lazy expiration",
+            "Add background/active expiration to periodically clean expired entries",
+            "Longer TTL",
+            "More memory"
+          ],
+          "correct": 1,
+          "explanation": "Hybrid approach: lazy expiration for accessed entries + background cleanup for unaccessed expired entries. Most caches (Redis, Memcached) use this hybrid for efficiency."
+        }
+      ]
+    },
+    {
+      "id": "ttl-024",
+      "type": "multiple-choice",
+      "question": "How does Redis handle expiration?",
+      "options": [
+        "Pure lazy expiration",
+        "Pure active expiration",
+        "Hybrid: lazy check on access + probabilistic background sampling",
+        "No expiration support"
+      ],
+      "correct": 2,
+      "explanation": "Redis uses hybrid expiration: (1) Lazy: check TTL on access, expire if needed. (2) Active: background task randomly samples keys and expires those that are due. This balances CPU usage with memory reclamation."
+    },
+    {
+      "id": "ttl-025",
+      "type": "numeric-input",
+      "question": "Redis active expiration samples 20 keys every 100ms. If 25% of keys are expired, approximately how many keys are expired per second?",
+      "answer": 50,
+      "unit": "keys/sec",
+      "tolerance": 0.1,
+      "explanation": "10 samples/sec × 20 keys/sample = 200 keys checked/sec. 25% expired = 50 keys expired/sec. This is probabilistic — actual rate varies based on expired percentage."
+    },
+    {
+      "id": "ttl-026",
+      "type": "multiple-choice",
+      "question": "What is 'stale-while-revalidate' (SWR) in TTL context?",
+      "options": [
+        "Never serving stale data",
+        "Serving stale (expired) data immediately while refreshing in the background",
+        "Revalidating stale data manually",
+        "Deleting stale data"
+      ],
+      "correct": 1,
+      "explanation": "SWR: when TTL expires, serve the stale cached data immediately (fast response), trigger background refresh. User gets instant response; cache is updated for next request. Trade-off: current request sees stale data."
+    },
+    {
+      "id": "ttl-027",
+      "type": "ordering",
+      "question": "Order the events in stale-while-revalidate:",
+      "items": [
+        "Background refresh completes, cache updated",
+        "Request arrives, entry is stale (TTL expired)",
+        "Return stale data to user immediately",
+        "Trigger background refresh from origin"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "Request (stale entry) → Return stale immediately → Trigger background refresh → Refresh completes, cache updated. User gets fast response; next user gets fresh data."
+    },
+    {
+      "id": "ttl-028",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Entry TTL expired 30 seconds ago. With SWR, what does the user receive?",
+          "options": [
+            "Error",
+            "Data from 30+ seconds ago (stale but immediate)",
+            "Fresh data (after waiting for refresh)",
+            "Nothing"
+          ],
+          "correct": 1,
+          "explanation": "SWR serves stale data immediately — user sees data that's at least 30 seconds old (original TTL + 30 seconds). Fast response, but stale. Background refresh updates for next request."
+        },
+        {
+          "question": "When is serving 30-second-old data acceptable?",
+          "options": [
+            "Never",
+            "For content like news feeds, product listings, social media where slight staleness is OK",
+            "For financial transactions",
+            "For real-time auctions"
+          ],
+          "correct": 1,
+          "explanation": "SWR is acceptable for non-critical, non-transactional content: feeds, catalogs, articles. Not for time-sensitive or transactional data (financial, auctions, inventory counts) where staleness causes real problems."
+        }
+      ]
+    },
+    {
+      "id": "ttl-029",
+      "type": "multiple-choice",
+      "question": "In HTTP, how is stale-while-revalidate specified?",
+      "options": [
+        "Expires header",
+        "Cache-Control: stale-while-revalidate=<seconds>",
+        "Pragma header",
+        "X-Stale header"
+      ],
+      "correct": 1,
+      "explanation": "Cache-Control: max-age=60, stale-while-revalidate=30 means: fresh for 60s, then stale-but-servable for 30 more seconds while revalidating. After 90s total, must wait for fresh."
+    },
+    {
+      "id": "ttl-030",
+      "type": "numeric-input",
+      "question": "Cache-Control: max-age=300, stale-while-revalidate=60. How long total can stale content be served?",
+      "answer": 60,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "After max-age (300s), content is stale. stale-while-revalidate allows serving stale for 60 more seconds while refreshing. Total stale-serving window = 60 seconds (from 300s to 360s mark)."
+    },
+    {
+      "id": "ttl-031",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "max-age=60, stale-while-revalidate=30. Request at second 75 (stale for 15s). What happens?",
+          "options": [
+            "Return fresh data",
+            "Return stale data, trigger background revalidation",
+            "Wait for fresh data",
+            "Return error"
+          ],
+          "correct": 1,
+          "explanation": "At 75s: max-age (60s) passed, but within SWR window (up to 90s). Serve stale, trigger background refresh. User gets immediate response with 15-second-old stale data."
+        },
+        {
+          "question": "Request at second 95 (stale for 35s, beyond SWR window). What happens?",
+          "options": [
+            "Return stale data",
+            "Must wait for fresh data (SWR window expired)",
+            "Serve even older data",
+            "Return cached error"
+          ],
+          "correct": 1,
+          "explanation": "At 95s: beyond SWR window (60+30=90s). Cannot serve stale anymore. Must fetch fresh data and wait. User experiences cache miss latency. SWR only helps within its window."
+        }
+      ]
+    },
+    {
+      "id": "ttl-032",
+      "type": "multiple-choice",
+      "question": "What is 'stale-if-error'?",
+      "options": [
+        "Caching errors",
+        "Serve stale cached data if origin returns an error (graceful degradation)",
+        "Error when data is stale",
+        "Stale error messages"
+      ],
+      "correct": 1,
+      "explanation": "stale-if-error: if origin is down or returns error, serve stale cache instead of error to user. Graceful degradation — slightly outdated data is better than error page. Common in resilient systems."
+    },
+    {
+      "id": "ttl-033",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache-Control: max-age=60, stale-if-error=86400. Entry is 2 hours stale. Origin is down. What's served?",
+          "options": [
+            "Error page",
+            "2-hour stale data (within 86400s stale-if-error window)",
+            "Nothing",
+            "Fresh data somehow"
+          ],
+          "correct": 1,
+          "explanation": "stale-if-error=86400 allows serving stale up to 24 hours if origin fails. 2 hours < 24 hours, so stale data is served. User sees old data instead of error. Origin failure is masked."
+        },
+        {
+          "question": "Origin is back up and returns fresh data. What happens to the stale entry?",
+          "options": [
+            "Stays stale forever",
+            "Gets replaced with fresh data, normal caching resumes",
+            "Both exist in cache",
+            "Cache is cleared"
+          ],
+          "correct": 1,
+          "explanation": "When origin is healthy, normal caching resumes. Fresh fetch replaces stale entry. stale-if-error is a fallback during failures, not permanent state. System self-heals when origin recovers."
+        }
+      ]
+    },
+    {
+      "id": "ttl-034",
+      "type": "multi-select",
+      "question": "What content is appropriate for stale-if-error?",
+      "options": [
+        "Product catalog (showing old products is OK during outage)",
+        "User's bank balance",
+        "News articles",
+        "Shopping cart contents"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Stale-if-error suits non-critical display content: catalogs, articles. NOT for transactional/sensitive data: bank balance (wrong balance is serious), shopping cart (wrong items in checkout). Errors may be more appropriate there."
+    },
+    {
+      "id": "ttl-035",
+      "type": "multiple-choice",
+      "question": "What is 'cache revalidation'?",
+      "options": [
+        "Deleting the cache",
+        "Checking with origin if cached data is still valid (without necessarily fetching full data)",
+        "Validating cache configuration",
+        "Restarting the cache"
+      ],
+      "correct": 1,
+      "explanation": "Revalidation: ask origin 'is my cached version still valid?' using ETag or Last-Modified. If valid, origin returns 304 Not Modified (no body). If invalid, returns new data. Saves bandwidth when data hasn't changed."
+    },
+    {
+      "id": "ttl-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cached entry has ETag: \"abc123\". TTL expired. Revalidation request sent. Origin's current ETag is still \"abc123\". What's returned?",
+          "options": [
+            "Full fresh data",
+            "304 Not Modified (use cached version)",
+            "Error",
+            "Nothing"
+          ],
+          "correct": 1,
+          "explanation": "ETags match — data hasn't changed. Origin returns 304 Not Modified with no body. Cache updates TTL and continues serving cached data. Saved bandwidth (no data transfer)."
+        },
+        {
+          "question": "Origin's ETag is now \"def456\" (data changed). What's returned?",
+          "options": [
+            "304 Not Modified",
+            "200 OK with new data and new ETag",
+            "Error",
+            "Redirect"
+          ],
+          "correct": 1,
+          "explanation": "ETags differ — data changed. Origin returns 200 with fresh data and new ETag \"def456\". Cache stores new data with new ETag. Next revalidation uses \"def456\"."
+        }
+      ]
+    },
+    {
+      "id": "ttl-037",
+      "type": "numeric-input",
+      "question": "Cached response is 50KB. Revalidation returns 304 (headers only, ~200 bytes). What percentage of bandwidth is saved?",
+      "answer": 99.6,
+      "unit": "%",
+      "tolerance": 0.1,
+      "explanation": "Without revalidation: 50KB. With 304: 200 bytes ≈ 0.2KB. Savings = (50 - 0.2) / 50 = 49.8 / 50 = 99.6%. Revalidation saves nearly all bandwidth when content unchanged."
+    },
+    {
+      "id": "ttl-038",
+      "type": "multi-select",
+      "question": "What HTTP headers are used for cache revalidation?",
+      "options": [
+        "If-None-Match (with ETag)",
+        "If-Modified-Since (with Last-Modified)",
+        "Authorization",
+        "Cache-Control"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "If-None-Match sends cached ETag for comparison. If-Modified-Since sends cached Last-Modified date. Server returns 304 if unchanged. Authorization is for auth, Cache-Control is for caching policy, not revalidation requests."
+    },
+    {
+      "id": "ttl-039",
+      "type": "ordering",
+      "question": "Rank these by how precisely they detect content changes (most precise to least):",
+      "items": ["ETag (content hash)", "Last-Modified (timestamp)", "TTL expiration only", "No validation"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "ETag: exact content fingerprint. Last-Modified: second-precision timestamp (can miss sub-second changes or same-second different content). TTL: no content check at all. No validation: always stale."
+    },
+    {
+      "id": "ttl-040",
+      "type": "multiple-choice",
+      "question": "What is 'must-revalidate' in Cache-Control?",
+      "options": [
+        "Always revalidate on every request",
+        "Once stale, MUST revalidate before serving (cannot serve stale even briefly)",
+        "Optional revalidation",
+        "Revalidate with user"
+      ],
+      "correct": 1,
+      "explanation": "must-revalidate: when TTL expires, cache MUST revalidate with origin before serving. Cannot serve stale. Stricter than default behavior. Use for data that must be fresh or error — no stale-while-revalidate allowed."
+    },
+    {
+      "id": "ttl-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache-Control: max-age=60, must-revalidate. TTL expired, origin is unreachable. What happens?",
+          "options": [
+            "Serve stale data",
+            "Return error (must revalidate but can't reach origin)",
+            "Wait indefinitely",
+            "Serve random data"
+          ],
+          "correct": 1,
+          "explanation": "must-revalidate: cannot serve stale without revalidating. Origin unreachable means can't revalidate. Result: error (504 Gateway Timeout typically). This is the strict freshness guarantee."
+        },
+        {
+          "question": "Same scenario but without must-revalidate. What might happen?",
+          "options": [
+            "Same error",
+            "Cache might serve stale data (default behavior allows this)",
+            "Fresh data appears",
+            "Cache is deleted"
+          ],
+          "correct": 1,
+          "explanation": "Without must-revalidate, caches have flexibility. Many will try origin, fail, and optionally serve stale (implementation-dependent). stale-if-error explicitly allows this. must-revalidate explicitly forbids it."
+        }
+      ]
+    },
+    {
+      "id": "ttl-042",
+      "type": "multi-select",
+      "question": "When should you use must-revalidate?",
+      "options": [
+        "Banking/financial data (must be fresh or error)",
+        "Security-sensitive content",
+        "News articles (stale is acceptable)",
+        "Content where serving stale is worse than showing error"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "must-revalidate for: financial (wrong balance is serious), security (outdated permissions dangerous), any content where stale is worse than error. News articles can tolerate staleness — no must-revalidate needed."
+    },
+    {
+      "id": "ttl-043",
+      "type": "multiple-choice",
+      "question": "What is 'immutable' in Cache-Control?",
+      "options": [
+        "Cache can never be changed",
+        "Content at this URL will never change (don't even bother revalidating)",
+        "Immutable cache storage",
+        "Cache cannot be deleted"
+      ],
+      "correct": 1,
+      "explanation": "immutable tells caches: this URL's content is permanent (e.g., app.abc123.js with content hash in filename). Don't revalidate, ever. Max caching efficiency. Only use for truly immutable content like hashed assets."
+    },
+    {
+      "id": "ttl-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache-Control: max-age=31536000, immutable on styles.abc123.css. Browser needs styles. What happens after 6 months?",
+          "options": [
+            "Revalidation request sent",
+            "Cached version used directly (no revalidation, it's immutable)",
+            "Fresh fetch",
+            "Cache expired"
+          ],
+          "correct": 1,
+          "explanation": "immutable: even after 6 months, browser uses cache without revalidation. The content hash in filename guarantees content is same. No network request at all. Maximum efficiency."
+        },
+        {
+          "question": "You deploy new CSS. How do users get it?",
+          "options": [
+            "Purge cache",
+            "New CSS gets new filename (styles.def456.css), HTML references new URL",
+            "Users clear cache",
+            "Wait for immutable to expire"
+          ],
+          "correct": 1,
+          "explanation": "Immutable content uses content-hashed filenames. New content = new hash = new URL. Old URL stays cached forever (fine, nothing references it). HTML is not immutable, gets short TTL, references new CSS URL."
+        }
+      ]
+    },
+    {
+      "id": "ttl-045",
+      "type": "ordering",
+      "question": "Rank these resources by typical recommended TTL (shortest to longest):",
+      "items": ["index.html", "api/user/profile (authenticated)", "styles.abc123.css (hashed)", "api/products (public)"],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "User profile: very short or no-cache (private, changes). index.html: short (needs to reference latest assets). Products API: moderate (public, changes occasionally). Hashed CSS: years (immutable content)."
+    },
+    {
+      "id": "ttl-046",
+      "type": "multiple-choice",
+      "question": "What is 'refresh-ahead' related to TTL?",
+      "options": [
+        "Refreshing browser",
+        "Proactively refreshing cache entries before TTL expires based on predicted access",
+        "Ahead-of-time caching",
+        "Refreshing multiple caches"
+      ],
+      "correct": 1,
+      "explanation": "Refresh-ahead: monitor access patterns, refresh frequently-accessed entries BEFORE TTL expires. Entry is fresh when accessed, no miss. Requires access tracking and predictive logic."
+    },
+    {
+      "id": "ttl-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Entry TTL = 60s. It's been accessed 100 times in the last 50 seconds. With refresh-ahead, what might happen at second 55?",
+          "options": [
+            "Entry expires",
+            "Background refresh triggered (predicting continued access)",
+            "Entry deleted",
+            "Access counter reset"
+          ],
+          "correct": 1,
+          "explanation": "High access rate signals continued demand. Refresh-ahead triggers background refresh at second 55 (before 60s expiry). By second 60, fresh data is cached. No miss for subsequent requests."
+        },
+        {
+          "question": "Another entry with TTL = 60s was accessed once 50 seconds ago. Refresh-ahead behavior?",
+          "options": [
+            "Same — refresh at 55s",
+            "No refresh-ahead — low access doesn't justify proactive refresh",
+            "Delete immediately",
+            "Double the TTL"
+          ],
+          "correct": 1,
+          "explanation": "Low access = low predicted demand. Refresh-ahead is selective — don't waste resources refreshing rarely-accessed data. Let it expire naturally. Refresh-ahead is for hot data."
+        }
+      ]
+    },
+    {
+      "id": "ttl-048",
+      "type": "multi-select",
+      "question": "What metrics can trigger refresh-ahead?",
+      "options": [
+        "Access frequency (requests per time period)",
+        "Time until TTL expiration",
+        "Cache memory usage",
+        "Recency of last access"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Refresh-ahead considers: access frequency (is it hot?), time until expiry (should we refresh soon?), recency (was it accessed recently?). Memory usage might affect eviction, not refresh-ahead timing."
+    },
+    {
+      "id": "ttl-049",
+      "type": "multiple-choice",
+      "question": "What is 'probabilistic early expiration'?",
+      "options": [
+        "Random cache deletion",
+        "As TTL approaches, increasing probability of triggering refresh on access",
+        "Probability of cache hit",
+        "Early cache termination"
+      ],
+      "correct": 1,
+      "explanation": "Probabilistic early expiration: as TTL nears, each access has growing probability of triggering background refresh. By expiration time, refresh has likely already happened. Prevents cliff of misses at expiration."
+    },
+    {
+      "id": "ttl-050",
+      "type": "numeric-input",
+      "question": "TTL = 100s. Probabilistic refresh: P(refresh) = 1 - (remaining_time / TTL). At 20 seconds remaining, what's the probability of triggering refresh on access?",
+      "answer": 80,
+      "unit": "%",
+      "tolerance": "exact",
+      "explanation": "P = 1 - (20/100) = 1 - 0.2 = 0.8 = 80%. As expiration nears (remaining time decreases), probability increases. At 0 seconds remaining, P = 100%."
+    },
+    {
+      "id": "ttl-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your cache serves 1000 req/sec for an entry. TTL = 60s. At expiration, what's the peak refresh load without probabilistic refresh?",
+          "options": [
+            "1 req/sec",
+            "Up to 1000 concurrent refresh requests in the first second",
+            "0",
+            "60 req/sec"
+          ],
+          "correct": 1,
+          "explanation": "At second 60, all concurrent requests see expired entry and try to refresh. 1000 req/sec means up to 1000 might hit origin simultaneously (thundering herd)."
+        },
+        {
+          "question": "With probabilistic early refresh spreading refreshes over the last 10 seconds, approximately what's the peak?",
+          "options": [
+            "Still 1000/sec",
+            "~100/sec (spread over 10 seconds)",
+            "0",
+            "10/sec"
+          ],
+          "correct": 1,
+          "explanation": "Probabilistic refresh triggers randomly over last 10 seconds. ~10% of 1000 = 100/sec on average (distributed). No sudden spike at second 60 — gradual refresh load."
+        }
+      ]
+    },
+    {
+      "id": "ttl-052",
+      "type": "multiple-choice",
+      "question": "How should TTL relate to data change frequency?",
+      "options": [
+        "TTL should always be very long",
+        "TTL should be at most the acceptable staleness window, considering change frequency",
+        "TTL should equal exact change frequency",
+        "TTL doesn't relate to change frequency"
+      ],
+      "correct": 1,
+      "explanation": "TTL ≤ acceptable staleness. If data changes every 5 min and you can tolerate 5 min staleness, TTL ≤ 5 min works. If data changes every 5 min but you need 1 min freshness, TTL ≤ 1 min."
+    },
+    {
+      "id": "ttl-053",
+      "type": "numeric-input",
+      "question": "Data updates every 10 minutes. Maximum acceptable staleness is 2 minutes. What's the maximum recommended TTL?",
+      "answer": 2,
+      "unit": "minutes",
+      "tolerance": "exact",
+      "explanation": "Max staleness = 2 minutes, so TTL ≤ 2 minutes. Even though data updates every 10 min, you need fresher data. TTL = 2 min ensures at most 2 min staleness."
+    },
+    {
+      "id": "ttl-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product prices change unpredictably (could be any time). How should you set TTL?",
+          "options": [
+            "Very long TTL (prices rarely change)",
+            "Based on acceptable staleness for prices, not change frequency",
+            "No TTL needed",
+            "Random TTL"
+          ],
+          "correct": 1,
+          "explanation": "Unpredictable changes mean you can't sync TTL to change schedule. Set TTL based on acceptable staleness: if showing stale price for 5 min is OK, TTL = 5 min. Use invalidation on price change for immediate freshness."
+        },
+        {
+          "question": "Price changes are also pushed via webhook. How can you improve freshness beyond TTL?",
+          "options": [
+            "Shorter TTL only",
+            "Invalidate cache on webhook (event-driven invalidation) + reasonable TTL as backup",
+            "Longer TTL",
+            "Ignore webhooks"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven invalidation: webhook triggers cache invalidation. TTL is backup for missed events. Best of both: immediate freshness when events fire, bounded staleness otherwise."
+        }
+      ]
+    },
+    {
+      "id": "ttl-055",
+      "type": "ordering",
+      "question": "Rank these invalidation approaches by freshness guarantee (freshest to stalest):",
+      "items": ["Event-driven invalidation", "Short TTL (1 minute)", "Long TTL (1 hour)", "TTL with stale-while-revalidate"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Event-driven: instant on change. Short TTL: at most 1 min stale. SWR: stale served while refreshing (could be hours if window is long). Long TTL: up to 1 hour stale."
+    },
+    {
+      "id": "ttl-056",
+      "type": "multiple-choice",
+      "question": "What is 'cache stampede' in TTL context?",
+      "options": [
+        "Cache filling up",
+        "Many requests hitting origin when a popular entry's TTL expires simultaneously",
+        "Cache running fast",
+        "TTL being too long"
+      ],
+      "correct": 1,
+      "explanation": "Cache stampede (thundering herd): popular entry expires, many concurrent requests all miss cache and query origin. Origin is overwhelmed. TTL synchronization and lack of request coalescing cause this."
+    },
+    {
+      "id": "ttl-057",
+      "type": "multi-select",
+      "question": "Which TTL-related techniques prevent cache stampede?",
+      "options": [
+        "TTL jitter (randomize expiration)",
+        "Probabilistic early refresh",
+        "Using the same TTL for all entries",
+        "Request coalescing (one fetches, others wait)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Jitter spreads expirations. Early refresh avoids expiration cliff. Coalescing prevents duplicate fetches. Same TTL for all entries causes synchronized expiration — causes stampede, not prevents it."
+    },
+    {
+      "id": "ttl-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing TTL for a high-traffic API (100K req/sec). What's your primary concern?",
+          "options": [
+            "Minimum TTL only",
+            "Preventing synchronized expiration (stampede) and origin overload",
+            "Maximum TTL only",
+            "No concern"
+          ],
+          "correct": 1,
+          "explanation": "At 100K req/sec, synchronized expiration of hot entries could send 100K req/sec to origin. Primary concern: prevent stampede via jitter, coalescing, and gradual refresh."
+        },
+        {
+          "question": "TTL = 60s with no jitter. 100K req/sec. At second 60, potentially how many requests hit origin?",
+          "options": [
+            "~1",
+            "~100,000 (all see expired, all fetch)",
+            "0",
+            "60"
+          ],
+          "correct": 1,
+          "explanation": "Without protection, all 100K concurrent requests at second 60 see expired entry and fetch from origin. Massive spike. In reality, some requests would be slightly staggered, but still a huge spike."
+        }
+      ]
+    },
+    {
+      "id": "ttl-059",
+      "type": "multiple-choice",
+      "question": "What is 'adaptive TTL'?",
+      "options": [
+        "TTL that never changes",
+        "Dynamically adjusting TTL based on factors like access patterns, origin load, or data volatility",
+        "TTL for adaptive systems",
+        "Adapting to cache size"
+      ],
+      "correct": 1,
+      "explanation": "Adaptive TTL: adjust TTL dynamically. High access? Longer TTL (worth caching). Origin stressed? Longer TTL (reduce load). Data volatile? Shorter TTL. Optimizes caching based on runtime conditions."
+    },
+    {
+      "id": "ttl-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Origin is experiencing high load (response time doubled). With adaptive TTL, what should happen?",
+          "options": [
+            "Decrease TTL (more refreshes)",
+            "Increase TTL (reduce origin load)",
+            "Keep same TTL",
+            "Disable caching"
+          ],
+          "correct": 1,
+          "explanation": "Origin under stress = reduce origin requests. Increase TTL temporarily to reduce refresh rate. Accept more staleness to protect origin. Resume normal TTL when origin recovers."
+        },
+        {
+          "question": "Data is being updated frequently (detected via version changes). With adaptive TTL, what should happen?",
+          "options": [
+            "Increase TTL",
+            "Decrease TTL (data changing, fresher needed)",
+            "Keep same TTL",
+            "Disable caching"
+          ],
+          "correct": 1,
+          "explanation": "Frequent updates = data is volatile. Decrease TTL to catch changes faster. Alternatively, use event-driven invalidation. Adaptive TTL responds to observed data patterns."
+        }
+      ]
+    },
+    {
+      "id": "ttl-061",
+      "type": "multiple-choice",
+      "question": "What does 'negative TTL' refer to?",
+      "options": [
+        "Negative numbers in TTL",
+        "TTL for cached 'not found' or error responses",
+        "Time going backwards",
+        "Invalid TTL"
+      ],
+      "correct": 1,
+      "explanation": "Negative TTL: TTL for negative results ('not found', '404', 'empty'). Often shorter than positive TTL. Caches the absence of data to prevent repeated lookups for non-existent items."
+    },
+    {
+      "id": "ttl-062",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Positive TTL = 1 hour. Why might negative TTL be shorter (e.g., 5 minutes)?",
+          "options": [
+            "Negative results use more memory",
+            "If item is created, want to detect it sooner than 1 hour",
+            "Negative results are more important",
+            "No reason, they should be equal"
+          ],
+          "correct": 1,
+          "explanation": "Negative result ('user doesn't exist') might become positive (user created). Short negative TTL (5 min) means you'll check again soon and discover the new user. Long negative TTL delays detection."
+        },
+        {
+          "question": "When might you use equal or longer negative TTL?",
+          "options": [
+            "Never",
+            "When 'not found' is permanent or stable (deleted items don't come back)",
+            "Always",
+            "When memory is unlimited"
+          ],
+          "correct": 1,
+          "explanation": "If IDs are immutable (deleted user ID 123 will never be reused), negative result is stable. Longer negative TTL is fine. Match TTL to how stable the negative result is."
+        }
+      ]
+    },
+    {
+      "id": "ttl-063",
+      "type": "numeric-input",
+      "question": "Positive TTL = 3600s (1 hour). Negative TTL = 300s (5 minutes). What's the ratio of positive to negative TTL?",
+      "answer": 12,
+      "unit": ":1",
+      "tolerance": "exact",
+      "explanation": "3600 / 300 = 12. Positive TTL is 12x longer. This is common — cache existing data longer, check for new data more frequently."
+    },
+    {
+      "id": "ttl-064",
+      "type": "multiple-choice",
+      "question": "What is 'TTL inheritance' or 'derived TTL'?",
+      "options": [
+        "TTL passed to child processes",
+        "Computed cache entries inherit TTL from their source data",
+        "TTL from parent cache",
+        "Genetic TTL"
+      ],
+      "correct": 1,
+      "explanation": "TTL inheritance: if you cache a computed result derived from source data, the result's TTL should be ≤ the source's TTL. If source expires in 5 min, computed result shouldn't claim to be fresh for 1 hour."
+    },
+    {
+      "id": "ttl-065",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache 'user profile' (TTL 1 hour) and 'user's personalized feed' (derived from profile). What TTL should the feed have?",
+          "options": [
+            "Longer than profile (2 hours)",
+            "Same or shorter than profile (≤ 1 hour)",
+            "Doesn't matter",
+            "No TTL needed"
+          ],
+          "correct": 1,
+          "explanation": "Feed is derived from profile. If profile changes, feed should reflect it. Feed TTL ≤ profile TTL ensures feed expires when profile might have changed. Longer feed TTL risks stale derived data."
+        },
+        {
+          "question": "Feed is derived from multiple sources: profile (1 hour TTL), posts (5 min TTL), ads (1 min TTL). What's the max feed TTL?",
+          "options": [
+            "1 hour (longest)",
+            "1 minute (shortest of sources)",
+            "Average (22 minutes)",
+            "Infinite"
+          ],
+          "correct": 1,
+          "explanation": "Derived data expires when ANY source might have changed. Use the minimum source TTL. Ads change every minute, so feed must refresh at least every minute to stay current."
+        }
+      ]
+    },
+    {
+      "id": "ttl-066",
+      "type": "ordering",
+      "question": "Rank these cache scenarios by appropriate TTL (shortest to longest):",
+      "items": [
+        "JWT token (security expiry)",
+        "Static logo image",
+        "API rate limit counter",
+        "Product description"
+      ],
+      "correctOrder": [2, 0, 3, 1],
+      "explanation": "Rate limit counter: seconds (must be accurate). JWT: matches token expiry (minutes-hours). Product description: hours (changes occasionally). Logo: days-forever (rarely changes)."
+    },
+    {
+      "id": "ttl-067",
+      "type": "multiple-choice",
+      "question": "What is 'eternal cache' or 'no expiration'?",
+      "options": [
+        "Cache that lasts forever",
+        "Cache entries with no TTL that only expire via explicit invalidation or eviction",
+        "Immortal data",
+        "Cache that never works"
+      ],
+      "correct": 1,
+      "explanation": "Eternal cache: no TTL, entries stay until explicitly invalidated or evicted (memory pressure). Use for truly immutable data or when you have reliable invalidation. Risk: stale data forever if invalidation fails."
+    },
+    {
+      "id": "ttl-068",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache content-hashed assets (app.abc123.js) with no TTL (eternal). What's the risk?",
+          "options": [
+            "Assets become stale",
+            "Minimal risk — hash changes when content changes, old entry unreferenced",
+            "Memory fills up",
+            "Cache corrupts"
+          ],
+          "correct": 1,
+          "explanation": "Content-hashed assets are safe for eternal caching. When content changes, filename (hash) changes, new cache entry. Old entry is unreferenced — may be evicted for memory, but staleness isn't an issue."
+        },
+        {
+          "question": "You cache user preferences with no TTL. What's the risk?",
+          "options": [
+            "Same as assets — safe",
+            "Stale preferences forever if invalidation is missed",
+            "No risk",
+            "Preferences don't change"
+          ],
+          "correct": 1,
+          "explanation": "User data changes via updates. Without TTL, only invalidation keeps cache fresh. If invalidation fails (bug, network issue), stale data persists forever. For mutable data, TTL provides safety net."
+        }
+      ]
+    },
+    {
+      "id": "ttl-069",
+      "type": "multi-select",
+      "question": "What data is appropriate for eternal cache (no TTL)?",
+      "options": [
+        "Content-addressed/hashed assets",
+        "Immutable reference data (country codes, old historical records)",
+        "User profiles",
+        "Data with reliable event-driven invalidation"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Eternal cache suits: hashed assets (content-addressed), immutable data (doesn't change), or when invalidation is reliable (TTL as backup is unnecessary). User profiles change — need TTL or invalidation."
+    },
+    {
+      "id": "ttl-070",
+      "type": "multiple-choice",
+      "question": "What is 'TTL extension' or 'touch'?",
+      "options": [
+        "Making TTL longer permanently",
+        "Resetting/extending TTL on access (sliding expiration) or explicit touch operation",
+        "Touching the cache",
+        "Extending cache size"
+      ],
+      "correct": 1,
+      "explanation": "TTL extension (touch): reset TTL timer without fetching new data. Sliding expiration does this on every access. Explicit touch operation can extend without accessing the value. Keeps active entries alive."
+    },
+    {
+      "id": "ttl-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Redis EXPIRE command sets TTL. EXPIREAT sets expiration at absolute timestamp. When would you use EXPIREAT?",
+          "options": [
+            "For sliding expiration",
+            "When entry should expire at a specific time (e.g., midnight, token expiry time)",
+            "Never, EXPIRE is better",
+            "For longer TTLs"
+          ],
+          "correct": 1,
+          "explanation": "EXPIREAT: expire at specific timestamp. Use for 'end of day' caches, token expiry (token says 'expires at X'), scheduled data changes. EXPIRE is relative; EXPIREAT is absolute."
+        },
+        {
+          "question": "JWT expires at 1700000000 (Unix timestamp). How should you cache related session data?",
+          "options": [
+            "Cache with TTL of 1 hour",
+            "Cache with EXPIREAT 1700000000 (expire with the token)",
+            "Cache forever",
+            "Don't cache"
+          ],
+          "correct": 1,
+          "explanation": "Session data validity is tied to token. When token expires, session should too. EXPIREAT 1700000000 ensures session cache expires exactly when token does. Clean, synchronized expiration."
+        }
+      ]
+    },
+    {
+      "id": "ttl-072",
+      "type": "numeric-input",
+      "question": "It's 10:00 AM. You want cache to expire at midnight (14 hours away). What TTL in seconds?",
+      "answer": 50400,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "14 hours × 60 minutes × 60 seconds = 14 × 3600 = 50,400 seconds. Alternatively, use absolute timestamp for midnight."
+    },
+    {
+      "id": "ttl-073",
+      "type": "multiple-choice",
+      "question": "What is 'TTL bucketing'?",
+      "options": [
+        "Putting TTLs in buckets",
+        "Rounding TTL to discrete intervals (e.g., 60, 120, 180s) to group expirations",
+        "Bucket storage for cache",
+        "Multiple TTL types"
+      ],
+      "correct": 1,
+      "explanation": "TTL bucketing: round TTLs to intervals. Instead of TTL=47s, 52s, 61s, use TTL=60s for all. Groups expirations for batch processing. Trade-off: less granular but simpler expiration handling."
+    },
+    {
+      "id": "ttl-074",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Bucket size = 60 seconds. Requested TTLs are 45s, 80s, 130s. What actual TTLs are used?",
+          "options": [
+            "45, 80, 130 (unchanged)",
+            "60, 120, 180 (rounded up to bucket)",
+            "0, 60, 120 (rounded down)",
+            "60, 60, 60 (all same)"
+          ],
+          "correct": 1,
+          "explanation": "Round up to next bucket: 45→60, 80→120, 130→180. Entries last at least as long as requested. Grouping enables efficient batch expiration at bucket boundaries."
+        },
+        {
+          "question": "What's the trade-off of large bucket sizes?",
+          "options": [
+            "No trade-off",
+            "Less precise expiration (entries may live longer than needed)",
+            "More precise expiration",
+            "Faster caching"
+          ],
+          "correct": 1,
+          "explanation": "Large buckets = less precision. TTL=61s with 60s buckets → 120s (59s extra). Data stays cached longer than needed (more staleness). Smaller buckets = more precise but more expiration checks."
+        }
+      ]
+    },
+    {
+      "id": "ttl-075",
+      "type": "multi-select",
+      "question": "What are benefits of TTL bucketing?",
+      "options": [
+        "Efficient batch expiration processing",
+        "Fewer unique TTL values to track",
+        "More precise expiration",
+        "Simplified cache timing logic"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Bucketing: batch expire at bucket boundaries (efficient), fewer TTL values (simpler tracking), simplified logic. Precision is reduced, not increased — that's the trade-off."
+    },
+    {
+      "id": "ttl-076",
+      "type": "multiple-choice",
+      "question": "What is 'TTL tiering' or 'tiered expiration'?",
+      "options": [
+        "Multiple cache tiers",
+        "Different TTLs for different data tiers (hot data longer, cold data shorter or vice versa)",
+        "Tier-1 vs tier-2 TTL",
+        "Expiration in tiers"
+      ],
+      "correct": 1,
+      "explanation": "TTL tiering: assign different TTLs based on data characteristics. Hot data might get longer TTL (worth caching). Or cold data gets longer TTL (rarely changes). Match TTL to data's access pattern and volatility."
+    },
+    {
+      "id": "ttl-077",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product catalog: 'featured products' (high traffic) vs 'archived products' (low traffic). How should TTLs differ?",
+          "options": [
+            "Same TTL for both",
+            "Featured: shorter TTL (needs freshness); Archived: longer TTL (rarely changes)",
+            "Featured: longer; Archived: shorter",
+            "No caching for archived"
+          ],
+          "correct": 1,
+          "explanation": "Featured products are actively managed, need fresh data, so shorter TTL. Archived products rarely change, so longer TTL is safe. Match TTL to how dynamic each tier is."
+        },
+        {
+          "question": "Alternative view: featured products are accessed often (cache is valuable), archived rarely. TTL strategy?",
+          "options": [
+            "Featured: longer TTL (maximize cache benefit)",
+            "Archived: longer TTL",
+            "Both perspectives are valid — depends on whether freshness or hit rate matters more",
+            "Neither needs TTL"
+          ],
+          "correct": 2,
+          "explanation": "Two valid strategies: (1) Freshness-focused: featured shorter (more dynamic). (2) Hit-rate-focused: featured longer (valuable cache hits). Choose based on whether staleness or origin load is the bigger concern."
+        }
+      ]
+    },
+    {
+      "id": "ttl-078",
+      "type": "ordering",
+      "question": "Rank these by typical TTL in a news site (shortest to longest):",
+      "items": ["Breaking news headline", "Yesterday's article", "Static site footer", "Homepage hero image"],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "Breaking news: minutes (changes rapidly). Hero image: hours (might update for campaigns). Yesterday's article: days (stable, might update for corrections). Footer: weeks+ (rarely changes)."
+    },
+    {
+      "id": "ttl-079",
+      "type": "multiple-choice",
+      "question": "What is 'grace period' in TTL context?",
+      "options": [
+        "Time to be graceful",
+        "Additional time after TTL expires during which stale data can be served while refreshing",
+        "Initial warm-up period",
+        "Period before cache starts"
+      ],
+      "correct": 1,
+      "explanation": "Grace period: after TTL expires, a window where stale is OK if refresh is happening. Similar to stale-while-revalidate. Provides buffer during refresh to avoid miss latency."
+    },
+    {
+      "id": "ttl-080",
+      "type": "numeric-input",
+      "question": "TTL = 300s, grace period = 30s. Entry created at t=0. What's the latest time stale data can be served?",
+      "answer": 330,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "TTL expires at 300s, grace allows stale until 330s. Between 300-330s, stale data served while refresh in progress. After 330s, must wait for fresh data."
+    },
+    {
+      "id": "ttl-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Entry TTL expired 15 seconds ago. Grace period is 30 seconds. Background refresh is in progress. What's served?",
+          "options": [
+            "Error (expired)",
+            "Stale data (within grace period, refresh in progress)",
+            "Fresh data (wait for refresh)",
+            "Nothing"
+          ],
+          "correct": 1,
+          "explanation": "15s stale, grace=30s: still within grace. Stale data served while refresh happens. User gets immediate response. When refresh completes, cache updated."
+        },
+        {
+          "question": "Same scenario but grace period is 10 seconds. Entry is 15 seconds stale. What's served?",
+          "options": [
+            "Stale data (grace still applies)",
+            "Must wait for refresh (grace period exceeded)",
+            "Error",
+            "Random data"
+          ],
+          "correct": 1,
+          "explanation": "15s stale > 10s grace. Grace period exceeded. Cannot serve stale anymore. Must wait for refresh to complete. User experiences cache miss latency."
+        }
+      ]
+    },
+    {
+      "id": "ttl-082",
+      "type": "multiple-choice",
+      "question": "In browser caching, what does max-age=0 mean?",
+      "options": [
+        "Don't cache at all",
+        "Cache but always revalidate before using (stale immediately)",
+        "Cache for 0 seconds then delete",
+        "Infinite cache"
+      ],
+      "correct": 1,
+      "explanation": "max-age=0 means content is stale immediately, but can be cached. Browser caches it but revalidates every time. Different from no-store (don't cache at all). Allows 304 responses if unchanged."
+    },
+    {
+      "id": "ttl-083",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache-Control: max-age=0, must-revalidate vs Cache-Control: no-store. What's the difference?",
+          "options": [
+            "Same thing",
+            "max-age=0: cache and revalidate each time; no-store: don't cache at all",
+            "no-store: cache longer",
+            "max-age=0: never revalidate"
+          ],
+          "correct": 1,
+          "explanation": "max-age=0, must-revalidate: cache the response but check with origin every time (can get 304). no-store: don't store in cache at all, always fetch complete response. max-age=0 allows bandwidth savings via 304."
+        },
+        {
+          "question": "When would you use max-age=0 over no-store?",
+          "options": [
+            "Never",
+            "When content needs freshness check but 304 savings are valuable (large resources)",
+            "When content should never be cached",
+            "When content changes every second"
+          ],
+          "correct": 1,
+          "explanation": "max-age=0 for: large resources (save bandwidth with 304), content that needs freshness but hasn't changed (304). no-store for: sensitive data that shouldn't persist in cache (passwords, sensitive tokens)."
+        }
+      ]
+    },
+    {
+      "id": "ttl-084",
+      "type": "multi-select",
+      "question": "What factors should influence TTL choice?",
+      "options": [
+        "Data change frequency",
+        "Acceptable staleness for use case",
+        "Origin server capacity",
+        "Cache storage cost"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All factors matter: change frequency (how often data updates), staleness tolerance (how fresh must it be), origin capacity (longer TTL reduces origin load), storage cost (longer TTL uses more cache memory)."
+    },
+    {
+      "id": "ttl-085",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Origin can handle 1000 QPS max. Traffic is 10000 QPS. What's the minimum cache hit rate needed?",
+          "options": [
+            "50%",
+            "90%",
+            "99%",
+            "10%"
+          ],
+          "correct": 1,
+          "explanation": "Origin handles 1000/10000 = 10% of traffic. Cache must handle 90%. Minimum hit rate = 90%."
+        },
+        {
+          "question": "Current TTL gives 85% hit rate. What should you do?",
+          "options": [
+            "Increase TTL to improve hit rate above 90%",
+            "Decrease TTL",
+            "Nothing, 85% is fine",
+            "Disable cache"
+          ],
+          "correct": 0,
+          "explanation": "85% < 90% needed. Origin is overloaded (15% of 10K = 1500 QPS > 1000 capacity). Increase TTL to keep entries cached longer, improve hit rate to 90%+. Or scale origin."
+        }
+      ]
+    },
+    {
+      "id": "ttl-086",
+      "type": "numeric-input",
+      "question": "Entries are accessed on average every 30 seconds. TTL is 60 seconds. Approximately what hit rate do you expect?",
+      "answer": 50,
+      "unit": "%",
+      "tolerance": 10,
+      "explanation": "Entry accessed every 30s, lives 60s. First access: miss. Second access (at 30s): hit (still cached). Third access (at 60s): near expiration/miss. Rough hit rate ~50% (every other access is hit)."
+    },
+    {
+      "id": "ttl-087",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You double the TTL from 60s to 120s. Approximately what happens to hit rate (same access pattern every 30s)?",
+          "options": [
+            "Stays ~50%",
+            "Increases (entry lives longer, more hits before expiry)",
+            "Decreases",
+            "Becomes 100%"
+          ],
+          "correct": 1,
+          "explanation": "With 120s TTL and 30s access: access at 0 (miss), 30 (hit), 60 (hit), 90 (hit), 120 (near-miss). More hits before expiry. Hit rate increases from ~50% toward ~75%."
+        },
+        {
+          "question": "What's the trade-off of this longer TTL?",
+          "options": [
+            "No trade-off",
+            "Potentially serving data up to 120s stale instead of 60s",
+            "Lower hit rate",
+            "More cache memory"
+          ],
+          "correct": 1,
+          "explanation": "Longer TTL = more staleness. Max staleness goes from 60s to 120s. If data changes, users might see 2-minute-old data instead of 1-minute-old. Acceptable depends on use case."
+        }
+      ]
+    },
+    {
+      "id": "ttl-088",
+      "type": "ordering",
+      "question": "For an authentication system, rank these by appropriate TTL (shortest to longest):",
+      "items": ["Password reset token", "Session token", "User permission cache", "'Remember me' token"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Password reset: minutes (security, one-time use). Permission cache: minutes-hour (needs freshness). Session: hours (balance security and UX). Remember-me: days-weeks (long-term auth)."
+    },
+    {
+      "id": "ttl-089",
+      "type": "multiple-choice",
+      "question": "What is 'cache versioning' related to TTL?",
+      "options": [
+        "Version numbers in TTL",
+        "Including version in cache key so entries with old versions naturally miss",
+        "Versioning the cache software",
+        "TTL version history"
+      ],
+      "correct": 1,
+      "explanation": "Cache versioning: include version in key (user:1:v2). When schema changes, increment version. Old versioned entries are never accessed (natural miss), equivalent to invalidation without explicit delete."
+    },
+    {
+      "id": "ttl-090",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You add new fields to cached objects. How does cache versioning help?",
+          "options": [
+            "It doesn't help",
+            "Old entries (v1) are never read — new code looks for v2 keys",
+            "Old entries are automatically updated",
+            "TTL is extended"
+          ],
+          "correct": 1,
+          "explanation": "Code reads user:1:v2. Old user:1:v1 exists but is never accessed. It's effectively invalidated. New code populates v2 entries. Old v1 entries expire naturally via TTL."
+        },
+        {
+          "question": "What happens to v1 entries in cache?",
+          "options": [
+            "They're deleted immediately",
+            "They sit until TTL expires, consuming memory until then",
+            "They become v2",
+            "They cause errors"
+          ],
+          "correct": 1,
+          "explanation": "v1 entries remain until TTL expires (wasting memory temporarily) or evicted. No immediate cleanup. For fast transition, you could explicitly delete old version keys, but natural expiration usually works."
+        }
+      ]
+    },
+    {
+      "id": "ttl-091",
+      "type": "multi-select",
+      "question": "What are common TTL-related configuration mistakes?",
+      "options": [
+        "TTL too long (stale data problems)",
+        "TTL too short (high miss rate, origin overload)",
+        "Same TTL for all data types",
+        "No jitter (synchronized expiration)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are mistakes: too long (staleness), too short (misses), same TTL everywhere (ignores data differences), no jitter (thundering herd). Each data type needs appropriate TTL with jitter."
+    },
+    {
+      "id": "ttl-092",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A developer sets TTL = 86400 (1 day) for all cache entries 'to maximize hit rate'. What's the problem?",
+          "options": [
+            "No problem, high hit rate is good",
+            "Data that changes frequently becomes very stale; one-size doesn't fit all",
+            "TTL is too short",
+            "Cache will fill up"
+          ],
+          "correct": 1,
+          "explanation": "1-day TTL for user sessions, prices, inventory = major staleness issues. Each data type has different freshness needs. One-size-fits-all TTL is a common mistake."
+        },
+        {
+          "question": "How should they fix this?",
+          "options": [
+            "Single shorter TTL",
+            "Different TTLs based on data type and freshness requirements",
+            "No TTL",
+            "Random TTL"
+          ],
+          "correct": 1,
+          "explanation": "Analyze each data type: how often does it change? How fresh must it be? Set appropriate TTL for each. Sessions: hours. Prices: minutes. Static content: days. Match TTL to requirements."
+        }
+      ]
+    },
+    {
+      "id": "ttl-093",
+      "type": "multiple-choice",
+      "question": "What is 'TTL-based invalidation' as a strategy?",
+      "options": [
+        "Invalid TTL values",
+        "Relying solely on TTL expiration for cache freshness (no explicit invalidation)",
+        "Invalidating TTL settings",
+        "TTL that invalidates data"
+      ],
+      "correct": 1,
+      "explanation": "TTL-based invalidation: set TTL, let entries expire naturally, never explicitly invalidate. Simple (no invalidation logic) but limited freshness (up to TTL staleness). Contrast with event-driven invalidation."
+    },
+    {
+      "id": "ttl-094",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You use TTL-only invalidation (no event-driven). Data changes. How long until cache reflects it?",
+          "options": [
+            "Immediately",
+            "Up to the full TTL duration (worst case)",
+            "Never",
+            "Depends on access pattern"
+          ],
+          "correct": 1,
+          "explanation": "TTL-only: cache updates when TTL expires. If just cached (TTL just started), staleness = full TTL duration. Worst case freshness = TTL. For immediate freshness, need event-driven invalidation."
+        },
+        {
+          "question": "Event-driven invalidation: delete cache on data change. How long until cache reflects change?",
+          "options": [
+            "Up to TTL",
+            "Immediately (next read fetches fresh)",
+            "Never",
+            "Depends on TTL"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven: cache invalidated on change. Next read is miss → fetches fresh data. Immediate freshness. TTL is safety net for missed events. Best of both: event-driven + TTL backup."
+        }
+      ]
+    },
+    {
+      "id": "ttl-095",
+      "type": "ordering",
+      "question": "Rank these invalidation approaches by freshness (best to worst):",
+      "items": [
+        "Event-driven + short TTL backup",
+        "Event-driven only (no TTL)",
+        "TTL only (10 minutes)",
+        "Long TTL only (1 day)"
+      ],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Event-driven only: immediate (but no safety net). Event + TTL: immediate with backup. 10-min TTL: up to 10 min stale. 1-day TTL: up to 1 day stale. Event-driven gives best freshness."
+    },
+    {
+      "id": "ttl-096",
+      "type": "multiple-choice",
+      "question": "What's the relationship between TTL and cache hit rate?",
+      "options": [
+        "No relationship",
+        "Generally, longer TTL = higher hit rate (entries stay cached longer)",
+        "Longer TTL = lower hit rate",
+        "TTL doesn't affect hit rate"
+      ],
+      "correct": 1,
+      "explanation": "Longer TTL means entries stay cached longer, more requests served from cache before expiry. Hit rate generally increases with TTL. But there are limits (working set size, eviction)."
+    },
+    {
+      "id": "ttl-097",
+      "type": "numeric-input",
+      "question": "Entry accessed 10 times per minute. TTL = 2 minutes. Approximately how many hits per miss?",
+      "answer": 20,
+      "unit": "hits",
+      "tolerance": 2,
+      "explanation": "Entry lives 2 min, accessed 10/min = 20 accesses per TTL. First is miss, next 19 are hits. ~19-20 hits per miss. (Slightly less due to timing variations.)"
+    },
+    {
+      "id": "ttl-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You want 95% hit rate. Entry is accessed 100 times per TTL period. Is this achievable?",
+          "options": [
+            "No, impossible",
+            "Yes — 1 miss per 100 accesses = 99% hit rate > 95%",
+            "Exactly 95%",
+            "Need more information"
+          ],
+          "correct": 1,
+          "explanation": "1 miss (first access) + 99 hits = 99% hit rate. With 100 accesses per TTL, you exceed 95% target. More accesses per TTL period = higher hit rate."
+        },
+        {
+          "question": "If entry is accessed only 10 times per TTL, what's the hit rate?",
+          "options": [
+            "99%",
+            "90% (1 miss, 9 hits)",
+            "95%",
+            "50%"
+          ],
+          "correct": 1,
+          "explanation": "10 accesses: 1 miss + 9 hits = 90% hit rate. To increase hit rate with same access pattern, increase TTL (more accesses per TTL period)."
+        }
+      ]
+    },
+    {
+      "id": "ttl-099",
+      "type": "multi-select",
+      "question": "What are best practices for TTL configuration?",
+      "options": [
+        "Set TTL based on data freshness requirements",
+        "Add jitter to prevent synchronized expiration",
+        "Use same TTL for all entries (simplicity)",
+        "Monitor hit rate and adjust TTLs accordingly"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Best practices: match TTL to freshness needs, add jitter, monitor and tune. Same TTL for all is NOT best practice — different data has different needs. One size doesn't fit all."
+    },
+    {
+      "id": "ttl-100",
+      "type": "ordering",
+      "question": "Put these TTL-related concepts in order of a cache entry's lifecycle:",
+      "items": [
+        "Grace period (serve stale while refreshing)",
+        "Entry created with TTL",
+        "TTL expires (entry becomes stale)",
+        "Entry fresh (within TTL)"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "Created with TTL → Fresh (within TTL) → TTL expires (stale) → Grace period (stale served while refresh). This is the full lifecycle with stale-while-revalidate."
+    }
+  ]
+}
