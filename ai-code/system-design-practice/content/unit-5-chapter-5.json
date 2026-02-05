@@ -1,0 +1,1757 @@
+{
+  "unit": 5,
+  "unitTitle": "Caching",
+  "chapter": 5,
+  "chapterTitle": "Cache Invalidation",
+  "chapterDescription": "The 'hard problem' of caching: event-driven invalidation, cache busting, versioned keys, pub/sub invalidation, and handling invalidation cascades.",
+  "problems": [
+    {
+      "id": "cache-inv-001",
+      "type": "multiple-choice",
+      "question": "Why is cache invalidation considered one of the 'two hard things in computer science'?",
+      "options": [
+        "It's computationally expensive",
+        "Knowing what to invalidate, when, and ensuring all caches are updated correctly is complex",
+        "Caches don't support invalidation",
+        "It requires special hardware"
+      ],
+      "correct": 1,
+      "explanation": "Cache invalidation is hard because: (1) identifying all affected cache entries when data changes, (2) timing invalidation correctly to avoid stale reads, (3) coordinating across distributed caches. Getting any of these wrong leads to stale data or inconsistency."
+    },
+    {
+      "id": "cache-inv-002",
+      "type": "multiple-choice",
+      "question": "What is 'cache invalidation'?",
+      "options": [
+        "Validating cache entries",
+        "Removing or marking cache entries as stale when underlying data changes",
+        "Creating invalid cache entries",
+        "Checking if cache is working"
+      ],
+      "correct": 1,
+      "explanation": "Cache invalidation is the process of removing or marking entries as stale when the source data changes. This ensures the cache doesn't serve outdated data. It can be done by deletion, expiration, or versioning."
+    },
+    {
+      "id": "cache-inv-003",
+      "type": "multi-select",
+      "question": "What are the main approaches to cache invalidation?",
+      "options": [
+        "TTL-based (time expiration)",
+        "Event-driven (invalidate on data change)",
+        "Version-based (new version = new cache key)",
+        "Never invalidate"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Three main approaches: TTL (automatic expiration after time), event-driven (explicit invalidation when data changes), version-based (change key when data changes). 'Never invalidate' leads to permanently stale data."
+    },
+    {
+      "id": "cache-inv-004",
+      "type": "ordering",
+      "question": "Rank these invalidation approaches by freshness guarantee (best to worst):",
+      "items": ["Event-driven invalidation", "Short TTL (1 minute)", "Long TTL (1 hour)", "Version in URL (cache busting)"],
+      "correctOrder": [3, 0, 1, 2],
+      "explanation": "Version in URL: instant (new URL = new content). Event-driven: near-instant (on data change). Short TTL: up to 1 min stale. Long TTL: up to 1 hour stale. Versioning and events give best freshness."
+    },
+    {
+      "id": "cache-inv-005",
+      "type": "multiple-choice",
+      "question": "What is 'event-driven invalidation'?",
+      "options": [
+        "Invalidating based on events like clicks",
+        "Invalidating cache entries immediately when the underlying data changes",
+        "Events that trigger cache creation",
+        "Scheduled invalidation"
+      ],
+      "correct": 1,
+      "explanation": "Event-driven invalidation: when data is updated/deleted, immediately invalidate (delete) the corresponding cache entry. The write operation triggers cache invalidation as a side effect. Provides near-instant freshness."
+    },
+    {
+      "id": "cache-inv-006",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "User updates their profile. With event-driven invalidation, what should happen?",
+          "options": [
+            "Wait for TTL to expire",
+            "Immediately delete cache entry for that user's profile",
+            "Update all cache entries",
+            "Do nothing"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven: profile update triggers cache invalidation. Delete cache key 'user:123:profile'. Next read will fetch fresh data from DB and repopulate cache."
+        },
+        {
+          "question": "The profile is also embedded in the user's 'feed' cache. What else needs invalidation?",
+          "options": [
+            "Nothing — only profile cache",
+            "Feed cache too (it contains derived profile data)",
+            "All caches in the system",
+            "Database tables"
+          ],
+          "correct": 1,
+          "explanation": "If feed embeds profile data, feed is also stale. Must invalidate both 'user:123:profile' AND 'user:123:feed'. This is the 'what to invalidate' challenge — tracking dependencies."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-007",
+      "type": "multiple-choice",
+      "question": "What is the 'invalidation dependency' problem?",
+      "options": [
+        "Dependencies that are invalid",
+        "Tracking which cache entries depend on which data, so all affected caches are invalidated",
+        "Cache depending on network",
+        "Invalid software dependencies"
+      ],
+      "correct": 1,
+      "explanation": "Invalidation dependencies: if cache A contains data derived from sources X and Y, changes to X or Y should invalidate A. Tracking these dependencies (especially for computed/aggregated caches) is complex."
+    },
+    {
+      "id": "cache-inv-008",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache 'leaderboard' aggregates scores from 1000 users. User 500 updates their score. What needs invalidation?",
+          "options": [
+            "Only user 500's profile cache",
+            "The leaderboard cache (it contains user 500's score)",
+            "All 1000 user caches",
+            "Nothing"
+          ],
+          "correct": 1,
+          "explanation": "Leaderboard depends on all user scores. User 500's score change means leaderboard is stale. Must invalidate 'leaderboard' cache. This is dependency tracking for aggregates."
+        },
+        {
+          "question": "With 1000 users updating scores frequently, what's the challenge?",
+          "options": [
+            "Leaderboard cache is rarely stale",
+            "Leaderboard cache is constantly invalidated (high churn)",
+            "No challenge",
+            "Leaderboard is never cached"
+          ],
+          "correct": 1,
+          "explanation": "Every user score update invalidates leaderboard. With frequent updates, leaderboard is constantly invalidated — possibly never serving from cache. May need different strategy: periodic refresh, eventual consistency, or micro-batched updates."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-009",
+      "type": "multi-select",
+      "question": "What are challenges with event-driven invalidation?",
+      "options": [
+        "Identifying all affected cache entries",
+        "Ensuring invalidation happens before stale reads",
+        "Handling invalidation failures",
+        "No challenges — it's straightforward"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Challenges: (1) knowing all cache keys to invalidate (dependencies), (2) timing — invalidation must propagate before reads see stale data, (3) handling failures — what if invalidation call fails? Data stays stale."
+    },
+    {
+      "id": "cache-inv-010",
+      "type": "multiple-choice",
+      "question": "What is 'cache busting'?",
+      "options": [
+        "Breaking the cache",
+        "Changing the cache key (often via URL) so old cached content is bypassed",
+        "Busting cache performance",
+        "Removing all cache"
+      ],
+      "correct": 1,
+      "explanation": "Cache busting: change the cache key so requests don't match old entries. Common technique: add version or hash to URL (styles.v2.css, app.abc123.js). New URL = new cache entry, old entries ignored."
+    },
+    {
+      "id": "cache-inv-011",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your CSS file is cached with 1-year TTL. You fix a bug. How do users get the fix?",
+          "options": [
+            "Wait up to 1 year",
+            "Change the URL (styles.css → styles.v2.css or styles.abc123.css)",
+            "Ask users to clear cache",
+            "Reduce TTL retroactively"
+          ],
+          "correct": 1,
+          "explanation": "Cache busting: change URL so it's a 'new' resource. styles.css?v=2 or styles.abc123.css. Old URL stays cached (irrelevant), new URL fetched fresh. Users get fix immediately."
+        },
+        {
+          "question": "What file references this CSS and needs updating?",
+          "options": [
+            "Only the CSS file",
+            "The HTML file that links to the CSS",
+            "The database",
+            "Nothing else"
+          ],
+          "correct": 1,
+          "explanation": "HTML must reference the new CSS URL. HTML should have short TTL or no-cache so it always shows current asset URLs. Pattern: long TTL for hashed assets, short TTL for HTML that references them."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-012",
+      "type": "multiple-choice",
+      "question": "What is 'content-based cache busting'?",
+      "options": [
+        "Caching based on content type",
+        "Including a hash of the file content in the filename (app.abc123.js where abc123 is content hash)",
+        "Busting content",
+        "Content delivery"
+      ],
+      "correct": 1,
+      "explanation": "Content-based cache busting: filename includes hash of content. When content changes, hash changes, filename changes. Automatic cache busting without manual versioning. Build tools (webpack, etc.) do this automatically."
+    },
+    {
+      "id": "cache-inv-013",
+      "type": "multi-select",
+      "question": "What are benefits of content-hash cache busting?",
+      "options": [
+        "Automatic — no manual version management",
+        "Only changed files get new URLs",
+        "Unchanged files stay cached (same hash)",
+        "Requires clearing all caches on deploy"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Content hashing: automatic (build tool computes hash), granular (only changed files get new URLs), efficient (unchanged files keep serving from cache). No need to clear caches — old URLs naturally become unused."
+    },
+    {
+      "id": "cache-inv-014",
+      "type": "ordering",
+      "question": "Rank these cache busting approaches by effectiveness (best to worst):",
+      "items": ["Content hash in filename", "Query param (?v=123)", "Manual version in filename", "No cache busting"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Content hash: automatic, precise. Manual version: works but requires manual tracking. Query param: works but some CDNs ignore query strings for caching. No busting: users may see stale indefinitely."
+    },
+    {
+      "id": "cache-inv-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You use ?v=1.2.3 for cache busting. CDN is configured to ignore query strings. What happens?",
+          "options": [
+            "Cache busting works fine",
+            "Cache busting fails — CDN caches by URL path only, ignoring ?v=",
+            "CDN blocks the request",
+            "Query string is added to cache key"
+          ],
+          "correct": 1,
+          "explanation": "If CDN ignores query strings, ?v=1.2.3 and ?v=1.2.4 are the same cache key. Cache busting fails. Users get old cached version. Must configure CDN to include query string or use path-based versioning."
+        },
+        {
+          "question": "How do you fix this?",
+          "options": [
+            "Use longer query strings",
+            "Configure CDN to include query string in cache key, or use filename versioning",
+            "Disable CDN",
+            "Remove version parameter"
+          ],
+          "correct": 1,
+          "explanation": "Options: (1) Configure CDN to respect query string for this path. (2) Use filename versioning (app.1.2.3.js) which always works. Filename versioning is more reliable across all CDN configurations."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-016",
+      "type": "multiple-choice",
+      "question": "What is 'versioned cache keys'?",
+      "options": [
+        "Cache keys with version numbers",
+        "Including a version identifier in cache key so new versions use new keys",
+        "Versioning the cache software",
+        "Key versioning system"
+      ],
+      "correct": 1,
+      "explanation": "Versioned cache keys: include version in key (user:v2:123 instead of user:123). When data schema or format changes, increment version. Old entries are never accessed (natural invalidation), new entries created fresh."
+    },
+    {
+      "id": "cache-inv-017",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache user objects as 'user:123'. You add a new field to users. Old cached users lack this field. How does key versioning help?",
+          "options": [
+            "It doesn't help",
+            "Change key to 'user:v2:123' — old 'user:123' entries ignored",
+            "Delete all user entries manually",
+            "Add field to old entries"
+          ],
+          "correct": 1,
+          "explanation": "Key versioning: code now reads/writes 'user:v2:123'. Old 'user:v1:123' (or unversioned) entries are never accessed — effectively invalidated. No mass deletion needed; old entries expire via TTL."
+        },
+        {
+          "question": "What happens to old 'user:123' entries in cache?",
+          "options": [
+            "Automatically deleted",
+            "Sit until TTL expires, wasting memory temporarily",
+            "Cause errors",
+            "Get migrated to v2"
+          ],
+          "correct": 1,
+          "explanation": "Old entries remain until TTL expires (or eviction). They waste memory temporarily but cause no issues since nothing reads them. For large caches, you could proactively delete old version keys."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-018",
+      "type": "multi-select",
+      "question": "When is key versioning useful?",
+      "options": [
+        "Schema changes (adding/removing fields)",
+        "Serialization format changes",
+        "When mass invalidation is expensive",
+        "For every cache update"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Key versioning suits: schema changes, format changes, avoiding mass invalidation. It's overhead for every update — use event-driven invalidation for normal updates, versioning for breaking changes."
+    },
+    {
+      "id": "cache-inv-019",
+      "type": "multiple-choice",
+      "question": "What is 'cache tagging' for invalidation?",
+      "options": [
+        "Tagging cache entries for organization",
+        "Associating cache entries with tags so you can invalidate by tag (all entries with tag X)",
+        "HTML tags in cache",
+        "Tagging cache servers"
+      ],
+      "correct": 1,
+      "explanation": "Cache tagging: entries are tagged (e.g., 'product:123', 'category:electronics'). To invalidate, specify tag — all entries with that tag are invalidated. Useful for bulk invalidation of related entries."
+    },
+    {
+      "id": "cache-inv-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product pages are tagged with category. Category 'electronics' is renamed. How do you invalidate all affected product pages?",
+          "options": [
+            "Identify and delete each product page individually",
+            "Invalidate by tag 'category:electronics' — all tagged entries deleted",
+            "Wait for TTL",
+            "Delete entire cache"
+          ],
+          "correct": 1,
+          "explanation": "Tag invalidation: invalidate('category:electronics') deletes all entries tagged with it. No need to know individual product IDs. Efficient bulk invalidation for related entries."
+        },
+        {
+          "question": "How is the tag-to-entries mapping typically stored?",
+          "options": [
+            "In the cache entry itself",
+            "Separate index: tag → list of cache keys",
+            "In the database",
+            "Not stored anywhere"
+          ],
+          "correct": 1,
+          "explanation": "Tag index: maintain mapping tag → [key1, key2, ...]. When invalidating tag, lookup keys and delete them. Can be in Redis SET, separate table, or cache with tag support (Varnish). Extra storage overhead."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-021",
+      "type": "numeric-input",
+      "question": "1000 product pages are tagged 'category:electronics'. You invalidate this tag. How many cache deletions occur?",
+      "answer": 1000,
+      "unit": "deletions",
+      "tolerance": "exact",
+      "explanation": "All 1000 tagged entries are deleted. Tag invalidation affects all entries with that tag. Efficient for bulk operations but can be costly if many entries affected."
+    },
+    {
+      "id": "cache-inv-022",
+      "type": "multiple-choice",
+      "question": "What is 'cascading invalidation'?",
+      "options": [
+        "Invalidation that fails",
+        "When invalidating one entry triggers invalidation of dependent entries",
+        "Waterfall cache pattern",
+        "Sequential invalidation"
+      ],
+      "correct": 1,
+      "explanation": "Cascading invalidation: entry A depends on B. Invalidating B should also invalidate A. Example: invalidating a product should invalidate category pages containing that product. Requires dependency tracking."
+    },
+    {
+      "id": "cache-inv-023",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product 123 is in categories A, B, C. Product price changes. What needs invalidation?",
+          "options": [
+            "Only product 123 cache",
+            "Product 123, plus category A, B, C caches (they display this product)",
+            "Only category caches",
+            "All products"
+          ],
+          "correct": 1,
+          "explanation": "Cascade: product 123 changes → invalidate product cache AND all dependent caches (category pages showing this product). The change cascades to all dependent views."
+        },
+        {
+          "question": "Category A also appears on the homepage 'featured categories'. What else needs invalidation?",
+          "options": [
+            "Nothing more",
+            "Homepage cache (it displays category A which contains changed product)",
+            "All homepages",
+            "Only category A"
+          ],
+          "correct": 1,
+          "explanation": "Cascade continues: product → categories → homepage. If homepage displays category A, and category A contains product 123, homepage is affected. Deep dependency chains are hard to track."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-024",
+      "type": "multi-select",
+      "question": "What are challenges with cascading invalidation?",
+      "options": [
+        "Tracking all dependencies (deep chains)",
+        "Performance (invalidating many entries)",
+        "Risk of over-invalidation (invalidating too much)",
+        "Simple to implement"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cascading challenges: tracking deep dependency chains, performance cost of mass invalidation, over-invalidation (being too aggressive). It's NOT simple — dependency tracking is complex."
+    },
+    {
+      "id": "cache-inv-025",
+      "type": "multiple-choice",
+      "question": "What is 'pub/sub invalidation'?",
+      "options": [
+        "Publishing and subscribing to cache",
+        "Using publish/subscribe messaging to broadcast cache invalidation events to all cache clients",
+        "Public cache invalidation",
+        "Subscription-based caching"
+      ],
+      "correct": 1,
+      "explanation": "Pub/sub invalidation: when data changes, publish invalidation event to a channel. All cache clients subscribe and receive event, then invalidate their local copies. Ensures distributed caches stay in sync."
+    },
+    {
+      "id": "cache-inv-026",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "10 app servers each have local in-process cache. User 123 updates profile on server 1. How do other servers know to invalidate?",
+          "options": [
+            "They don't — caches diverge",
+            "Server 1 publishes 'invalidate user:123' to pub/sub; servers 2-10 receive and invalidate",
+            "Database notifies all servers",
+            "Users must hit same server"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub: server 1 publishes invalidation event. All subscribed servers (2-10) receive it and delete 'user:123' from their local cache. Distributed invalidation without direct server-to-server communication."
+        },
+        {
+          "question": "What if a server misses the pub/sub message?",
+          "options": [
+            "No problem — messages are guaranteed",
+            "That server's cache stays stale until TTL expires (TTL is safety net)",
+            "System crashes",
+            "Message is re-sent automatically"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub is typically at-most-once (messages can be lost). If missed, cache stays stale. TTL provides safety net — even if invalidation fails, data expires eventually. Belt and suspenders: pub/sub + TTL."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-027",
+      "type": "multi-select",
+      "question": "What are benefits of pub/sub invalidation?",
+      "options": [
+        "Decoupled — publisher doesn't need to know all subscribers",
+        "Scales to many cache instances",
+        "Near real-time invalidation across distributed caches",
+        "Guaranteed delivery"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Pub/sub benefits: decoupled (add/remove instances freely), scalable (one publish, N receives), near real-time. Most pub/sub systems don't guarantee delivery (at-most-once), so pair with TTL for safety."
+    },
+    {
+      "id": "cache-inv-028",
+      "type": "multiple-choice",
+      "question": "What is 'write-through invalidation'?",
+      "options": [
+        "Invalid writes",
+        "Updating the cache atomically as part of the write operation (not separate invalidation)",
+        "Writing through the cache",
+        "Invalid write-through"
+      ],
+      "correct": 1,
+      "explanation": "Write-through invalidation: instead of separate 'write DB then invalidate cache', do both together. Cache is always updated as part of write flow. Ensures cache is never stale after your own writes."
+    },
+    {
+      "id": "cache-inv-029",
+      "type": "ordering",
+      "question": "For write-through invalidation, order these operations:",
+      "items": [
+        "Acknowledge to client",
+        "Write to database",
+        "Update/invalidate cache",
+        "Receive write request"
+      ],
+      "correctOrder": [3, 1, 2, 0],
+      "explanation": "Receive request → Write to DB → Update/invalidate cache → Acknowledge. Both DB and cache operations complete before ack. This ensures consistency but increases latency."
+    },
+    {
+      "id": "cache-inv-030",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Write-through: you update DB, then update cache. DB succeeds, cache update fails. What should happen?",
+          "options": [
+            "Return success (DB worked)",
+            "Roll back DB write or retry cache update — don't leave inconsistent state",
+            "Ignore cache failure",
+            "Cache will fix itself"
+          ],
+          "correct": 1,
+          "explanation": "Consistency requires both succeed or both fail. Options: retry cache update, roll back DB (if possible), or accept inconsistency with TTL cleanup. True write-through treats this as a failure."
+        },
+        {
+          "question": "This is similar to what database concept?",
+          "options": [
+            "Index",
+            "Distributed transaction / two-phase commit",
+            "Stored procedure",
+            "Replication"
+          ],
+          "correct": 1,
+          "explanation": "Write-through is effectively a distributed transaction between DB and cache. Both must succeed atomically. This is why it's complex — distributed transactions are hard."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-031",
+      "type": "multiple-choice",
+      "question": "What is 'delete vs update' debate in cache invalidation?",
+      "options": [
+        "Whether to delete data",
+        "Whether to delete cache entry or update it with new value on write",
+        "Deleting updates",
+        "Update deletions"
+      ],
+      "correct": 1,
+      "explanation": "On data change: delete cache entry (invalidate) or update it with new value? Delete is simpler and avoids race conditions. Update gives immediate read-after-write but risks races. Delete is generally preferred."
+    },
+    {
+      "id": "cache-inv-032",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Why is 'delete on write' generally preferred over 'update on write'?",
+          "options": [
+            "Delete is faster",
+            "Delete avoids race conditions where concurrent read could see stale value written to cache",
+            "Update is not supported",
+            "Delete uses less memory"
+          ],
+          "correct": 1,
+          "explanation": "Race condition with update: Thread A reads old value from DB. Thread B writes new value, updates cache. Thread A writes old value to cache. Cache now has stale data. Delete avoids this — worst case is extra cache miss."
+        },
+        {
+          "question": "When might 'update on write' be acceptable?",
+          "options": [
+            "Never",
+            "When read-after-write consistency is critical and you can handle race conditions",
+            "Always",
+            "When memory is limited"
+          ],
+          "correct": 1,
+          "explanation": "Update if: read-after-write is critical (user must see their change), you handle races (versioning, CAS operations), and you accept the complexity. Many choose delete for simplicity plus short TTL."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-033",
+      "type": "multiple-choice",
+      "question": "What is a 'compare-and-set' (CAS) operation for cache updates?",
+      "options": [
+        "Comparing cache sizes",
+        "Only update cache if current value matches expected value (prevents race overwrites)",
+        "Setting up comparisons",
+        "Cache assertions"
+      ],
+      "correct": 1,
+      "explanation": "CAS: 'set value to X only if current value is Y'. Prevents race condition where stale value overwrites fresh. If value changed (someone else updated), CAS fails, you retry. Atomic conditional update."
+    },
+    {
+      "id": "cache-inv-034",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Thread A: CAS(key, old_value, new_value). Concurrently, Thread B already updated key to different_value. What happens to A's CAS?",
+          "options": [
+            "A's update succeeds",
+            "A's CAS fails (current value doesn't match expected old_value)",
+            "Both updates succeed",
+            "Deadlock"
+          ],
+          "correct": 1,
+          "explanation": "CAS fails: A expected old_value but found different_value. A must retry — re-read current value, recompute, CAS again. This prevents lost updates from race conditions."
+        },
+        {
+          "question": "What should Thread A do after CAS failure?",
+          "options": [
+            "Give up",
+            "Retry: read new value, apply logic, CAS again",
+            "Force update anyway",
+            "Delete the key"
+          ],
+          "correct": 1,
+          "explanation": "Retry loop: read current value, compute new value, CAS. If fails, repeat. Eventually succeeds (or give up after N attempts). This is optimistic concurrency control."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-035",
+      "type": "multiple-choice",
+      "question": "What is 'cache stampede' during invalidation?",
+      "options": [
+        "Cache running too fast",
+        "Many requests hitting origin simultaneously after a popular cache entry is invalidated",
+        "Stamping cache entries",
+        "Invalid cache"
+      ],
+      "correct": 1,
+      "explanation": "Cache stampede: popular entry is invalidated, many concurrent requests find cache empty, all hit origin simultaneously. Origin is overwhelmed. Same as TTL expiration stampede but triggered by invalidation."
+    },
+    {
+      "id": "cache-inv-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You invalidate a cache entry serving 10,000 req/sec. What happens immediately after?",
+          "options": [
+            "Normal traffic continues",
+            "Up to 10,000 concurrent requests may hit the origin (stampede)",
+            "Origin handles it easily",
+            "Traffic stops"
+          ],
+          "correct": 1,
+          "explanation": "Invalidation creates instant cache miss for all concurrent requests. At 10K/sec, many requests simultaneously see empty cache and fetch from origin. Potential origin overload."
+        },
+        {
+          "question": "How do you prevent stampede during invalidation?",
+          "options": [
+            "Never invalidate",
+            "Use request coalescing: one request fetches, others wait",
+            "Faster origin",
+            "Larger cache"
+          ],
+          "correct": 1,
+          "explanation": "Request coalescing / singleflight: on cache miss, first request acquires lock and fetches. Concurrent requests wait for that fetch. All get the result from one origin request. 10K requests → 1 origin call."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-037",
+      "type": "multi-select",
+      "question": "What techniques prevent stampede on invalidation?",
+      "options": [
+        "Request coalescing (dedupe concurrent fetches)",
+        "Soft invalidation (mark stale, refresh in background)",
+        "Lock on fetch (one fetches, others wait)",
+        "Invalidating more entries"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Prevent stampede: coalescing (share fetches), soft invalidation (serve stale while refreshing), locking (serialize fetches). Invalidating more entries would make stampede worse, not better."
+    },
+    {
+      "id": "cache-inv-038",
+      "type": "multiple-choice",
+      "question": "What is 'soft invalidation'?",
+      "options": [
+        "Gentle invalidation",
+        "Marking entry as stale while still serving it, refreshing in background",
+        "Soft delete",
+        "Partial invalidation"
+      ],
+      "correct": 1,
+      "explanation": "Soft invalidation: instead of deleting entry, mark it as 'stale'. Continue serving stale data while background process refreshes. Prevents stampede (stale data absorbs traffic). Similar to stale-while-revalidate."
+    },
+    {
+      "id": "cache-inv-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You soft-invalidate a cache entry. It's marked stale but still present. What happens on next read?",
+          "options": [
+            "Cache miss",
+            "Return stale data, trigger background refresh",
+            "Error",
+            "Wait for refresh"
+          ],
+          "correct": 1,
+          "explanation": "Soft invalidation: entry marked stale. Read returns stale data immediately (no user-visible delay). Background fetch refreshes the entry. User sees stale data; next reader sees fresh."
+        },
+        {
+          "question": "1000 concurrent reads arrive for soft-invalidated entry. How many origin requests?",
+          "options": [
+            "1000",
+            "1 (first triggers background refresh, all serve stale)",
+            "0",
+            "500"
+          ],
+          "correct": 1,
+          "explanation": "Soft invalidation + background refresh: first read triggers refresh, all reads serve stale. One origin request total. Stampede prevented. 1000 requests served instantly with stale data."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-040",
+      "type": "ordering",
+      "question": "Rank invalidation approaches by potential for stampede (highest risk to lowest):",
+      "items": ["Hard delete (immediate removal)", "Soft invalidation with background refresh", "Version-based (new key)", "TTL expiration with jitter"],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Hard delete: instant miss, stampede. Version-based: miss on new key, stampede possible. TTL with jitter: spread expiration. Soft invalidation: serves stale, minimal stampede. Soft is safest."
+    },
+    {
+      "id": "cache-inv-041",
+      "type": "multiple-choice",
+      "question": "What is 'write-behind invalidation'?",
+      "options": [
+        "Invalid write-behind",
+        "Queuing invalidation operations for async processing",
+        "Writing behind the cache",
+        "Invalidating writes"
+      ],
+      "correct": 1,
+      "explanation": "Write-behind invalidation: don't invalidate synchronously. Queue invalidation events, process async. Reduces write latency but introduces delay before cache is invalidated. Trade-off: speed vs. freshness."
+    },
+    {
+      "id": "cache-inv-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Synchronous invalidation takes 5ms. With async/write-behind, write latency is reduced. What's the trade-off?",
+          "options": [
+            "No trade-off",
+            "Cache may be briefly stale (until async invalidation processes)",
+            "Cache is always fresh",
+            "More memory usage"
+          ],
+          "correct": 1,
+          "explanation": "Async invalidation: write returns immediately, invalidation happens later (milliseconds to seconds). Brief window where cache is stale. Acceptable for many use cases; problematic if immediate freshness needed."
+        },
+        {
+          "question": "Async invalidation queue backs up under load. Invalidations are delayed 30 seconds. Impact?",
+          "options": [
+            "No impact",
+            "Cache serves stale data for up to 30 seconds after writes",
+            "Writes fail",
+            "Cache empties"
+          ],
+          "correct": 1,
+          "explanation": "Queue delay = staleness window. 30-second backup means up to 30-second staleness. For high-traffic systems, size queues appropriately and monitor lag. Alert on excessive delay."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-043",
+      "type": "multiple-choice",
+      "question": "What is 'cache coherence' in distributed systems?",
+      "options": [
+        "Cache consistency",
+        "Ensuring all caches have the same data (or are properly invalidated) when source changes",
+        "Coherent caching",
+        "Cache agreement"
+      ],
+      "correct": 1,
+      "explanation": "Cache coherence: when data changes, all caches reflect it (either updated or invalidated). Without coherence, different caches serve different versions — inconsistent user experience."
+    },
+    {
+      "id": "cache-inv-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "5 servers each have local cache. User updates profile on server 1, which invalidates its local cache. What about servers 2-5?",
+          "options": [
+            "Automatically invalidated",
+            "Still have stale data (cache incoherence)",
+            "Don't have cache",
+            "Invalidated by database"
+          ],
+          "correct": 1,
+          "explanation": "Local caches are independent. Server 1 invalidated; servers 2-5 don't know about the change. Users hitting servers 2-5 see stale data. This is cache incoherence."
+        },
+        {
+          "question": "How do you achieve cache coherence across these servers?",
+          "options": [
+            "Use only server 1",
+            "Pub/sub invalidation, shared distributed cache, or accept eventual consistency via TTL",
+            "Database triggers",
+            "Longer TTL"
+          ],
+          "correct": 1,
+          "explanation": "Options: (1) Pub/sub: broadcast invalidations. (2) Shared cache (Redis): single source of truth. (3) Accept eventual consistency: short TTL ensures bounded staleness. Choose based on consistency requirements."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-045",
+      "type": "multi-select",
+      "question": "What are approaches to maintain cache coherence?",
+      "options": [
+        "Shared distributed cache (Redis/Memcached)",
+        "Pub/sub invalidation broadcasts",
+        "Short TTL (eventual consistency)",
+        "Independent local caches with no coordination"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Coherence via: shared cache (one source of truth), pub/sub (propagate invalidations), short TTL (bounded staleness). Independent uncoordinated caches are incoherent — different views of data."
+    },
+    {
+      "id": "cache-inv-046",
+      "type": "multiple-choice",
+      "question": "What is 'lazy invalidation'?",
+      "options": [
+        "Invalidating slowly",
+        "Don't explicitly invalidate; let entries expire via TTL or eviction",
+        "Lazy loading and invalidation",
+        "Invalid lazy evaluation"
+      ],
+      "correct": 1,
+      "explanation": "Lazy invalidation: no explicit invalidation logic. Set appropriate TTL, let entries naturally expire. Simple (no invalidation code) but bounded freshness (up to TTL staleness). Works when eventual consistency is acceptable."
+    },
+    {
+      "id": "cache-inv-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You choose lazy invalidation with 5-minute TTL. Product price changes. When does cache reflect it?",
+          "options": [
+            "Immediately",
+            "Up to 5 minutes later (when TTL expires)",
+            "Never",
+            "Depends on access pattern"
+          ],
+          "correct": 1,
+          "explanation": "Lazy invalidation: no explicit action on price change. Cache serves old price until TTL expires (up to 5 minutes). Then cache miss, fresh price fetched. Maximum staleness = TTL."
+        },
+        {
+          "question": "For an e-commerce site, is 5-minute price staleness acceptable?",
+          "options": [
+            "Always acceptable",
+            "Depends — maybe OK for browsing, but checkout should verify real-time price",
+            "Never acceptable",
+            "5 minutes is too short"
+          ],
+          "correct": 1,
+          "explanation": "Browsing: slightly stale prices are usually fine (user sees final price at checkout). Checkout: must verify current price before charging. Lazy invalidation for browsing; real-time check for transactions."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-048",
+      "type": "ordering",
+      "question": "Rank these invalidation strategies by implementation complexity (simplest to most complex):",
+      "items": ["Lazy (TTL only)", "Event-driven (delete on write)", "Cascading invalidation", "Pub/sub distributed invalidation"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "TTL-only: no code needed. Event-driven delete: add delete call on write. Pub/sub: messaging infrastructure. Cascading: dependency tracking and propagation logic. Cascading is most complex."
+    },
+    {
+      "id": "cache-inv-049",
+      "type": "multiple-choice",
+      "question": "What is 'invalidation on write' pattern?",
+      "options": [
+        "Invalid writes",
+        "Automatically invalidating cache as part of every write operation",
+        "Writing invalidations",
+        "Invalid on write errors"
+      ],
+      "correct": 1,
+      "explanation": "Invalidation on write: every DB write includes cache invalidation as part of the operation. Typically implemented via ORM hooks, database triggers, or application middleware. Ensures cache is invalidated for every write."
+    },
+    {
+      "id": "cache-inv-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You add an ORM after_save hook to invalidate cache. A developer writes a raw SQL query bypassing ORM. What happens?",
+          "options": [
+            "Cache is still invalidated",
+            "Cache is NOT invalidated (raw SQL bypasses hooks)",
+            "Query fails",
+            "ORM intercepts raw SQL"
+          ],
+          "correct": 1,
+          "explanation": "ORM hooks only fire for ORM operations. Raw SQL bypasses ORM entirely — no hook, no invalidation. Cache becomes stale. Must ensure ALL writes go through invalidation path, or use DB-level triggers."
+        },
+        {
+          "question": "How can you ensure all writes trigger invalidation, even raw SQL?",
+          "options": [
+            "Ban raw SQL",
+            "Database triggers (fire on table change regardless of how write occurred)",
+            "More ORM hooks",
+            "It's impossible"
+          ],
+          "correct": 1,
+          "explanation": "Database triggers fire on any write (ORM, raw SQL, migrations, admin tools). They catch all changes. Trade-off: DB-level logic, potential performance impact, harder to debug. Alternative: CDC (change data capture)."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-051",
+      "type": "multiple-choice",
+      "question": "What is 'Change Data Capture' (CDC) for cache invalidation?",
+      "options": [
+        "Capturing changed files",
+        "Reading database transaction logs to detect changes and trigger invalidation",
+        "Data capture software",
+        "Change management"
+      ],
+      "correct": 1,
+      "explanation": "CDC reads database transaction/binlog to detect changes. Every committed change is captured, regardless of how it was made (ORM, raw SQL, etc.). Reliable source for triggering cache invalidation. Tools: Debezium, AWS DMS."
+    },
+    {
+      "id": "cache-inv-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "CDC captures: 'UPDATE users SET name='Bob' WHERE id=123'. What cache action should follow?",
+          "options": [
+            "Nothing",
+            "Invalidate cache key 'user:123'",
+            "Update database",
+            "Delete all user caches"
+          ],
+          "correct": 1,
+          "explanation": "CDC event shows user 123 changed. Invalidate (or update) cache entry 'user:123'. CDC provides reliable change stream for cache invalidation regardless of how change occurred."
+        },
+        {
+          "question": "What's a benefit of CDC over application-level invalidation?",
+          "options": [
+            "Faster writes",
+            "Captures ALL changes (including raw SQL, migrations, external tools)",
+            "No latency",
+            "Simpler setup"
+          ],
+          "correct": 1,
+          "explanation": "CDC captures every committed change — application code, raw SQL, admin scripts, migrations. No bypass possible. Application-level hooks can miss non-application writes. CDC is comprehensive but requires setup."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-053",
+      "type": "multi-select",
+      "question": "What are benefits of CDC-based cache invalidation?",
+      "options": [
+        "Captures all database changes (no bypass)",
+        "Decoupled from application code",
+        "Zero latency",
+        "Can be processed asynchronously"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "CDC benefits: comprehensive (all changes), decoupled (separate from app), async-friendly (batch process changes). There IS latency (reads logs, processes events) — not zero, but typically milliseconds to seconds."
+    },
+    {
+      "id": "cache-inv-054",
+      "type": "multiple-choice",
+      "question": "What is 'database trigger' based invalidation?",
+      "options": [
+        "Triggering the database",
+        "Using SQL triggers to fire cache invalidation when data changes",
+        "Trigger databases",
+        "Invalid triggers"
+      ],
+      "correct": 1,
+      "explanation": "DB triggers: AFTER UPDATE/INSERT/DELETE trigger fires, calls external service or writes to invalidation queue. Catches all changes at DB level. Trade-off: couples cache logic to database, can impact DB performance."
+    },
+    {
+      "id": "cache-inv-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You create: CREATE TRIGGER invalidate_user AFTER UPDATE ON users FOR EACH ROW CALL notify_cache(NEW.id). What's a concern?",
+          "options": [
+            "No concerns",
+            "Trigger adds latency to every update; external calls from DB are risky",
+            "Trigger doesn't work",
+            "Users can't be updated"
+          ],
+          "correct": 1,
+          "explanation": "Concerns: (1) Trigger latency on every write. (2) External calls (HTTP, etc.) from triggers are risky — if cache service is down, writes fail. (3) DB-level code is harder to maintain/test."
+        },
+        {
+          "question": "Safer alternative to direct external call in trigger?",
+          "options": [
+            "Longer trigger",
+            "Write to invalidation queue/table; separate process consumes and invalidates",
+            "No trigger",
+            "Inline cache logic in trigger"
+          ],
+          "correct": 1,
+          "explanation": "Outbox pattern: trigger writes to 'invalidation_queue' table (fast, local). Separate process polls queue and does actual invalidation. Decouples DB write from external calls. DB stays fast; failures are isolated."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-056",
+      "type": "multiple-choice",
+      "question": "What is the 'transactional outbox' pattern for invalidation?",
+      "options": [
+        "Outbox for transactions",
+        "Writing invalidation events to a DB table in same transaction as data change; processing async",
+        "Transaction output",
+        "Boxing transactions"
+      ],
+      "correct": 1,
+      "explanation": "Transactional outbox: within the data-change transaction, also write to an 'outbox' table. Commit includes both. Separate process reads outbox and triggers invalidation. Atomic: if write commits, invalidation event is recorded."
+    },
+    {
+      "id": "cache-inv-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Transaction: UPDATE users SET name='Bob' WHERE id=123; INSERT INTO outbox (event) VALUES ('invalidate:user:123'); COMMIT. What's guaranteed?",
+          "options": [
+            "Nothing",
+            "If user update commits, invalidation event is recorded (atomic)",
+            "Cache is invalidated",
+            "Both or neither"
+          ],
+          "correct": 1,
+          "explanation": "Same transaction = atomic. Both succeed or both fail. If transaction commits, outbox has the event. Invalidation will happen when outbox is processed. No lost invalidations due to partial failure."
+        },
+        {
+          "question": "What processes the outbox?",
+          "options": [
+            "The user",
+            "Separate worker polls outbox, processes events, deletes processed entries",
+            "Database automatically",
+            "Cache processes it"
+          ],
+          "correct": 1,
+          "explanation": "Outbox processor: worker polls outbox table, takes events, triggers cache invalidation, marks events as processed (or deletes). Can batch, retry failures, run distributed. Decoupled from main transaction."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-058",
+      "type": "ordering",
+      "question": "Order these by reliability of capturing changes (most reliable to least):",
+      "items": ["CDC (transaction log)", "Transactional outbox", "ORM hooks", "Manual invalidation calls"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "CDC: captures everything from DB log. Outbox: atomic with transaction. ORM hooks: miss raw SQL. Manual calls: rely on developer remembering. CDC/outbox are most reliable."
+    },
+    {
+      "id": "cache-inv-059",
+      "type": "multiple-choice",
+      "question": "What is 'invalidation failure' handling?",
+      "options": [
+        "Handling invalid code",
+        "What to do when cache invalidation operation fails (network error, cache down)",
+        "Failing at invalidation",
+        "Handling success"
+      ],
+      "correct": 1,
+      "explanation": "Invalidation can fail: network issues, cache server down, timeout. Need strategy: retry, queue for later, accept staleness until TTL, alert. Unhandled failure = stale data persists."
+    },
+    {
+      "id": "cache-inv-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You invalidate cache key 'user:123'. Redis is temporarily unreachable. The invalidation fails. What's the consequence?",
+          "options": [
+            "No consequence",
+            "Cache has stale data until TTL expires or next successful invalidation",
+            "User 123 can't login",
+            "Data is corrupted"
+          ],
+          "correct": 1,
+          "explanation": "Failed invalidation = stale data persists. If user 123's profile changed but cache wasn't invalidated, old profile is served. TTL provides safety net (eventual expiration)."
+        },
+        {
+          "question": "What's a good strategy for handling this?",
+          "options": [
+            "Ignore failures",
+            "Retry with backoff, queue failed invalidations, ensure TTL as safety net",
+            "Disable caching",
+            "Block writes until cache is available"
+          ],
+          "correct": 1,
+          "explanation": "Robust handling: (1) Retry with exponential backoff. (2) Queue failed invalidations for later. (3) TTL ensures bounded staleness even if invalidation permanently fails. Don't block writes on cache."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-061",
+      "type": "multi-select",
+      "question": "What are strategies for handling invalidation failures?",
+      "options": [
+        "Retry with exponential backoff",
+        "Queue failed invalidations for later processing",
+        "Short TTL as safety net",
+        "Fail the original write"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Handle failures: retry (may succeed), queue (process later), TTL backup (bounded staleness). Failing the original write is usually too aggressive — cache is optimization, shouldn't block core functionality."
+    },
+    {
+      "id": "cache-inv-062",
+      "type": "multiple-choice",
+      "question": "What is 'selective invalidation'?",
+      "options": [
+        "Selecting what to invalidate",
+        "Invalidating only the specific entries affected by a change, not entire cache",
+        "Random invalidation",
+        "Selective caching"
+      ],
+      "correct": 0,
+      "explanation": "Selective invalidation: precisely invalidate only affected entries. User 123 changes → invalidate only 'user:123', not all users. More complex (need to know dependencies) but efficient. Opposite of 'invalidate everything'."
+    },
+    {
+      "id": "cache-inv-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "1 product out of 10,000 changes. Approach A: invalidate that 1 product. Approach B: invalidate all 10,000 products. What's the impact of each?",
+          "options": [
+            "Same impact",
+            "A: 1 cache miss, minimal impact. B: 10,000 cache misses, potential stampede",
+            "B is better",
+            "A causes more misses"
+          ],
+          "correct": 1,
+          "explanation": "Selective (A): 1 miss, 1 DB query. Blanket (B): 10,000 misses, potential 10,000 DB queries. Selective is much more efficient. Blanket invalidation should be rare (schema changes, etc.)."
+        },
+        {
+          "question": "When might blanket invalidation be appropriate?",
+          "options": [
+            "For every write",
+            "Major schema changes, cache corruption, security incidents requiring fresh data",
+            "Never",
+            "Daily maintenance"
+          ],
+          "correct": 1,
+          "explanation": "Blanket invalidation for: breaking changes (schema incompatibility), corruption recovery, security (ensure fresh auth state). Not for routine changes — too costly. Use selective for normal operations."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-064",
+      "type": "numeric-input",
+      "question": "Selective invalidation: 1 entry. Blanket invalidation: 10,000 entries. Both have 100 req/sec traffic. How many more origin requests does blanket cause in the first second?",
+      "answer": 9999,
+      "unit": "requests",
+      "tolerance": 10,
+      "explanation": "Selective: ~1 miss (that entry). Blanket: potentially up to 10,000 misses if all entries accessed. Difference ≈ 9,999 extra requests. In practice, depends on which entries are accessed."
+    },
+    {
+      "id": "cache-inv-065",
+      "type": "multiple-choice",
+      "question": "What is 'coarse-grained vs fine-grained' invalidation?",
+      "options": [
+        "Invalidation size",
+        "Coarse: invalidate broad groups (all user caches). Fine: invalidate specific entries (user:123)",
+        "Grain of data",
+        "Cache granularity"
+      ],
+      "correct": 1,
+      "explanation": "Coarse-grained: 'invalidate all users' — simple but causes many misses. Fine-grained: 'invalidate user:123' — precise but requires knowing exact keys. Trade-off: simplicity vs. efficiency."
+    },
+    {
+      "id": "cache-inv-066",
+      "type": "ordering",
+      "question": "Rank these by granularity (finest to coarsest):",
+      "items": ["Invalidate user:123:profile", "Invalidate user:123:*", "Invalidate all users", "Clear entire cache"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Specific field (finest) → User's entries → All users → Entire cache (coarsest). Finer is more efficient; coarser is simpler but more impactful."
+    },
+    {
+      "id": "cache-inv-067",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You need to invalidate 'user:123:profile', 'user:123:feed', 'user:123:settings' when user 123 changes. What approach?",
+          "options": [
+            "Three separate invalidation calls",
+            "Pattern-based: invalidate 'user:123:*'",
+            "Invalidate all users",
+            "Don't invalidate"
+          ],
+          "correct": 1,
+          "explanation": "Pattern invalidation: 'user:123:*' matches all entries for user 123. One call invalidates all related entries. Requires cache supporting patterns (Redis SCAN, etc.)."
+        },
+        {
+          "question": "Pattern 'user:123:*' is used. Later, you add 'user:123:orders' cache. Does it get invalidated?",
+          "options": [
+            "No — need to update invalidation code",
+            "Yes — pattern '*' matches any suffix including 'orders'",
+            "Only if explicitly added",
+            "Patterns don't work that way"
+          ],
+          "correct": 1,
+          "explanation": "Pattern 'user:123:*' matches any key starting with 'user:123:'. New 'user:123:orders' is automatically covered. Pattern-based invalidation is extensible — new keys matching pattern are included."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-068",
+      "type": "multiple-choice",
+      "question": "Redis SCAN can find keys matching a pattern. Why not use KEYS command for invalidation?",
+      "options": [
+        "KEYS is fine to use",
+        "KEYS blocks Redis (single-threaded) while scanning all keys — use SCAN instead",
+        "KEYS doesn't support patterns",
+        "SCAN is slower"
+      ],
+      "correct": 1,
+      "explanation": "Redis KEYS scans entire keyspace in one blocking operation — can freeze Redis for seconds with millions of keys. SCAN is cursor-based, non-blocking. Always use SCAN in production for pattern matching."
+    },
+    {
+      "id": "cache-inv-069",
+      "type": "multi-select",
+      "question": "What are drawbacks of pattern-based invalidation?",
+      "options": [
+        "Requires scanning keys (can be slow)",
+        "May accidentally match unintended keys",
+        "Need to design consistent key naming scheme",
+        "Works perfectly with no issues"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Drawbacks: scanning can be slow (many keys), pattern might match unintended keys (user:123 vs user:1234), requires disciplined key naming. Not without issues — use carefully."
+    },
+    {
+      "id": "cache-inv-070",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Pattern 'user:123*' used to invalidate user 123. Cache also has 'user:1234'. What happens?",
+          "options": [
+            "Only user:123* matched",
+            "Both user:123* and user:1234* matched (unintended!)",
+            "Pattern fails",
+            "Nothing matches"
+          ],
+          "correct": 1,
+          "explanation": "Pattern 'user:123*' matches 'user:123', 'user:123:profile', AND 'user:1234', 'user:1234:profile'. Unintended match! User 1234's cache is incorrectly invalidated."
+        },
+        {
+          "question": "How do you fix this?",
+          "options": [
+            "Use longer IDs",
+            "Use delimiter in pattern: 'user:123:*' to match only user 123's sub-keys",
+            "Don't use patterns",
+            "Rename users"
+          ],
+          "correct": 1,
+          "explanation": "Key design: use delimiter (colon) consistently. 'user:123:*' matches user 123's keys. 'user:1234:*' matches 1234's. The delimiter prevents prefix collisions."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-071",
+      "type": "multiple-choice",
+      "question": "What is 'write-around' related to invalidation?",
+      "options": [
+        "Writing around the cache",
+        "Not updating cache on write (write to DB, don't touch cache); relies on TTL/explicit invalidation",
+        "Around the clock writing",
+        "Circular writing"
+      ],
+      "correct": 1,
+      "explanation": "Write-around: writes bypass cache entirely (DB only). Cache isn't updated on write. Freshness relies on TTL expiration or explicit invalidation later. Simpler but may serve stale until next miss."
+    },
+    {
+      "id": "cache-inv-072",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Write-around: you update DB, don't touch cache. Cache has old data. When does user see new data?",
+          "options": [
+            "Immediately",
+            "On next cache miss (TTL expiration or eviction)",
+            "Never",
+            "After reboot"
+          ],
+          "correct": 1,
+          "explanation": "Write-around: cache keeps old data until it expires (TTL) or is evicted. Next cache miss fetches fresh from DB. Staleness window = remaining TTL."
+        },
+        {
+          "question": "When is write-around appropriate?",
+          "options": [
+            "When immediate read-after-write is critical",
+            "When data is written but rarely re-read immediately",
+            "Always",
+            "Never"
+          ],
+          "correct": 1,
+          "explanation": "Write-around suits: write-heavy data that's not immediately re-read (logs, historical data). Avoids polluting cache. NOT for data where user expects to see their changes immediately."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-073",
+      "type": "ordering",
+      "question": "Rank these write strategies by immediacy of cache freshness (fastest to slowest):",
+      "items": ["Write-through (update cache)", "Write + invalidate (delete from cache)", "Write-around (no cache action)", "Write-behind (async cache update)"],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "Write-through: immediate cache update. Write-behind: async but still updates cache. Write + invalidate: next read is fresh. Write-around: stale until TTL. First two keep cache populated; last two require fetch."
+    },
+    {
+      "id": "cache-inv-074",
+      "type": "multiple-choice",
+      "question": "What is 'CDN cache purge'?",
+      "options": [
+        "Purging the CDN",
+        "Requesting CDN to remove cached content from all edge servers",
+        "CDN cleaning",
+        "Cache deletion"
+      ],
+      "correct": 1,
+      "explanation": "CDN purge: API call to CDN to invalidate content across all edge servers. Needed when content must be updated before TTL. Note: propagation takes time (seconds to minutes) to reach all edges."
+    },
+    {
+      "id": "cache-inv-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "CDN has 200 edge servers worldwide. You purge a URL. How does invalidation propagate?",
+          "options": [
+            "Instantly to all edges",
+            "CDN central system notifies all edges, propagation takes seconds to minutes",
+            "Each edge independently checks",
+            "Manual update to each edge"
+          ],
+          "correct": 1,
+          "explanation": "CDN purge: central control plane distributes invalidation to all edges. Not instant — network latency, edge processing. Typically seconds, sometimes minutes. During propagation, some edges serve stale."
+        },
+        {
+          "question": "During purge propagation, user in Japan gets stale content, user in US gets fresh. Why?",
+          "options": [
+            "Bug",
+            "US edge received invalidation, Japan edge hasn't yet",
+            "Different TTLs",
+            "Network partition"
+          ],
+          "correct": 1,
+          "explanation": "Propagation delay: invalidation reached US edge first. Japan edge hasn't processed it yet. Eventually consistent. For critical content, may need longer window or origin verification."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-076",
+      "type": "multi-select",
+      "question": "What are considerations for CDN cache purge?",
+      "options": [
+        "Propagation delay (not instant)",
+        "Rate limits (CDNs may limit purge requests)",
+        "Cost (some CDNs charge for purges)",
+        "Always instant and free"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "CDN purge considerations: propagation takes time, rate limits exist (can't purge millions of URLs instantly), some CDNs charge (especially high volumes). Plan accordingly; prefer versioned URLs over frequent purging."
+    },
+    {
+      "id": "cache-inv-077",
+      "type": "numeric-input",
+      "question": "CDN charges $0.005 per purge request after 1,000 free/month. You purge 10,000 URLs. What's the cost?",
+      "answer": 45,
+      "unit": "dollars",
+      "tolerance": 0.1,
+      "explanation": "10,000 - 1,000 free = 9,000 charged. 9,000 × $0.005 = $45. Purge costs can add up. Batch purges (purge by path pattern) or versioned URLs are more economical."
+    },
+    {
+      "id": "cache-inv-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Alternative to purging: use versioned URLs (app.v2.js). Why is this often better?",
+          "options": [
+            "It's not better",
+            "No purge needed — new URL is automatically fresh; old URL can stay cached",
+            "More expensive",
+            "Slower"
+          ],
+          "correct": 1,
+          "explanation": "Versioned URLs: new version = new URL = cache miss = fresh fetch. Old URL stays cached (fine, not referenced). No purge request, no propagation delay, no cost. Best practice for static assets."
+        },
+        {
+          "question": "When must you use purge instead of versioned URLs?",
+          "options": [
+            "Always use purge",
+            "When URL can't change (SEO pages, API endpoints, canonical URLs)",
+            "Never use purge",
+            "When versioning is too complex"
+          ],
+          "correct": 1,
+          "explanation": "Can't version: SEO/canonical URLs (must be stable), API endpoints (clients use fixed URLs), shared URLs. For these, purge is necessary. Assets with build systems: prefer versioned URLs."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-079",
+      "type": "multiple-choice",
+      "question": "What is 'surrogate key' in CDN caching?",
+      "options": [
+        "Backup key",
+        "Custom header tagging cached responses for group invalidation (like cache tags)",
+        "Surrogate cache",
+        "Alternative key"
+      ],
+      "correct": 1,
+      "explanation": "Surrogate keys: tag CDN-cached responses with custom keys (e.g., 'product:123', 'category:electronics'). Invalidate by surrogate key — all tagged responses purged. Supported by Fastly, Varnish, etc."
+    },
+    {
+      "id": "cache-inv-080",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You set Surrogate-Key: product:123 product:category:5 on a product page response. Product 123 is updated. What do you purge?",
+          "options": [
+            "The specific URL",
+            "Surrogate key 'product:123' — all responses tagged with it",
+            "All products",
+            "Category 5 only"
+          ],
+          "correct": 1,
+          "explanation": "Purge surrogate key 'product:123'. All cached responses with that tag are invalidated. May include product page, category pages showing this product, search results, etc."
+        },
+        {
+          "question": "Category 5 name changes. Which surrogate key to purge?",
+          "options": [
+            "product:123",
+            "product:category:5 (all pages showing category 5)",
+            "All surrogate keys",
+            "Nothing"
+          ],
+          "correct": 1,
+          "explanation": "Purge 'product:category:5' — all pages tagged with category 5 content. One purge invalidates category page and all product pages in that category. Surrogate keys enable efficient group invalidation."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-081",
+      "type": "multi-select",
+      "question": "What are benefits of surrogate keys?",
+      "options": [
+        "Invalidate groups of related content with one call",
+        "Don't need to know exact URLs",
+        "Tag responses with semantic meaning (product ID, category)",
+        "Available in all CDNs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Benefits: group invalidation, semantic tagging, don't need URL list. NOT available in all CDNs — check provider support (Fastly has strong support; CloudFront has tags but different model)."
+    },
+    {
+      "id": "cache-inv-082",
+      "type": "multiple-choice",
+      "question": "What is 'instant invalidation' vs 'eventual invalidation'?",
+      "options": [
+        "Same thing",
+        "Instant: cache invalidated synchronously with write. Eventual: invalidated asynchronously, some delay",
+        "Instant is impossible",
+        "Eventual is impossible"
+      ],
+      "correct": 1,
+      "explanation": "Instant: invalidation is part of write operation (synchronous, adds latency). Eventual: write completes, invalidation happens async (faster writes, brief staleness window). Choose based on freshness requirements."
+    },
+    {
+      "id": "cache-inv-083",
+      "type": "ordering",
+      "question": "Rank these invalidation approaches by latency overhead on writes (lowest to highest):",
+      "items": ["No invalidation (TTL only)", "Async invalidation (queue)", "Sync invalidation (delete in write path)", "Sync distributed invalidation (notify all caches)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "No invalidation: zero overhead. Async: minimal (queue write). Sync local: adds cache operation. Sync distributed: adds multiple network calls. More immediacy = more write latency."
+    },
+    {
+      "id": "cache-inv-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Sync invalidation adds 5ms to each write. You have 10,000 writes/sec. What's the total added latency per second?",
+          "options": [
+            "5ms total",
+            "50 seconds of added latency across all writes",
+            "5ms per write (unchanged)",
+            "No overhead"
+          ],
+          "correct": 2,
+          "explanation": "Each write takes 5ms longer. Total system impact: 10,000 × 5ms = 50,000ms = 50 seconds of compute time per second dedicated to invalidation. Per-write latency is 5ms."
+        },
+        {
+          "question": "To reduce this overhead, what could you do?",
+          "options": [
+            "More writes",
+            "Switch to async invalidation (queue invalidations, process separately)",
+            "Longer TTL",
+            "Faster database"
+          ],
+          "correct": 1,
+          "explanation": "Async: writes complete without waiting for invalidation. Invalidation processed from queue separately. Write latency drops, but brief staleness window introduced. Trade-off: speed vs. immediate freshness."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-085",
+      "type": "multiple-choice",
+      "question": "What is 'invalidation storms'?",
+      "options": [
+        "Weather affecting cache",
+        "Massive number of invalidations happening simultaneously, potentially overwhelming systems",
+        "Storm caching",
+        "Invalid weather data"
+      ],
+      "correct": 1,
+      "explanation": "Invalidation storm: event triggers mass invalidation (schema change, config update). Thousands of cache entries invalidated simultaneously → thousands of cache misses → origin overwhelmed. Like thundering herd but triggered by invalidation."
+    },
+    {
+      "id": "cache-inv-086",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Config change invalidates 100,000 cache entries at once. Traffic is 50,000 req/sec. What happens?",
+          "options": [
+            "Normal operation",
+            "Potential invalidation storm — mass misses, origin may be overwhelmed",
+            "Config is ignored",
+            "Cache doubles"
+          ],
+          "correct": 1,
+          "explanation": "100K entries invalidated = 100K potential misses. If accessed, all hit origin. 50K req/sec hitting cache-miss scenario could overwhelm origin. This is an invalidation storm."
+        },
+        {
+          "question": "How do you mitigate invalidation storms?",
+          "options": [
+            "Invalidate more",
+            "Stagger invalidation, use soft invalidation, or warm cache before invalidating",
+            "Ignore the problem",
+            "Disable cache"
+          ],
+          "correct": 1,
+          "explanation": "Mitigate: (1) Stagger invalidations over time. (2) Soft invalidation (serve stale while refreshing). (3) Warm replacement cache before invalidating old. (4) Request coalescing for concurrent misses."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-087",
+      "type": "multi-select",
+      "question": "Techniques to prevent invalidation storms:",
+      "options": [
+        "Gradual/staggered invalidation",
+        "Soft invalidation (stale-while-refresh)",
+        "Request coalescing",
+        "Invalidate everything at once"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Prevention: gradual (spread over time), soft (serve stale during refresh), coalescing (one origin request per key). Invalidating everything at once IS the storm, not prevention."
+    },
+    {
+      "id": "cache-inv-088",
+      "type": "multiple-choice",
+      "question": "What is 'proactive cache refresh' vs 'reactive invalidation'?",
+      "options": [
+        "Same thing",
+        "Proactive: refresh cache before/during data change. Reactive: invalidate after change, let next request repopulate",
+        "Proactive is worse",
+        "Reactive is proactive"
+      ],
+      "correct": 1,
+      "explanation": "Proactive: update cache as part of write (write-through) or pre-warm before invalidating. Reactive: invalidate, let subsequent read repopulate. Proactive avoids cache miss; reactive has miss after invalidation."
+    },
+    {
+      "id": "cache-inv-089",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Proactive refresh: on write, compute new value and update cache. Benefit?",
+          "options": [
+            "Simpler code",
+            "No cache miss after write — cache has fresh value immediately",
+            "Less cache memory",
+            "Faster writes"
+          ],
+          "correct": 1,
+          "explanation": "Proactive: cache is populated during write. Subsequent reads hit cache with fresh value. No miss penalty. Good for read-your-writes scenarios."
+        },
+        {
+          "question": "Drawback of proactive refresh?",
+          "options": [
+            "No drawbacks",
+            "Write operation is more complex/slower (must compute and store cached value)",
+            "Cache is always stale",
+            "More misses"
+          ],
+          "correct": 1,
+          "explanation": "Proactive adds to write path: compute cached representation, store it. More latency, more complexity. Also risk of computing value that may never be read. Trade-off: write complexity for read speed."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-090",
+      "type": "ordering",
+      "question": "For a social media 'like' count that's frequently read but also frequently updated, rank strategies (best to worst):",
+      "items": ["Write-through (update cache on like)", "Delete on write (invalidate)", "TTL only (no invalidation)", "Write-behind with cache update"],
+      "correctOrder": [3, 0, 1, 2],
+      "explanation": "Write-behind: async DB, cache updated immediately (fast writes, fresh reads). Write-through: sync, still good. Delete: causes miss on every like. TTL: very stale for active content. Likes need fast writes AND fresh reads."
+    },
+    {
+      "id": "cache-inv-091",
+      "type": "multiple-choice",
+      "question": "What is 'best-effort invalidation'?",
+      "options": [
+        "Best possible invalidation",
+        "Attempt invalidation but don't fail the write if it fails; accept potential staleness",
+        "Effort-based caching",
+        "Invalid efforts"
+      ],
+      "correct": 1,
+      "explanation": "Best-effort: try to invalidate, but if it fails (cache down, timeout), continue anyway. Write succeeds; cache may be stale. TTL provides safety net. Appropriate when cache staleness is tolerable."
+    },
+    {
+      "id": "cache-inv-092",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Strict invalidation: if cache invalidation fails, fail the entire write. When is this appropriate?",
+          "options": [
+            "Always",
+            "When cache inconsistency would be very harmful (security, financial)",
+            "Never",
+            "When cache is large"
+          ],
+          "correct": 1,
+          "explanation": "Strict for: security data (stale permissions are dangerous), financial (stale balance causes issues). Worth failing writes to maintain consistency. Most cases: best-effort is fine."
+        },
+        {
+          "question": "Best-effort invalidation: write succeeds, invalidation fails. User sees stale data. Impact depends on?",
+          "options": [
+            "Nothing",
+            "How long until TTL expires, and whether stale data causes problems",
+            "Cache size",
+            "Network speed"
+          ],
+          "correct": 1,
+          "explanation": "Impact factors: TTL (bounded staleness), criticality (is stale data problematic?), read pattern (will user even read the stale data?). For most content, brief staleness is acceptable."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-093",
+      "type": "multi-select",
+      "question": "When should you use strict invalidation (fail write on invalidation failure)?",
+      "options": [
+        "Security-sensitive data (permissions, access control)",
+        "Financial data (balances, transactions)",
+        "User profile photos",
+        "Content where cache inconsistency causes serious problems"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Strict for: security (stale permissions = vulnerability), financial (wrong balance = disputes), and generally critical data. Profile photos: staleness is minor inconvenience, not serious. Best-effort is fine there."
+    },
+    {
+      "id": "cache-inv-094",
+      "type": "multiple-choice",
+      "question": "What is 'double-delete' pattern?",
+      "options": [
+        "Deleting twice by accident",
+        "Delete cache before DB write AND after, to handle race conditions",
+        "Double caching",
+        "Deleting two entries"
+      ],
+      "correct": 1,
+      "explanation": "Double-delete: delete cache before DB write, write DB, delete cache again after. Handles race where concurrent read might re-cache old value between delete and write. Belt and suspenders approach."
+    },
+    {
+      "id": "cache-inv-095",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Race condition: Thread A deletes cache, writes DB. Concurrently, Thread B reads (cache miss), fetches old DB value, writes to cache. Result?",
+          "options": [
+            "Cache has new value",
+            "Cache has old value (B re-cached stale data)",
+            "Cache is empty",
+            "Error"
+          ],
+          "correct": 1,
+          "explanation": "Race: A deletes cache. B misses, reads old DB value (before A's write commits), caches it. A writes DB. Now DB has new value, cache has old value. Stale data persists."
+        },
+        {
+          "question": "How does double-delete help?",
+          "options": [
+            "It doesn't",
+            "Second delete (after DB write) removes the stale value that concurrent reads may have re-cached",
+            "Deletes the database too",
+            "Faster deletion"
+          ],
+          "correct": 1,
+          "explanation": "Double-delete: first delete clears cache. DB write completes. Second delete catches any stale re-caches that happened during DB write. Not perfect but reduces race window significantly."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-096",
+      "type": "multi-select",
+      "question": "What are alternatives to double-delete for handling this race?",
+      "options": [
+        "Use versioning (CAS) for cache writes",
+        "Lock during write (serialize access)",
+        "Short delay before second delete",
+        "Accept occasional staleness (TTL will fix it)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid: CAS ensures old value doesn't overwrite new. Lock serializes (but adds latency). Delay gives write time to commit. Accept staleness with TTL backup. Choose based on consistency requirements."
+    },
+    {
+      "id": "cache-inv-097",
+      "type": "ordering",
+      "question": "Rank these by consistency guarantee (strongest to weakest):",
+      "items": ["Write-through with transactional update", "Double-delete", "Single delete (delete-on-write)", "TTL only (no invalidation)"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Transactional: atomic, strongest. Double-delete: handles some races. Single delete: basic invalidation. TTL only: eventual consistency, weakest. Choose consistency level based on needs."
+    },
+    {
+      "id": "cache-inv-098",
+      "type": "multiple-choice",
+      "question": "What is 'invalidation idempotency'?",
+      "options": [
+        "Invalid identity",
+        "Invalidating the same entry multiple times has no additional effect",
+        "Identical invalidation",
+        "Unique invalidations"
+      ],
+      "correct": 1,
+      "explanation": "Idempotent invalidation: deleting a key twice is same as once — no error, no extra effect. Important for retries and at-least-once delivery systems. If invalidation might be delivered multiple times, it should be idempotent."
+    },
+    {
+      "id": "cache-inv-099",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Invalidation message is delivered twice due to retry. If invalidation is 'delete key X', what happens?",
+          "options": [
+            "Error on second delete",
+            "Key is deleted on first; second is no-op (idempotent)",
+            "Key is deleted twice",
+            "Data corruption"
+          ],
+          "correct": 1,
+          "explanation": "Delete is idempotent: deleting already-deleted key has no effect. Safe for at-least-once delivery. No errors, no corruption. Second delete is simply a no-op."
+        },
+        {
+          "question": "What if invalidation is 'decrement TTL by 60s'? Is that idempotent?",
+          "options": [
+            "Yes",
+            "No — each delivery decrements further (not idempotent)",
+            "Depends on cache",
+            "TTL can't be decremented"
+          ],
+          "correct": 1,
+          "explanation": "Decrement is NOT idempotent: first reduces TTL by 60s, second reduces by another 60s. Different outcome on retry. Prefer idempotent operations (delete, set to specific value) for reliability."
+        }
+      ]
+    },
+    {
+      "id": "cache-inv-100",
+      "type": "multi-select",
+      "question": "What are best practices for cache invalidation?",
+      "options": [
+        "Use TTL as a safety net even with event-driven invalidation",
+        "Prefer delete over update (simpler, avoids races)",
+        "Design cache keys for easy invalidation (patterns, tags)",
+        "Invalidate synchronously in all cases"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Best practices: TTL backup (bounded staleness if invalidation fails), delete over update (simpler), good key design (invalidation-friendly). Sync invalidation isn't always necessary — async with TTL backup often suffices."
+    }
+  ]
+}
