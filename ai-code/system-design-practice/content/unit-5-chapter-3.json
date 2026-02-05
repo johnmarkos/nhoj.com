@@ -1,0 +1,1659 @@
+{
+  "unit": 5,
+  "unitTitle": "Caching",
+  "chapter": 3,
+  "chapterTitle": "Caching Strategies",
+  "chapterDescription": "Read and write caching patterns: cache-aside, read-through, refresh-ahead, write-through, write-behind, and write-around.",
+  "problems": [
+    {
+      "id": "cache-strat-001",
+      "type": "multiple-choice",
+      "question": "What is 'cache-aside' (also called lazy loading)?",
+      "options": [
+        "Cache automatically loads all data on startup",
+        "Application checks cache first; on miss, fetches from DB and populates cache",
+        "Cache sits beside the database as a replica",
+        "Data is loaded aside from the main flow"
+      ],
+      "correct": 1,
+      "explanation": "Cache-aside: the application manages caching. On read: check cache → miss → query database → write result to cache → return. The application explicitly controls cache population. Most common and flexible pattern."
+    },
+    {
+      "id": "cache-strat-002",
+      "type": "ordering",
+      "question": "Order the steps in a cache-aside read operation (cache miss scenario):",
+      "items": [
+        "Return data to caller",
+        "Check cache for data",
+        "Store data in cache",
+        "Fetch data from database"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "Check cache → (miss) → Fetch from DB → Store in cache → Return. The application orchestrates all steps. On cache hit, skip steps 3-4 and return directly from cache."
+    },
+    {
+      "id": "cache-strat-003",
+      "type": "multi-select",
+      "question": "What are advantages of cache-aside?",
+      "options": [
+        "Application has full control over what gets cached",
+        "Works with any database (no special integration needed)",
+        "Can choose not to cache certain data",
+        "Cache is automatically synchronized with database"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cache-aside gives full control: choose what to cache, customize TTLs, works with any storage. It does NOT auto-sync — that's the trade-off. You must handle cache invalidation on writes."
+    },
+    {
+      "id": "cache-strat-004",
+      "type": "multiple-choice",
+      "question": "In cache-aside, what happens when data is updated in the database?",
+      "options": [
+        "Cache is automatically updated",
+        "Cache becomes stale until invalidated or TTL expires",
+        "Database update fails",
+        "Cache is deleted automatically"
+      ],
+      "correct": 1,
+      "explanation": "Cache-aside doesn't auto-sync. If you update the DB without touching the cache, stale data remains cached. You must explicitly invalidate (delete) or update the cache entry when writing to DB."
+    },
+    {
+      "id": "cache-strat-005",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "User updates their profile in DB. The cache still has old profile. What's the recommended cache-aside approach?",
+          "options": [
+            "Do nothing — wait for TTL",
+            "Delete the cache entry (invalidate)",
+            "Update the cache with new data",
+            "Delete the entire cache"
+          ],
+          "correct": 1,
+          "explanation": "Invalidation (delete) is simpler and safer than update. Delete the cache key; next read will fetch fresh from DB and repopulate. Avoids race conditions between cache update and DB update."
+        },
+        {
+          "question": "Why is deletion preferred over updating the cache?",
+          "options": [
+            "Deletion is faster",
+            "Avoids race conditions where cache update and DB write could interleave incorrectly",
+            "Updates aren't supported",
+            "Deletion uses less memory"
+          ],
+          "correct": 1,
+          "explanation": "Race condition: Thread A reads old value, Thread B updates DB and cache, Thread A writes old value to cache. Result: stale data. Deletion avoids this — next read gets fresh data. Simpler and safer."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-006",
+      "type": "multiple-choice",
+      "question": "What is 'read-through' caching?",
+      "options": [
+        "Reading directly through the cache to the database",
+        "Cache automatically fetches from database on miss — transparent to the application",
+        "Reading through multiple caches",
+        "A read-only cache"
+      ],
+      "correct": 1,
+      "explanation": "Read-through: the cache itself handles DB fetches. On miss, the cache (not application) queries the origin, stores the result, and returns it. The application just asks the cache — simpler code but less control."
+    },
+    {
+      "id": "cache-strat-007",
+      "type": "ordering",
+      "question": "Order the steps in read-through caching (cache miss):",
+      "items": [
+        "Cache returns data to application",
+        "Application requests data from cache",
+        "Cache fetches from database",
+        "Cache stores fetched data"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "App requests from cache → Cache fetches from DB → Cache stores data → Cache returns to app. The application never directly touches the database for reads. Cache is the intermediary."
+    },
+    {
+      "id": "cache-strat-008",
+      "type": "multi-select",
+      "question": "What are advantages of read-through over cache-aside?",
+      "options": [
+        "Simpler application code (cache handles fetching)",
+        "Consistent caching logic (centralized in cache layer)",
+        "More control over caching decisions",
+        "Reduces code duplication across services"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Read-through centralizes fetch logic in the cache layer — simpler app code, consistent behavior, less duplication. Trade-off: less control (cache decides how to fetch). Cache-aside offers more control."
+    },
+    {
+      "id": "cache-strat-009",
+      "type": "multiple-choice",
+      "question": "What is a disadvantage of read-through caching?",
+      "options": [
+        "It's slower than cache-aside",
+        "Requires cache to understand how to query the origin (tight coupling)",
+        "It doesn't work with databases",
+        "It can't handle cache misses"
+      ],
+      "correct": 1,
+      "explanation": "Read-through requires the cache layer to know how to fetch from the origin — it must be configured with data loaders or origin connectors. This couples the cache to your data sources. Cache-aside keeps this logic in the app."
+    },
+    {
+      "id": "cache-strat-010",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You use read-through caching. A cache miss for 'user:123' occurs. What does the cache need to know?",
+          "options": [
+            "Nothing special",
+            "How to query the database to get user 123",
+            "The user's password",
+            "The cache TTL only"
+          ],
+          "correct": 1,
+          "explanation": "For read-through, the cache must have a 'loader' function: given key 'user:123', query SELECT * FROM users WHERE id = 123. This logic lives in the cache configuration, not the application."
+        },
+        {
+          "question": "You add a new 'orders' data type. What must you do for read-through?",
+          "options": [
+            "Nothing — cache figures it out",
+            "Configure a loader for orders (how to fetch from DB)",
+            "Change the database",
+            "Use a different cache"
+          ],
+          "correct": 1,
+          "explanation": "Each data type needs its loader configured. The cache doesn't magically know how to fetch orders. You must define: for 'order:{id}', run SELECT * FROM orders WHERE id = ?. More setup than cache-aside."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-011",
+      "type": "multiple-choice",
+      "question": "What is 'write-through' caching?",
+      "options": [
+        "Writing only to the cache",
+        "Writing to both cache and database synchronously — data is in cache immediately",
+        "Writing through the network",
+        "A write-only cache"
+      ],
+      "correct": 1,
+      "explanation": "Write-through: every write goes to both cache AND database synchronously. The write isn't acknowledged until both succeed. Data is always in cache after write — subsequent reads hit cache. Trade-off: higher write latency."
+    },
+    {
+      "id": "cache-strat-012",
+      "type": "ordering",
+      "question": "Order the steps in write-through caching:",
+      "items": [
+        "Acknowledge write to application",
+        "Application sends write to cache",
+        "Cache writes to database",
+        "Cache stores data locally"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "App writes to cache → Cache stores locally AND writes to DB → Both complete → Acknowledge. Order of cache/DB write can vary, but both must complete before ack. This ensures consistency."
+    },
+    {
+      "id": "cache-strat-013",
+      "type": "multi-select",
+      "question": "What are advantages of write-through?",
+      "options": [
+        "Cache is always up-to-date with latest writes",
+        "Read-after-write consistency",
+        "Lower write latency",
+        "Simplified cache invalidation (no stale data)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Write-through ensures cache always has latest data — no stale reads after writes. Read-after-write works perfectly. No invalidation logic needed. Trade-off: write latency is HIGHER (two writes), not lower."
+    },
+    {
+      "id": "cache-strat-014",
+      "type": "numeric-input",
+      "question": "Database write takes 20ms. Cache write takes 2ms. With write-through (parallel writes), what's the minimum write latency?",
+      "answer": 20,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "Parallel writes complete when the slowest finishes: max(20ms, 2ms) = 20ms. Sequential would be 22ms. Write-through adds overhead compared to DB-only writes, but parallel minimizes it."
+    },
+    {
+      "id": "cache-strat-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Write-through: cache write succeeds but DB write fails. What should happen?",
+          "options": [
+            "Return success anyway",
+            "Roll back the cache write (delete entry) and return failure",
+            "Keep cache, retry DB later",
+            "Ignore the failure"
+          ],
+          "correct": 1,
+          "explanation": "Both must succeed for write-through consistency. If DB fails, roll back cache entry to avoid cache having data that's not in DB. Return failure to caller. This maintains cache-DB consistency."
+        },
+        {
+          "question": "This rollback requirement makes write-through similar to what database concept?",
+          "options": [
+            "Index",
+            "Distributed transaction (both succeed or both fail)",
+            "Query optimization",
+            "Replication"
+          ],
+          "correct": 1,
+          "explanation": "Write-through is essentially a distributed transaction: cache and DB must both succeed atomically. If either fails, roll back. This adds complexity but ensures consistency."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-016",
+      "type": "multiple-choice",
+      "question": "What is 'write-behind' (also called write-back) caching?",
+      "options": [
+        "Writing to the cache first, then asynchronously writing to DB later",
+        "Writing behind a firewall",
+        "Writing to a backup cache",
+        "Writing backwards"
+      ],
+      "correct": 0,
+      "explanation": "Write-behind: write to cache immediately (fast), acknowledge to caller, then asynchronously write to DB in background. Lower latency than write-through, but risk of data loss if cache fails before DB write."
+    },
+    {
+      "id": "cache-strat-017",
+      "type": "ordering",
+      "question": "Order the steps in write-behind caching:",
+      "items": [
+        "Acknowledge write to application",
+        "Asynchronously write to database",
+        "Application sends write to cache",
+        "Cache stores data locally"
+      ],
+      "correctOrder": [2, 3, 0, 1],
+      "explanation": "App writes → Cache stores locally → Immediately acknowledge → Later, async write to DB. The application sees fast writes, but DB persistence is delayed. Risk: data in cache but not yet in DB."
+    },
+    {
+      "id": "cache-strat-018",
+      "type": "multi-select",
+      "question": "What are advantages of write-behind over write-through?",
+      "options": [
+        "Lower write latency (don't wait for DB)",
+        "Can batch multiple writes to DB (efficiency)",
+        "Better durability",
+        "Reduced database load (batched writes)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Write-behind is faster (no DB wait), can batch writes (efficient), and reduces DB load. Durability is WORSE, not better — data can be lost if cache crashes before DB write. Trade-off: speed vs. durability."
+    },
+    {
+      "id": "cache-strat-019",
+      "type": "multiple-choice",
+      "question": "What is the main risk of write-behind caching?",
+      "options": [
+        "Slow writes",
+        "Data loss if cache fails before async DB write completes",
+        "Increased database load",
+        "Cache becoming too large"
+      ],
+      "correct": 1,
+      "explanation": "Write-behind risk: data in cache, ack sent to user, but DB write pending. If cache crashes now, that data is lost. User thinks write succeeded, but it's gone. Only use when you can tolerate potential data loss."
+    },
+    {
+      "id": "cache-strat-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Write-behind batches 100 writes over 5 seconds, then flushes to DB. Cache crashes at second 4. What happens?",
+          "options": [
+            "All 100 writes are safe in DB",
+            "~80 writes are lost (those in the unflushed batch)",
+            "No data loss",
+            "Only the last write is lost"
+          ],
+          "correct": 1,
+          "explanation": "Writes in the current batch (accumulated over 4 seconds, not yet flushed) are lost. If ~20 writes/sec, that's ~80 pending writes lost. Previous batches (flushed) are safe in DB."
+        },
+        {
+          "question": "How can you reduce data loss risk with write-behind?",
+          "options": [
+            "Use larger batches",
+            "Shorter flush intervals, replicated cache, or persistent cache queue",
+            "Longer TTLs",
+            "Use more memory"
+          ],
+          "correct": 1,
+          "explanation": "Shorter intervals (flush every 100ms vs 5s): less pending data. Replicated cache: if one node dies, another has the data. Persistent queue (Redis AOF): writes survive restarts. Trade-offs: more DB writes or complexity."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-021",
+      "type": "numeric-input",
+      "question": "Write-behind flushes to DB every 1 second. Peak load is 1,000 writes/second. Maximum writes at risk if cache crashes?",
+      "answer": 1000,
+      "unit": "writes",
+      "tolerance": 0.1,
+      "explanation": "In the worst case, cache crashes just before flush — up to 1 second of writes (~1,000) pending. This is your maximum data loss window. Reduce interval to reduce risk."
+    },
+    {
+      "id": "cache-strat-022",
+      "type": "multiple-choice",
+      "question": "What is 'write-around' caching?",
+      "options": [
+        "Writing around the cache directly to the database, cache is not updated on write",
+        "Writing in a circular pattern",
+        "Writing to cache around the clock",
+        "Writing to multiple caches"
+      ],
+      "correct": 0,
+      "explanation": "Write-around: writes go directly to DB, bypassing cache. Cache is not populated on write — only populated on subsequent reads (cache miss). Good for write-heavy data that's rarely re-read immediately."
+    },
+    {
+      "id": "cache-strat-023",
+      "type": "multi-select",
+      "question": "When is write-around caching appropriate?",
+      "options": [
+        "Data is written once and rarely read",
+        "Write-heavy workloads where immediate reads are uncommon",
+        "Avoiding cache pollution with data that won't be accessed again",
+        "Real-time applications needing immediate read-after-write"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Write-around suits write-heavy, read-rarely patterns: logs, audit trails, archived data. Avoids polluting cache with unread data. NOT for immediate read-after-write — that would cause cache miss."
+    },
+    {
+      "id": "cache-strat-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're logging user actions: 10,000 writes/sec, read once per day for analytics. Which write strategy?",
+          "options": [
+            "Write-through (keep logs in cache)",
+            "Write-around (logs go to DB, rarely re-read)",
+            "Write-behind (async logs)",
+            "Write-around or write-behind both work"
+          ],
+          "correct": 3,
+          "explanation": "Write-around: logs bypass cache, read rarely, no cache pollution. Write-behind: fast writes, async persistence, tolerable data loss for logs. Both are reasonable — depends on latency vs. durability needs."
+        },
+        {
+          "question": "Same scenario, but some logs are accessed in real-time dashboards (within seconds). Now what?",
+          "options": [
+            "Still write-around",
+            "Write-through or write-behind to ensure fresh logs in cache",
+            "Don't cache logs",
+            "Use longer TTL"
+          ],
+          "correct": 1,
+          "explanation": "Real-time reads need data in cache. Write-through ensures immediate availability. Write-behind also works (data in cache immediately, persisted async). Write-around would cause cache misses for real-time reads."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-025",
+      "type": "ordering",
+      "question": "Rank write strategies from lowest to highest write latency:",
+      "items": ["Write-behind", "Write-through", "Write-around", "Database-only (no cache)"],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Write-behind (cache only, async DB): fastest. Write-around (DB only, no cache write): same as DB-only. Database-only: just DB write. Write-through (cache + DB sync): slowest due to two sync writes."
+    },
+    {
+      "id": "cache-strat-026",
+      "type": "multiple-choice",
+      "question": "What is 'refresh-ahead' caching?",
+      "options": [
+        "Refreshing the cache constantly",
+        "Proactively refreshing cache entries before they expire based on access patterns",
+        "Refreshing the browser",
+        "Caching ahead of user requests"
+      ],
+      "correct": 1,
+      "explanation": "Refresh-ahead: cache monitors access and proactively refreshes entries BEFORE expiration if they're likely to be accessed again. Avoids cache miss latency for hot data. The cache 'anticipates' needs."
+    },
+    {
+      "id": "cache-strat-027",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A cache entry expires in 10 seconds. It's been accessed 50 times in the last minute. With refresh-ahead, what might happen?",
+          "options": [
+            "Entry expires, next access is a miss",
+            "Cache refreshes entry in background BEFORE expiration, next access is a hit",
+            "Entry is deleted immediately",
+            "TTL is extended automatically"
+          ],
+          "correct": 1,
+          "explanation": "Refresh-ahead: cache sees high access rate, predicts continued access, refreshes in background before expiration. When the entry 'would have' expired, it's already fresh. No miss latency for users."
+        },
+        {
+          "question": "A different entry expires in 10 seconds but was accessed only once (an hour ago). What happens?",
+          "options": [
+            "Still refreshed ahead",
+            "Not refreshed — let it expire (no predicted demand)",
+            "Refreshed with lower priority",
+            "Deleted immediately"
+          ],
+          "correct": 1,
+          "explanation": "Low access = low predicted demand. Refresh-ahead doesn't waste resources refreshing rarely-accessed data. It expires normally. Refresh-ahead is selective — only for hot data."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-028",
+      "type": "multi-select",
+      "question": "What are advantages of refresh-ahead?",
+      "options": [
+        "Reduces cache miss latency for popular items",
+        "Smooths out origin load (background refreshes vs. thundering herd)",
+        "Works without any configuration",
+        "Keeps hot data always fresh"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Refresh-ahead eliminates miss latency for hot items, spreads refresh load over time (no thundering herd), and keeps popular data fresh. It requires configuration (access tracking, refresh thresholds) — not automatic."
+    },
+    {
+      "id": "cache-strat-029",
+      "type": "multiple-choice",
+      "question": "What is 'cache warming' vs 'refresh-ahead'?",
+      "options": [
+        "They're the same thing",
+        "Warming: proactively populating a cold cache; Refresh-ahead: proactively refreshing before expiration",
+        "Warming is faster",
+        "Refresh-ahead is for cold caches"
+      ],
+      "correct": 1,
+      "explanation": "Cache warming: filling an empty/cold cache with expected data (e.g., after restart). Refresh-ahead: keeping existing entries fresh by refreshing before expiration. Different problems: initial load vs. ongoing freshness."
+    },
+    {
+      "id": "cache-strat-030",
+      "type": "ordering",
+      "question": "Rank these read strategies by how much application code they require (most to least):",
+      "items": ["Cache-aside", "Read-through", "Read-through with refresh-ahead"],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Cache-aside: app handles all cache logic (most code). Read-through: cache handles fetching (less app code). Read-through with refresh-ahead: cache handles fetching AND proactive refresh (least app code, most cache config)."
+    },
+    {
+      "id": "cache-strat-031",
+      "type": "multiple-choice",
+      "question": "In cache-aside, when should you update the cache vs. invalidate it on writes?",
+      "options": [
+        "Always update — it's faster",
+        "Invalidate is generally safer (avoids race conditions); update only if read-after-write consistency is critical",
+        "Always invalidate — updates are impossible",
+        "Randomly choose"
+      ],
+      "correct": 1,
+      "explanation": "Invalidation is simpler and safer — delete key, next read fetches fresh. Update can race with concurrent reads/writes. Update if you need immediate read-after-write (user sees their own changes) and can handle race conditions."
+    },
+    {
+      "id": "cache-strat-032",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache-aside pattern. Thread A reads user 1 (cache miss), starts DB query. Thread B updates user 1, invalidates cache. Thread A's DB query completes with OLD data. What happens?",
+          "options": [
+            "Cache correctly has new data",
+            "Thread A writes stale data to cache (race condition)",
+            "Cache is empty",
+            "Both threads fail"
+          ],
+          "correct": 1,
+          "explanation": "Race condition: A reads stale data, B updates and invalidates, A writes stale data to cache. The invalidation happened BEFORE A's cache write. Result: stale data in cache. This is the classic cache race."
+        },
+        {
+          "question": "How can you prevent this race condition?",
+          "options": [
+            "Use locks / compare-and-set on cache writes",
+            "Longer TTLs",
+            "Faster database",
+            "More cache memory"
+          ],
+          "correct": 0,
+          "explanation": "Solutions: (1) Versioned writes: only write if version matches. (2) Locks: serialize cache operations per key. (3) Short TTL: stale data expires quickly. (4) Delete-only on write: never 'update' cache, let reads repopulate."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-033",
+      "type": "multiple-choice",
+      "question": "What is 'delete-on-write' pattern in cache-aside?",
+      "options": [
+        "Delete all cache entries on any write",
+        "On database write, delete (invalidate) the cache entry rather than updating it",
+        "Delete the database on write",
+        "A pattern for deleting data"
+      ],
+      "correct": 1,
+      "explanation": "Delete-on-write: when you update DB, just delete the cache key. Don't try to update cache with new value. Next read will fetch fresh from DB and repopulate. Simpler and avoids update race conditions."
+    },
+    {
+      "id": "cache-strat-034",
+      "type": "multi-select",
+      "question": "Why is delete-on-write preferred over update-on-write in cache-aside?",
+      "options": [
+        "Simpler code (just delete, don't need to know new value)",
+        "Avoids race conditions between read and write",
+        "Works even if write doesn't know the full new state",
+        "Guarantees immediate read-after-write consistency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Delete is simpler, avoids races, and works when you don't know the full object (e.g., increment operation). It doesn't guarantee immediate read-after-write — next read will hit DB (a miss), then cache. For immediate consistency, use write-through."
+    },
+    {
+      "id": "cache-strat-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You use cache-aside with delete-on-write. User updates profile, immediately refreshes page. What happens?",
+          "options": [
+            "Sees new profile from cache",
+            "Cache miss → DB read → sees new profile (slight delay)",
+            "Sees old profile",
+            "Error occurs"
+          ],
+          "correct": 1,
+          "explanation": "Delete-on-write: profile cache was deleted on update. Refresh causes cache miss, DB read returns new data, cache is repopulated. User sees correct data, but with a cache miss delay."
+        },
+        {
+          "question": "If this delay is unacceptable, what strategy should you use?",
+          "options": [
+            "Longer TTL",
+            "Write-through (write to cache and DB on update)",
+            "Write-around",
+            "Disable caching"
+          ],
+          "correct": 1,
+          "explanation": "Write-through ensures cache has new data immediately after write. No miss on subsequent read. Trade-off: higher write latency. Choose based on whether read-after-write consistency matters more than write speed."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-036",
+      "type": "multiple-choice",
+      "question": "What is 'read-your-writes' consistency?",
+      "options": [
+        "Reading and writing at the same time",
+        "After a write, subsequent reads by the same user see the written value",
+        "Reading what others wrote",
+        "Writing what you read"
+      ],
+      "correct": 1,
+      "explanation": "Read-your-writes: if you write X, your next read should return X (not stale data). Important for user experience — update profile, immediately see updated profile. Some cache strategies provide this; others don't."
+    },
+    {
+      "id": "cache-strat-037",
+      "type": "ordering",
+      "question": "Rank these strategies by read-your-writes consistency (best to worst):",
+      "items": ["Write-through", "Cache-aside with delete-on-write", "Write-behind", "Write-around"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Write-through: immediate (cache updated sync). Write-behind: immediate (cache updated, DB async). Cache-aside delete: miss after write (goes to DB, correct but delayed). Write-around: miss, reads stale until DB read (worst)."
+    },
+    {
+      "id": "cache-strat-038",
+      "type": "multi-select",
+      "question": "Which strategies keep data in cache immediately after writes?",
+      "options": [
+        "Write-through",
+        "Write-behind",
+        "Write-around",
+        "Cache-aside with cache update (not delete)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Write-through and write-behind both put data in cache on write. Cache-aside with update (risky but possible) also does. Write-around specifically bypasses cache on write — cache is only populated on reads."
+    },
+    {
+      "id": "cache-strat-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your app has 90% reads, 10% writes. Which caching strategy likely gives best overall performance?",
+          "options": [
+            "Write-through",
+            "Cache-aside (read-optimized)",
+            "Write-behind",
+            "Write-around"
+          ],
+          "correct": 1,
+          "explanation": "Read-heavy workloads benefit most from cache-aside: reads are fast (cache hits), writes are simpler (invalidate). Write-through's sync overhead matters less when writes are infrequent. Cache-aside is the default choice for read-heavy."
+        },
+        {
+          "question": "Now the workload is 50% reads, 50% writes, and write latency is critical. Which strategy?",
+          "options": [
+            "Write-through",
+            "Cache-aside",
+            "Write-behind (minimize write latency)",
+            "Write-around"
+          ],
+          "correct": 2,
+          "explanation": "Write-behind minimizes write latency (cache only, async DB). If you can tolerate potential data loss and eventual consistency, write-behind handles write-heavy workloads well. Choose based on durability requirements."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-040",
+      "type": "multiple-choice",
+      "question": "What is the 'thundering herd' problem in caching?",
+      "options": [
+        "Too many cache servers",
+        "Many requests simultaneously hitting origin when a cache entry expires",
+        "Cache getting too large",
+        "Users accessing cache too fast"
+      ],
+      "correct": 1,
+      "explanation": "Thundering herd: popular cache entry expires, many concurrent requests all miss cache, all hit DB simultaneously. Can overwhelm origin. Solutions: lock so one fetches (others wait), staggered TTLs, refresh-ahead."
+    },
+    {
+      "id": "cache-strat-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "1000 requests/sec for a cached item. TTL expires. Without protection, how many DB queries in the first 100ms?",
+          "options": [
+            "1",
+            "~100 (100ms × 1000 req/sec)",
+            "1000",
+            "0"
+          ],
+          "correct": 1,
+          "explanation": "All 100 concurrent requests in that 100ms window see cache miss and query DB. Without coalescing or locking, you get 100 identical DB queries instead of 1."
+        },
+        {
+          "question": "With request coalescing (one fetches, others wait), how many DB queries?",
+          "options": [
+            "100",
+            "1 (first request fetches, others wait for result)",
+            "0",
+            "50"
+          ],
+          "correct": 1,
+          "explanation": "Request coalescing: first request acquires lock and fetches. Subsequent requests for same key wait for the in-flight fetch. All 100 requests share the one DB result. 100 queries → 1."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-042",
+      "type": "multi-select",
+      "question": "Which techniques help prevent thundering herd?",
+      "options": [
+        "Request coalescing (dedupe concurrent fetches)",
+        "Staggered/jittered TTLs (entries don't all expire at once)",
+        "Refresh-ahead (refresh before expiration)",
+        "Using no cache at all"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Coalescing prevents duplicate fetches. Staggered TTLs spread expirations. Refresh-ahead prevents expiration entirely for hot data. No cache means ALL requests hit origin — worse than thundering herd."
+    },
+    {
+      "id": "cache-strat-043",
+      "type": "multiple-choice",
+      "question": "What is 'TTL jitter'?",
+      "options": [
+        "Unstable cache",
+        "Adding random variation to TTL values so entries don't all expire at the same time",
+        "Jittery network causing TTL issues",
+        "Reducing TTL over time"
+      ],
+      "correct": 1,
+      "explanation": "TTL jitter: instead of TTL=300s for all entries, use TTL=300s ± random(30s). Entries expire at slightly different times, spreading DB load. Prevents synchronized expiration from creating thundering herd."
+    },
+    {
+      "id": "cache-strat-044",
+      "type": "numeric-input",
+      "question": "1000 cache entries with TTL=300s (no jitter) all created at once. They all expire at second 300, causing 1000 DB queries. With ±30s jitter, over how many seconds are expirations spread?",
+      "answer": 60,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "±30s jitter means entries expire between 270s and 330s — a 60-second window. Instead of 1000 queries in 1 second, you get ~17 queries/sec over 60 seconds. Much gentler on the database."
+    },
+    {
+      "id": "cache-strat-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "What is 'early expiration' or 'probabilistic early refresh'?",
+          "options": [
+            "Making TTL shorter",
+            "As TTL approaches, probability of triggering background refresh increases",
+            "Expiring cache randomly",
+            "Early morning cache cleanup"
+          ],
+          "correct": 1,
+          "explanation": "Probabilistic early refresh: as expiration nears, each access has increasing probability of triggering background refresh (while returning cached value). By expiration time, refresh likely already happened. Prevents miss spike."
+        },
+        {
+          "question": "Entry expires in 10 seconds. Access at 5 seconds remaining has 10% refresh chance. Access at 1 second has 90% chance. What's the benefit?",
+          "options": [
+            "More cache memory",
+            "By expiration, refresh has probably already happened — no thundering herd",
+            "Faster reads",
+            "Lower TTL"
+          ],
+          "correct": 1,
+          "explanation": "With probabilistic refresh, some access before expiration triggers refresh. By expiration time, cache is likely already refreshed. No sudden cliff of misses — smooth, distributed refresh load."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-046",
+      "type": "multiple-choice",
+      "question": "What is a 'lock' in cache context (for preventing thundering herd)?",
+      "options": [
+        "Securing the cache",
+        "A mechanism where only one request fetches on miss; others wait for that result",
+        "Locking the database",
+        "Preventing cache writes"
+      ],
+      "correct": 1,
+      "explanation": "Cache lock: on miss, first request acquires lock and fetches from origin. Concurrent requests for same key see lock exists and wait. When fetch completes, all waiting requests get the result. 1 fetch instead of N."
+    },
+    {
+      "id": "cache-strat-047",
+      "type": "multi-select",
+      "question": "What are considerations for cache locks?",
+      "options": [
+        "Lock timeout (what if fetcher is slow/fails)",
+        "Distributed locking (if multiple cache clients)",
+        "Lock granularity (per-key vs. global)",
+        "Lock storage (where to store lock state)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All matter: timeout prevents deadlock if fetcher dies. Distributed locks needed for multi-client scenarios. Per-key granularity allows parallel fetches for different keys. Lock state can be in cache itself or separate store."
+    },
+    {
+      "id": "cache-strat-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Request A acquires lock for key 'user:1', starts fetching. Request B arrives for same key. What should B do?",
+          "options": [
+            "Fetch from DB anyway",
+            "Wait for A's result (block or poll)",
+            "Return error",
+            "Return stale cached data if available"
+          ],
+          "correct": 1,
+          "explanation": "B waits for A. When A completes and caches result, B gets that result. This is request coalescing. All concurrent requests share the single fetch result."
+        },
+        {
+          "question": "A takes 5 seconds (slow DB). 1000 requests are waiting. What's the risk?",
+          "options": [
+            "No risk",
+            "All 1000 requests have 5s latency; resources held waiting",
+            "Cache fills up",
+            "Database overloaded"
+          ],
+          "correct": 1,
+          "explanation": "All waiting requests are blocked/holding connections for 5s. Resource consumption (threads, connections) can be high. Solutions: timeout and fallback, return stale data while refreshing, or limit waiters."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-049",
+      "type": "multiple-choice",
+      "question": "What is 'stale-while-revalidate' pattern?",
+      "options": [
+        "Always serving stale data",
+        "Return stale cached data immediately while fetching fresh data in background",
+        "Revalidating stale data",
+        "Marking all data as stale"
+      ],
+      "correct": 1,
+      "explanation": "Stale-while-revalidate (SWR): if cache is stale, return stale data immediately (fast), trigger background refresh, update cache. User gets instant response; next request gets fresh data. Trades freshness for speed."
+    },
+    {
+      "id": "cache-strat-050",
+      "type": "ordering",
+      "question": "In stale-while-revalidate, order the events:",
+      "items": [
+        "Background fetch completes, cache updated",
+        "Request arrives, cache is stale",
+        "Return stale data to user",
+        "Trigger background refresh"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "Request arrives (stale) → Return stale data immediately → Trigger background refresh → Background completes, cache updated. User doesn't wait for fresh data — gets stale instantly, fresh next time."
+    },
+    {
+      "id": "cache-strat-051",
+      "type": "multi-select",
+      "question": "What are benefits of stale-while-revalidate?",
+      "options": [
+        "Instant response times (no waiting for origin)",
+        "Eventually consistent data",
+        "Prevents thundering herd (controlled background refresh)",
+        "Real-time data accuracy"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "SWR gives instant responses (from stale cache), eventual consistency (background updates), and prevents thundering herd (one background fetch vs. many). It sacrifices real-time accuracy — current request sees stale data."
+    },
+    {
+      "id": "cache-strat-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product price changed from $100 to $80. SWR serves cached $100 price. When does user see $80?",
+          "options": [
+            "Immediately on this request",
+            "On their next request (after background refresh completes)",
+            "Never",
+            "After manual cache clear"
+          ],
+          "correct": 1,
+          "explanation": "This request sees $100 (stale). Background refresh fetches $80, updates cache. Next request sees $80. SWR means one request behind on changes. Acceptable for most content; problematic for pricing in checkout."
+        },
+        {
+          "question": "For a shopping cart checkout, is SWR appropriate for pricing?",
+          "options": [
+            "Yes — speed matters most",
+            "No — showing wrong price at checkout is a serious problem",
+            "Maybe — depends on user",
+            "Yes — users won't notice"
+          ],
+          "correct": 1,
+          "explanation": "Checkout pricing must be accurate — wrong price causes customer service issues, legal problems, lost trust. Use fresher data for checkout (short TTL, no SWR, or real-time DB check). SWR for browsing, not transacting."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-053",
+      "type": "multiple-choice",
+      "question": "What is the Cache-Control: stale-while-revalidate HTTP directive?",
+      "options": [
+        "A browser caching hint",
+        "Tells browser to serve stale content while fetching fresh in background",
+        "A server instruction",
+        "A CDN command"
+      ],
+      "correct": 1,
+      "explanation": "Cache-Control: max-age=300, stale-while-revalidate=60 means: content is fresh for 300s, then stale but serve stale for up to 60s while revalidating. Browser/CDN implements SWR pattern based on this header."
+    },
+    {
+      "id": "cache-strat-054",
+      "type": "numeric-input",
+      "question": "Cache-Control: max-age=60, stale-while-revalidate=30. How long can stale content be served?",
+      "answer": 30,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "After max-age (60s), content is stale. stale-while-revalidate=30 allows serving stale for 30 more seconds while fetching fresh. After 90s total, must wait for fresh (no more stale serving)."
+    },
+    {
+      "id": "cache-strat-055",
+      "type": "multiple-choice",
+      "question": "What is 'stale-if-error'?",
+      "options": [
+        "Caching errors",
+        "Serve stale content if the origin request fails (instead of error)",
+        "Error handling in cache",
+        "Stale data causes errors"
+      ],
+      "correct": 1,
+      "explanation": "stale-if-error: if origin is down or returns error, serve stale cached content instead of showing error to user. Graceful degradation. Cache-Control: stale-if-error=86400 allows serving stale for up to 1 day if origin fails."
+    },
+    {
+      "id": "cache-strat-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Origin server goes down. Cache has stale content (expired 1 hour ago). With stale-if-error, what happens?",
+          "options": [
+            "Error shown to user",
+            "Stale content served (better than error)",
+            "Cache is cleared",
+            "Request hangs forever"
+          ],
+          "correct": 1,
+          "explanation": "stale-if-error serves stale content during origin failures. User sees slightly outdated data instead of error page. Much better UX. When origin recovers, fresh content is fetched."
+        },
+        {
+          "question": "What content should NOT use stale-if-error?",
+          "options": [
+            "News articles",
+            "Real-time stock prices or account balances",
+            "Product images",
+            "Blog posts"
+          ],
+          "correct": 1,
+          "explanation": "Stale financial data (prices, balances) could lead to wrong decisions or transactions. Better to show error ('temporarily unavailable') than stale balance. Use stale-if-error for non-critical, informational content."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-057",
+      "type": "ordering",
+      "question": "Rank these strategies by write durability (most durable to least):",
+      "items": ["Write-through (sync to DB)", "Write-behind (async to DB)", "Write to cache only", "Database only (no cache)"],
+      "correctOrder": [3, 0, 1, 2],
+      "explanation": "Database only: all writes durable. Write-through: sync to both, durable. Write-behind: async, small window of potential loss. Cache only: no persistence, all data lost on cache failure."
+    },
+    {
+      "id": "cache-strat-058",
+      "type": "multi-select",
+      "question": "When is write-behind caching acceptable despite durability risk?",
+      "options": [
+        "Metrics and counters (losing a few is OK)",
+        "Session data (recreatable on login)",
+        "Financial transactions",
+        "Rate limiting counters"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Metrics, sessions, rate limits: tolerant of occasional data loss, benefit from write speed. Financial transactions: absolutely cannot lose writes. Use write-behind only for loss-tolerant workloads."
+    },
+    {
+      "id": "cache-strat-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You implement write-behind for page view counters. Cache crashes, losing 1000 pending increments. Impact?",
+          "options": [
+            "Critical — data integrity violated",
+            "Minor — analytics slightly undercounted, tolerable",
+            "None — counters don't matter",
+            "Major — users affected"
+          ],
+          "correct": 1,
+          "explanation": "View counters are analytics — 1000 lost views is a tiny error rate in millions of views. Not user-facing, not transactional. Acceptable trade-off for write performance. This is a good write-behind use case."
+        },
+        {
+          "question": "You consider write-behind for user account balance updates. What's the risk?",
+          "options": [
+            "No risk",
+            "User deposits money, cache crashes, balance is wrong (money 'lost')",
+            "Slightly wrong balances",
+            "Only affects analytics"
+          ],
+          "correct": 1,
+          "explanation": "User deposits $100, write-behind acks, cache crashes before DB write. User sees $100 balance (from cache), but DB has $0. On recovery, balance is $0. User's money is 'lost.' Unacceptable. Use write-through for financial data."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-060",
+      "type": "multiple-choice",
+      "question": "What is 'double-write' pattern?",
+      "options": [
+        "Writing twice to the same cache",
+        "Writing to both primary and backup storage for redundancy",
+        "A bug causing duplicate writes",
+        "Writing to two caches"
+      ],
+      "correct": 1,
+      "explanation": "Double-write: write to both primary DB and a secondary store (cache, search index, etc.) for redundancy or different access patterns. Can be sync (write-through style) or async (eventual consistency)."
+    },
+    {
+      "id": "cache-strat-061",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You write to PostgreSQL (primary) and Elasticsearch (search). Order of operations matters. Write to PG first, then ES. What if ES write fails?",
+          "options": [
+            "Data is in PG but not ES (inconsistent but recoverable)",
+            "Both fail",
+            "Only ES has data",
+            "Transaction rolls back"
+          ],
+          "correct": 0,
+          "explanation": "PG write succeeded, ES failed. Data is in primary (durable) but search is out of sync. This is recoverable — resync from PG to ES later. Primary is the source of truth."
+        },
+        {
+          "question": "If you wrote to ES first, then PG, and PG fails. What's the problem?",
+          "options": [
+            "Same as before",
+            "ES has data that PG doesn't — ES is 'ahead' of truth",
+            "No problem",
+            "ES automatically rolls back"
+          ],
+          "correct": 1,
+          "explanation": "ES has data, PG (primary) doesn't. ES shows records that don't exist in DB. Worse than previous case — secondary is ahead of primary. Always write to primary first."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-062",
+      "type": "ordering",
+      "question": "For double-write to primary DB and cache, order operations for best consistency:",
+      "items": [
+        "Write to cache",
+        "Write to primary DB",
+        "If either fails, handle error",
+        "Acknowledge to user"
+      ],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Write primary first (source of truth). Then cache. If primary fails, abort. If cache fails, primary is still correct (can retry cache or let next read populate). Ack only after primary succeeds."
+    },
+    {
+      "id": "cache-strat-063",
+      "type": "multiple-choice",
+      "question": "What is 'cache key versioning'?",
+      "options": [
+        "Numbering cache entries",
+        "Including a version in cache keys so old versions can coexist with new",
+        "Versioning the cache software",
+        "Git for caches"
+      ],
+      "correct": 1,
+      "explanation": "Key versioning: 'user:1:v2' vs 'user:1:v1'. When schema changes, increment version. Old cached data (v1) isn't read by new code (looking for v2). Gradual migration without mass invalidation."
+    },
+    {
+      "id": "cache-strat-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You add a 'preferences' field to User. Old cached users don't have it. Using key versioning, what do you do?",
+          "options": [
+            "Delete all user cache entries",
+            "Change key from 'user:1' to 'user:v2:1', new code reads v2 keys",
+            "Add field to old entries",
+            "Ignore the problem"
+          ],
+          "correct": 1,
+          "explanation": "Key versioning: new code uses 'user:v2:1'. Old 'user:1' entries are ignored (never read). New entries written with v2. Gradual migration — old entries expire naturally. No mass invalidation needed."
+        },
+        {
+          "question": "What happens to cache storage during migration?",
+          "options": [
+            "No change",
+            "Temporarily higher usage (v1 and v2 coexist until v1 expires)",
+            "Lower usage",
+            "Cache fails"
+          ],
+          "correct": 1,
+          "explanation": "During migration, both v1 (old entries, expiring) and v2 (new entries) exist. Temporary storage increase. Once v1 TTLs expire, only v2 remains. Plan for temporary capacity increase."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-065",
+      "type": "multiple-choice",
+      "question": "What is 'lazy migration' in caching?",
+      "options": [
+        "Slow cache migration",
+        "Migrating cache entries on access rather than all at once",
+        "Not migrating at all",
+        "Migrating during off-hours"
+      ],
+      "correct": 1,
+      "explanation": "Lazy migration: when reading old format data, transform to new format and re-cache. Migration happens gradually as data is accessed. Popular data migrates quickly; cold data may never migrate (just expires)."
+    },
+    {
+      "id": "cache-strat-066",
+      "type": "multi-select",
+      "question": "What are considerations when choosing between cache-aside and read-through?",
+      "options": [
+        "How much control you need over caching logic",
+        "Whether cache layer can be configured with data loaders",
+        "Team familiarity with patterns",
+        "Database type"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cache-aside gives more control (app decides caching). Read-through needs cache with loader support. Team familiarity affects maintainability. Database type is less relevant — both work with any DB."
+    },
+    {
+      "id": "cache-strat-067",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your team uses multiple microservices, each accessing the same cached data. Cache-aside: where is caching logic?",
+          "options": [
+            "Centralized in one service",
+            "Duplicated in each microservice",
+            "In the database",
+            "No caching logic needed"
+          ],
+          "correct": 1,
+          "explanation": "Cache-aside: each service has its own caching code — check cache, on miss fetch and populate. Logic is duplicated. Risk: inconsistent implementations, each service might cache differently."
+        },
+        {
+          "question": "With read-through cache, where is the logic?",
+          "options": [
+            "Duplicated in each service",
+            "Centralized in the cache layer",
+            "In the database",
+            "No caching logic needed"
+          ],
+          "correct": 1,
+          "explanation": "Read-through: cache layer has the data loaders. All services just query cache — consistent behavior. Logic is centralized. Reduces duplication but requires cache layer to support read-through."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-068",
+      "type": "multiple-choice",
+      "question": "What is 'cache composition' or 'layered caching strategy'?",
+      "options": [
+        "Using one cache",
+        "Combining multiple caching strategies for different data types or layers",
+        "Composing cache keys",
+        "Layering cache memory"
+      ],
+      "correct": 1,
+      "explanation": "Cache composition: use different strategies for different needs. Example: write-through for sessions (immediate consistency), cache-aside for products (simpler), write-behind for analytics (speed). Match strategy to requirements."
+    },
+    {
+      "id": "cache-strat-069",
+      "type": "multi-select",
+      "question": "A system might use different strategies for:",
+      "options": [
+        "User sessions (write-through for consistency)",
+        "Product catalog (cache-aside for flexibility)",
+        "View counters (write-behind for speed)",
+        "All data types (same strategy everywhere)"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Different data has different requirements. Sessions need consistency (write-through). Products need flexibility (cache-aside). Counters prioritize speed (write-behind). One size doesn't fit all."
+    },
+    {
+      "id": "cache-strat-070",
+      "type": "ordering",
+      "question": "Match these data types to most appropriate write strategy (in order):",
+      "items": ["Financial transaction", "Page view counter", "User session", "Audit log"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Financial: write-through (must persist). Session: write-through (consistency) or write-behind (if loss OK). Counter: write-behind (speed, loss OK). Audit log: write-through or write-around (must persist, rarely re-read)."
+    },
+    {
+      "id": "cache-strat-071",
+      "type": "multiple-choice",
+      "question": "What is 'compute caching' vs 'data caching'?",
+      "options": [
+        "Same thing",
+        "Data caching stores database results; compute caching stores expensive calculation results",
+        "Compute caching is faster",
+        "Data caching is for computers"
+      ],
+      "correct": 1,
+      "explanation": "Data caching: cache database query results. Compute caching: cache results of expensive computations (aggregations, ML inference, rendered HTML). Both reduce latency; compute caching saves CPU, data caching saves I/O."
+    },
+    {
+      "id": "cache-strat-072",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Generating a report takes 30 seconds of computation. It's requested 100 times/hour. Without caching, how much compute time per hour?",
+          "options": ["30 seconds", "30 minutes", "50 minutes", "100 minutes"],
+          "correct": 2,
+          "explanation": "100 requests × 30 seconds = 3000 seconds = 50 minutes of compute per hour. Most of that time is wasted on redundant computation if the report doesn't change."
+        },
+        {
+          "question": "With compute caching (report cached for 1 hour), how much compute time?",
+          "options": ["50 minutes", "30 seconds", "5 minutes", "0 seconds"],
+          "correct": 1,
+          "explanation": "Compute once, cache 1 hour. Only 30 seconds of compute per hour regardless of request volume. Compute caching provides massive efficiency for expensive, repeated calculations."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-073",
+      "type": "multi-select",
+      "question": "What are good candidates for compute caching?",
+      "options": [
+        "Aggregations over large datasets",
+        "ML model inference results",
+        "Rendered HTML templates",
+        "Simple arithmetic"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cache expensive computations: aggregations (scan millions of rows), ML inference (GPU/CPU intensive), HTML rendering (string manipulation). Simple arithmetic is cheap — caching overhead exceeds computation cost."
+    },
+    {
+      "id": "cache-strat-074",
+      "type": "multiple-choice",
+      "question": "What is 'batch refresh' strategy?",
+      "options": [
+        "Refreshing the cache in batches",
+        "Periodically recomputing and caching data regardless of access, on a schedule",
+        "Batching read requests",
+        "Refreshing browser tabs"
+      ],
+      "correct": 1,
+      "explanation": "Batch refresh: scheduled job recomputes expensive data and updates cache. Example: nightly job precomputes daily stats and caches them. Users always hit warm cache. No on-demand computation during traffic."
+    },
+    {
+      "id": "cache-strat-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Daily leaderboard computation takes 10 minutes. With cache-aside (compute on first access), what's the risk?",
+          "options": [
+            "No risk",
+            "First user of the day waits 10 minutes; or many concurrent first users all trigger computation",
+            "Leaderboard is never computed",
+            "Cache fills up"
+          ],
+          "correct": 1,
+          "explanation": "First morning access triggers 10-minute computation. User waits. Or multiple concurrent users all trigger computation (thundering herd). Terrible UX and wasted compute."
+        },
+        {
+          "question": "With batch refresh (nightly cron job at 3AM), what happens when users arrive at 9AM?",
+          "options": [
+            "Same 10-minute wait",
+            "Leaderboard is already cached (warm) — instant response",
+            "No leaderboard available",
+            "Cron job runs again"
+          ],
+          "correct": 1,
+          "explanation": "Batch refresh: cron ran at 3AM, computed leaderboard, cached it. 9AM users hit warm cache instantly. No wait, no thundering herd. Batch refresh is ideal for predictable, expensive computations."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-076",
+      "type": "multi-select",
+      "question": "When is batch refresh appropriate?",
+      "options": [
+        "Data that changes infrequently (daily, hourly)",
+        "Expensive computations that can be precomputed",
+        "Data needed immediately after writes",
+        "Predictable cache keys (known in advance)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Batch refresh works for: infrequent changes (don't need real-time), expensive computations (worth precomputing), known keys (can iterate and refresh). Not for immediate write visibility — that needs write-through."
+    },
+    {
+      "id": "cache-strat-077",
+      "type": "multiple-choice",
+      "question": "What is 'look-aside' caching?",
+      "options": [
+        "A visual caching technique",
+        "Another name for cache-aside",
+        "Looking at the cache sideways",
+        "A backup cache"
+      ],
+      "correct": 1,
+      "explanation": "Look-aside and cache-aside are synonyms. Both describe the pattern where the application 'looks at' the cache first, then 'looks aside' to the database on miss. The cache sits 'to the side' of the data path."
+    },
+    {
+      "id": "cache-strat-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "In distributed systems, what's the 'cache coherence' challenge?",
+          "options": [
+            "Cache is incoherent",
+            "Multiple caches may have different versions of the same data",
+            "Cache uses different protocols",
+            "Caching in multiple languages"
+          ],
+          "correct": 1,
+          "explanation": "With multiple cache instances (or caches on different servers), they can diverge. Cache A has v1, Cache B has v2. Reads get inconsistent results. Coherence = keeping all caches in sync."
+        },
+        {
+          "question": "Which strategy helps with cache coherence?",
+          "options": [
+            "Using longer TTLs",
+            "Write-through to shared cache, or broadcast invalidation to all cache instances",
+            "More cache memory",
+            "Ignoring the problem"
+          ],
+          "correct": 1,
+          "explanation": "Shared cache (Redis): single source of truth. Or broadcast invalidation: when any instance writes, notify all others to invalidate. Or short TTLs (eventual consistency). Trade-offs between consistency, latency, and complexity."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-079",
+      "type": "multi-select",
+      "question": "Which patterns help maintain cache coherence in distributed systems?",
+      "options": [
+        "Shared distributed cache (Redis/Memcached)",
+        "Pub/sub invalidation (notify all instances on write)",
+        "In-process cache per instance (no sharing)",
+        "Short TTLs (eventual consistency)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Shared cache: one source of truth. Pub/sub: propagate invalidations. Short TTL: stale data expires quickly. In-process cache per instance causes incoherence — each instance has different data."
+    },
+    {
+      "id": "cache-strat-080",
+      "type": "multiple-choice",
+      "question": "What is a 'read replica pattern' for caching?",
+      "options": [
+        "Replicating reads",
+        "Multiple read-only cache copies for scale, with writes going to a primary",
+        "Reading from replicas",
+        "Copying the cache"
+      ],
+      "correct": 1,
+      "explanation": "Read replica: one primary (handles writes, propagates to replicas), multiple replicas (handle reads). Scales read throughput. Similar to database read replicas but for cache layer."
+    },
+    {
+      "id": "cache-strat-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Primary Redis handles writes, 3 read replicas handle reads. Write completes on primary. When do replicas have the new data?",
+          "options": [
+            "Immediately (synchronous replication)",
+            "Eventually (asynchronous replication, typically milliseconds)",
+            "Never",
+            "After TTL expires"
+          ],
+          "correct": 1,
+          "explanation": "Redis replication is async by default. Primary acks write, then streams to replicas. Replicas get data in milliseconds typically, but there's a window where replicas are behind (replication lag)."
+        },
+        {
+          "question": "User writes to primary, immediately reads from replica. What might they see?",
+          "options": [
+            "Always new data",
+            "Possibly stale data (replica hasn't received update yet)",
+            "Error",
+            "No data"
+          ],
+          "correct": 1,
+          "explanation": "Replication lag: if read hits replica before replication, user sees stale data. For read-your-writes consistency, route that user's reads to primary, or wait for replica sync."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-082",
+      "type": "ordering",
+      "question": "Rank these caching strategies by implementation complexity (simplest to most complex):",
+      "items": ["Cache-aside", "Write-through", "Write-behind with batching", "Read-through with refresh-ahead"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Cache-aside: simple app logic. Write-through: add sync write, handle failures. Refresh-ahead: need access tracking, proactive refresh. Write-behind with batching: async writes, batch logic, failure handling, data loss protection."
+    },
+    {
+      "id": "cache-strat-083",
+      "type": "multiple-choice",
+      "question": "What is 'cache stampede protection' at the application level?",
+      "options": [
+        "Protecting the cache from stampeding buffalo",
+        "Mechanisms like locking or request coalescing to prevent multiple simultaneous origin fetches",
+        "Rate limiting cache access",
+        "Increasing cache size"
+      ],
+      "correct": 1,
+      "explanation": "Stampede protection prevents N requests from all fetching from origin when cache misses. Techniques: locks (one fetches, others wait), request coalescing (share in-flight requests), probabilistic early refresh."
+    },
+    {
+      "id": "cache-strat-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're implementing cache-aside. How do you add stampede protection?",
+          "options": [
+            "Longer TTL",
+            "On cache miss, acquire lock, check cache again, then fetch if still missing",
+            "More cache memory",
+            "Faster database"
+          ],
+          "correct": 1,
+          "explanation": "Double-check locking: on miss, acquire lock for that key, re-check cache (someone else may have populated), if still empty then fetch and populate. Prevents duplicate fetches."
+        },
+        {
+          "question": "Lock acquired, but fetch from origin takes 30 seconds. Other requests are waiting. Risk?",
+          "options": [
+            "No risk",
+            "Resource exhaustion (threads/connections held waiting)",
+            "Cache overflow",
+            "Lock expires"
+          ],
+          "correct": 1,
+          "explanation": "Many threads waiting = resource consumption. Add timeout: if lock held too long, let waiting requests either (a) try fetching themselves or (b) return stale/error. Balance consistency vs. availability."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-085",
+      "type": "multi-select",
+      "question": "What are 'singleflight' or 'request coalescing' libraries/patterns?",
+      "options": [
+        "Libraries that deduplicate concurrent requests for the same key",
+        "First request executes, others share the result",
+        "Every request executes independently",
+        "Common in Go, available in other languages"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Singleflight (Go), request coalescing (general): if requests for key X are in-flight, new requests for X wait and share the result. One fetch, N consumers. Prevents thundering herd. Libraries handle this automatically."
+    },
+    {
+      "id": "cache-strat-086",
+      "type": "multiple-choice",
+      "question": "In write-behind, what is 'write coalescing'?",
+      "options": [
+        "Writing to multiple caches",
+        "Combining multiple writes to the same key into one DB write",
+        "Coalescing write errors",
+        "Writing in a coal mine"
+      ],
+      "correct": 1,
+      "explanation": "Write coalescing: if key X is written 10 times before flush, only the final value is written to DB once. Reduces DB writes. Example: counter incremented 100 times → one DB write with final value."
+    },
+    {
+      "id": "cache-strat-087",
+      "type": "numeric-input",
+      "question": "Write-behind with coalescing. Key 'counter' is incremented 500 times in 1 second, then flushed. How many DB writes?",
+      "answer": 1,
+      "unit": "write",
+      "tolerance": "exact",
+      "explanation": "Coalescing: all 500 increments merge into final value. One DB write with the result. 500 writes → 1 DB write. Massive write amplification reduction."
+    },
+    {
+      "id": "cache-strat-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "What data structure is commonly used for write-behind with coalescing?",
+          "options": [
+            "Simple queue",
+            "HashMap/dictionary of pending writes, keyed by cache key",
+            "Stack",
+            "Tree"
+          ],
+          "correct": 1,
+          "explanation": "HashMap: key → latest value. Each write overwrites previous for same key. On flush, iterate map and write each key once. O(unique keys) writes instead of O(total writes)."
+        },
+        {
+          "question": "What about order of writes for different keys?",
+          "options": [
+            "Order doesn't matter",
+            "May need ordered map or batch writes in transaction if order matters",
+            "Order is guaranteed",
+            "Writes are always out of order"
+          ],
+          "correct": 1,
+          "explanation": "HashMap doesn't preserve order. If order matters (e.g., audit log), use ordered map or write-ahead log. For most cases (independent keys), order between keys doesn't matter."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-089",
+      "type": "multiple-choice",
+      "question": "What is 'negative caching' strategy?",
+      "options": [
+        "Caching negative numbers",
+        "Caching 'not found' results to prevent repeated lookups for non-existent data",
+        "Caching errors",
+        "Subtracting from cache"
+      ],
+      "correct": 1,
+      "explanation": "Negative caching: cache 'does not exist' results. Without it, lookups for non-existent IDs always hit database. With it, first lookup caches 'not found', subsequent lookups return cached negative result."
+    },
+    {
+      "id": "cache-strat-090",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "User requests profile for user_id=99999 (doesn't exist). Without negative caching, what happens on 1000 requests?",
+          "options": [
+            "1 DB query",
+            "1000 DB queries (all miss cache, all hit DB, all get 'not found')",
+            "0 DB queries",
+            "Cache fills up"
+          ],
+          "correct": 1,
+          "explanation": "Without negative caching, 'not found' isn't cached. Each request tries cache (miss), queries DB (not found), doesn't cache. 1000 useless DB queries."
+        },
+        {
+          "question": "With negative caching (cache 'not found' for 60s), what happens?",
+          "options": [
+            "Still 1000 DB queries",
+            "1 DB query (first), then 999 cache hits returning 'not found'",
+            "No DB queries",
+            "Error"
+          ],
+          "correct": 1,
+          "explanation": "First request: DB query, cache 'not found' for 60s. Next 999 requests: cache hit, return 'not found' without DB. Massive reduction in DB load for non-existent data attacks or typos."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-091",
+      "type": "multi-select",
+      "question": "What are considerations for negative cache TTL?",
+      "options": [
+        "Shorter than positive TTL (in case data is created)",
+        "Long enough to protect against repeated lookups",
+        "Same as positive TTL",
+        "Consider if 'not found' to 'found' transitions are expected"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Negative TTL: short enough to detect newly created data quickly, long enough to protect DB. If data rarely transitions (user IDs are permanent), can be longer. If transitions expected (checking if item in cart), shorter."
+    },
+    {
+      "id": "cache-strat-092",
+      "type": "multiple-choice",
+      "question": "What is a 'bloom filter' in caching context?",
+      "options": [
+        "A type of cache",
+        "A probabilistic data structure that quickly checks if an item might exist (avoiding pointless cache/DB lookups)",
+        "A filter for fresh data",
+        "A flower-based algorithm"
+      ],
+      "correct": 1,
+      "explanation": "Bloom filter: fast membership test. 'Is key X possibly in the set?' If filter says no, definitely no (skip lookup). If yes, maybe (check cache/DB). Prevents lookups for definitely non-existent data. Saves cache/DB queries."
+    },
+    {
+      "id": "cache-strat-093",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Bloom filter says user_id=12345 is 'possibly present.' What do you do?",
+          "options": [
+            "Assume it exists",
+            "Check cache/DB to confirm (might exist, might be false positive)",
+            "Skip lookup",
+            "Delete it"
+          ],
+          "correct": 1,
+          "explanation": "Bloom filter 'yes' means possibly present (could be false positive). Check cache/DB to confirm. Bloom filter avoids unnecessary lookups for definite negatives, not for maybes."
+        },
+        {
+          "question": "Bloom filter says user_id=99999 is 'definitely not present.' What do you do?",
+          "options": [
+            "Check DB anyway",
+            "Skip cache/DB lookup, return not found immediately",
+            "Check cache only",
+            "Wait and retry"
+          ],
+          "correct": 1,
+          "explanation": "Bloom filter 'no' means definitely not present (no false negatives). Skip all lookups, return not found. This saves cache/DB queries for non-existent data. Useful for large keyspaces with many invalid queries."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-094",
+      "type": "ordering",
+      "question": "Rank these strategies by tolerance for stale data (most tolerant to least):",
+      "items": ["Stale-while-revalidate", "Read-through (no SWR)", "Write-through", "Write-behind"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "SWR explicitly serves stale data (most tolerant). Read-through uses TTL (some staleness). Write-behind is eventually consistent. Write-through is immediately consistent (least tolerant of staleness)."
+    },
+    {
+      "id": "cache-strat-095",
+      "type": "multi-select",
+      "question": "When choosing a caching strategy, consider:",
+      "options": [
+        "Read/write ratio",
+        "Consistency requirements",
+        "Acceptable latency",
+        "Durability requirements"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All factors matter: read-heavy favors cache-aside, write-heavy might need write-behind. Strong consistency needs write-through. Low latency needs write-behind. Durability rules out cache-only writes."
+    },
+    {
+      "id": "cache-strat-096",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Application: 95% reads, 5% writes. Users must see their own writes immediately. Which strategy?",
+          "options": [
+            "Cache-aside with delete-on-write",
+            "Write-through (or cache-aside with update-on-write)",
+            "Write-behind",
+            "Write-around"
+          ],
+          "correct": 1,
+          "explanation": "Read-your-writes requirement rules out delete-on-write (causes miss). Write-through ensures cache has new data immediately. Or cache-aside with careful update-on-write. Write-behind works too (cache updated immediately)."
+        },
+        {
+          "question": "Same app, but now you can accept eventual consistency (1-2 seconds delay OK). Simplest strategy?",
+          "options": [
+            "Still write-through",
+            "Cache-aside with delete-on-write (simpler, avoid race conditions)",
+            "Complex write-behind",
+            "No caching"
+          ],
+          "correct": 1,
+          "explanation": "If eventual consistency is OK, cache-aside with delete-on-write is simplest. Delete on write, next read fetches fresh. 1-2 second delay is fine. Simpler than managing update races."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-097",
+      "type": "multiple-choice",
+      "question": "What is 'cache tagging' strategy?",
+      "options": [
+        "Tagging cache entries with metadata",
+        "Grouping cache entries with tags for bulk invalidation",
+        "Tagging cache servers",
+        "HTML tag caching"
+      ],
+      "correct": 1,
+      "explanation": "Cache tagging: entries are tagged (e.g., 'product:electronics'). Invalidate by tag: delete all entries tagged 'electronics'. Useful when changes affect multiple cache entries (category update → invalidate all products in category)."
+    },
+    {
+      "id": "cache-strat-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Product catalog has 10,000 products. You cache product pages. Category 'electronics' is renamed. Which entries need invalidation?",
+          "options": [
+            "All 10,000 product pages",
+            "Only the 500 products tagged 'electronics'",
+            "Just the category page",
+            "None"
+          ],
+          "correct": 1,
+          "explanation": "With cache tagging, products are tagged by category. Invalidate 'electronics' tag → only 500 affected products invalidated. Without tags, you'd need to track which products are in electronics or invalidate all."
+        },
+        {
+          "question": "How is cache tagging typically implemented?",
+          "options": [
+            "Built into all caches",
+            "Separate tag→keys mapping stored alongside cache, or cache supporting tag features",
+            "Automatic by cache",
+            "Tags in cache keys"
+          ],
+          "correct": 1,
+          "explanation": "Implementation: maintain tag→keys index (e.g., Redis SET 'tag:electronics' containing all product keys). On invalidate tag: lookup keys, delete all. Some caches (like Varnish) have built-in tag support."
+        }
+      ]
+    },
+    {
+      "id": "cache-strat-099",
+      "type": "ordering",
+      "question": "For an e-commerce site, match these data types to write strategies (most appropriate order):",
+      "items": ["Product prices (must be accurate)", "Shopping cart", "Page view analytics", "User sessions"],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Prices: write-through (consistency critical). Cart: write-through (user sees changes). Sessions: write-through or write-behind (fast, consistent). Analytics: write-behind (speed, loss OK). Order by criticality."
+    },
+    {
+      "id": "cache-strat-100",
+      "type": "multi-select",
+      "question": "What are signs you need to reconsider your caching strategy?",
+      "options": [
+        "Frequent stale data issues affecting users",
+        "Cache hit rate is very low despite tuning",
+        "Write latency is too high for your SLAs",
+        "Cache is working perfectly"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Reconsider if: stale data problems (need stronger consistency), low hit rate (wrong data cached, or access pattern doesn't suit caching), high write latency (write-through overhead too much). If working perfectly, don't change!"
+    }
+  ]
+}
