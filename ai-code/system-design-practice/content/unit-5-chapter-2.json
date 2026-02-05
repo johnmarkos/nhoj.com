@@ -1,0 +1,1571 @@
+{
+  "unit": 5,
+  "unitTitle": "Caching",
+  "chapter": 2,
+  "chapterTitle": "Cache Placement",
+  "chapterDescription": "Where caches live in system architecture: browser, CDN, reverse proxy, application layer, and database query cache.",
+  "problems": [
+    {
+      "id": "cache-place-001",
+      "type": "ordering",
+      "question": "Rank these cache layers from closest to the user to closest to the database:",
+      "items": ["Application server cache", "Browser cache", "CDN", "Database query cache"],
+      "correctOrder": [1, 2, 0, 3],
+      "explanation": "Browser (on user's device) → CDN (edge servers near user) → Application server (in your datacenter) → Database query cache (in the DB). Requests flow through these layers; hits at earlier layers are faster."
+    },
+    {
+      "id": "cache-place-002",
+      "type": "multiple-choice",
+      "question": "What is the primary advantage of browser caching?",
+      "options": [
+        "It's the largest cache",
+        "Zero network latency — data is already on the user's device",
+        "It's shared between all users",
+        "It never expires"
+      ],
+      "correct": 1,
+      "explanation": "Browser cache is on the user's device — no network request needed at all. This is the fastest possible cache: zero latency, zero bandwidth usage. The trade-off is it's per-user (not shared) and limited in size."
+    },
+    {
+      "id": "cache-place-003",
+      "type": "multi-select",
+      "question": "What types of resources are commonly browser-cached?",
+      "options": [
+        "Static assets (JS, CSS, images)",
+        "User-specific API responses",
+        "Fonts and icons",
+        "HTML pages (with appropriate headers)"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Static assets, fonts, and HTML pages (if headers allow) are commonly browser-cached. User-specific API responses are typically not cached in browser (or cached briefly) to avoid showing stale personal data."
+    },
+    {
+      "id": "cache-place-004",
+      "type": "multiple-choice",
+      "question": "Which HTTP header tells browsers how long to cache a resource?",
+      "options": [
+        "Content-Type",
+        "Cache-Control: max-age",
+        "Authorization",
+        "Accept-Encoding"
+      ],
+      "correct": 1,
+      "explanation": "Cache-Control: max-age=3600 tells browsers to cache the resource for 3600 seconds (1 hour). After that, the browser must revalidate or refetch. This header is the primary mechanism for controlling browser caching."
+    },
+    {
+      "id": "cache-place-005",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A CSS file has Cache-Control: max-age=31536000 (1 year). You deploy a bug fix to the CSS. What happens to users with the old version cached?",
+          "options": [
+            "They automatically get the new version",
+            "They see the old (buggy) CSS until their cache expires in up to 1 year",
+            "Their browser checks for updates immediately",
+            "The cache is invalidated automatically"
+          ],
+          "correct": 1,
+          "explanation": "With max-age=31536000, the browser won't even check for updates until the cache expires. Users could see the buggy CSS for up to a year. This is the cache invalidation problem for browser caches."
+        },
+        {
+          "question": "How do you force users to get the new CSS immediately?",
+          "options": [
+            "Wait for cache to expire",
+            "Change the URL (e.g., styles.abc123.css with content hash)",
+            "Set a shorter max-age retroactively",
+            "Ask users to clear their cache"
+          ],
+          "correct": 1,
+          "explanation": "Cache busting: change the resource URL by adding a version or content hash. styles.v2.css or styles.abc123.css is a 'new' resource to the browser — it fetches fresh. This is why build tools add hashes to filenames."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-006",
+      "type": "multiple-choice",
+      "question": "What does Cache-Control: no-cache mean?",
+      "options": [
+        "Don't cache this resource at all",
+        "Cache it, but always revalidate with the server before using",
+        "Cache only on the server",
+        "Cache for a very short time"
+      ],
+      "correct": 1,
+      "explanation": "Counterintuitively, no-cache doesn't mean 'don't cache.' It means 'cache it, but always ask the server if it's still valid before using.' The server can respond with 304 Not Modified if unchanged. For 'don't cache at all,' use no-store."
+    },
+    {
+      "id": "cache-place-007",
+      "type": "multiple-choice",
+      "question": "What does Cache-Control: no-store mean?",
+      "options": [
+        "Cache but don't store on disk",
+        "Don't cache this resource at all — always fetch fresh",
+        "Store without caching",
+        "Same as no-cache"
+      ],
+      "correct": 1,
+      "explanation": "no-store means 'never cache this, not even temporarily.' Every request fetches fresh from the server. Use for sensitive data (banking, health records) that shouldn't persist in browser storage."
+    },
+    {
+      "id": "cache-place-008",
+      "type": "multi-select",
+      "question": "Which resources should typically use Cache-Control: no-store?",
+      "options": [
+        "Bank account balance page",
+        "Company logo image",
+        "User session data",
+        "Medical records"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Sensitive data (banking, medical, session info) should use no-store to prevent caching. The logo is static, public, and benefits from long caching. Sensitive data could leak if cached on shared computers."
+    },
+    {
+      "id": "cache-place-009",
+      "type": "multiple-choice",
+      "question": "What is an ETag?",
+      "options": [
+        "An HTML tag for caching",
+        "A unique identifier for a specific version of a resource, used for cache validation",
+        "An error tag",
+        "A tag for tracking users"
+      ],
+      "correct": 1,
+      "explanation": "ETag (Entity Tag) is a hash or version identifier for a resource. Browser sends If-None-Match: <etag> on revalidation. If the server's current ETag matches, it returns 304 Not Modified (use cache). If different, returns the new resource."
+    },
+    {
+      "id": "cache-place-010",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A resource has ETag: \"abc123\". Browser's cache expires. What does the browser send to revalidate?",
+          "options": [
+            "GET /resource with If-None-Match: \"abc123\"",
+            "GET /resource with no special headers",
+            "HEAD /resource",
+            "DELETE /resource"
+          ],
+          "correct": 0,
+          "explanation": "The browser sends If-None-Match: \"abc123\" asking 'is your current version still abc123?' If yes, server returns 304 (use cache). If no, server returns 200 with new content and new ETag."
+        },
+        {
+          "question": "The server's ETag is still \"abc123\". What response saves the most bandwidth?",
+          "options": [
+            "200 OK with full resource body",
+            "304 Not Modified with no body",
+            "204 No Content",
+            "301 Redirect"
+          ],
+          "correct": 1,
+          "explanation": "304 Not Modified tells browser 'your cached version is still valid, use it.' No body is sent, saving bandwidth. The browser uses its cached copy. This is conditional GET — very efficient for unchanged resources."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-011",
+      "type": "multiple-choice",
+      "question": "What is the Last-Modified header used for?",
+      "options": [
+        "Tracking when users last visited",
+        "Telling the browser when the resource was last changed, enabling time-based revalidation",
+        "Logging modification history",
+        "Setting cache duration"
+      ],
+      "correct": 1,
+      "explanation": "Last-Modified: <date> tells the browser when the resource changed. On revalidation, browser sends If-Modified-Since: <date>. If unchanged since that date, server returns 304. Less precise than ETag but simpler."
+    },
+    {
+      "id": "cache-place-012",
+      "type": "ordering",
+      "question": "Rank these cache validation methods from most precise to least precise:",
+      "items": ["ETag (content hash)", "Last-Modified (timestamp)", "max-age expiration only", "No validation"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "ETag (exact content match) → Last-Modified (second-precision timestamp) → max-age (time-based, no content check) → No validation (always stale). ETag detects any content change; timestamp can miss sub-second changes."
+    },
+    {
+      "id": "cache-place-013",
+      "type": "multiple-choice",
+      "question": "What is a CDN (Content Delivery Network)?",
+      "options": [
+        "A type of database",
+        "A network of geographically distributed servers that cache and serve content close to users",
+        "A content management system",
+        "A domain name system"
+      ],
+      "correct": 1,
+      "explanation": "A CDN has servers (edge nodes/PoPs) worldwide. Content is cached at edges near users. A user in Tokyo gets content from a Tokyo edge server, not your US origin — reducing latency from 200ms to 20ms."
+    },
+    {
+      "id": "cache-place-014",
+      "type": "numeric-input",
+      "question": "Your origin server is in Virginia. A user in Sydney (200ms round trip) requests a cached asset from a CDN edge 20ms away. What's the latency improvement?",
+      "answer": 180,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "Without CDN: 200ms. With CDN cache hit: 20ms. Improvement = 200 - 20 = 180ms. CDN edge proximity dramatically reduces latency for cached content."
+    },
+    {
+      "id": "cache-place-015",
+      "type": "multi-select",
+      "question": "What types of content are CDNs most effective for?",
+      "options": [
+        "Static assets (images, JS, CSS)",
+        "User-specific dynamic content",
+        "Video streaming",
+        "Software downloads"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "CDNs excel at static/cacheable content: assets, video, downloads. User-specific dynamic content can't be cached effectively at edges (each user sees different data). Some CDNs support edge computing for dynamic content."
+    },
+    {
+      "id": "cache-place-016",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A CDN has 100 edge locations worldwide. Your origin has a new image. How does the image get to all edges?",
+          "options": [
+            "You manually upload to all 100 edges",
+            "Edges fetch from origin on first request (pull-based/lazy)",
+            "All edges are updated simultaneously",
+            "Images can't be CDN-cached"
+          ],
+          "correct": 1,
+          "explanation": "Most CDNs use pull-based caching: an edge fetches from origin on first cache miss, then caches locally. The image spreads to edges as users request it. Popular content ends up everywhere; rare content stays at fewer edges."
+        },
+        {
+          "question": "For a major product launch with a new image, what can you do to ensure fast global delivery from the start?",
+          "options": [
+            "Hope users request it quickly",
+            "Pre-warm the CDN cache by requesting from multiple regions",
+            "Disable CDN caching",
+            "Use a longer TTL"
+          ],
+          "correct": 1,
+          "explanation": "Cache warming: proactively request the resource from various geographic locations to populate edge caches before real users arrive. Many CDNs offer APIs or tools for cache warming. Prevents cold cache on launch day."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-017",
+      "type": "multiple-choice",
+      "question": "What is a CDN 'origin'?",
+      "options": [
+        "The first CDN edge server",
+        "The source server that CDN edges fetch content from when they have a cache miss",
+        "The CDN headquarters",
+        "The user's browser"
+      ],
+      "correct": 1,
+      "explanation": "The origin is your server (or storage like S3) that has the authoritative content. CDN edges fetch from the origin on cache miss, cache the response, and serve subsequent requests. Origin only handles misses, not all traffic."
+    },
+    {
+      "id": "cache-place-018",
+      "type": "numeric-input",
+      "question": "Your origin can handle 1,000 requests/sec. With a CDN providing 99% hit rate and 100,000 req/sec total traffic, how many requests hit the origin?",
+      "answer": 1000,
+      "unit": "req/sec",
+      "tolerance": "exact",
+      "explanation": "1% of 100,000 = 1,000 req/sec to origin. The CDN absorbs 99,000 req/sec. This is exactly what your origin can handle. CDN caching enables serving 100x your origin's capacity."
+    },
+    {
+      "id": "cache-place-019",
+      "type": "multiple-choice",
+      "question": "What is 'CDN cache purge' or 'invalidation'?",
+      "options": [
+        "Deleting the CDN",
+        "Removing specific content from all CDN edge caches before TTL expires",
+        "Cleaning CDN logs",
+        "Refreshing CDN configuration"
+      ],
+      "correct": 1,
+      "explanation": "Cache purge removes content from CDN edges immediately, regardless of TTL. Use when you deploy broken content and need to fix it fast. Purging 100 edges takes time; use sparingly. Better: use versioned URLs."
+    },
+    {
+      "id": "cache-place-020",
+      "type": "multi-select",
+      "question": "What are challenges with CDN cache invalidation?",
+      "options": [
+        "Propagation delay to all edge locations",
+        "Cost (some CDNs charge per invalidation)",
+        "Rate limits on invalidation requests",
+        "Zero latency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Invalidation challenges: takes time to propagate globally (seconds to minutes), may cost money (AWS CloudFront charges after free tier), and has rate limits. It's not zero latency — there's always propagation time."
+    },
+    {
+      "id": "cache-place-021",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You set CDN cache TTL to 1 year for all assets. What's the main benefit?",
+          "options": [
+            "Assets change frequently",
+            "Maximum cache hit rate — content served from edge for a full year",
+            "Easier debugging",
+            "Lower storage costs"
+          ],
+          "correct": 1,
+          "explanation": "Long TTL = high hit rate. Assets are served from edges without checking origin. Bandwidth and latency savings are maximized. Origin load is minimized."
+        },
+        {
+          "question": "What's the main drawback of 1-year TTL?",
+          "options": [
+            "Too much memory usage",
+            "Deploying updates requires cache invalidation or URL changes",
+            "Users see content too fast",
+            "CDN costs increase"
+          ],
+          "correct": 1,
+          "explanation": "Long TTL means updates don't propagate naturally. You must either invalidate (slow, costly) or use versioned URLs (styles.v2.css). The trade-off: cacheability vs. update agility."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-022",
+      "type": "multiple-choice",
+      "question": "What is the recommended caching strategy for static assets with a build system?",
+      "options": [
+        "Short TTL (1 hour) for all assets",
+        "Long TTL (1 year) with content-hashed filenames (e.g., app.a1b2c3.js)",
+        "No caching",
+        "Medium TTL (1 day)"
+      ],
+      "correct": 1,
+      "explanation": "Content-hashed filenames (app.a1b2c3.js changes to app.d4e5f6.js on new build) enable aggressive caching. TTL can be years — the filename changes when content changes, so users always get fresh versions without invalidation."
+    },
+    {
+      "id": "cache-place-023",
+      "type": "multi-select",
+      "question": "Which HTTP headers should static assets with hashed filenames have?",
+      "options": [
+        "Cache-Control: max-age=31536000 (1 year)",
+        "Cache-Control: no-cache",
+        "Cache-Control: immutable",
+        "Cache-Control: public"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "max-age=31536000 (1 year), immutable (don't even revalidate), and public (cacheable by CDN/proxies). no-cache would defeat the purpose by requiring revalidation. Hashed files are truly immutable — cache forever."
+    },
+    {
+      "id": "cache-place-024",
+      "type": "multiple-choice",
+      "question": "What does Cache-Control: immutable mean?",
+      "options": [
+        "The resource will never change content at this URL",
+        "The cache can't be cleared",
+        "The resource is encrypted",
+        "The resource is compressed"
+      ],
+      "correct": 0,
+      "explanation": "immutable tells browsers 'this URL's content will never change — don't even bother revalidating.' Perfect for content-hashed assets. Saves the revalidation request entirely. Supported by modern browsers."
+    },
+    {
+      "id": "cache-place-025",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your index.html references app.a1b2c3.js. You deploy a new version. What should change?",
+          "options": [
+            "Only app.js content",
+            "app.js filename (e.g., app.d4e5f6.js) AND index.html reference",
+            "Only index.html",
+            "Nothing — CDN auto-detects changes"
+          ],
+          "correct": 1,
+          "explanation": "New build creates app.d4e5f6.js. index.html must reference this new filename. The old app.a1b2c3.js can stay cached forever — no one references it. Users get fresh index.html → new JS filename → fresh JS."
+        },
+        {
+          "question": "How should index.html be cached differently from app.a1b2c3.js?",
+          "options": [
+            "Both should have 1-year cache",
+            "index.html: short TTL or no-cache; app.js: long TTL (1 year)",
+            "Both should use no-cache",
+            "index.html: 1 year; app.js: no-cache"
+          ],
+          "correct": 1,
+          "explanation": "index.html must be fresh so users get new asset references. Use short TTL or no-cache (revalidate each time). Hashed assets (JS, CSS) can cache forever. This pattern balances freshness with cacheability."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-026",
+      "type": "multiple-choice",
+      "question": "What is a 'reverse proxy cache'?",
+      "options": [
+        "A proxy that reverses content",
+        "A cache server that sits in front of your origin servers, caching responses",
+        "A proxy for reverse engineering",
+        "A cache that works backwards"
+      ],
+      "correct": 1,
+      "explanation": "A reverse proxy (like Varnish, Nginx) sits between clients and your origin servers. It caches responses and serves repeated requests without hitting origin. Similar to CDN but typically in your own datacenter."
+    },
+    {
+      "id": "cache-place-027",
+      "type": "ordering",
+      "question": "Order these from closest to user to closest to application server:",
+      "items": ["Reverse proxy (Varnish/Nginx)", "CDN edge", "Load balancer", "Application server cache"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "CDN edge (global, near user) → Reverse proxy (your datacenter entrance) → Load balancer (routes to app servers) → App server cache (in the app). Each layer can cache, reducing load on layers behind it."
+    },
+    {
+      "id": "cache-place-028",
+      "type": "multi-select",
+      "question": "When is a reverse proxy cache useful even if you have a CDN?",
+      "options": [
+        "Caching dynamic content that CDN won't cache",
+        "Reducing load on app servers from CDN cache misses",
+        "Providing cache for internal services (not public-facing)",
+        "Always — they serve different purposes"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Reverse proxy can cache dynamic content, shield origin from CDN miss bursts, and cache internal APIs (service-to-service). CDN and reverse proxy complement each other for different caching needs."
+    },
+    {
+      "id": "cache-place-029",
+      "type": "multiple-choice",
+      "question": "What is Varnish?",
+      "options": [
+        "A database",
+        "A high-performance HTTP reverse proxy cache",
+        "A programming language",
+        "A CDN provider"
+      ],
+      "correct": 1,
+      "explanation": "Varnish is an open-source HTTP accelerator / reverse proxy cache. It's extremely fast (in-memory, optimized for caching) and sits in front of web servers. Used by many high-traffic sites. Configured with VCL (Varnish Configuration Language)."
+    },
+    {
+      "id": "cache-place-030",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your app gets 10,000 req/sec. A reverse proxy with 95% hit rate sits in front. How many requests reach your app servers?",
+          "options": ["10,000", "9,500", "500", "50"],
+          "correct": 2,
+          "explanation": "5% of 10,000 = 500 req/sec to app servers. The reverse proxy handles 9,500 req/sec from cache. This 20x reduction in app server load enables massive scaling."
+        },
+        {
+          "question": "Your app servers can handle 600 req/sec total. What's your maximum traffic with this 95% cache hit rate?",
+          "options": ["6,000 req/sec", "12,000 req/sec", "600 req/sec", "60,000 req/sec"],
+          "correct": 1,
+          "explanation": "If 5% of traffic = 600 req/sec, total = 600 / 0.05 = 12,000 req/sec. The cache multiplies your capacity by 1/(1-hit_rate) = 1/0.05 = 20x."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-031",
+      "type": "multiple-choice",
+      "question": "What is 'origin shielding' in CDN terminology?",
+      "options": [
+        "Protecting origin from DDoS",
+        "Using a single CDN node as intermediary between edges and origin to reduce origin load",
+        "Encrypting origin traffic",
+        "Hiding origin IP address"
+      ],
+      "correct": 1,
+      "explanation": "Origin shielding routes all cache misses through one (or few) designated CDN nodes before hitting origin. Instead of 100 edges each fetching from origin, they fetch from the shield node, which fetches once from origin. Reduces origin requests."
+    },
+    {
+      "id": "cache-place-032",
+      "type": "numeric-input",
+      "question": "100 CDN edges each have a cache miss for the same new content. Without shielding, how many origin requests occur?",
+      "answer": 100,
+      "unit": "requests",
+      "tolerance": "exact",
+      "explanation": "Without shielding, each edge independently fetches from origin = 100 requests. With shielding, edges fetch from shield, shield fetches once from origin = 1 request. Shield collapses concurrent misses."
+    },
+    {
+      "id": "cache-place-033",
+      "type": "multiple-choice",
+      "question": "What is an 'application-level cache'?",
+      "options": [
+        "Cache built into the operating system",
+        "Cache managed by application code, typically storing computed results or database query results",
+        "Cache for mobile applications only",
+        "Application download cache"
+      ],
+      "correct": 1,
+      "explanation": "Application-level cache is managed by your code: storing database results, computed values, API responses. Examples: caching user profiles in Redis, memoizing expensive calculations. You control what/when/how to cache."
+    },
+    {
+      "id": "cache-place-034",
+      "type": "multi-select",
+      "question": "What are common application-level caching tools?",
+      "options": [
+        "Redis",
+        "Memcached",
+        "Local HashMap/dictionary",
+        "PostgreSQL"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Redis and Memcached are popular distributed caches. Local HashMaps (in-process) work for single-instance apps. PostgreSQL is a database, not a cache (though it has query caching). Application code manages these caches."
+    },
+    {
+      "id": "cache-place-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache database query results in Redis. A query takes 200ms from DB but 2ms from Redis. What's the speedup factor?",
+          "options": ["2x", "10x", "100x", "200x"],
+          "correct": 2,
+          "explanation": "200ms / 2ms = 100x speedup. Caching transforms a 200ms operation into a 2ms operation. This is why application caching is so valuable for expensive queries."
+        },
+        {
+          "question": "The same query is called 10,000 times per minute. With 95% cache hit rate, how many DB queries per minute?",
+          "options": ["10,000", "5,000", "500", "50"],
+          "correct": 2,
+          "explanation": "5% of 10,000 = 500 DB queries/minute. Cache absorbs 9,500 queries. DB load drops 20x. This prevents database overload and reduces p99 latency."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-036",
+      "type": "multiple-choice",
+      "question": "What is 'memoization'?",
+      "options": [
+        "Writing notes",
+        "Caching function results based on inputs — returning cached result for same inputs",
+        "Memorizing code",
+        "A memory leak"
+      ],
+      "correct": 1,
+      "explanation": "Memoization caches function outputs by input. fib(10) computed once, cached; subsequent fib(10) calls return cached value. It's application-level caching at the function level. Great for pure functions with expensive computation."
+    },
+    {
+      "id": "cache-place-037",
+      "type": "multi-select",
+      "question": "Which functions are good candidates for memoization?",
+      "options": [
+        "Pure functions (same input → same output)",
+        "Functions with no side effects",
+        "Functions that return current timestamp",
+        "Expensive computations called repeatedly with same arguments"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Memoize pure functions (deterministic, no side effects) that are expensive and called repeatedly. Timestamp functions return different values each call — memoization would return stale times."
+    },
+    {
+      "id": "cache-place-038",
+      "type": "multiple-choice",
+      "question": "What is a 'database query cache'?",
+      "options": [
+        "Caching the database server",
+        "A cache built into the database that stores query results to avoid re-execution",
+        "Caching database credentials",
+        "A backup database"
+      ],
+      "correct": 1,
+      "explanation": "Database query cache stores results of SELECT queries. If the same query runs again (and underlying data hasn't changed), the cached result is returned without re-executing. MySQL has this built-in (though deprecated); PostgreSQL doesn't."
+    },
+    {
+      "id": "cache-place-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "MySQL's query cache stores: 'SELECT * FROM users WHERE id = 5' → result. When is this cache entry invalidated?",
+          "options": [
+            "After a TTL expires",
+            "When ANY write occurs to the users table",
+            "Only when user 5 is modified",
+            "Never — it's cached forever"
+          ],
+          "correct": 1,
+          "explanation": "MySQL's query cache invalidates all cached queries for a table when ANY row in that table is modified. This coarse-grained invalidation is why MySQL deprecated the query cache — high write rates cause constant invalidation."
+        },
+        {
+          "question": "Why did MySQL 8.0 remove the query cache?",
+          "options": [
+            "It was too effective",
+            "Contention and invalidation overhead outweighed benefits for many workloads",
+            "It used too much disk space",
+            "Users didn't want it"
+          ],
+          "correct": 1,
+          "explanation": "Query cache had mutex contention (scaling issue) and invalidated too aggressively (any table write). For write-heavy or mixed workloads, the overhead exceeded benefits. Application-level caching (Redis) gives more control."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-040",
+      "type": "multiple-choice",
+      "question": "What is PostgreSQL's approach to query result caching?",
+      "options": [
+        "Built-in query cache like MySQL",
+        "No built-in query cache — rely on OS page cache and application-level caching",
+        "Automatic caching of all queries",
+        "Cloud-only caching"
+      ],
+      "correct": 1,
+      "explanation": "PostgreSQL doesn't have a query result cache. It relies on OS page cache (data pages in memory) and expects applications to cache at the app level (Redis, etc.). This avoids the invalidation complexity of query caches."
+    },
+    {
+      "id": "cache-place-041",
+      "type": "multi-select",
+      "question": "What database-level caching does PostgreSQL use?",
+      "options": [
+        "Shared buffers (data page cache)",
+        "Query result cache",
+        "OS page cache",
+        "Prepared statement plan cache"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "PostgreSQL uses shared buffers (data pages), OS page cache (file system level), and plan cache (prepared statements). It doesn't cache query results — that's left to the application layer."
+    },
+    {
+      "id": "cache-place-042",
+      "type": "ordering",
+      "question": "Rank these database access patterns from fastest to slowest:",
+      "items": ["Data in shared_buffers (PostgreSQL memory)", "Data in OS page cache", "Data on SSD", "Data in application Redis cache"],
+      "correctOrder": [3, 0, 1, 2],
+      "explanation": "Redis (~1ms network + lookup) → shared_buffers (~0.1ms, but still needs query execution) → OS page cache (~1ms file read) → SSD (~0.1-1ms seek + read). Redis wins for repeated access because it skips query execution entirely."
+    },
+    {
+      "id": "cache-place-043",
+      "type": "multiple-choice",
+      "question": "What is a 'session cache'?",
+      "options": [
+        "Cache that only works during a session",
+        "Storing user session data in a fast cache (Redis) instead of database",
+        "A temporary cache",
+        "Cache for session musicians"
+      ],
+      "correct": 1,
+      "explanation": "Session cache stores user session data (login state, preferences) in Redis/Memcached instead of a database. Sessions are read on every request — caching them avoids database queries on every page load. Very common pattern."
+    },
+    {
+      "id": "cache-place-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Sessions stored in PostgreSQL: each page load queries the sessions table. At 10,000 active users making 10 req/sec each, how many session queries per second?",
+          "options": ["10,000", "100,000", "1,000", "1,000,000"],
+          "correct": 1,
+          "explanation": "10,000 users × 10 req/sec = 100,000 session queries/sec. That's massive database load just for session lookups."
+        },
+        {
+          "question": "You move sessions to Redis. Redis handles this load easily. What's another benefit besides reduced database load?",
+          "options": [
+            "Sessions are more secure",
+            "Lower latency (Redis ~1ms vs database ~5-20ms)",
+            "Sessions never expire",
+            "More session storage"
+          ],
+          "correct": 1,
+          "explanation": "Redis is faster than database queries. Session lookup drops from 5-20ms to ~1ms. At 10 requests per page load, that's 40-190ms saved per page. Users experience faster site performance."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-045",
+      "type": "multiple-choice",
+      "question": "What is 'object caching' at the application level?",
+      "options": [
+        "Caching JavaScript objects in browser",
+        "Caching serialized application objects (user profiles, products) in Redis/Memcached",
+        "Caching object-oriented code",
+        "Caching database objects"
+      ],
+      "correct": 1,
+      "explanation": "Object caching stores application objects (User, Product, Order) serialized in cache. Instead of querying DB and constructing the object each time, you deserialize from cache. Key pattern: cache by entity ID (user:123)."
+    },
+    {
+      "id": "cache-place-046",
+      "type": "multi-select",
+      "question": "What are considerations for object caching serialization?",
+      "options": [
+        "Serialization format (JSON, MessagePack, Protocol Buffers)",
+        "Schema evolution (adding/removing fields)",
+        "Serialization performance (CPU cost)",
+        "Object size"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All matter: format affects size and compatibility; schema changes can break old cached data; serialization has CPU cost; large objects use more cache memory and bandwidth. Choose format carefully (JSON is readable, binary is faster/smaller)."
+    },
+    {
+      "id": "cache-place-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache User objects as JSON. You add a new 'preferences' field to User. What happens to cached Users without this field?",
+          "options": [
+            "They crash when deserialized",
+            "The field is null/missing — your code must handle this",
+            "They automatically get the new field",
+            "Cache is automatically invalidated"
+          ],
+          "correct": 1,
+          "explanation": "Old cached entries lack the new field. Deserialization gives null/undefined for that field. Your code must handle missing fields gracefully. This is schema evolution — plan for it."
+        },
+        {
+          "question": "What's a safe way to handle this schema evolution?",
+          "options": [
+            "Never add fields",
+            "Use default values for missing fields in deserialization",
+            "Delete all cache on every deploy",
+            "Store version numbers and rebuild expired schemas"
+          ],
+          "correct": 1,
+          "explanation": "Use defaults: if preferences is missing, use {} or default preferences. Code should be defensive about missing cache data. Alternatively, include version in cache key or value, invalidate old versions."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-048",
+      "type": "multiple-choice",
+      "question": "What is a 'fragment cache'?",
+      "options": [
+        "Caching broken data",
+        "Caching rendered HTML fragments or partial page components",
+        "Cache for code fragments",
+        "A fragmented cache storage"
+      ],
+      "correct": 1,
+      "explanation": "Fragment caching stores rendered HTML pieces: navigation bar, sidebar, product card. Instead of re-rendering on each request, serve cached HTML fragment. Useful for complex, expensive-to-render components that don't change often."
+    },
+    {
+      "id": "cache-place-049",
+      "type": "multi-select",
+      "question": "Which page components are good candidates for fragment caching?",
+      "options": [
+        "Navigation menu (same for all users)",
+        "User's personalized dashboard",
+        "Footer with copyright",
+        "Product listing (same product shown to everyone)"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Fragment cache works for content shared across users: nav, footer, product displays. Personalized dashboard is user-specific — harder to cache (or cache per-user). Shared fragments have high reuse."
+    },
+    {
+      "id": "cache-place-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A page has 10 components. 8 are cacheable (nav, sidebar, etc.), 2 are personalized. With fragment caching, how much rendering is saved?",
+          "options": ["0%", "20%", "80%", "100%"],
+          "correct": 2,
+          "explanation": "8/10 = 80% of components served from fragment cache. Only 2 personalized components need rendering per request. Fragment caching provides partial page caching when full page caching isn't possible."
+        },
+        {
+          "question": "The 2 personalized components are user name (simple) and activity feed (complex, 100ms to render). What's the total render time savings?",
+          "options": [
+            "Depends on render time of the 8 cached fragments",
+            "Can't determine without knowing cached fragment render times",
+            "100ms saved",
+            "No savings"
+          ],
+          "correct": 1,
+          "explanation": "If the 8 cached fragments normally take 200ms to render, fragment caching saves 200ms. The complex activity feed still takes 100ms. Total savings = cached fragments' render time. Measure to know actual savings."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-051",
+      "type": "multiple-choice",
+      "question": "What is 'full page caching'?",
+      "options": [
+        "Caching the entire page database",
+        "Caching the complete rendered HTML response for a URL",
+        "Caching all pages forever",
+        "A very large cache"
+      ],
+      "correct": 1,
+      "explanation": "Full page caching stores the entire HTML response. On cache hit, no application code runs — just serve the cached HTML. Fastest possible response for cacheable pages. Works for pages that are the same for all users."
+    },
+    {
+      "id": "cache-place-052",
+      "type": "multi-select",
+      "question": "Which pages are good candidates for full page caching?",
+      "options": [
+        "Marketing homepage",
+        "User's account settings page",
+        "Blog post page",
+        "Product category page (same for all users)"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Full page cache works for pages identical across users: homepage, blog posts, category pages. User-specific pages (account settings) can't be full-page cached for all users (would need per-user cache keys)."
+    },
+    {
+      "id": "cache-place-053",
+      "type": "ordering",
+      "question": "Rank these caching strategies from most aggressive (most cached) to most conservative:",
+      "items": ["Full page caching", "Fragment caching", "Object caching", "No caching"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Full page (entire response cached) → Fragment (parts of page cached) → Object (data cached, still rendered) → No caching. More aggressive = faster but harder to personalize and invalidate."
+    },
+    {
+      "id": "cache-place-054",
+      "type": "multiple-choice",
+      "question": "What is 'edge computing' in CDN context?",
+      "options": [
+        "Computing on the edge of a table",
+        "Running application logic at CDN edge nodes, close to users",
+        "Computing at the edge of the network",
+        "Edgy programming"
+      ],
+      "correct": 1,
+      "explanation": "Edge computing runs code at CDN edges (Cloudflare Workers, Lambda@Edge). Instead of just caching static content, edges can run logic: A/B testing, auth, personalization. Reduces latency for dynamic content."
+    },
+    {
+      "id": "cache-place-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A CDN edge can run code. You want to add user's country to cached pages for localization. Where should this logic run?",
+          "options": [
+            "Origin server only",
+            "CDN edge — modify cached content based on geo location",
+            "User's browser",
+            "Database"
+          ],
+          "correct": 1,
+          "explanation": "Edge computing: CDN edge knows user's location (from IP). It can modify cached pages to inject country-specific content. One cached page + edge personalization = localized experience without origin round-trip."
+        },
+        {
+          "question": "This pattern is called:",
+          "options": [
+            "Edge-side includes (ESI)",
+            "Server-side rendering",
+            "Client-side rendering",
+            "Origin shielding"
+          ],
+          "correct": 0,
+          "explanation": "Edge Side Includes (ESI) and similar edge computing patterns let caches assemble pages from cached fragments plus edge-computed parts. Varnish supports ESI. Modern edge functions (Workers) offer more flexibility."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-056",
+      "type": "multiple-choice",
+      "question": "What layer should cache user authentication tokens?",
+      "options": [
+        "CDN edge (close to user)",
+        "Application server (where auth is validated)",
+        "Browser only (never server-side)",
+        "Database only"
+      ],
+      "correct": 1,
+      "explanation": "Auth tokens should be cached at the application layer, not public CDN edges. Caching tokens at CDN risks serving one user's token to another. Keep auth caching internal. Session data in Redis (app layer) is appropriate."
+    },
+    {
+      "id": "cache-place-057",
+      "type": "multi-select",
+      "question": "What should NOT be cached at CDN edges?",
+      "options": [
+        "User-specific private data",
+        "Authentication responses",
+        "Static images",
+        "Personalized content (without proper vary headers)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Don't cache at CDN: user-specific private data (risks serving wrong user's data), auth responses (security risk), personalized content without Vary headers (would serve wrong personalization). Static images are perfect for CDN."
+    },
+    {
+      "id": "cache-place-058",
+      "type": "multiple-choice",
+      "question": "What is the 'Vary' HTTP header used for?",
+      "options": [
+        "Varying cache size",
+        "Telling caches to store separate versions based on specified request headers",
+        "Variable content length",
+        "Varying TTL"
+      ],
+      "correct": 1,
+      "explanation": "Vary: Accept-Language tells caches: store separate versions for different Accept-Language values. A French user and English user get different cached versions. Without Vary, one cached version serves everyone (wrong language)."
+    },
+    {
+      "id": "cache-place-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A page is cached by CDN without Vary header. User A (French) visits, page is cached in French. User B (English) visits. What happens?",
+          "options": [
+            "User B sees English version",
+            "User B sees French version (wrong language)",
+            "User B gets cache miss",
+            "CDN auto-detects language"
+          ],
+          "correct": 1,
+          "explanation": "Without Vary, CDN has one cached version — the French one from User A. User B gets served the French page despite being English. This is a cache key collision bug."
+        },
+        {
+          "question": "How do you fix this?",
+          "options": [
+            "Disable caching",
+            "Add Vary: Accept-Language header",
+            "Use a longer TTL",
+            "Move to different CDN"
+          ],
+          "correct": 1,
+          "explanation": "Vary: Accept-Language tells CDN to cache separate versions per language. French users hit French cache, English users hit English cache. Same URL, different cache entries based on request header."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-060",
+      "type": "multi-select",
+      "question": "Which are common Vary header values?",
+      "options": [
+        "Vary: Accept-Encoding (gzip vs not)",
+        "Vary: Accept-Language (localization)",
+        "Vary: Cookie (per-user caching)",
+        "Vary: User-Agent (mobile vs desktop)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid: Accept-Encoding for compression variants, Accept-Language for localization, Cookie for personalization, User-Agent for device-specific versions. Each Vary value multiplies cache entries."
+    },
+    {
+      "id": "cache-place-061",
+      "type": "numeric-input",
+      "question": "Your page has Vary: Accept-Encoding, Accept-Language. There are 2 encodings (gzip, none) and 10 languages. How many cache variants per URL?",
+      "answer": 20,
+      "unit": "variants",
+      "tolerance": "exact",
+      "explanation": "2 encodings × 10 languages = 20 variants. Each combination is a separate cache entry. Vary headers increase cache storage needs but enable correct caching of variations."
+    },
+    {
+      "id": "cache-place-062",
+      "type": "multiple-choice",
+      "question": "Why is 'Vary: *' (vary on everything) problematic?",
+      "options": [
+        "It's invalid syntax",
+        "It effectively disables caching — every request is a unique variant",
+        "It caches too much",
+        "It's too fast"
+      ],
+      "correct": 1,
+      "explanation": "Vary: * means 'cache key includes all headers' — practically infinite variants. No two requests match, so nothing is ever served from cache. It's equivalent to Cache-Control: no-store in practice."
+    },
+    {
+      "id": "cache-place-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A mobile site serves different HTML to mobile vs desktop. How should you cache this?",
+          "options": [
+            "Don't cache",
+            "Vary: User-Agent",
+            "Single cache, detect device in JavaScript",
+            "Separate URLs for mobile (m.example.com)"
+          ],
+          "correct": 3,
+          "explanation": "Vary: User-Agent creates thousands of variants (every browser version is different). Separate URLs (m.example.com or /mobile/) are cleaner — clear cache key separation. Or use Vary on a custom header (like CF-Device-Type from CDN)."
+        },
+        {
+          "question": "Cloudflare provides CF-Device-Type header (Mobile/Desktop/Tablet). What's the benefit?",
+          "options": [
+            "More device types",
+            "Vary: CF-Device-Type creates only 3 variants instead of thousands",
+            "Faster mobile detection",
+            "No cache needed"
+          ],
+          "correct": 1,
+          "explanation": "CF-Device-Type normalizes user agents to 3 categories. Vary: CF-Device-Type = 3 cached variants. Much better than Vary: User-Agent (thousands). This is cache-friendly device detection."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-064",
+      "type": "multiple-choice",
+      "question": "What is 'cache partitioning' by domain in browsers?",
+      "options": [
+        "Storing cache on different disks",
+        "Browsers isolating cached resources by the requesting site to prevent cross-site tracking",
+        "CDN domain separation",
+        "Clearing cache periodically"
+      ],
+      "correct": 1,
+      "explanation": "Modern browsers partition cache by top-level site. A cached resource from CDN loaded on site-a.com isn't shared when site-b.com loads the same CDN URL. Prevents tracking via cache timing attacks. Affects shared CDN caching assumptions."
+    },
+    {
+      "id": "cache-place-065",
+      "type": "multi-select",
+      "question": "What are implications of browser cache partitioning?",
+      "options": [
+        "Shared CDN resources (fonts, libraries) are cached per-site",
+        "Cache efficiency decreases slightly",
+        "Cross-site tracking via cache is prevented",
+        "Caching no longer works"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Partitioning means google-fonts loaded on site A isn't cached for site B — each caches separately. Efficiency drops (more fetches) but privacy improves (no cache-based tracking). Caching still works, just per-site."
+    },
+    {
+      "id": "cache-place-066",
+      "type": "ordering",
+      "question": "For a public webpage, rank cache layers by how much traffic they absorb (most to least, assuming 95% hit rate at each):",
+      "items": ["Browser cache", "CDN", "Reverse proxy", "Application cache"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Browser absorbs most (user's repeat visits). CDN absorbs 95% of remaining. Reverse proxy gets CDN misses, handles 95% of those. Application cache handles reverse proxy misses. Each layer sees 5% of the previous."
+    },
+    {
+      "id": "cache-place-067",
+      "type": "numeric-input",
+      "question": "1 million requests. Browser cache (60% hit), CDN (90% hit on remainder), reverse proxy (80% hit on remainder). How many reach the app server?",
+      "answer": 8000,
+      "unit": "requests",
+      "tolerance": "exact",
+      "explanation": "Browser: 600K hits, 400K pass through. CDN: 90% of 400K = 360K hits, 40K pass. Reverse proxy: 80% of 40K = 32K hits, 8K pass. 8,000 requests reach app server. Multi-layer caching compounds efficiency."
+    },
+    {
+      "id": "cache-place-068",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing a caching strategy for a high-traffic news site. Articles rarely change after publishing. Which cache layer should have the longest TTL?",
+          "options": [
+            "Browser (users might miss updates)",
+            "CDN (shared across users, can be purged)",
+            "Application cache",
+            "All should have the same TTL"
+          ],
+          "correct": 1,
+          "explanation": "CDN is ideal for long TTL: shared across all users (efficient), can be purged if needed (correctable). Browser long TTL is risky — can't force refresh. CDN: long TTL + purge capability = best of both worlds."
+        },
+        {
+          "question": "Breaking news requires immediate update. Which layer can you control to force refresh?",
+          "options": [
+            "Browser cache (user clears it)",
+            "CDN cache (you send purge command)",
+            "User's ISP cache",
+            "None — must wait for TTL"
+          ],
+          "correct": 1,
+          "explanation": "You control CDN cache — send purge/invalidation. Browser cache is controlled by user (or by changing URLs). ISP caches you generally can't control. CDN purge is your main tool for urgent updates."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-069",
+      "type": "multiple-choice",
+      "question": "What is a 'cookie-less domain' for static assets?",
+      "options": [
+        "A domain that doesn't work",
+        "Serving static assets from a domain that doesn't receive cookies, reducing request overhead",
+        "A diet website",
+        "A domain without tracking"
+      ],
+      "correct": 1,
+      "explanation": "Cookies are sent with every request to a domain. Static assets don't need cookies. Serving from static.example.com (no cookies set) avoids sending cookie headers, reducing request size. Less overhead = faster, better cacheable."
+    },
+    {
+      "id": "cache-place-070",
+      "type": "multi-select",
+      "question": "Why use a separate domain for static assets?",
+      "options": [
+        "Avoid sending cookies with asset requests",
+        "Allow different caching headers than main site",
+        "Enable CDN specifically for assets",
+        "Increase browser parallel download limits (per domain)"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are benefits: no cookies (smaller requests), separate cache headers, dedicated CDN, more parallel downloads (browsers limit connections per domain). Common pattern: assets.example.com or CDN subdomain."
+    },
+    {
+      "id": "cache-place-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your session cookie is 4KB. Each page loads 50 assets from your main domain. How much extra data is sent due to cookies?",
+          "options": ["4KB", "50KB", "200KB", "4KB × 50 = 200KB"],
+          "correct": 3,
+          "explanation": "4KB cookie × 50 requests = 200KB of cookie data sent. That's significant upload overhead on every page load, especially on slow connections."
+        },
+        {
+          "question": "You move assets to static.example.com (no cookies). What's the cookie overhead now?",
+          "options": ["200KB", "4KB", "0KB", "50KB"],
+          "correct": 1,
+          "explanation": "Only the main page request sends cookies (4KB). Assets from static.example.com don't receive cookies from main domain. Savings: 200KB → 4KB = 196KB saved per page load."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-072",
+      "type": "multiple-choice",
+      "question": "What is 'service worker caching'?",
+      "options": [
+        "Server-side caching",
+        "JavaScript in the browser that intercepts requests and can serve cached responses",
+        "Worker thread caching",
+        "CDN worker caching"
+      ],
+      "correct": 1,
+      "explanation": "Service workers are browser scripts that act as proxy between app and network. They intercept fetch requests and can return cached responses, enabling offline support and custom caching strategies. Powerful for PWAs (Progressive Web Apps)."
+    },
+    {
+      "id": "cache-place-073",
+      "type": "multi-select",
+      "question": "What can service workers do that browser HTTP cache cannot?",
+      "options": [
+        "Serve content when offline",
+        "Implement custom caching logic (stale-while-revalidate)",
+        "Pre-cache resources proactively",
+        "Cache POST responses"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Service workers are programmable: offline support (return cached when offline), custom strategies, proactive precaching, and can cache any request (including POST). HTTP cache is header-driven only."
+    },
+    {
+      "id": "cache-place-074",
+      "type": "ordering",
+      "question": "Order the browser request flow when service worker is present:",
+      "items": [
+        "App makes fetch request",
+        "Service worker intercepts",
+        "Service worker checks its cache",
+        "Network request (if needed)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Request → Service worker intercepts → Checks SW cache → Returns cached or fetches from network. Service worker is in control — can return cache, fetch network, or both (e.g., return stale then update)."
+    },
+    {
+      "id": "cache-place-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A PWA uses service worker with 'cache-first' strategy. User goes offline. What happens when they navigate?",
+          "options": [
+            "Error page",
+            "Cached pages are served — app works offline",
+            "Loading spinner forever",
+            "Browser default offline page"
+          ],
+          "correct": 1,
+          "explanation": "Cache-first: service worker checks cache before network. If cached, serves it regardless of network state. User can use the PWA offline (for cached content). This is how offline-capable apps work."
+        },
+        {
+          "question": "User is online but on a slow connection. What's the benefit of cache-first?",
+          "options": [
+            "No benefit",
+            "Instant response from cache while background fetch updates content",
+            "Slower than network-first",
+            "More data usage"
+          ],
+          "correct": 1,
+          "explanation": "Cache-first with background refresh (stale-while-revalidate): serve cached immediately (fast), fetch in background, update cache. User sees instant content, gets updates next time. Best UX for slow connections."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-076",
+      "type": "multiple-choice",
+      "question": "What is the 'stale-while-revalidate' caching pattern?",
+      "options": [
+        "Serve stale data forever",
+        "Serve stale cached content immediately while fetching fresh content in background",
+        "Never serve stale data",
+        "Revalidate before serving"
+      ],
+      "correct": 1,
+      "explanation": "Stale-while-revalidate (SWR): return cached (possibly stale) data immediately, simultaneously fetch fresh data, update cache for next request. User gets instant response, eventual consistency. Great for UX when freshness can lag."
+    },
+    {
+      "id": "cache-place-077",
+      "type": "multi-select",
+      "question": "Which content is suitable for stale-while-revalidate?",
+      "options": [
+        "Social media feeds",
+        "Stock trading prices",
+        "News headlines",
+        "Product descriptions"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "SWR suits content where slight staleness is OK: feeds, headlines, product info. Stock prices need real-time accuracy — stale prices could cause bad trades. SWR trades freshness for speed."
+    },
+    {
+      "id": "cache-place-078",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You implement stale-while-revalidate. User's first visit shows cached data from 10 minutes ago. When do they see fresh data?",
+          "options": [
+            "Immediately",
+            "After the background refresh completes and they make another request",
+            "Never",
+            "After 10 more minutes"
+          ],
+          "correct": 1,
+          "explanation": "First request returns stale, triggers background refresh. The refresh updates the cache. User's next request gets fresh data. Current request sees stale — it's a trade-off for instant response."
+        },
+        {
+          "question": "The user rapidly refreshes the page 5 times in 2 seconds. How many background fetches should occur?",
+          "options": [
+            "5 (one per refresh)",
+            "1 (deduplicate concurrent refreshes)",
+            "0 (use cache only)",
+            "10"
+          ],
+          "correct": 1,
+          "explanation": "Good implementations dedupe: if a background refresh is in flight, don't start another. Multiple requests share the same pending fetch. This prevents thundering herd on rapid refreshes."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-079",
+      "type": "multiple-choice",
+      "question": "Where is the 'query string' typically included in cache keys?",
+      "options": [
+        "Never — query strings are ignored",
+        "Always — the full URL including query string is the cache key",
+        "Only for POST requests",
+        "Configurable — depends on cache settings"
+      ],
+      "correct": 3,
+      "explanation": "Most caches use full URL (including query string) by default. But it's configurable: you can ignore certain params, include only some, or ignore all. CDNs often let you configure query string handling per path."
+    },
+    {
+      "id": "cache-place-080",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "/products?sort=price and /products?sort=date — should these be separate cache entries?",
+          "options": [
+            "Yes — different sort orders show different content",
+            "No — they're the same URL",
+            "Depends on if sorting is client-side",
+            "Only one should be cached"
+          ],
+          "correct": 0,
+          "explanation": "If sort affects server response (different HTML/JSON), they must be separate cache entries. Caching /products?sort=price and serving for sort=date would show wrong order."
+        },
+        {
+          "question": "/products?utm_source=google and /products?utm_source=facebook — should these be separate cache entries?",
+          "options": [
+            "Yes — different tracking sources",
+            "No — UTM params don't affect content, should be ignored in cache key",
+            "Only if they show different products",
+            "Always separate for analytics"
+          ],
+          "correct": 1,
+          "explanation": "UTM params are tracking tags — they don't change the page content. Including them in cache key would create duplicate entries for identical content. Configure CDN to ignore utm_* params in cache key."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-081",
+      "type": "multi-select",
+      "question": "Which query parameters should typically be IGNORED in cache keys?",
+      "options": [
+        "utm_source, utm_campaign (tracking)",
+        "page (pagination)",
+        "fbclid, gclid (click IDs)",
+        "id (resource identifier)"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Ignore tracking params (utm_*, fbclid, gclid) — they don't affect content. Keep functional params (page, id, sort) — they change the response. Ignoring tracking params dramatically improves cache hit rate."
+    },
+    {
+      "id": "cache-place-082",
+      "type": "numeric-input",
+      "question": "A URL gets 10,000 requests with 50 different utm_source values. If you cache with full URL, how many cache entries?",
+      "answer": 50,
+      "unit": "entries",
+      "tolerance": "exact",
+      "explanation": "50 different utm_source values = 50 cache entries for identical content. If you ignore utm_source, it's 1 entry. Hit rate jumps from ~0% (random utm) to near 100%."
+    },
+    {
+      "id": "cache-place-083",
+      "type": "multiple-choice",
+      "question": "What is 'HTTP/2 server push' in caching context?",
+      "options": [
+        "Pushing updates to cache",
+        "Server proactively sends resources to browser before requested, for caching",
+        "Pushing to CDN",
+        "Force cache refresh"
+      ],
+      "correct": 1,
+      "explanation": "HTTP/2 server push: server sends resources (CSS, JS) along with HTML before browser requests them. Resources arrive pre-cached. Reduces round trips for critical resources. Largely deprecated in favor of preload hints."
+    },
+    {
+      "id": "cache-place-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API returns user data. Where should this be cached?",
+          "options": [
+            "CDN (fastest for users)",
+            "Application cache (Redis) — user data is private",
+            "Browser only",
+            "Don't cache user data"
+          ],
+          "correct": 1,
+          "explanation": "User data is private — caching at public CDN risks serving wrong user's data. Application cache (Redis) is appropriate: per-user keys, controlled access, proper isolation. Browser can also cache private responses (Cache-Control: private)."
+        },
+        {
+          "question": "Can CDN cache user-specific data safely?",
+          "options": [
+            "Never — CDN can't handle private data",
+            "Yes — if cache key includes user identifier and authorization is validated",
+            "Only with special CDN license",
+            "Yes, without any precautions"
+          ],
+          "correct": 1,
+          "explanation": "CDN can cache user-specific data IF: cache key includes user ID (or auth token), and origin validates auth before returning data. Many CDNs support this. But complexity increases — often simpler to cache at app level."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-085",
+      "type": "multiple-choice",
+      "question": "What does 'Cache-Control: private' mean?",
+      "options": [
+        "The cache is password-protected",
+        "Only the user's browser can cache this, not shared caches (CDN, proxy)",
+        "Content is private",
+        "Cache privately on server"
+      ],
+      "correct": 1,
+      "explanation": "private tells shared caches (CDN, proxy) not to cache this response — it's user-specific. The browser can still cache it locally. Use for authenticated user content that shouldn't be served to other users."
+    },
+    {
+      "id": "cache-place-086",
+      "type": "multi-select",
+      "question": "Which responses should have 'Cache-Control: private'?",
+      "options": [
+        "User's profile page (when logged in)",
+        "User's bank balance",
+        "Public marketing homepage",
+        "Authenticated API responses with user data"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "User-specific content (profile, balance, API data) should be private — only user's browser caches. Marketing homepage is public — can be cached by CDN. Private prevents shared cache pollution with user data."
+    },
+    {
+      "id": "cache-place-087",
+      "type": "ordering",
+      "question": "Rank these by typical cache TTL (shortest to longest):",
+      "items": [
+        "API response for real-time data",
+        "Static image with content hash",
+        "Homepage HTML",
+        "User session data"
+      ],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "Real-time API (seconds). Session (minutes-hours, until logout). Homepage (minutes-hours, balance freshness vs caching). Hashed static (years — immutable). TTL reflects how often data changes and freshness requirements."
+    },
+    {
+      "id": "cache-place-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You deploy a new version of your app. Which cache layer do you have most control over for immediate updates?",
+          "options": [
+            "Browser cache",
+            "CDN cache",
+            "Database query cache",
+            "User's ISP cache"
+          ],
+          "correct": 1,
+          "explanation": "CDN: you control it, can purge instantly. Browser: users control it (can't force clear). DB cache: usually controlled by DB engine. ISP cache: no control. CDN purge is your tool for urgent deploys."
+        },
+        {
+          "question": "What's the safest deployment strategy to avoid cache issues?",
+          "options": [
+            "Purge all caches on every deploy",
+            "Use versioned/hashed asset URLs so new deploys use new URLs",
+            "Disable all caching",
+            "Deploy only at night"
+          ],
+          "correct": 1,
+          "explanation": "Versioned URLs: new deploy = new asset URLs. Old URLs can stay cached (users on old pages). New page loads get new URLs → new assets. No purge needed, no cache invalidation race conditions."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-089",
+      "type": "multiple-choice",
+      "question": "What is a 'reverse proxy' vs 'forward proxy'?",
+      "options": [
+        "They're the same thing",
+        "Reverse sits in front of servers; forward sits in front of clients",
+        "Reverse caches; forward doesn't",
+        "Forward is faster"
+      ],
+      "correct": 1,
+      "explanation": "Forward proxy: client's proxy, used to access external sites (e.g., corporate proxy). Reverse proxy: server's proxy, sits in front of origin servers (e.g., Nginx). Reverse proxies often cache and load balance."
+    },
+    {
+      "id": "cache-place-090",
+      "type": "multi-select",
+      "question": "What can a reverse proxy (Nginx/Varnish) do besides caching?",
+      "options": [
+        "Load balancing across app servers",
+        "SSL termination",
+        "Request routing",
+        "Compression"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "Reverse proxies do more than cache: load balance (distribute requests), SSL termination (handle HTTPS), routing (path-based backends), compression (gzip responses). They're versatile infrastructure components."
+    },
+    {
+      "id": "cache-place-091",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 3 app servers behind Nginx reverse proxy with caching enabled. Request for /api/users comes in. What does Nginx do?",
+          "options": [
+            "Always forwards to an app server",
+            "Checks cache first; if miss, forwards to one app server, caches response",
+            "Forwards to all 3 servers",
+            "Returns error"
+          ],
+          "correct": 1,
+          "explanation": "Nginx caching: check cache → miss → forward to one backend server → receive response → cache it → return to client. Subsequent requests for /api/users return from cache without hitting backend."
+        },
+        {
+          "question": "Cache is miss, Nginx picks server A. Server A is down. What happens?",
+          "options": [
+            "Error returned to client immediately",
+            "Nginx tries server B or C (failover)",
+            "Request waits forever",
+            "Nginx crashes"
+          ],
+          "correct": 1,
+          "explanation": "Good reverse proxy config includes health checks and failover. If server A fails, Nginx tries B or C. This provides high availability — users don't see errors if one server is down."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-092",
+      "type": "multiple-choice",
+      "question": "What is 'microcaching' at the reverse proxy layer?",
+      "options": [
+        "Caching very small files",
+        "Caching responses for very short durations (1-5 seconds) to handle traffic spikes",
+        "Caching microservices",
+        "Using tiny cache storage"
+      ],
+      "correct": 1,
+      "explanation": "Microcaching: cache even dynamic content for 1-5 seconds. At 1000 req/sec, a 1-second cache means only 1 request hits backend per second (999 from cache). Absorbs traffic spikes. Content is at most 1 second stale."
+    },
+    {
+      "id": "cache-place-093",
+      "type": "numeric-input",
+      "question": "With 1-second microcaching and 5,000 req/sec, how many requests hit the backend?",
+      "answer": 1,
+      "unit": "req/sec",
+      "tolerance": "exact",
+      "explanation": "First request in each second hits backend, caches for 1 second. Remaining 4,999 requests that second hit cache. Only ~1 req/sec to backend. Microcaching provides massive protection with minimal staleness."
+    },
+    {
+      "id": "cache-place-094",
+      "type": "multi-select",
+      "question": "When is microcaching appropriate?",
+      "options": [
+        "API endpoints that can tolerate 1-5 second staleness",
+        "High-traffic pages that don't change every second",
+        "Real-time stock prices",
+        "Protecting against traffic spikes / DDoS"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Microcaching works for tolerant APIs, high-traffic pages, and spike protection. Stock prices need real-time accuracy — even 1-second staleness could be problematic. Evaluate staleness tolerance carefully."
+    },
+    {
+      "id": "cache-place-095",
+      "type": "ordering",
+      "question": "For an e-commerce site, rank these by how aggressively they should be cached (most aggressive to least):",
+      "items": [
+        "Product images",
+        "Shopping cart contents",
+        "Product listing pages",
+        "Order confirmation page"
+      ],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Images: cache forever (hashed URLs). Listings: cache moderately (changes less often). Order confirmation: can cache briefly (user-specific, show once). Cart: don't cache or very short (changes frequently, user-specific)."
+    },
+    {
+      "id": "cache-place-096",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A GraphQL API receives queries with varying fields in the request body. How does this affect caching?",
+          "options": [
+            "No effect",
+            "Harder to cache — request body variations create different cache keys",
+            "Easier to cache",
+            "GraphQL can't be cached"
+          ],
+          "correct": 1,
+          "explanation": "GraphQL queries vary per client (different fields requested). Each query shape is a different cache entry. More variations = lower hit rate. Unlike REST where /users always returns the same structure."
+        },
+        {
+          "question": "How can you improve GraphQL caching?",
+          "options": [
+            "Switch to REST",
+            "Use persisted queries (hash of query → consistent cache keys), cache at field level",
+            "Disable caching",
+            "Use longer TTLs"
+          ],
+          "correct": 1,
+          "explanation": "Persisted queries: register queries ahead of time, reference by hash. Consistent keys = better hit rate. Field-level caching: cache individual resolver results, compose responses. GraphQL-specific caching strategies exist."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-097",
+      "type": "multiple-choice",
+      "question": "What is a 'shared cache' vs 'private cache' in HTTP terms?",
+      "options": [
+        "Shared is encrypted; private isn't",
+        "Shared stores responses for multiple users (CDN); private stores for one user (browser)",
+        "Shared is larger; private is smaller",
+        "They're the same"
+      ],
+      "correct": 1,
+      "explanation": "Shared cache (CDN, proxy): serves multiple users, must not cache private content. Private cache (browser): serves one user, can cache user-specific content. Cache-Control: public allows shared; private restricts to browser."
+    },
+    {
+      "id": "cache-place-098",
+      "type": "multi-select",
+      "question": "What are best practices for cache placement architecture?",
+      "options": [
+        "Cache at multiple layers for defense in depth",
+        "Put the most cacheable content closest to users",
+        "Use same TTL everywhere for simplicity",
+        "Match cache layer to content privacy level"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Multi-layer caching (browser → CDN → proxy → app) provides redundancy. Cacheable content (static) goes to CDN (near users). Private content goes to app cache (controlled). Different layers need different TTLs based on their role."
+    },
+    {
+      "id": "cache-place-099",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your architecture: Browser → CDN → Varnish → App servers → Redis cache → PostgreSQL. A request for user profile comes in. What's the ideal cache hit?",
+          "options": [
+            "Browser cache hit",
+            "CDN cache hit",
+            "Redis cache hit (user data is private)",
+            "PostgreSQL query cache"
+          ],
+          "correct": 0,
+          "explanation": "Best case: browser has it (zero latency, no network). For private user data, browser cache is safest (doesn't leak to shared caches). If browser misses, Redis is next best (private, controlled)."
+        },
+        {
+          "question": "The same request but for a public product page. What's the ideal cache hit?",
+          "options": [
+            "Browser cache hit",
+            "CDN cache hit",
+            "Redis cache hit",
+            "Varnish cache hit"
+          ],
+          "correct": 0,
+          "explanation": "Still browser first (fastest). But if browser misses, CDN is ideal — it's shared across all users (efficient) and close to users (low latency). Public content should be cached at outermost shared layer."
+        }
+      ]
+    },
+    {
+      "id": "cache-place-100",
+      "type": "ordering",
+      "question": "For debugging cache issues, check these layers in order (most likely to be misconfigured first):",
+      "items": [
+        "Application cache code (logic bugs)",
+        "Reverse proxy config (headers, TTLs)",
+        "CDN settings (edge rules)",
+        "Browser (dev tools, clear cache)"
+      ],
+      "correctOrder": [3, 2, 1, 0],
+      "explanation": "Start at browser: dev tools show response headers, cache behavior. Then CDN: check settings and edge rules. Then reverse proxy: verify header passthrough. Finally app code: check caching logic. Work from user toward origin."
+    }
+  ]
+}

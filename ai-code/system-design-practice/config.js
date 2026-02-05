@@ -70,7 +70,7 @@ export const CONFIG = {
       title: 'Caching',
       chapters: [
         { num: 1, title: 'Cache Fundamentals', ready: true },
-        { num: 2, title: 'Cache Placement', ready: false },
+        { num: 2, title: 'Cache Placement', ready: true },
         { num: 3, title: 'Caching Strategies', ready: false },
         { num: 4, title: 'TTLs & Expiration', ready: false },
         { num: 5, title: 'Cache Invalidation', ready: false },
