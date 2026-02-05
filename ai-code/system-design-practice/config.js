@@ -64,6 +64,20 @@ export const CONFIG = {
         { num: 7, title: 'Hybrid Architectures', ready: true },
         { num: 8, title: 'Storage Selection Scenarios', ready: true }
       ]
+    },
+    {
+      id: 5,
+      title: 'Caching',
+      chapters: [
+        { num: 1, title: 'Cache Fundamentals', ready: true },
+        { num: 2, title: 'Cache Placement', ready: false },
+        { num: 3, title: 'Caching Strategies', ready: false },
+        { num: 4, title: 'TTLs & Expiration', ready: false },
+        { num: 5, title: 'Cache Invalidation', ready: false },
+        { num: 6, title: 'Eviction Policies', ready: false },
+        { num: 7, title: 'Distributed Caching', ready: false },
+        { num: 8, title: 'Caching Scenarios', ready: false }
+      ]
     }
   ]
 };

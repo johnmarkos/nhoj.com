@@ -1,0 +1,1419 @@
+{
+  "unit": 5,
+  "unitTitle": "Caching",
+  "chapter": 1,
+  "chapterTitle": "Cache Fundamentals",
+  "chapterDescription": "Core caching concepts: hit/miss ratios, latency benefits, and understanding the cache hierarchy from CPU to distributed systems.",
+  "problems": [
+    {
+      "id": "cache-fun-001",
+      "type": "multiple-choice",
+      "question": "What is a cache?",
+      "options": [
+        "A backup storage system",
+        "A fast storage layer that stores a subset of data for quick access",
+        "A database compression technique",
+        "A network routing protocol"
+      ],
+      "correct": 1,
+      "explanation": "A cache is a high-speed storage layer that stores a subset of frequently accessed data. By serving data from the cache instead of the slower origin, you reduce latency and load on the primary data source."
+    },
+    {
+      "id": "cache-fun-002",
+      "type": "multiple-choice",
+      "question": "What is a 'cache hit'?",
+      "options": [
+        "When the cache runs out of space",
+        "When requested data is found in the cache",
+        "When the cache fails",
+        "When data is written to the cache"
+      ],
+      "correct": 1,
+      "explanation": "A cache hit occurs when the requested data is found in the cache and can be served directly. This is the ideal outcome — fast response without accessing the slower origin."
+    },
+    {
+      "id": "cache-fun-003",
+      "type": "multiple-choice",
+      "question": "What is a 'cache miss'?",
+      "options": [
+        "When the cache is empty",
+        "When requested data is NOT in the cache and must be fetched from the origin",
+        "When the cache has an error",
+        "When data expires from the cache"
+      ],
+      "correct": 1,
+      "explanation": "A cache miss occurs when requested data isn't in the cache. The system must fetch it from the slower origin (database, API, etc.), then typically stores it in the cache for future requests."
+    },
+    {
+      "id": "cache-fun-004",
+      "type": "multiple-choice",
+      "question": "What is 'cache hit rate'?",
+      "options": [
+        "How fast the cache responds",
+        "The percentage of requests served from the cache",
+        "The cache storage capacity",
+        "The number of hits per second"
+      ],
+      "correct": 1,
+      "explanation": "Cache hit rate = (cache hits) / (total requests). A 95% hit rate means 95 out of 100 requests are served from the cache. Higher hit rates mean better cache efficiency and lower load on the origin."
+    },
+    {
+      "id": "cache-fun-005",
+      "type": "numeric-input",
+      "question": "A cache serves 950 requests from cache and 50 from the origin. What is the hit rate percentage?",
+      "answer": 95,
+      "unit": "%",
+      "tolerance": 0.01,
+      "explanation": "Hit rate = 950 / (950 + 50) = 950 / 1000 = 0.95 = 95%. The cache handles 95% of all requests."
+    },
+    {
+      "id": "cache-fun-006",
+      "type": "numeric-input",
+      "question": "Out of 10,000 requests, 200 are cache misses. What is the hit rate percentage?",
+      "answer": 98,
+      "unit": "%",
+      "tolerance": 0.01,
+      "explanation": "Hits = 10,000 - 200 = 9,800. Hit rate = 9,800 / 10,000 = 0.98 = 98%."
+    },
+    {
+      "id": "cache-fun-007",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache hit latency is 5ms. Origin latency is 100ms. With a 90% hit rate, what's the average latency?",
+          "options": ["14.5ms", "52.5ms", "50ms", "9.5ms"],
+          "correct": 0,
+          "explanation": "Average = (0.90 × 5ms) + (0.10 × 100ms) = 4.5ms + 10ms = 14.5ms. The cache dramatically reduces average latency even though 10% of requests hit the slow origin."
+        },
+        {
+          "question": "If hit rate improves to 99%, what's the new average latency?",
+          "options": ["5.95ms", "10.5ms", "15ms", "4.5ms"],
+          "correct": 0,
+          "explanation": "Average = (0.99 × 5ms) + (0.01 × 100ms) = 4.95ms + 1ms = 5.95ms. Going from 90% to 99% cut average latency by more than half."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-008",
+      "type": "multiple-choice",
+      "question": "Why does a small improvement in hit rate at high percentages have such a large impact?",
+      "options": [
+        "The cache becomes faster at high hit rates",
+        "Each percentage point at high hit rates removes more slow origin calls (going from 10% to 1% misses is 10x reduction)",
+        "The network speeds up",
+        "The database becomes more efficient"
+      ],
+      "correct": 1,
+      "explanation": "Going from 90% to 99% hit rate means miss rate drops from 10% to 1% — a 10x reduction in origin calls. Each miss is expensive, so reducing misses has compounding benefits. The last few percentage points matter a lot."
+    },
+    {
+      "id": "cache-fun-009",
+      "type": "ordering",
+      "question": "Rank these cache hit rates from worst to best performance impact:",
+      "items": ["50% hit rate", "99% hit rate", "90% hit rate", "99.9% hit rate"],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "50% (half go to slow origin) → 90% (10% to origin) → 99% (1% to origin) → 99.9% (0.1% to origin). The last decimal points matter most — 99% to 99.9% is another 10x reduction in origin load."
+    },
+    {
+      "id": "cache-fun-010",
+      "type": "numeric-input",
+      "question": "Cache latency is 1ms, origin is 50ms. What hit rate is needed to achieve 5ms average latency?",
+      "answer": 91.84,
+      "unit": "%",
+      "tolerance": 0.5,
+      "explanation": "Let h = hit rate. h × 1 + (1-h) × 50 = 5. h + 50 - 50h = 5. -49h = -45. h = 45/49 ≈ 0.9184 = 91.84%."
+    },
+    {
+      "id": "cache-fun-011",
+      "type": "multi-select",
+      "question": "What are the main benefits of caching?",
+      "options": [
+        "Reduced latency for end users",
+        "Lower load on origin data sources",
+        "Reduced network bandwidth usage",
+        "Automatic data consistency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Caching reduces latency (fast local access), reduces origin load (fewer requests), and saves bandwidth (data transferred once, served many times). It does NOT provide automatic consistency — cache invalidation is notoriously hard."
+    },
+    {
+      "id": "cache-fun-012",
+      "type": "ordering",
+      "question": "Rank these storage layers from fastest to slowest access time:",
+      "items": ["L1 CPU cache", "RAM (main memory)", "SSD", "L3 CPU cache"],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "L1 cache (~1ns) → L3 cache (~10-20ns) → RAM (~50-100ns) → SSD (~50-100μs). Each level trades speed for capacity. L1 is smallest but fastest; SSD is largest but slowest of these."
+    },
+    {
+      "id": "cache-fun-013",
+      "type": "numeric-input",
+      "question": "L1 cache access is ~1ns. RAM access is ~100ns. How many times faster is L1?",
+      "answer": 100,
+      "unit": "x",
+      "tolerance": "exact",
+      "explanation": "100ns / 1ns = 100x. L1 cache is about 100 times faster than main memory. This is why CPUs have multiple cache levels — to avoid slow RAM access."
+    },
+    {
+      "id": "cache-fun-014",
+      "type": "multiple-choice",
+      "question": "What is 'temporal locality'?",
+      "options": [
+        "Data stored in nearby memory locations",
+        "Recently accessed data is likely to be accessed again soon",
+        "Data is accessed at regular time intervals",
+        "Data has a timestamp"
+      ],
+      "correct": 1,
+      "explanation": "Temporal locality: if you accessed data recently, you'll probably access it again soon. This is why caching works — a user who viewed their profile will likely view it again. Caches exploit temporal locality."
+    },
+    {
+      "id": "cache-fun-015",
+      "type": "multiple-choice",
+      "question": "What is 'spatial locality'?",
+      "options": [
+        "Caching data in the same datacenter",
+        "If you access one memory location, you'll likely access nearby locations soon",
+        "Storing the cache close to the user",
+        "Distributing cache across regions"
+      ],
+      "correct": 1,
+      "explanation": "Spatial locality: accessing memory location X means you'll likely access X+1, X+2, etc. This is why caches load 'cache lines' (blocks of adjacent data) — you'll probably need the neighbors. Arrays benefit from spatial locality."
+    },
+    {
+      "id": "cache-fun-016",
+      "type": "multi-select",
+      "question": "Which access patterns benefit most from caching?",
+      "options": [
+        "Reading the same data repeatedly",
+        "Each request accesses completely unique data",
+        "Hot spots (small subset accessed very frequently)",
+        "Sequential access through large datasets"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Repeated access (temporal locality) and hot spots (power law distribution) benefit most. Unique data per request has no reuse. Sequential large dataset access might not fit in cache or benefit from it."
+    },
+    {
+      "id": "cache-fun-017",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A social media app shows celebrity profiles. 1% of users (celebrities) get 99% of profile views. Is caching effective here?",
+          "options": [
+            "No — too many unique users",
+            "Yes — the 1% of hot profiles will have near-100% hit rate",
+            "Maybe — depends on cache size",
+            "No — profiles change too often"
+          ],
+          "correct": 1,
+          "explanation": "Power law distributions are ideal for caching. Caching just the top 1% of profiles handles 99% of requests. The cache can be small (1% of data) yet extremely effective (99% hit rate)."
+        },
+        {
+          "question": "Now consider a unique coupon code lookup where each code is used exactly once. Is caching effective?",
+          "options": [
+            "Yes — codes are frequently accessed",
+            "No — zero reuse means 0% hit rate",
+            "Yes — if we cache all codes",
+            "Depends on cache TTL"
+          ],
+          "correct": 1,
+          "explanation": "If every access is unique (each coupon used once), caching provides no benefit — there's no temporal locality. Caching works when there's data reuse. For unique access, don't waste resources on caching."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-018",
+      "type": "multiple-choice",
+      "question": "What is a 'cold cache'?",
+      "options": [
+        "A cache stored in cold storage",
+        "A cache that has just started and contains little or no data",
+        "A cache in a cold datacenter",
+        "A cache with expired data"
+      ],
+      "correct": 1,
+      "explanation": "A cold cache is empty or nearly empty — after a restart or fresh deployment. All requests are cache misses until the cache 'warms up' with data. Cold cache scenarios can cause origin overload if not planned for."
+    },
+    {
+      "id": "cache-fun-019",
+      "type": "multiple-choice",
+      "question": "What is 'cache warming'?",
+      "options": [
+        "Heating the cache hardware",
+        "Pre-loading the cache with expected data before traffic hits",
+        "Increasing cache memory",
+        "Reducing cache TTL"
+      ],
+      "correct": 1,
+      "explanation": "Cache warming pre-populates the cache with likely-to-be-requested data before live traffic arrives. This avoids the thundering herd of misses on a cold cache. Common after deployments or cache server restarts."
+    },
+    {
+      "id": "cache-fun-020",
+      "type": "multi-select",
+      "question": "What can cause a cache to go cold?",
+      "options": [
+        "Cache server restart",
+        "Deployment of new cache instances",
+        "Cache memory expansion",
+        "Mass cache invalidation"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Restart loses all data. New instances start empty. Mass invalidation clears entries. Memory expansion doesn't clear data — it adds capacity. Each cold cache event risks origin overload."
+    },
+    {
+      "id": "cache-fun-021",
+      "type": "ordering",
+      "question": "Rank these from smallest to largest typical capacity:",
+      "items": ["L1 cache", "L2 cache", "L3 cache", "RAM"],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "L1 (~32-64KB per core) → L2 (~256KB-1MB per core) → L3 (~8-64MB shared) → RAM (16GB-1TB+). Smaller caches are faster; larger caches hold more but are slower. This hierarchy balances speed and capacity."
+    },
+    {
+      "id": "cache-fun-022",
+      "type": "multiple-choice",
+      "question": "Why do CPUs have multiple cache levels (L1, L2, L3)?",
+      "options": [
+        "Backward compatibility with older CPUs",
+        "To balance the trade-off between speed and capacity at each level",
+        "To support different data types",
+        "For redundancy in case one fails"
+      ],
+      "correct": 1,
+      "explanation": "Each level trades off speed vs. capacity. L1 is tiny but nearly as fast as registers. L3 is much larger but slower. The hierarchy lets frequently-used data stay in fast L1 while less-frequent data falls to larger, slower levels."
+    },
+    {
+      "id": "cache-fun-023",
+      "type": "numeric-input",
+      "question": "If L1 is 64KB, L2 is 512KB, L3 is 16MB, and RAM is 64GB, how many times larger is RAM than L1?",
+      "answer": 1048576,
+      "unit": "x",
+      "tolerance": 0.01,
+      "explanation": "64GB = 64 × 1024 × 1024 KB = 67,108,864 KB. 67,108,864 / 64 = 1,048,576x. RAM is about a million times larger than L1, but also about 100x slower."
+    },
+    {
+      "id": "cache-fun-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "In a web application context, which layer would typically serve as the 'L1 cache'?",
+          "options": [
+            "Browser cache",
+            "Database query cache",
+            "CDN",
+            "Distributed cache (Redis)"
+          ],
+          "correct": 0,
+          "explanation": "Browser cache is closest to the user — zero network latency for hits. It's the 'L1' of web caching: smallest (per-user), fastest (local), first checked."
+        },
+        {
+          "question": "What would be the equivalent of 'L3 cache' in this web stack?",
+          "options": [
+            "Browser cache",
+            "In-process memory cache",
+            "Distributed cache (Redis/Memcached)",
+            "Origin database"
+          ],
+          "correct": 2,
+          "explanation": "Distributed cache (Redis/Memcached) is shared across servers, larger capacity, but requires network hop. It's like L3: bigger, slower than local caches, but faster than going to the origin database."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-025",
+      "type": "ordering",
+      "question": "Rank these web caching layers from closest to the user to closest to the database:",
+      "items": ["CDN", "Browser cache", "Application in-memory cache", "Redis cluster"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Browser (on user's device) → CDN (edge, near user) → App in-memory (on app server) → Redis (separate cache layer before DB). Each layer is checked in order; hits at earlier layers are faster."
+    },
+    {
+      "id": "cache-fun-026",
+      "type": "multiple-choice",
+      "question": "What is an 'in-process cache'?",
+      "options": [
+        "A cache running in a separate process",
+        "A cache stored in the application's own memory (same process)",
+        "A cache for processing jobs",
+        "A cache that processes requests"
+      ],
+      "correct": 1,
+      "explanation": "In-process cache lives in the application's memory space — a HashMap, Guava Cache, or similar. Zero network overhead, extremely fast. Downside: not shared between app instances, limited by app memory, lost on restart."
+    },
+    {
+      "id": "cache-fun-027",
+      "type": "multi-select",
+      "question": "What are advantages of in-process caching over distributed caching?",
+      "options": [
+        "No network latency (nanoseconds vs milliseconds)",
+        "Simpler to implement (just a HashMap)",
+        "Shared across all application instances",
+        "No serialization overhead"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "In-process is fastest (no network), simple (HashMap), and avoids serialization (objects stay in memory). It's NOT shared between instances — each app server has its own cache. For single-server apps, it's ideal."
+    },
+    {
+      "id": "cache-fun-028",
+      "type": "multi-select",
+      "question": "What are advantages of distributed caching (Redis/Memcached) over in-process caching?",
+      "options": [
+        "Shared across all application instances",
+        "Survives application restarts",
+        "No network latency",
+        "Can scale independently of application servers"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Distributed cache is shared (all instances see same data), persistent (survives app restarts), and scales separately. It does have network latency — that's the trade-off for these benefits."
+    },
+    {
+      "id": "cache-fun-029",
+      "type": "multiple-choice",
+      "question": "A 10-server application cluster uses in-process caching. Each server caches user sessions independently. What problem might occur?",
+      "options": [
+        "Sessions load too quickly",
+        "User might hit a server without their session, causing inconsistent experience",
+        "Too much memory usage",
+        "Network congestion"
+      ],
+      "correct": 1,
+      "explanation": "With in-process cache, session cached on server A isn't visible to server B. If a load balancer routes the user to server B, they appear logged out. Solutions: sticky sessions, shared cache (Redis), or session cookies."
+    },
+    {
+      "id": "cache-fun-030",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your app has 8 servers, each with a 1GB in-process cache. What's the total cache capacity if they cache different data?",
+          "options": ["1GB", "8GB", "4GB", "It depends on overlap"],
+          "correct": 1,
+          "explanation": "If each server caches different data (e.g., sharded by user ID), total capacity is 8GB. The caches don't overlap, so you get full additive capacity."
+        },
+        {
+          "question": "Now assume all servers cache the same popular data (no sharding). What's the effective unique cache capacity?",
+          "options": ["1GB", "8GB", "Between 1-8GB", "0GB"],
+          "correct": 0,
+          "explanation": "If all servers cache identical data (the most popular items), effective unique capacity is just 1GB — replicated 8 times. You get redundancy and locality but not more capacity. This is common for read-heavy hot data."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-031",
+      "type": "multiple-choice",
+      "question": "What is 'cache coherence'?",
+      "options": [
+        "Making the cache consistent",
+        "Ensuring multiple caches stay synchronized when data changes",
+        "Making cache access sequential",
+        "Aligning cache data in memory"
+      ],
+      "correct": 1,
+      "explanation": "Cache coherence ensures that when one cache updates data, other caches don't serve stale versions. It's a major challenge in distributed systems — solved by invalidation, TTLs, or write-through strategies."
+    },
+    {
+      "id": "cache-fun-032",
+      "type": "multiple-choice",
+      "question": "What is 'stale data' in caching?",
+      "options": [
+        "Data that has been deleted",
+        "Cached data that no longer matches the source of truth",
+        "Data that is too old",
+        "Corrupted cache entries"
+      ],
+      "correct": 1,
+      "explanation": "Stale data is outdated — the cache holds version N while the source has version N+1. Stale reads can cause incorrect behavior. Staleness is the fundamental trade-off of caching: speed vs. freshness."
+    },
+    {
+      "id": "cache-fun-033",
+      "type": "multi-select",
+      "question": "When is serving stale data acceptable?",
+      "options": [
+        "Social media feed (1-minute delay is fine)",
+        "Stock trading prices",
+        "Product catalog (updates are infrequent)",
+        "User authentication status"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Social feeds and product catalogs tolerate staleness — users don't notice 1-minute delays. Stock prices and auth status need freshness — trading on stale prices costs money, stale auth is a security risk."
+    },
+    {
+      "id": "cache-fun-034",
+      "type": "multiple-choice",
+      "question": "What is a 'cache stampede' (or thundering herd)?",
+      "options": [
+        "Too many items in the cache",
+        "Many requests simultaneously hitting the origin when a popular cache entry expires",
+        "Cache servers crashing",
+        "Rapid cache growth"
+      ],
+      "correct": 1,
+      "explanation": "When a popular cache entry expires, many concurrent requests all miss the cache simultaneously and all hit the origin. This can overwhelm the database. Solutions: lock so only one request fetches, staggered expiration, or background refresh."
+    },
+    {
+      "id": "cache-fun-035",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A product page is cached for 5 minutes and gets 10,000 requests/minute. The cache expires. How many requests might hit the database in the next second?",
+          "options": [
+            "1 (only the first request)",
+            "Potentially hundreds (all concurrent misses)",
+            "10,000 (all pending requests)",
+            "0 (cache auto-refreshes)"
+          ],
+          "correct": 1,
+          "explanation": "Without protection, all concurrent requests in that instant see cache miss and query the database. At 10K req/min (167/sec), you might see hundreds of simultaneous DB queries for the same data. This is the stampede."
+        },
+        {
+          "question": "Which technique prevents this stampede?",
+          "options": [
+            "Longer cache TTL",
+            "Locking: only one request fetches, others wait for that result",
+            "Using a smaller cache",
+            "Disabling the cache"
+          ],
+          "correct": 1,
+          "explanation": "Request coalescing/locking: the first request acquires a lock and fetches from DB. Other concurrent requests wait for that fetch instead of making their own DB calls. All requests share the same result. Prevents N queries becoming 1."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-036",
+      "type": "numeric-input",
+      "question": "Cache hit takes 5ms. Cache miss + DB fetch takes 200ms. At 95% hit rate, what's the P99 latency likely to be?",
+      "answer": 200,
+      "unit": "ms",
+      "tolerance": 0.1,
+      "explanation": "P99 means the 99th percentile — 1% of requests are slower. With 95% hit rate, 5% are misses (taking 200ms). Since 5% > 1%, the P99 will include misses. P99 is approximately 200ms (the miss latency)."
+    },
+    {
+      "id": "cache-fun-037",
+      "type": "multiple-choice",
+      "question": "Why is miss latency often more important than average latency for user experience?",
+      "options": [
+        "Miss latency affects all users",
+        "Users notice and remember slow responses (tail latency) more than fast ones",
+        "Averages include cache latency",
+        "Miss latency is easier to measure"
+      ],
+      "correct": 1,
+      "explanation": "Tail latency (P95, P99) represents worst-case user experience. A 5ms average with occasional 2-second misses feels slow. Users remember the frustrating waits. Optimizing tail latency often matters more than average."
+    },
+    {
+      "id": "cache-fun-038",
+      "type": "ordering",
+      "question": "Rank these metrics from most to least useful for understanding cache performance:",
+      "items": ["Hit rate alone", "Hit rate + miss latency", "Cache memory usage", "Average latency + P99 latency"],
+      "correctOrder": [3, 1, 0, 2],
+      "explanation": "Avg + P99 tells the full story (typical + worst case). Hit rate + miss latency shows cache effectiveness and cost of misses. Hit rate alone is incomplete. Memory usage matters for capacity planning but not performance directly."
+    },
+    {
+      "id": "cache-fun-039",
+      "type": "multiple-choice",
+      "question": "What is 'negative caching'?",
+      "options": [
+        "Caching failed requests",
+        "Caching the absence of data (e.g., 'user 123 does not exist')",
+        "Removing items from cache",
+        "Caching data with negative values"
+      ],
+      "correct": 1,
+      "explanation": "Negative caching stores 'not found' results. Without it, repeated lookups for non-existent data always hit the database. Caching 'doesn't exist' for a short TTL prevents repeated DB queries for the same missing data."
+    },
+    {
+      "id": "cache-fun-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An attacker sends requests for random user IDs that don't exist. Without negative caching, what happens?",
+          "options": [
+            "Requests are blocked",
+            "Every request hits the database (cache never helps for non-existent data)",
+            "The cache fills with null values",
+            "No impact"
+          ],
+          "correct": 1,
+          "explanation": "Without negative caching, queries for non-existent IDs bypass the cache (nothing cached) and always hit the database. An attacker can DoS your database by requesting random non-existent IDs."
+        },
+        {
+          "question": "How does negative caching help?",
+          "options": [
+            "It blocks the attacker",
+            "It caches 'not found', so repeated requests for the same non-existent ID hit the cache",
+            "It prevents any not-found responses",
+            "It returns fake data"
+          ],
+          "correct": 1,
+          "explanation": "Negative cache: first request for ID 999 misses cache, hits DB, gets 'not found', then caches 'ID 999 = not found' with a short TTL. Subsequent requests hit cache. Limits damage from this attack pattern."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-041",
+      "type": "multi-select",
+      "question": "Which scenarios benefit from negative caching?",
+      "options": [
+        "User lookup by email (many typos and non-existent emails)",
+        "URL shortener lookup (most lookups are valid links)",
+        "API rate limit check (checking if user is blocked)",
+        "Spam filter checking known bad domains"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Typo'd emails, 'is user blocked' checks, and spam domain lookups often return 'no/not found' and benefit from caching that negative result. URL shorteners mostly lookup valid links, so negative caching helps less."
+    },
+    {
+      "id": "cache-fun-042",
+      "type": "multiple-choice",
+      "question": "A cache entry has a 5-minute TTL. After exactly 5 minutes, what happens?",
+      "options": [
+        "The entry is immediately deleted",
+        "The entry is considered expired and won't be served",
+        "The entry gets a new 5-minute TTL",
+        "The entry is archived"
+      ],
+      "correct": 1,
+      "explanation": "After TTL expires, the entry is stale and shouldn't be served. Most caches either delete it lazily (on next access) or during periodic cleanup. The next request triggers a cache miss and refetch from origin."
+    },
+    {
+      "id": "cache-fun-043",
+      "type": "numeric-input",
+      "question": "You set a 10-minute TTL. Data changes every 2 minutes on average. What's the expected average staleness when data is served from cache?",
+      "answer": 5,
+      "unit": "minutes",
+      "tolerance": 0.5,
+      "explanation": "With a 10-minute TTL, data is cached for up to 10 minutes after creation. If data changes every 2 minutes, the cached version is 0-10 minutes old. Average staleness is ~5 minutes (half the TTL, roughly)."
+    },
+    {
+      "id": "cache-fun-044",
+      "type": "multiple-choice",
+      "question": "What is the trade-off in choosing TTL length?",
+      "options": [
+        "Longer TTL = more memory usage",
+        "Longer TTL = better hit rate but more staleness; shorter TTL = fresher data but lower hit rate",
+        "Longer TTL = faster responses",
+        "There's no trade-off"
+      ],
+      "correct": 1,
+      "explanation": "Long TTL: data stays cached longer (better hit rate) but may become stale. Short TTL: fresher data but more cache misses. Choose based on how much staleness your use case tolerates."
+    },
+    {
+      "id": "cache-fun-045",
+      "type": "ordering",
+      "question": "Rank these data types from most tolerant to least tolerant of staleness:",
+      "items": ["Live stock prices", "User profile photos", "Blog post content", "Shopping cart contents"],
+      "correctOrder": [2, 1, 3, 0],
+      "explanation": "Blog posts rarely change, high staleness tolerance. Profile photos change occasionally. Shopping carts need to reflect recent changes. Stock prices are time-critical — even seconds matter for trading."
+    },
+    {
+      "id": "cache-fun-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A read-heavy API serves 10,000 req/sec. Database can handle 500 req/sec. What's the minimum cache hit rate needed?",
+          "options": ["50%", "90%", "95%", "99%"],
+          "correct": 2,
+          "explanation": "DB handles 500/10,000 = 5% of traffic. So 95% must be served from cache. Miss rate must be ≤ 5%, meaning hit rate must be ≥ 95%."
+        },
+        {
+          "question": "Traffic grows to 20,000 req/sec. What hit rate is now required?",
+          "options": ["95%", "97.5%", "99%", "99.5%"],
+          "correct": 1,
+          "explanation": "DB still handles 500 req/sec. 500/20,000 = 2.5% max miss rate. Hit rate must be ≥ 97.5%. Higher traffic requires higher hit rates unless you scale the database."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-047",
+      "type": "numeric-input",
+      "question": "Database can handle 1,000 QPS. You have 50,000 QPS traffic. What hit rate is required?",
+      "answer": 98,
+      "unit": "%",
+      "tolerance": 0.1,
+      "explanation": "Max misses = 1,000 QPS. 1,000 / 50,000 = 0.02 = 2% miss rate. Hit rate = 100% - 2% = 98%."
+    },
+    {
+      "id": "cache-fun-048",
+      "type": "multiple-choice",
+      "question": "What is 'working set' in caching context?",
+      "options": [
+        "All data in the database",
+        "The subset of data actively being accessed during a time window",
+        "Data being written",
+        "The cache size"
+      ],
+      "correct": 1,
+      "explanation": "Working set is the data actively accessed in a given period. If your working set is 10GB and cache is 8GB, you'll have evictions. Ideally, cache ≥ working set for high hit rates."
+    },
+    {
+      "id": "cache-fun-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your working set is 5GB, cache is 10GB. What hit rate can you expect?",
+          "options": [
+            "~50%",
+            "~95%+ (cache holds entire working set)",
+            "~75%",
+            "Cannot determine"
+          ],
+          "correct": 1,
+          "explanation": "If cache (10GB) > working set (5GB), all active data fits in cache. After warming, you should see 95%+ hit rate — misses only for new/changed data."
+        },
+        {
+          "question": "Now working set grows to 20GB (cache still 10GB). What happens?",
+          "options": [
+            "Hit rate stays the same",
+            "Hit rate drops significantly due to evictions",
+            "Cache automatically expands",
+            "Working set shrinks to fit"
+          ],
+          "correct": 1,
+          "explanation": "When working set exceeds cache, evictions occur. Entries are pushed out, then re-fetched, then evicted again (cache thrashing). Hit rate drops significantly. You need to increase cache or reduce working set."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-050",
+      "type": "multiple-choice",
+      "question": "What is 'cache thrashing'?",
+      "options": [
+        "The cache crashing",
+        "Repeated eviction and re-fetching of the same data because working set exceeds cache size",
+        "Deleting the cache",
+        "Cache becoming corrupted"
+      ],
+      "correct": 1,
+      "explanation": "Thrashing: data A is evicted to make room for data B, then B is evicted for C, then C evicted for A again. The cache is too small for the working set. Hit rate plummets and the origin is overloaded."
+    },
+    {
+      "id": "cache-fun-051",
+      "type": "multi-select",
+      "question": "What are signs of cache thrashing?",
+      "options": [
+        "Hit rate drops suddenly",
+        "Cache evictions spike",
+        "Origin (database) load increases unexpectedly",
+        "Cache memory usage decreases"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Thrashing shows as: lower hit rate, high eviction rate, increased origin load. Memory usage stays high (cache is full, just churning). Monitor these metrics to detect thrashing."
+    },
+    {
+      "id": "cache-fun-052",
+      "type": "numeric-input",
+      "question": "Each cached item is 1KB. You have 1GB cache. Approximately how many items can be cached?",
+      "answer": 1048576,
+      "unit": "items",
+      "tolerance": 0.01,
+      "explanation": "1GB = 1,024 × 1,024 KB = 1,048,576 KB. At 1KB per item, you can cache ~1 million items. In practice, overhead reduces this slightly."
+    },
+    {
+      "id": "cache-fun-053",
+      "type": "numeric-input",
+      "question": "You have 500,000 active users. Each user's profile is 2KB. How much cache memory is needed to cache all profiles?",
+      "answer": 1,
+      "unit": "GB",
+      "tolerance": 0.05,
+      "explanation": "500,000 × 2KB = 1,000,000 KB = 1,000 MB ≈ 1GB. You'd need about 1GB of cache to hold all user profiles."
+    },
+    {
+      "id": "cache-fun-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 10 million products. Each product listing is 5KB. How much memory to cache them all?",
+          "options": ["5GB", "50GB", "500GB", "5TB"],
+          "correct": 1,
+          "explanation": "10M × 5KB = 50,000,000 KB = 50,000 MB = 50GB. Caching all products requires 50GB of memory."
+        },
+        {
+          "question": "If only 1% of products are 'hot' (accessed frequently), how much cache is needed for effective performance?",
+          "options": ["500MB", "5GB", "50GB", "1GB"],
+          "correct": 0,
+          "explanation": "1% of 10M = 100,000 hot products. 100,000 × 5KB = 500MB. Caching just the hot 1% costs 500MB but might achieve 90%+ hit rate if they represent 90% of traffic."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-055",
+      "type": "multiple-choice",
+      "question": "What is the 'Pareto principle' (80/20 rule) in caching context?",
+      "options": [
+        "80% of cache should be empty",
+        "80% of requests typically access 20% of data",
+        "Cache should be 80% full",
+        "20% hit rate is acceptable"
+      ],
+      "correct": 1,
+      "explanation": "The 80/20 rule: a small subset of data (20%) often accounts for most accesses (80%). In practice, it's often more extreme (99/1). This is why caching works — you only need to cache the hot data."
+    },
+    {
+      "id": "cache-fun-056",
+      "type": "numeric-input",
+      "question": "If 5% of items account for 90% of requests, and you can cache all of that 5%, what's your theoretical max hit rate?",
+      "answer": 90,
+      "unit": "%",
+      "tolerance": "exact",
+      "explanation": "If the hot 5% handles 90% of requests and you cache all of it, you get up to 90% hit rate. The remaining 10% of requests access the cold 95% of data — those are misses unless cached."
+    },
+    {
+      "id": "cache-fun-057",
+      "type": "ordering",
+      "question": "Rank these access patterns from most cacheable to least cacheable:",
+      "items": [
+        "Power-law (few items get most traffic)",
+        "Uniform random (all items equally likely)",
+        "Time-series (recent data accessed most)",
+        "Completely unique (each request accesses different data)"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Power-law is most cacheable (cache hot items). Time-series caches recent data well. Uniform random has no hot items but still has some reuse. Completely unique has zero reuse — caching doesn't help."
+    },
+    {
+      "id": "cache-fun-058",
+      "type": "multiple-choice",
+      "question": "What is 'read-through caching'?",
+      "options": [
+        "Reading directly from the database",
+        "Cache automatically fetches from origin on miss, transparent to the caller",
+        "Reading through multiple cache layers",
+        "A cache that only handles reads"
+      ],
+      "correct": 1,
+      "explanation": "Read-through: on cache miss, the cache itself fetches from the origin and stores the result. The caller doesn't know about the miss — they just get the data. This centralizes fetch logic in the cache layer."
+    },
+    {
+      "id": "cache-fun-059",
+      "type": "multiple-choice",
+      "question": "What is 'cache-aside' (lazy loading)?",
+      "options": [
+        "A backup cache",
+        "Application checks cache first; on miss, app fetches from DB and populates cache",
+        "Cache that sits beside the database",
+        "Caching only write operations"
+      ],
+      "correct": 1,
+      "explanation": "Cache-aside: application manages caching. On read: check cache → miss → query DB → write to cache → return. The application controls when and what to cache. Most flexible but requires more code."
+    },
+    {
+      "id": "cache-fun-060",
+      "type": "multi-select",
+      "question": "Which are advantages of cache-aside over read-through?",
+      "options": [
+        "Application has full control over caching logic",
+        "Can choose not to cache certain data",
+        "Simpler code in the application",
+        "Works with any storage backend"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Cache-aside gives control: choose what to cache, customize TTLs, handle edge cases. It works with any backend (the app does the fetching). It requires more code, not less — that's the trade-off."
+    },
+    {
+      "id": "cache-fun-061",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "With cache-aside, what happens if the database is updated but the cache isn't?",
+          "options": [
+            "Cache automatically updates",
+            "Stale data is served until cache entry expires or is invalidated",
+            "An error is thrown",
+            "The cache entry is deleted automatically"
+          ],
+          "correct": 1,
+          "explanation": "Cache-aside doesn't automatically sync with DB changes. If DB is updated, the cache holds stale data until TTL expires or you explicitly invalidate/update it. This is the staleness trade-off."
+        },
+        {
+          "question": "How do you keep cache-aside data fresh on writes?",
+          "options": [
+            "It's impossible",
+            "Invalidate or update cache when writing to database",
+            "Use a longer TTL",
+            "Use a separate cache"
+          ],
+          "correct": 1,
+          "explanation": "On database write: delete the cache entry (invalidate) or update it (write-through). Invalidation is simpler and avoids race conditions. The next read will repopulate from DB."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-062",
+      "type": "multiple-choice",
+      "question": "What is 'write-through caching'?",
+      "options": [
+        "Writes go directly to database, bypassing cache",
+        "Writes update both cache and database synchronously",
+        "Writes only go to the cache",
+        "Writes are queued for later"
+      ],
+      "correct": 1,
+      "explanation": "Write-through: every write updates the cache AND the database synchronously. Data is always consistent between cache and DB. Trade-off: write latency increases (two writes per operation)."
+    },
+    {
+      "id": "cache-fun-063",
+      "type": "multiple-choice",
+      "question": "What is 'write-behind' (write-back) caching?",
+      "options": [
+        "Writes are rejected",
+        "Writes go to cache immediately; database is updated asynchronously later",
+        "Writes go behind the cache",
+        "Writes are stored in a backup"
+      ],
+      "correct": 1,
+      "explanation": "Write-behind: writes go to cache (fast), then asynchronously batched to database. Lower latency, can batch writes for efficiency. Risk: data loss if cache fails before persisting. Used when performance > durability."
+    },
+    {
+      "id": "cache-fun-064",
+      "type": "ordering",
+      "question": "Rank these write strategies from lowest to highest write latency:",
+      "items": ["Write-behind (async to DB)", "Write-through (sync to both)", "Write-around (to DB, invalidate cache)"],
+      "correctOrder": [0, 2, 1],
+      "explanation": "Write-behind is fastest (cache only, async DB). Write-around is medium (DB write, cache invalidation). Write-through is slowest (both cache and DB synchronously)."
+    },
+    {
+      "id": "cache-fun-065",
+      "type": "multi-select",
+      "question": "What are risks of write-behind caching?",
+      "options": [
+        "Data loss if cache fails before persistence",
+        "Complexity in ensuring ordering",
+        "Increased write latency",
+        "Read-after-write inconsistency (if reading from DB replica)"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Write-behind risks: cache crash loses data, maintaining write order is complex, reading from DB before async write completes gives stale data. It decreases (not increases) write latency — that's the benefit."
+    },
+    {
+      "id": "cache-fun-066",
+      "type": "multiple-choice",
+      "question": "What is 'write-around' caching?",
+      "options": [
+        "Writes to cache, not to database",
+        "Writes go directly to database, cache entry is invalidated/not written",
+        "Writes are split between cache and database",
+        "Writes are stored temporarily"
+      ],
+      "correct": 1,
+      "explanation": "Write-around: writes go to DB, cache is invalidated (or not updated). Good for data that's written but rarely re-read immediately. Avoids filling cache with data that won't be accessed soon."
+    },
+    {
+      "id": "cache-fun-067",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a log ingestion system. Logs are written once and rarely read. Which caching strategy fits best?",
+          "options": [
+            "Write-through (cache all logs)",
+            "Write-around (don't cache on write)",
+            "Write-behind (async to storage)",
+            "Read-through (cache on read)"
+          ],
+          "correct": 1,
+          "explanation": "Logs are written frequently, read rarely. Write-around avoids polluting cache with logs that won't be re-read. Only cache logs when (if) they're actually accessed."
+        },
+        {
+          "question": "Now you're building a user session system. Sessions are read on every request after login. Which strategy?",
+          "options": [
+            "Write-around",
+            "Write-through (cache session immediately)",
+            "No caching",
+            "Write-behind"
+          ],
+          "correct": 1,
+          "explanation": "Sessions are read on every request — high read frequency after write. Write-through ensures the session is in cache immediately after creation, ready for subsequent requests."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-068",
+      "type": "multiple-choice",
+      "question": "What does 'cache invalidation' mean?",
+      "options": [
+        "Validating cache entries",
+        "Removing or marking cache entries as stale so they're not served",
+        "Making the cache invalid",
+        "Checking if cache is working"
+      ],
+      "correct": 1,
+      "explanation": "Cache invalidation removes stale entries (or marks them expired) when underlying data changes. It's the mechanism for keeping cache consistent with source. Famously described as one of the two hard problems in CS."
+    },
+    {
+      "id": "cache-fun-069",
+      "type": "multi-select",
+      "question": "What makes cache invalidation 'hard'?",
+      "options": [
+        "Knowing what to invalidate (dependencies between data)",
+        "Timing (invalidation must happen before stale reads)",
+        "Distributed systems (multiple caches to invalidate)",
+        "It's actually easy if you use TTLs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Invalidation is hard because: you need to know all affected cache keys when data changes, invalidation must propagate before stale reads, and distributed caches need coordinated invalidation. TTLs help but don't solve all problems."
+    },
+    {
+      "id": "cache-fun-070",
+      "type": "multiple-choice",
+      "question": "What is a 'cache key'?",
+      "options": [
+        "A password for the cache",
+        "A unique identifier used to store and retrieve a specific cached value",
+        "The cache encryption key",
+        "The primary key of cached data"
+      ],
+      "correct": 1,
+      "explanation": "A cache key uniquely identifies a cached entry. Example: 'user:123:profile' stores user 123's profile. Keys should be deterministic — the same request must generate the same key to get a cache hit."
+    },
+    {
+      "id": "cache-fun-071",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You cache user profiles by user ID: 'user:{id}'. A request needs 'user 42's profile'. What key do you query?",
+          "options": ["user", "42", "user:42", "profile:42"],
+          "correct": 2,
+          "explanation": "The key pattern is 'user:{id}', so for user 42, the key is 'user:42'. Consistent key generation is crucial — any variation means cache miss."
+        },
+        {
+          "question": "Now you want to cache user profiles in both English and Spanish. How should you modify the key?",
+          "options": [
+            "user:{id}",
+            "user:{id}:{locale}",
+            "user:{locale}",
+            "{locale}:user"
+          ],
+          "correct": 1,
+          "explanation": "Include all parameters that affect the cached value: 'user:42:en' and 'user:42:es' are different entries. If you omit locale, you'll serve English to Spanish users (or vice versa)."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-072",
+      "type": "multi-select",
+      "question": "What should be included in a cache key?",
+      "options": [
+        "All parameters that affect the cached value",
+        "API version (if response format varies)",
+        "User authentication token",
+        "Request timestamp"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Include all parameters affecting the value (user ID, locale, query params) and API version if responses differ. Don't include auth tokens (makes cache per-token) or timestamps (makes every request unique — no hits)."
+    },
+    {
+      "id": "cache-fun-073",
+      "type": "multiple-choice",
+      "question": "A cache entry has key 'products:category:electronics:page:1'. What information does this encode?",
+      "options": [
+        "All products",
+        "Products in electronics category, first page of results",
+        "One specific product",
+        "Product search results"
+      ],
+      "correct": 1,
+      "explanation": "The key encodes: products list, category=electronics, page=1. Changing category or page would be a different cache entry. Structured keys make cache organization clear and invalidation easier."
+    },
+    {
+      "id": "cache-fun-074",
+      "type": "numeric-input",
+      "question": "You cache API responses keyed by URL. The URL has 5 query parameters, each with 10 possible values. How many unique cache entries are possible?",
+      "answer": 100000,
+      "unit": "entries",
+      "tolerance": "exact",
+      "explanation": "10^5 = 100,000 possible combinations. Each unique URL is a separate cache entry. This 'key explosion' can make caching ineffective if there are too many unique keys with low reuse."
+    },
+    {
+      "id": "cache-fun-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your cache key includes a 'cache buster' timestamp parameter (e.g., ?t=1699900000). What happens to hit rate?",
+          "options": [
+            "It increases",
+            "It drops to nearly 0% (every request has unique key)",
+            "No change",
+            "It becomes exactly 50%"
+          ],
+          "correct": 1,
+          "explanation": "If every request has a unique timestamp in the key, no two requests share a key. Every request is a miss. Cache busters are useful for forcing fresh data but destroy cacheability."
+        },
+        {
+          "question": "When is a cache buster appropriate?",
+          "options": [
+            "Always — freshest data is best",
+            "Never — it defeats caching",
+            "For resources that must not be cached (e.g., after a deploy)",
+            "For high-traffic pages"
+          ],
+          "correct": 2,
+          "explanation": "Cache busters (versioned URLs, changed query params) are for forcing cache refresh — after deploys, when you know data changed. Don't use on every request; use on transitions that require fresh data."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-076",
+      "type": "multiple-choice",
+      "question": "What is 'cache partitioning' or 'cache sharding'?",
+      "options": [
+        "Deleting part of the cache",
+        "Splitting cache data across multiple cache nodes based on key",
+        "Separating cache from database",
+        "Creating cache backups"
+      ],
+      "correct": 1,
+      "explanation": "Cache sharding distributes data across multiple cache servers. Hash(key) determines which server holds an entry. This scales cache capacity horizontally — more servers = more total memory."
+    },
+    {
+      "id": "cache-fun-077",
+      "type": "multi-select",
+      "question": "What are benefits of distributed/sharded caching?",
+      "options": [
+        "Horizontally scalable capacity",
+        "Fault tolerance (losing one node doesn't lose everything)",
+        "Lower latency than local cache",
+        "Shared state across application instances"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Distributed cache scales horizontally, provides partial fault tolerance, and shares state across app instances. Latency is higher than local cache (network hop required) — that's the trade-off."
+    },
+    {
+      "id": "cache-fun-078",
+      "type": "ordering",
+      "question": "Rank these cache types from lowest latency to highest:",
+      "items": ["Distributed cache (Redis)", "In-process cache (HashMap)", "CDN edge cache", "Database query cache"],
+      "correctOrder": [1, 3, 0, 2],
+      "explanation": "In-process (nanoseconds, same memory). DB query cache (microseconds, same server). Distributed (sub-millisecond, network hop). CDN edge (milliseconds, but closer to user). Note: CDN is slow for origin but fast for end user."
+    },
+    {
+      "id": "cache-fun-079",
+      "type": "multiple-choice",
+      "question": "What is 'consistent hashing' in distributed caching?",
+      "options": [
+        "Making sure all cache entries have the same hash",
+        "A hash scheme that minimizes key redistribution when nodes are added/removed",
+        "Consistent data format",
+        "Hash verification"
+      ],
+      "correct": 1,
+      "explanation": "Consistent hashing: when you add/remove a cache node, only a fraction of keys need to move (not all of them). This minimizes cache misses during scaling events. Essential for stable distributed caches."
+    },
+    {
+      "id": "cache-fun-080",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 4 cache nodes. Without consistent hashing, you add a 5th node. How many keys need to relocate?",
+          "options": [
+            "~20% (1/5)",
+            "~25% (1/4)",
+            "~80% (most keys)",
+            "0% (no relocation)"
+          ],
+          "correct": 2,
+          "explanation": "Simple hash: key_location = hash(key) % num_nodes. Changing num_nodes from 4 to 5 changes the result for most keys. ~80% of keys hash to a different node. Massive cache miss spike."
+        },
+        {
+          "question": "With consistent hashing and virtual nodes, adding a 5th node affects how many keys?",
+          "options": [
+            "~80%",
+            "~50%",
+            "~20% (only keys that map to the new node)",
+            "0%"
+          ],
+          "correct": 2,
+          "explanation": "Consistent hashing: only keys that now map to the new node need to move. With 5 nodes, roughly 20% of keys move. The other 80% stay on their original nodes. Much smaller disruption."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-081",
+      "type": "multiple-choice",
+      "question": "What is a 'hot key' problem in distributed caching?",
+      "options": [
+        "A key that's too long",
+        "A single key receiving disproportionately high traffic, overloading one cache node",
+        "An encrypted key",
+        "A key that expires too quickly"
+      ],
+      "correct": 1,
+      "explanation": "Hot key: one entry (e.g., celebrity profile, viral post) gets massive traffic. Since one key maps to one node, that node is overloaded while others are idle. Solutions: replicate hot keys, use local caches, or split the key."
+    },
+    {
+      "id": "cache-fun-082",
+      "type": "multi-select",
+      "question": "How can you mitigate hot key problems?",
+      "options": [
+        "Replicate hot keys to multiple nodes",
+        "Use local in-process cache for extremely hot keys",
+        "Add random suffix to key to distribute across nodes",
+        "Delete the hot key"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Replicate: store hot key on multiple nodes, load balance reads. Local cache: absorb traffic before it hits distributed cache. Random suffix: 'hotkey:1', 'hotkey:2', etc., read randomly, write to all. Deleting defeats the purpose."
+    },
+    {
+      "id": "cache-fun-083",
+      "type": "numeric-input",
+      "question": "A distributed cache has 10 nodes, each handling 100K req/sec max. A hot key gets 500K req/sec. How many replicas of that key are needed?",
+      "answer": 5,
+      "unit": "replicas",
+      "tolerance": "exact",
+      "explanation": "500K / 100K = 5. You need 5 copies of the hot key so each handles 100K req/sec. With replicas, load is distributed: 500K / 5 = 100K per node."
+    },
+    {
+      "id": "cache-fun-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Redis is single-threaded per instance. What does this mean for cache operations?",
+          "options": [
+            "It's very slow",
+            "One operation at a time per instance, but still very fast due to in-memory operations",
+            "It can only serve one client",
+            "It can't be clustered"
+          ],
+          "correct": 1,
+          "explanation": "Single-threaded means Redis processes one command at a time (no parallel execution within an instance). However, in-memory operations are so fast (microseconds) that one thread can handle 100K+ ops/sec. No locking overhead."
+        },
+        {
+          "question": "How do you scale Redis beyond what one instance handles?",
+          "options": [
+            "You can't scale Redis",
+            "Use Redis Cluster (sharding across multiple instances)",
+            "Add more threads",
+            "Use a larger server"
+          ],
+          "correct": 1,
+          "explanation": "Redis Cluster shards data across multiple instances. Each instance handles a subset of keys. Total throughput = sum of all instances. You can also use read replicas for read-heavy workloads."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-085",
+      "type": "multiple-choice",
+      "question": "What is the difference between Redis and Memcached?",
+      "options": [
+        "Memcached is faster",
+        "Redis supports more data structures (lists, sets, sorted sets, etc.) while Memcached is key-value only",
+        "Redis doesn't support clustering",
+        "They're identical"
+      ],
+      "correct": 1,
+      "explanation": "Redis: rich data structures (strings, lists, sets, sorted sets, hashes, streams), persistence options, pub/sub, Lua scripting. Memcached: simple key-value, multi-threaded, arguably simpler for pure caching. Redis is more versatile."
+    },
+    {
+      "id": "cache-fun-086",
+      "type": "multi-select",
+      "question": "When might you choose Memcached over Redis?",
+      "options": [
+        "You only need simple key-value caching",
+        "You need multi-threaded performance on a single node",
+        "You need sorted sets and pub/sub",
+        "You prefer simpler operations without persistence"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Memcached: simple KV, multi-threaded (uses all cores natively), no persistence complexity. Redis wins for rich data structures, persistence, and features. For pure caching, Memcached is a valid choice."
+    },
+    {
+      "id": "cache-fun-087",
+      "type": "ordering",
+      "question": "Rank these by typical operations per second (single instance):",
+      "items": ["PostgreSQL queries", "Redis commands", "Disk reads", "Network calls to external API"],
+      "correctOrder": [1, 0, 2, 3],
+      "explanation": "Redis (~100K-1M ops/sec, in-memory). PostgreSQL (~10K-100K simple queries/sec). Disk (~1K-10K random reads/sec). External API (latency-bound, maybe 100-1K/sec). Redis is fastest for cached data."
+    },
+    {
+      "id": "cache-fun-088",
+      "type": "numeric-input",
+      "question": "Redis can handle 100K ops/sec. Each of your requests needs 2 Redis calls. What's your max requests per second?",
+      "answer": 50000,
+      "unit": "req/sec",
+      "tolerance": "exact",
+      "explanation": "100K ops / 2 ops per request = 50K requests/sec. Consider reducing Redis calls per request (pipeline, batch) or scaling Redis (cluster, replicas) if this is a bottleneck."
+    },
+    {
+      "id": "cache-fun-089",
+      "type": "multiple-choice",
+      "question": "What is 'pipelining' in Redis?",
+      "options": [
+        "Connecting multiple Redis instances",
+        "Sending multiple commands in one round trip instead of one command per round trip",
+        "Streaming data through Redis",
+        "Background processing"
+      ],
+      "correct": 1,
+      "explanation": "Pipelining batches multiple Redis commands in one network round trip. Instead of 10 round trips for 10 commands, you get 1. Reduces network latency dramatically for bulk operations. Redis processes them in order."
+    },
+    {
+      "id": "cache-fun-090",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Network latency to Redis is 1ms. You need to execute 100 GET commands. Without pipelining, what's the total latency?",
+          "options": ["1ms", "10ms", "100ms", "1000ms"],
+          "correct": 2,
+          "explanation": "100 commands × 1ms round trip each = 100ms total. Each command waits for response before sending the next."
+        },
+        {
+          "question": "With pipelining (all 100 commands in one batch), what's approximately the total latency?",
+          "options": ["1-2ms", "50ms", "100ms", "Still 100ms"],
+          "correct": 0,
+          "explanation": "Pipelining sends all 100 commands in ~1 round trip. Total latency ≈ 1ms network + small processing time. ~100x faster than sequential. Pipelining is essential for bulk Redis operations."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-091",
+      "type": "multiple-choice",
+      "question": "What is 'look-aside cache' another name for?",
+      "options": [
+        "Write-through cache",
+        "Cache-aside (lazy loading)",
+        "Read-through cache",
+        "Write-behind cache"
+      ],
+      "correct": 1,
+      "explanation": "Look-aside and cache-aside are the same pattern: the application looks at the cache first, and if missed, looks at the database. The cache sits 'to the side' of the data flow, not inline."
+    },
+    {
+      "id": "cache-fun-092",
+      "type": "multi-select",
+      "question": "What are characteristics of a good cache monitoring strategy?",
+      "options": [
+        "Track hit rate over time",
+        "Alert on sudden hit rate drops",
+        "Monitor cache memory usage and evictions",
+        "Only check cache health weekly"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Good monitoring: continuous hit rate tracking, alerts on anomalies (drops indicate problems), memory/eviction monitoring (thrashing detection). Weekly checks miss real-time issues that can cause outages."
+    },
+    {
+      "id": "cache-fun-093",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cache hit rate drops from 95% to 50% suddenly. What's the immediate impact?",
+          "options": [
+            "No impact",
+            "Origin load increases ~10x (from 5% to 50% of traffic)",
+            "Cache performance improves",
+            "Users see faster responses"
+          ],
+          "correct": 1,
+          "explanation": "5% of traffic was hitting origin, now 50% is. That's 10x more load on the database. If the DB was sized for 5%, it may not handle 50%. Result: slow queries, timeouts, potential outage."
+        },
+        {
+          "question": "What could cause such a sudden hit rate drop?",
+          "options": [
+            "Traffic decreased",
+            "Cache was cleared/restarted, mass invalidation, or access pattern changed",
+            "Database became faster",
+            "Network improved"
+          ],
+          "correct": 1,
+          "explanation": "Common causes: cache restart (cold cache), mass invalidation (intentional or bug), deployment issues, or sudden traffic pattern change (e.g., new feature accessing uncached data). Investigate immediately."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-094",
+      "type": "multiple-choice",
+      "question": "What is 'cache miss penalty'?",
+      "options": [
+        "A fee for cache misses",
+        "The extra latency incurred when data must be fetched from origin instead of cache",
+        "Losing data from cache",
+        "Cache error rate"
+      ],
+      "correct": 1,
+      "explanation": "Miss penalty = origin_latency - cache_latency. If cache returns in 5ms and origin in 200ms, the miss penalty is 195ms. This is the cost you pay for each cache miss. High miss penalty means cache is very valuable."
+    },
+    {
+      "id": "cache-fun-095",
+      "type": "numeric-input",
+      "question": "Cache latency: 2ms. Origin latency: 150ms. What's the miss penalty?",
+      "answer": 148,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "Miss penalty = 150ms - 2ms = 148ms. A cache miss costs 148ms more than a hit. For high miss penalties, it's worth investing in higher hit rates."
+    },
+    {
+      "id": "cache-fun-096",
+      "type": "ordering",
+      "question": "Rank these scenarios by how critical caching is (most critical first):",
+      "items": [
+        "Origin: 500ms, Cache: 5ms, High traffic",
+        "Origin: 50ms, Cache: 5ms, Low traffic",
+        "Origin: 10ms, Cache: 5ms, Medium traffic",
+        "Origin: 200ms, Cache: 2ms, Very high traffic"
+      ],
+      "correctOrder": [3, 0, 2, 1],
+      "explanation": "Very high traffic + high miss penalty (198ms) = most critical. High traffic + 495ms penalty = second. Medium traffic + small penalty = third. Low traffic = least critical (origin can handle it)."
+    },
+    {
+      "id": "cache-fun-097",
+      "type": "multi-select",
+      "question": "When should you NOT use caching?",
+      "options": [
+        "Data changes on every request",
+        "Each request accesses unique data (no reuse)",
+        "Data is highly sensitive and staleness is unacceptable",
+        "The origin is already very fast and can handle the load"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All of these are reasons to skip caching: frequent changes (constant invalidation), unique access (0% reuse), staleness intolerance (defeats purpose), fast/capable origin (caching adds complexity for no benefit)."
+    },
+    {
+      "id": "cache-fun-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're building a real-time multiplayer game with player positions updating 60 times/second. Should you cache player positions?",
+          "options": [
+            "Yes — caching always helps",
+            "No — data changes too frequently (60Hz invalidation defeats caching)",
+            "Maybe — depends on cache",
+            "Yes — but with 1-second TTL"
+          ],
+          "correct": 1,
+          "explanation": "At 60 updates/second, cache entries are stale in ~17ms. The cache would be constantly invalidated, providing no benefit. For real-time data, use in-memory state or specialized real-time databases, not traditional caching."
+        },
+        {
+          "question": "The same game has static game configuration (items, levels, rules). Should you cache that?",
+          "options": [
+            "No — games shouldn't use caching",
+            "Yes — static config changes rarely, perfect for caching",
+            "Only if it's less than 1KB",
+            "Cache during off-peak only"
+          ],
+          "correct": 1,
+          "explanation": "Static config is ideal for caching: rarely changes, frequently read. Cache it aggressively with long TTL or until invalidation. Different data types in the same app have different caching strategies."
+        }
+      ]
+    },
+    {
+      "id": "cache-fun-099",
+      "type": "multiple-choice",
+      "question": "What is the relationship between cache size and hit rate?",
+      "options": [
+        "Larger cache always means higher hit rate",
+        "Larger cache helps up to the working set size, then has diminishing returns",
+        "Cache size doesn't affect hit rate",
+        "Smaller caches have higher hit rates"
+      ],
+      "correct": 1,
+      "explanation": "Increasing cache size improves hit rate until you can hold the entire working set. Beyond that, extra space provides minimal benefit — you're already caching everything that's accessed. Right-size the cache to your working set."
+    },
+    {
+      "id": "cache-fun-100",
+      "type": "ordering",
+      "question": "Put these caching concepts in order of a typical request flow (first to last):",
+      "items": [
+        "Check cache for data",
+        "Return data to client",
+        "On miss: fetch from origin",
+        "Store fetched data in cache"
+      ],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "Cache-aside flow: (1) Check cache → (2) On miss, fetch from origin → (3) Store in cache → (4) Return to client. On hit, skip steps 2-3 and return directly."
+    }
+  ]
+}
