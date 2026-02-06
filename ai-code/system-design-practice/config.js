@@ -76,7 +76,7 @@ export const CONFIG = {
         { num: 5, title: 'Cache Invalidation', ready: true },
         { num: 6, title: 'Eviction Policies', ready: true },
         { num: 7, title: 'Distributed Caching', ready: true },
-        { num: 8, title: 'Caching Scenarios', ready: false }
+        { num: 8, title: 'Caching Scenarios', ready: true }
       ]
     }
   ]

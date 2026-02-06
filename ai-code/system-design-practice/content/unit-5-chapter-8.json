@@ -1,0 +1,1580 @@
+{
+  "chapterTitle": "Caching Scenarios",
+  "problems": [
+    {
+      "id": "cachescen-001",
+      "type": "multiple-choice",
+      "question": "You're building a social media feed. Posts are written once but read millions of times. Which caching strategy is most appropriate?",
+      "options": [
+        "Write-through",
+        "Write-behind",
+        "Cache-aside with long TTL",
+        "No caching needed"
+      ],
+      "correct": 2,
+      "explanation": "Read-heavy, write-once content is ideal for cache-aside with long TTL. Posts rarely change after creation, so cache them on first read and keep them. Write-through/behind add complexity without benefit for immutable content."
+    },
+    {
+      "id": "cachescen-002",
+      "type": "multiple-choice",
+      "question": "An e-commerce site shows product prices that update every few minutes from a pricing service. What caching approach works best?",
+      "options": [
+        "Cache indefinitely, invalidate on update",
+        "Short TTL (30-60 seconds) with stale-while-revalidate",
+        "No caching—always fetch fresh",
+        "Write-through caching"
+      ],
+      "correct": 1,
+      "explanation": "Prices change frequently but slight staleness (30-60s) is acceptable. Short TTL with stale-while-revalidate serves cached prices instantly while refreshing in background. No caching would overload the pricing service."
+    },
+    {
+      "id": "cachescen-003",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A banking app shows account balances. Users expect to see updated balance immediately after a transfer. What's the primary concern?",
+          "options": [
+            "Cache hit rate",
+            "Read-your-writes consistency",
+            "Cache eviction policy",
+            "TTL duration"
+          ],
+          "correct": 1,
+          "explanation": "Users must see their own updates immediately. Read-your-writes consistency is critical—showing stale balance after a transfer would be confusing and concerning."
+        },
+        {
+          "question": "How would you achieve this while still benefiting from caching?",
+          "options": [
+            "Don't cache balances",
+            "Invalidate user's cached balance on transfer, read from primary for that user",
+            "Use 1-second TTL globally",
+            "Cache only for other users"
+          ],
+          "correct": 1,
+          "explanation": "Invalidate the specific user's cached balance when they make a transfer, then read from primary (or wait for replication). Other users can still read from cache. This provides consistency for the actor while maintaining cache benefits."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-004",
+      "type": "multiple-choice",
+      "question": "A news site has articles that get 90% of traffic in the first hour after publishing, then drop off sharply. What TTL strategy optimizes cache efficiency?",
+      "options": [
+        "Fixed 24-hour TTL for all articles",
+        "Short TTL (minutes) for new articles, longer for older ones",
+        "No TTL—cache forever",
+        "Longer TTL for new articles, shorter for older ones"
+      ],
+      "correct": 3,
+      "explanation": "New articles are hot (high traffic) so longer TTL maximizes hits. Old articles are rarely accessed, so shorter TTL frees cache space. This matches cache investment to traffic patterns."
+    },
+    {
+      "id": "cachescen-005",
+      "type": "multiple-choice",
+      "question": "Your API serves personalized recommendations. Each user gets unique results. Where should you cache?",
+      "options": [
+        "CDN edge cache",
+        "Shared Redis cache with user ID in key",
+        "Browser cache only",
+        "Don't cache—too personalized"
+      ],
+      "correct": 1,
+      "explanation": "Personalized content can't use CDN (varies by user). Browser cache helps repeat visits but not first load. Redis with user-specific keys (recs:user:123) caches recommendations per user efficiently."
+    },
+    {
+      "id": "cachescen-006",
+      "type": "multi-select",
+      "question": "A flash sale starts at noon. Which caching concerns should you address beforehand? (Select all that apply)",
+      "options": [
+        "Pre-warm caches with sale item data",
+        "Prepare for thundering herd on sale start",
+        "Increase cache TTL during sale",
+        "Ensure cache can handle traffic spike"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Pre-warm ensures data is cached before traffic hits. Thundering herd protection prevents stampede at noon. Capacity must handle the spike. Increasing TTL isn't necessarily needed and could serve stale inventory data."
+    },
+    {
+      "id": "cachescen-007",
+      "type": "multiple-choice",
+      "question": "Users complain they see other users' data occasionally. Your app uses Redis for session storage. What's the likely cause?",
+      "options": [
+        "Redis is too slow",
+        "Session key collision or incorrect key generation",
+        "TTL is too long",
+        "Cache is too small"
+      ],
+      "correct": 1,
+      "explanation": "Seeing other users' data indicates session mixup—keys are colliding or being generated incorrectly. Check session ID generation (should be cryptographically random) and ensure keys include proper user context."
+    },
+    {
+      "id": "cachescen-008",
+      "type": "multiple-choice",
+      "question": "Your service caches database query results. After a deploy, users see stale data. What likely happened?",
+      "options": [
+        "Database was slow",
+        "Code change affected query output but cache wasn't invalidated",
+        "Redis ran out of memory",
+        "Network latency increased"
+      ],
+      "correct": 1,
+      "explanation": "Code changes (new columns, different formatting, business logic) can make cached results incorrect. Cache keys often don't include code version. Solution: invalidate relevant caches on deploy or version your cache keys."
+    },
+    {
+      "id": "cachescen-009",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A product page shows: product details, reviews, and 'customers also bought' recommendations. How many different cache entries might this require?",
+          "options": ["1", "2", "3 or more", "None needed"],
+          "correct": 2,
+          "explanation": "Each component has different characteristics: product details (stable), reviews (updated when new reviews post), recommendations (computed, may change). Caching separately allows independent TTLs and invalidation."
+        },
+        {
+          "question": "Which component should have the shortest TTL?",
+          "options": ["Product details", "Reviews", "Recommendations", "All same TTL"],
+          "correct": 1,
+          "explanation": "Reviews change when users post (want to see your own review appear). Product details rarely change. Recommendations are computed and slight staleness is fine. Reviews need freshest data for good UX."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-010",
+      "type": "multiple-choice",
+      "question": "Your cache hit rate is 95% but p99 latency is high. What should you investigate?",
+      "options": [
+        "Increase cache size",
+        "The 5% of misses—are they slow database queries?",
+        "Change eviction policy",
+        "Add more cache replicas"
+      ],
+      "correct": 1,
+      "explanation": "95% hits means 5% misses hit the database. If those misses are slow queries, p99 suffers. Investigate: are certain queries slow? Can you optimize them? Can you warm cache for those keys?"
+    },
+    {
+      "id": "cachescen-011",
+      "type": "multiple-choice",
+      "question": "A CDN caches your API responses. Users report seeing other users' private data in API responses. What's wrong?",
+      "options": [
+        "CDN is misconfigured",
+        "Missing Vary header or incorrect Cache-Control; personalized responses are being cached and served to wrong users",
+        "API is slow",
+        "TTL is too long"
+      ],
+      "correct": 1,
+      "explanation": "CDN cached a personalized response and served it to other users. Fix: add 'Cache-Control: private' for user-specific responses, or 'Vary: Authorization' to cache per-user. Never let CDN cache personalized content without proper headers."
+    },
+    {
+      "id": "cachescen-012",
+      "type": "multiple-choice",
+      "question": "You're designing a ride-sharing app. Driver locations update every 5 seconds. What caching approach for showing nearby drivers?",
+      "options": [
+        "Cache driver locations with 5-minute TTL",
+        "Don't cache—data is too volatile",
+        "Cache with very short TTL (5-10 seconds) or use pub/sub for real-time",
+        "Cache indefinitely with immediate invalidation"
+      ],
+      "correct": 2,
+      "explanation": "Location data is highly volatile (5-second updates). Options: very short TTL (acceptable staleness for 'nearby' display) or real-time via pub/sub. Long TTL would show stale positions. Caching helps reduce database load even with short TTL."
+    },
+    {
+      "id": "cachescen-013",
+      "type": "multi-select",
+      "question": "Your Redis cache is at 90% memory. Which actions should you consider? (Select all that apply)",
+      "options": [
+        "Reduce TTLs to free memory faster",
+        "Review and remove unnecessary cached data",
+        "Add more Redis nodes (scale out)",
+        "Enable maxmemory eviction policy"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid: shorter TTLs free memory sooner, audit may reveal unnecessary caching, scaling adds capacity, eviction policy prevents OOM. Choose based on whether 90% is expected (add capacity) or unexpected (audit usage)."
+    },
+    {
+      "id": "cachescen-014",
+      "type": "multiple-choice",
+      "question": "An inventory system must never oversell. You're caching stock counts. What's the risk and mitigation?",
+      "options": [
+        "No risk with caching",
+        "Cache may show stale (higher) stock; always check database for final purchase decision",
+        "Use longer TTL for safety",
+        "Cache the inverse (sold count) instead"
+      ],
+      "correct": 1,
+      "explanation": "Cached stock count may be stale (shows 5, actual is 0). For display, cache is fine. For purchase decision, always verify against database in a transaction. Caching helps reads; writes must be authoritative."
+    },
+    {
+      "id": "cachescen-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your service deploys to US-East and EU-West. Users write data in their region. A US user travels to EU and can't see their recent data. Why?",
+          "options": [
+            "Database replication lag",
+            "EU cache doesn't have the data (written to US cache)",
+            "User is logged out",
+            "Network issue"
+          ],
+          "correct": 1,
+          "explanation": "Data written in US is in US cache. EU cache doesn't have it. Cross-region cache consistency is the issue—EU cache either needs replication from US or should fall back to database."
+        },
+        {
+          "question": "What's the best fix for this scenario?",
+          "options": [
+            "Route user always to their home region",
+            "Cross-region cache invalidation/replication",
+            "Don't use regional caches",
+            "Increase cache TTL"
+          ],
+          "correct": 1,
+          "explanation": "Cross-region invalidation: when US writes, send invalidation to EU so EU cache fetches fresh data on next access. Alternatively, replicate cache writes cross-region. Home region routing adds latency when traveling."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-016",
+      "type": "multiple-choice",
+      "question": "A celebrity tweets and your service sees 500K requests/second for their profile. Your cache holds it, but one Redis node is overwhelmed. What's happening?",
+      "options": [
+        "Cache miss storm",
+        "Hot key problem—millions of requests for one key on one node",
+        "TTL is too short",
+        "Memory exhaustion"
+      ],
+      "correct": 1,
+      "explanation": "Hot key: the celebrity's profile key hashes to one shard. All 500K requests hit that single node regardless of cluster size. Solutions: replicate the key, add local (L1) caching, or spread across multiple suffixed keys."
+    },
+    {
+      "id": "cachescen-017",
+      "type": "multiple-choice",
+      "question": "You add a local (in-memory) L1 cache in front of Redis. Cache coherence is a concern. When is this acceptable?",
+      "options": [
+        "Never—L1 caches cause inconsistency",
+        "When slight staleness is acceptable and L1 TTL is short",
+        "Only for static content",
+        "Only with synchronous invalidation"
+      ],
+      "correct": 1,
+      "explanation": "L1 caches are safe when staleness is tolerable (e.g., product catalog) and L1 TTL is short (seconds). Each app server may have different versions briefly, but this is acceptable for many use cases and dramatically reduces Redis load."
+    },
+    {
+      "id": "cachescen-018",
+      "type": "multiple-choice",
+      "question": "Your cache hit rate dropped from 85% to 60% overnight. Nothing was deployed. What should you investigate first?",
+      "options": [
+        "Change eviction policy",
+        "Check if access patterns changed (new traffic source, bot, attack)",
+        "Increase cache size",
+        "Reduce TTL"
+      ],
+      "correct": 1,
+      "explanation": "Sudden hit rate drop without deploys suggests external change: different traffic patterns (new users, features), bots/scrapers accessing many unique URLs, or cache attack. Investigate traffic patterns before changing configuration."
+    },
+    {
+      "id": "cachescen-019",
+      "type": "multi-select",
+      "question": "A search feature caches query results. Which queries should NOT be cached? (Select all that apply)",
+      "options": [
+        "Queries with no results",
+        "Highly personalized queries",
+        "Very rare/unique queries",
+        "Popular queries"
+      ],
+      "correctIndices": [1, 2],
+      "explanation": "Personalized queries are user-specific (low reuse). Rare queries won't be hit again (waste cache space). No-results can be cached (negative caching prevents repeated expensive searches). Popular queries should definitely be cached."
+    },
+    {
+      "id": "cachescen-020",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your app uses Redis for both caching and session storage. Redis becomes unavailable. What happens to users?",
+          "options": [
+            "App continues normally",
+            "Cache misses hit database (slower); sessions are lost (users logged out)",
+            "Only sessions are affected",
+            "Only caching is affected"
+          ],
+          "correct": 1,
+          "explanation": "Both functions fail: cache misses cause database load spike (may overwhelm it), sessions are lost (users logged out mid-action). Mixing concerns in one Redis creates correlated failures."
+        },
+        {
+          "question": "How would you improve resilience?",
+          "options": [
+            "Use larger Redis instance",
+            "Separate Redis clusters for cache vs sessions, with different failover behavior",
+            "Add more replicas to same cluster",
+            "Increase memory"
+          ],
+          "correct": 1,
+          "explanation": "Separate concerns: cache Redis can fail and app degrades gracefully (DB fallback). Session Redis needs higher availability (replicas, persistence). Different requirements, different clusters, independent failures."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-021",
+      "type": "multiple-choice",
+      "question": "A GraphQL API returns custom field selections per query. How does this affect caching?",
+      "options": [
+        "No impact—cache normally",
+        "Each unique field selection is a different cache key, reducing hit rate",
+        "GraphQL can't be cached",
+        "Cache at CDN level only"
+      ],
+      "correct": 1,
+      "explanation": "GraphQL's flexible queries mean query A might request {name, email} while query B requests {name, phone}. Different shapes = different cache keys = lower hit rate. Solutions: normalize queries, cache at field/entity level instead of query level."
+    },
+    {
+      "id": "cachescen-022",
+      "type": "multiple-choice",
+      "question": "You're implementing rate limiting. Should you cache rate limit counters?",
+      "options": [
+        "No—rate limits must be real-time accurate",
+        "Yes—use Redis with atomic increment, short TTL matching rate limit window",
+        "Cache only for read, update database for accuracy",
+        "Rate limiting doesn't need storage"
+      ],
+      "correct": 1,
+      "explanation": "Redis is ideal for rate limiting: atomic INCR ensures accurate counts, EXPIRE handles window reset. It's not 'caching' in the traditional sense—Redis is the primary store for this ephemeral data. High performance for high-volume checks."
+    },
+    {
+      "id": "cachescen-023",
+      "type": "multiple-choice",
+      "question": "A content site serves images via CDN. A user uploads a new profile picture but still sees the old one. What's the issue?",
+      "options": [
+        "Upload failed",
+        "CDN is caching the old image; need cache invalidation or versioned URL",
+        "Browser cache",
+        "Database not updated"
+      ],
+      "correct": 1,
+      "explanation": "CDN cached the old image URL. Solutions: invalidate CDN cache (slow, costly), use versioned URL (/avatar/123?v=2 or /avatar/123/v2.jpg), or use content-hash URLs. Versioned URLs are best—new URL bypasses old cache."
+    },
+    {
+      "id": "cachescen-024",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "E-commerce checkout adds items to cart (Redis), then reserves inventory (database). If Redis fails between these steps, what happens?",
+          "options": [
+            "Cart is lost",
+            "Inventory is reserved but cart shows empty",
+            "Transaction rolls back automatically",
+            "Both operations fail"
+          ],
+          "correct": 0,
+          "explanation": "If Redis fails after adding to cart but before inventory reservation, the cart data is lost. User sees empty cart, inventory isn't reserved. These are separate systems without distributed transaction."
+        },
+        {
+          "question": "How should you handle this?",
+          "options": [
+            "Use distributed transactions",
+            "Write cart to database instead of Redis for durability",
+            "Retry on Redis failure",
+            "Accept potential inconsistency"
+          ],
+          "correct": 1,
+          "explanation": "For critical checkout flow, persist cart to database (or Redis with persistence) for durability. Redis failures shouldn't lose customer's cart. Use Redis for fast reads, database for durable writes."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-025",
+      "type": "multiple-choice",
+      "question": "Your API averages 50ms response time. Adding Redis caching for database queries reduces it to 10ms. But p99 increased from 200ms to 500ms. Why?",
+      "options": [
+        "Redis is slower than database",
+        "Cache misses now go to a cold database (connection pool drained), causing slow queries",
+        "Too much data cached",
+        "Network issues"
+      ],
+      "correct": 1,
+      "explanation": "With caching, database sees less traffic → fewer warm connections. When cache misses occur, database may need to establish new connections, warm up buffers, etc. The few misses are slower than before caching."
+    },
+    {
+      "id": "cachescen-026",
+      "type": "multiple-choice",
+      "question": "A configuration service stores feature flags read by every request. What's the optimal caching strategy?",
+      "options": [
+        "No caching—feature flags must be instant",
+        "Long TTL in distributed cache",
+        "Short TTL local cache with change notification for immediate updates",
+        "Cache indefinitely"
+      ],
+      "correct": 2,
+      "explanation": "Feature flags are read constantly (every request) but changed rarely. Local cache avoids network calls. Short TTL + change notification (pub/sub) enables quick updates when needed. Balance: fast reads, near-instant updates."
+    },
+    {
+      "id": "cachescen-027",
+      "type": "multi-select",
+      "question": "You're designing a leaderboard that updates in real-time. Which caching approaches work? (Select all that apply)",
+      "options": [
+        "Cache full leaderboard with short TTL",
+        "Use Redis sorted sets as the primary store (no separate cache)",
+        "Cache individual user ranks",
+        "Don't cache—too dynamic"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Short TTL caching works if slight delay is acceptable. Redis sorted sets (ZSET) are ideal—they ARE the real-time leaderboard store, not a cache. Individual rank caching helps for 'my rank' queries. Real-time is achievable with right tools."
+    },
+    {
+      "id": "cachescen-028",
+      "type": "multiple-choice",
+      "question": "A batch job processes millions of records, each requiring a cache lookup. After the job, cache hit rate across the system dropped. What happened?",
+      "options": [
+        "Cache size was exceeded",
+        "Batch job polluted cache with records that won't be accessed again (scan problem)",
+        "Job was too slow",
+        "Memory leak"
+      ],
+      "correct": 1,
+      "explanation": "The batch job accessed millions of unique records, filling cache with items that won't be reaccessed. These evicted hot items from regular traffic. Solution: batch jobs should bypass cache or use separate cache pool."
+    },
+    {
+      "id": "cachescen-029",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your microservice calls another service that has 99.9% uptime. You cache responses for 5 minutes. If the upstream service is down, what happens?",
+          "options": [
+            "All requests fail",
+            "Cached responses still served; only cache misses fail",
+            "Cache automatically extends TTL",
+            "Requests queue until service recovers"
+          ],
+          "correct": 1,
+          "explanation": "Existing cached entries continue serving. New keys and expired entries fail when trying to refresh. Cache provides partial resilience during outages—serving stale is better than failing."
+        },
+        {
+          "question": "How can you improve resilience during upstream outages?",
+          "options": [
+            "Remove caching",
+            "Implement stale-while-error: serve expired cache entries when upstream fails",
+            "Increase TTL to 1 hour",
+            "Add retry logic only"
+          ],
+          "correct": 1,
+          "explanation": "Stale-while-error serves expired cached data when the refresh fails. Users get slightly stale data instead of errors. This is a form of graceful degradation. Long TTL helps but stale-while-error is more targeted."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-030",
+      "type": "multiple-choice",
+      "question": "A gaming platform caches player profiles. Players can change their username. After changing, the old username still appears to other players. What's the issue?",
+      "options": [
+        "Database replication lag",
+        "Other players' clients have cached the old profile; need cache invalidation or expiration",
+        "CDN caching",
+        "Username change didn't save"
+      ],
+      "correct": 1,
+      "explanation": "Player A's profile is cached on Player B's client or in shared cache. When A changes username, B's cached copy is stale. Solutions: invalidate profile caches on username change, use short TTL, or push updates via WebSocket."
+    },
+    {
+      "id": "cachescen-031",
+      "type": "multiple-choice",
+      "question": "Your distributed cache has 10 nodes. You need to store a value that all nodes can read with low latency. Where should it go?",
+      "options": [
+        "Any single node",
+        "Replicated to all nodes (broadcast on write)",
+        "Node closest to most readers",
+        "Separate configuration service"
+      ],
+      "correct": 1,
+      "explanation": "For data needed by all nodes with low latency (like global config), replicate to all nodes. Reads are local (fast). Writes broadcast (acceptable for infrequent updates). Single-node storage would create hot spot and latency."
+    },
+    {
+      "id": "cachescen-032",
+      "type": "multi-select",
+      "question": "A hotel booking site caches room availability. Which scenarios require immediate cache invalidation? (Select all that apply)",
+      "options": [
+        "Room is booked",
+        "Price changes",
+        "New room added to inventory",
+        "User views availability"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Booking: availability changed (critical—avoid double-booking). New room: should be visible. Price changes: can tolerate brief staleness (short TTL). View: read operation, doesn't change data."
+    },
+    {
+      "id": "cachescen-033",
+      "type": "multiple-choice",
+      "question": "Your service experiences a 'cold start' after deployment—response times spike for 5 minutes then stabilize. What's happening?",
+      "options": [
+        "Code is slow",
+        "Cache is empty after restart, causing thundering herd to database",
+        "Network warmup",
+        "DNS issues"
+      ],
+      "correct": 1,
+      "explanation": "After restart, cache is empty. All requests hit database until cache warms up. Multiple servers restarting creates massive database load. Solutions: rolling deploys (one at a time), cache warming, gradual traffic shift."
+    },
+    {
+      "id": "cachescen-034",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing a URL shortener. Billions of URLs, each accessed infrequently on average but some are very popular. What caching strategy?",
+          "options": [
+            "Cache all URLs",
+            "Cache on demand with LRU eviction to keep popular URLs cached",
+            "Cache top 1000 URLs only",
+            "Don't cache—too many URLs"
+          ],
+          "correct": 1,
+          "explanation": "Can't cache all (too many). Don't cache would miss optimization for popular URLs. LRU naturally keeps popular URLs (frequently accessed) and evicts rarely-used ones. Perfect for power-law access patterns."
+        },
+        {
+          "question": "A shortened URL goes viral (10M clicks/hour). How do you handle it?",
+          "options": [
+            "Normal caching handles it",
+            "Hot key handling: replicate to multiple keys or use local cache",
+            "Remove it from cache",
+            "Rate limit the URL"
+          ],
+          "correct": 1,
+          "explanation": "Viral URL is a hot key—one cache key getting extreme traffic. Solutions: replicate (url:abc:1, url:abc:2), local L1 cache, or CDN caching. Rate limiting hurts legitimate users."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-035",
+      "type": "multiple-choice",
+      "question": "A dashboard shows real-time metrics aggregated from multiple services. Caching individual service responses causes dashboard to show inconsistent data (some metrics from different times). How do you fix this?",
+      "options": [
+        "Don't cache any metrics",
+        "Cache with same TTL and aligned expiration times",
+        "Cache the aggregated dashboard result instead of individual metrics",
+        "Longer TTL"
+      ],
+      "correct": 2,
+      "explanation": "Caching individual responses causes temporal inconsistency (metric A from 1:00, metric B from 1:02). Cache the final aggregated dashboard view with a single TTL. All metrics in one snapshot are consistent with each other."
+    },
+    {
+      "id": "cachescen-036",
+      "type": "multiple-choice",
+      "question": "An auction site shows current highest bid. Bidders complain about seeing stale bids (someone bid higher but they don't see it). What caching mistake was made?",
+      "options": [
+        "No caching was used",
+        "Bid data was cached when it should be real-time (or very short TTL)",
+        "Cache was too large",
+        "Wrong eviction policy"
+      ],
+      "correct": 1,
+      "explanation": "Auction bids need real-time or near-real-time visibility. Caching bid data with normal TTL causes users to bid based on stale information. Solution: no caching for bid data, or sub-second TTL, or push updates via WebSocket."
+    },
+    {
+      "id": "cachescen-037",
+      "type": "multi-select",
+      "question": "Which data types are POOR candidates for caching? (Select all that apply)",
+      "options": [
+        "Frequently changing financial data requiring accuracy",
+        "User authentication tokens",
+        "Static website assets",
+        "Data that's cheap to recompute"
+      ],
+      "correctIndices": [0, 3],
+      "explanation": "Rapidly changing accuracy-critical data (stock prices for trading) shouldn't be cached. Data that's cheap to recompute has less caching benefit. Auth tokens should be cached (frequent checks). Static assets are ideal for caching."
+    },
+    {
+      "id": "cachescen-038",
+      "type": "multiple-choice",
+      "question": "Your team debates: should we cache API responses in Redis or in a local process cache? The API serves 10 instances. What's the key trade-off?",
+      "options": [
+        "Redis is always better",
+        "Local is always better",
+        "Local: faster but duplicates data across instances; Redis: shared cache, one network hop",
+        "No difference"
+      ],
+      "correct": 2,
+      "explanation": "Local cache: no network latency, but each of 10 instances caches separately (10x memory for popular items). Redis: one copy shared by all, but adds network hop. Choose based on data size vs latency sensitivity."
+    },
+    {
+      "id": "cachescen-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A recommendation engine caches 'similar products' for each product. The catalog has 1M products. Each recommendation list is 1KB. How much cache would storing all take?",
+          "options": ["100MB", "1GB", "10GB", "100GB"],
+          "correct": 1,
+          "explanation": "1M products × 1KB = 1,000,000KB = 1GB. That's the theoretical maximum if all products are cached."
+        },
+        {
+          "question": "You only have 100MB cache budget. What strategy works?",
+          "options": [
+            "Can't cache recommendations",
+            "Cache only popular products' recommendations (80/20 rule)",
+            "Compress all recommendations",
+            "Use disk cache"
+          ],
+          "correct": 1,
+          "explanation": "80/20 rule: 20% of products likely get 80% of views. Cache recommendations for popular products only. 200K products × 1KB = 200MB—too big, but top 100K (10%) = 100MB fits and covers most traffic."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-040",
+      "type": "multiple-choice",
+      "question": "A payment service writes transaction records. Should it use write-through or write-behind caching?",
+      "options": [
+        "Write-through for guaranteed durability",
+        "Write-behind for better performance",
+        "Neither—payment writes should go directly to durable storage",
+        "Either works equally well"
+      ],
+      "correct": 2,
+      "explanation": "Payment transactions are critical and must be durable. Don't add cache in the write path where failures could lose transactions. Write directly to database. Cache is appropriate for reads (transaction history), not writes."
+    },
+    {
+      "id": "cachescen-041",
+      "type": "multiple-choice",
+      "question": "You implement cache-aside for user profiles. Under load, database CPU spikes to 100% and many identical queries run simultaneously. What's happening?",
+      "options": [
+        "Cache is working correctly",
+        "Thundering herd—cache expired and multiple requests simultaneously query database",
+        "Database is undersized",
+        "Cache is too small"
+      ],
+      "correct": 1,
+      "explanation": "Classic thundering herd: popular key expires → many concurrent requests check cache → all miss → all query database simultaneously. Solutions: probabilistic early refresh, locking, stale-while-revalidate."
+    },
+    {
+      "id": "cachescen-042",
+      "type": "multi-select",
+      "question": "Which metrics indicate your cache is too small? (Select all that apply)",
+      "options": [
+        "High eviction rate",
+        "Hit rate declining despite stable traffic patterns",
+        "Memory usage at 95%+",
+        "Low latency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "High eviction = constantly removing items to fit new ones. Declining hit rate = useful items being evicted. Memory near limit = no room for growth. Low latency is good, not an indicator of problems."
+    },
+    {
+      "id": "cachescen-043",
+      "type": "multiple-choice",
+      "question": "A CDN caches your API responses. You need to update cached content immediately after database changes. What's the best approach?",
+      "options": [
+        "Wait for TTL expiration",
+        "Purge specific URLs via CDN API when data changes",
+        "Disable CDN caching",
+        "Use very short TTL (1 second)"
+      ],
+      "correct": 1,
+      "explanation": "CDN purge API invalidates specific URLs immediately. This provides long TTL benefits (high cache hits) with immediate invalidation when needed. Short TTL defeats CDN purpose; waiting is too slow for critical updates."
+    },
+    {
+      "id": "cachescen-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your service uses consistent hashing with 3 cache nodes. A node fails. What happens to its keys?",
+          "options": [
+            "Keys are lost forever",
+            "Keys remapped to next node on hash ring; temporarily uncached",
+            "Keys automatically replicated",
+            "System stops working"
+          ],
+          "correct": 1,
+          "explanation": "Consistent hashing maps failed node's keys to the next node. Those keys become cache misses until re-cached from database. Other keys on healthy nodes are unaffected."
+        },
+        {
+          "question": "The failed node had 33% of traffic (uniformly distributed). Database can handle 50% more load. Will the system survive?",
+          "options": [
+            "No—database will be overwhelmed",
+            "Yes—33% extra load is within 50% headroom",
+            "Depends on hit rate",
+            "Cannot determine"
+          ],
+          "correct": 2,
+          "explanation": "If hit rate was 90%, database normally sees 10% of requests. Now sees 10% + 33% = 43% of requests—4.3× normal load. Need to verify: can database handle 4.3× normal load within its 50% headroom? Original load matters."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-045",
+      "type": "multiple-choice",
+      "question": "A social network caches friend lists. User A unfriends User B. What cache entries need invalidation?",
+      "options": [
+        "Only A's friend list",
+        "Only B's friend list",
+        "Both A's and B's friend lists",
+        "All friend lists"
+      ],
+      "correct": 2,
+      "explanation": "Unfriending is bidirectional: A's list no longer shows B, and B's list no longer shows A. Both cached friend lists become stale and need invalidation. This is a cascading invalidation scenario."
+    },
+    {
+      "id": "cachescen-046",
+      "type": "multiple-choice",
+      "question": "Your app caches rendered HTML pages. A CSS file changes. Now pages look broken until cache expires. What went wrong?",
+      "options": [
+        "CSS wasn't minified",
+        "HTML cache includes embedded styles; CSS change doesn't invalidate HTML cache",
+        "Browser cache issue",
+        "CSS file wasn't deployed"
+      ],
+      "correct": 1,
+      "explanation": "HTML references CSS via URL. If CSS content changes but URL doesn't, and HTML is cached, users see old HTML with broken style references. Solution: version CSS URLs (style.css?v=2 or style.abc123.css)."
+    },
+    {
+      "id": "cachescen-047",
+      "type": "multi-select",
+      "question": "A SaaS product has free and paid tiers. How might you differentiate caching between them? (Select all that apply)",
+      "options": [
+        "Longer TTL for paid users' data",
+        "Higher cache priority for paid users",
+        "Separate cache pools for free vs paid",
+        "No differentiation—same caching for all"
+      ],
+      "correctIndices": [1, 2],
+      "explanation": "Cache priority ensures paid users' data stays cached under pressure. Separate pools prevent free tier traffic from evicting paid tier data. TTL is about freshness, not priority. Differentiation improves paid experience."
+    },
+    {
+      "id": "cachescen-048",
+      "type": "multiple-choice",
+      "question": "A search engine caches query results. Indexing adds new documents continuously. How should you handle cache freshness?",
+      "options": [
+        "Never cache search results",
+        "Short TTL that balances freshness with performance",
+        "Invalidate all search cache on each index update",
+        "Long TTL with manual invalidation"
+      ],
+      "correct": 1,
+      "explanation": "Continuous indexing makes full invalidation impractical. Long TTL means very stale results. Short TTL (minutes) provides good performance with acceptable freshness. Popular queries get cached; rare queries hit the index directly."
+    },
+    {
+      "id": "cachescen-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your cache uses LRU eviction. A nightly batch job accesses millions of cold records. What happens to your cache?",
+          "options": [
+            "Cache is unaffected",
+            "Hot data evicted to make room for batch records that won't be accessed again",
+            "Batch job fails",
+            "Cache automatically detects and ignores batch"
+          ],
+          "correct": 1,
+          "explanation": "LRU is vulnerable to scan pollution. Batch job accesses make cold records 'recently used', evicting actually-hot data. After batch, cache is full of useless data and hit rate crashes."
+        },
+        {
+          "question": "How do you prevent this?",
+          "options": [
+            "Run batch job less frequently",
+            "Have batch job bypass cache or use separate cache pool",
+            "Use larger cache",
+            "Use FIFO instead of LRU"
+          ],
+          "correct": 1,
+          "explanation": "Batch jobs should either bypass cache entirely (don't read through cache) or use a separate pool. This protects production cache from scan pollution. Some systems offer 'scan-resistant' modes or policies like 2Q."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-050",
+      "type": "multiple-choice",
+      "question": "An API response includes a 'last_updated' timestamp. Two users load the same data but see different timestamps. What caching issue causes this?",
+      "options": [
+        "Clock skew between servers",
+        "Each user's request hit different cached versions (inconsistent cache)",
+        "Database issue",
+        "API bug"
+      ],
+      "correct": 1,
+      "explanation": "Different cached versions exist (perhaps from different invalidation times or cache nodes). One user gets version A (updated 1:00), another gets version B (updated 1:05). Indicates cache inconsistency between nodes/requests."
+    },
+    {
+      "id": "cachescen-051",
+      "type": "multiple-choice",
+      "question": "You're implementing a 'like' button. Users click like, see the count increment, but sometimes it shows the old count on refresh. What's happening?",
+      "options": [
+        "Database didn't persist",
+        "Read-your-writes inconsistency: write went to primary, read came from stale cache or replica",
+        "JavaScript bug",
+        "Network error"
+      ],
+      "correct": 1,
+      "explanation": "Classic read-your-writes problem: user's like incremented the database and maybe updated primary cache. But their next request read from a stale cache or replica that hasn't received the update yet."
+    },
+    {
+      "id": "cachescen-052",
+      "type": "multi-select",
+      "question": "Which approaches ensure users see their own 'like' immediately? (Select all that apply)",
+      "options": [
+        "Optimistic UI update (show change before server confirms)",
+        "Read from primary/write-path after write",
+        "Invalidate cache on write and wait for propagation",
+        "Use longer TTL"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Optimistic UI shows the change instantly. Reading from primary ensures fresh data. Invalidate + propagation wait ensures consistency. Longer TTL would make staleness worse, not better."
+    },
+    {
+      "id": "cachescen-053",
+      "type": "multiple-choice",
+      "question": "A media streaming service caches video metadata. Videos are uploaded by creators and should be immediately searchable. What caching challenge does this present?",
+      "options": [
+        "Videos are too large to cache",
+        "New content must invalidate search cache or use short TTL for search results",
+        "Video files need special cache",
+        "No caching challenge"
+      ],
+      "correct": 1,
+      "explanation": "Search results are cached. New video isn't in cached search results. Options: don't cache search (expensive), short TTL (stale window), invalidate on new video (complex—affects many queries), or accept delay in searchability."
+    },
+    {
+      "id": "cachescen-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your Redis Cluster has 6 nodes. You need to run a transaction that touches 3 different keys. What's the constraint?",
+          "options": [
+            "Transactions aren't supported in Redis",
+            "All 3 keys must hash to the same slot (same node)",
+            "Transaction limited to 2 keys",
+            "No constraints—Redis handles it"
+          ],
+          "correct": 1,
+          "explanation": "Redis Cluster transactions (MULTI/EXEC) only work within a single node. Keys on different nodes can't participate in the same transaction. Use hash tags to ensure keys land on the same slot."
+        },
+        {
+          "question": "How do you ensure keys order:123, payment:123, and inventory:123 land on the same slot?",
+          "options": [
+            "Prefix with same string",
+            "Use hash tags: {123}:order, {123}:payment, {123}:inventory",
+            "Store all in one key",
+            "Not possible"
+          ],
+          "correct": 1,
+          "explanation": "Hash tags: Redis hashes only the content inside {}. Keys {123}:order, {123}:payment, {123}:inventory all hash '123' → same slot → same node → transaction possible."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-055",
+      "type": "multiple-choice",
+      "question": "A service caches database query results. The query includes ORDER BY timestamp DESC LIMIT 10. After 5 minutes, the cache has wrong items (new records exist). What's the issue?",
+      "options": [
+        "LIMIT clause is problematic",
+        "The 'latest 10' changes as new records are inserted; cache doesn't know about new records",
+        "ORDER BY doesn't work with caching",
+        "Database has duplicate timestamps"
+      ],
+      "correct": 1,
+      "explanation": "Caching 'latest N' queries is tricky. New records make the cached result stale immediately. The cache key (query) doesn't change but the correct result does. Solutions: short TTL, invalidate on insert, or don't cache 'latest' queries."
+    },
+    {
+      "id": "cachescen-056",
+      "type": "multiple-choice",
+      "question": "Your monitoring shows Redis is using 90% memory with no evictions occurring. You have maxmemory-policy set to noeviction. Should you be concerned?",
+      "options": [
+        "No—noeviction is fine",
+        "Yes—at 100%, writes will fail; need to add capacity or enable eviction",
+        "Change to volatile-lru immediately",
+        "Reduce TTLs"
+      ],
+      "correct": 1,
+      "explanation": "noeviction means Redis returns errors when memory is full and a write is attempted. At 90% and growing, you'll hit 100% soon. Either add memory/nodes, enable an eviction policy, or review what's being cached."
+    },
+    {
+      "id": "cachescen-057",
+      "type": "multi-select",
+      "question": "A global application uses CDN caching. Which HTTP headers should you set for cacheable static assets? (Select all that apply)",
+      "options": [
+        "Cache-Control: public, max-age=31536000",
+        "ETag: \"abc123\"",
+        "Vary: Accept-Encoding",
+        "Cache-Control: no-store"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "public, max-age=31536000 (1 year) for immutable assets. ETag enables conditional requests. Vary: Accept-Encoding ensures compressed/uncompressed versions cached separately. no-store would prevent caching entirely."
+    },
+    {
+      "id": "cachescen-058",
+      "type": "multiple-choice",
+      "question": "A user's session is stored in Redis. They log out but can still access protected pages. What's wrong?",
+      "options": [
+        "Redis is slow",
+        "Session wasn't properly deleted or invalidated on logout",
+        "Browser cache",
+        "JWT issue"
+      ],
+      "correct": 1,
+      "explanation": "Logout should delete/invalidate the session in Redis. If session still exists, auth middleware thinks user is logged in. Check logout code: is it actually calling Redis DELETE? Is there an error being swallowed?"
+    },
+    {
+      "id": "cachescen-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A ride-sharing app caches surge pricing per zone. Pricing algorithm updates prices every minute. What's an appropriate TTL?",
+          "options": ["1 second", "30 seconds", "5 minutes", "1 hour"],
+          "correct": 1,
+          "explanation": "Prices change every minute. TTL should be less than update frequency to ensure users see relatively current prices. 30 seconds means max 30s staleness, which is acceptable for surge pricing."
+        },
+        {
+          "question": "During New Year's Eve, surge pricing changes every 10 seconds. How should caching adapt?",
+          "options": [
+            "Keep same TTL",
+            "Reduce TTL to 5-10 seconds for that period",
+            "Disable caching during high-change periods",
+            "Increase TTL for stability"
+          ],
+          "correct": 1,
+          "explanation": "When data changes faster, reduce TTL to maintain freshness guarantee. 5-10 second TTL during rapid changes ensures users see current prices. Can increase back to normal after the event."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-060",
+      "type": "multiple-choice",
+      "question": "Your app uses cache-aside pattern. During a database failover (30 seconds), what happens to cache reads?",
+      "options": [
+        "All cache operations fail",
+        "Cache hits succeed; cache misses fail (can't refill from DB)",
+        "Cache automatically serves stale data",
+        "Cache redirects to replica"
+      ],
+      "correct": 1,
+      "explanation": "Cache-aside: app checks cache first. Hits don't need database—they succeed. Misses try to load from DB and fail during failover. Existing cached data continues serving; only new/expired data fails."
+    },
+    {
+      "id": "cachescen-061",
+      "type": "multiple-choice",
+      "question": "A content site has articles with embedded author info. When an author updates their bio, all their articles show stale bio. What's the caching design issue?",
+      "options": [
+        "TTL too long",
+        "Author data denormalized into article cache; changing author doesn't invalidate article caches",
+        "Database referential integrity issue",
+        "No issue—expected behavior"
+      ],
+      "correct": 1,
+      "explanation": "Denormalization: article cache includes author name/bio (for fast retrieval). When author changes bio, article caches are stale. Solutions: store author reference only (join at read), or invalidate all author's article caches on bio change."
+    },
+    {
+      "id": "cachescen-062",
+      "type": "multi-select",
+      "question": "Which strategies help with denormalized cache invalidation? (Select all that apply)",
+      "options": [
+        "Track dependencies (author → articles) and invalidate cascade",
+        "Short TTL on denormalized data",
+        "Don't denormalize—join at read time",
+        "Ignore the staleness"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Dependency tracking enables cascade invalidation. Short TTL limits staleness duration. Not denormalizing avoids the problem (trade-off: slower reads). Ignoring staleness isn't a strategy—it's accepting the bug."
+    },
+    {
+      "id": "cachescen-063",
+      "type": "multiple-choice",
+      "question": "A checkout flow: 1) validate cart, 2) process payment, 3) create order. Should any of these steps use caching?",
+      "options": [
+        "Cache all steps for speed",
+        "Cache cart validation (inventory check); don't cache payment or order creation",
+        "Don't cache any checkout step",
+        "Cache payment results"
+      ],
+      "correct": 2,
+      "explanation": "Checkout is critical and transactional. Cart validation needs real-time inventory (avoid overselling). Payment must hit payment processor. Order creation must persist. Caching risks stale data causing business logic errors."
+    },
+    {
+      "id": "cachescen-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your API returns paginated results: /items?page=1, /items?page=2, etc. You cache each page. A new item is added. What problem occurs?",
+          "options": [
+            "No problem—pagination works fine",
+            "Item appears on wrong page or is missing until cache expires",
+            "Pagination breaks completely",
+            "Only page 1 is affected"
+          ],
+          "correct": 1,
+          "explanation": "New item shifts all subsequent items. Cached page 1 might have items 1-10, but actual page 1 now has new item + items 1-9. Items shift across pages, causing duplicates or missing items when traversing cached pages."
+        },
+        {
+          "question": "What's a better approach for paginated caching?",
+          "options": [
+            "Don't cache paginated results",
+            "Use cursor-based pagination (item IDs) instead of offset pagination",
+            "Cache with 1-second TTL",
+            "Cache only page 1"
+          ],
+          "correct": 1,
+          "explanation": "Cursor pagination (after=item_id) is stable: cache the items after a specific ID. Adding new items doesn't shift existing cursors. Offset pagination is inherently unstable with inserts/deletes."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-065",
+      "type": "multiple-choice",
+      "question": "A weather app caches forecasts. Users complain forecasts are outdated during severe weather events. What's the issue?",
+      "options": [
+        "Weather data provider is slow",
+        "Normal caching doesn't account for rapid changes during severe weather; need event-driven invalidation",
+        "Cache is too small",
+        "Users are impatient"
+      ],
+      "correct": 1,
+      "explanation": "Forecasts normally change slowly (hourly updates), but severe weather (tornado, hurricane) updates rapidly. Static TTL doesn't adapt. Solution: weather provider triggers cache invalidation on severe weather, or use very short TTL for severe weather zones."
+    },
+    {
+      "id": "cachescen-066",
+      "type": "multiple-choice",
+      "question": "Your Redis instance shows high memory fragmentation (mem_fragmentation_ratio = 1.8). What does this indicate?",
+      "options": [
+        "Redis is using 80% memory",
+        "Redis is using 1.8× more RSS memory than actual data due to fragmentation",
+        "Redis needs 1.8× more memory",
+        "Memory compression is 1.8:1"
+      ],
+      "correct": 1,
+      "explanation": "Fragmentation ratio = RSS / used_memory. 1.8 means OS allocated 1.8× more memory than Redis's actual data. Caused by variable key/value sizes and delete patterns. Consider: MEMORY DOCTOR, restart, or adjust allocator."
+    },
+    {
+      "id": "cachescen-067",
+      "type": "multi-select",
+      "question": "A flash sale ends. Which caching actions should you take? (Select all that apply)",
+      "options": [
+        "Invalidate sale price caches",
+        "Update product pages to show regular prices",
+        "Keep sale caches for historical reference",
+        "Reduce cache TTL"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Invalidate sale prices so users see correct regular prices. Update product pages (invalidate or set new values). Don't keep stale sale prices. TTL reduction isn't the right mechanism—explicit invalidation is cleaner."
+    },
+    {
+      "id": "cachescen-068",
+      "type": "multiple-choice",
+      "question": "A mobile app caches API responses locally. Users offline for a week, come back online. What happens?",
+      "options": [
+        "App crashes",
+        "If using TTL-based expiry, old cache serves stale data until refreshed or evicted",
+        "Cache automatically updates",
+        "App refuses to show any data"
+      ],
+      "correct": 1,
+      "explanation": "Mobile caches often persist across sessions. Week-old data may have expired TTL (depends on implementation) or still be served if TTL is long. Good practice: mark stale data, refresh on connection, let users force refresh."
+    },
+    {
+      "id": "cachescen-069",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your service reads from a legacy system via SOAP API (slow, 500ms per call). You want to cache responses but the legacy system doesn't provide change notifications. What caching approach?",
+          "options": [
+            "Don't cache—must have real-time data",
+            "Cache with reasonable TTL based on how often data actually changes",
+            "Cache forever",
+            "Polling-based refresh"
+          ],
+          "correct": 1,
+          "explanation": "Without change notification, use time-based expiration. Analyze how often data actually changes, set TTL accordingly. Accept some staleness for massive performance gain (500ms → <10ms for cached requests)."
+        },
+        {
+          "question": "Analysis shows data changes ~2x per day. What's a reasonable TTL?",
+          "options": ["1 minute", "30 minutes", "2 hours", "12 hours"],
+          "correct": 2,
+          "explanation": "Changes 2x/day ≈ every 12 hours. 2-hour TTL means max 2-hour staleness with good hit rate. 30min or less is overly aggressive for data changing every 12 hours. 12 hours risks missing a change entirely."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-070",
+      "type": "multiple-choice",
+      "question": "A booking service shows available appointments. Two users simultaneously see the same slot available, both try to book, one fails. Is this a caching bug?",
+      "options": [
+        "Yes—cache should prevent this",
+        "No—this is a race condition; cache shows point-in-time availability, final booking must be transactional",
+        "Yes—need distributed locks",
+        "No—one should always succeed"
+      ],
+      "correct": 1,
+      "explanation": "Cache shows availability at cache-time—correct when cached. Both users see available, try to book—this is inherent race condition. Final booking must use database transaction with optimistic/pessimistic locking. Cache can't prevent this."
+    },
+    {
+      "id": "cachescen-071",
+      "type": "multiple-choice",
+      "question": "Your GraphQL server uses DataLoader for batching. Should DataLoader caches persist across requests?",
+      "options": [
+        "Yes—maximizes cache hits",
+        "No—DataLoader cache should be per-request to avoid cross-request data leakage",
+        "Depends on authentication",
+        "Only for anonymous users"
+      ],
+      "correct": 1,
+      "explanation": "DataLoader cache is per-request. Persisting across requests could leak User A's data to User B, violate access controls, or serve stale data. Create new DataLoader per request; use Redis for cross-request caching."
+    },
+    {
+      "id": "cachescen-072",
+      "type": "multi-select",
+      "question": "A microservice architecture has 20 services. Which caching patterns help reduce inter-service latency? (Select all that apply)",
+      "options": [
+        "Each service caches upstream service responses",
+        "Shared distributed cache (Redis) accessible by all services",
+        "API gateway caching for external requests",
+        "Service mesh caching"
+      ],
+      "correctIndices": [0, 1, 2, 3],
+      "explanation": "All are valid: Local caching per-service reduces calls. Shared Redis provides common cache layer. Gateway caching reduces backend load. Service mesh (like Envoy) can cache at network level. Layer appropriately."
+    },
+    {
+      "id": "cachescen-073",
+      "type": "multiple-choice",
+      "question": "Service A caches responses from Service B. Service B deploys a breaking change (different response format). Service A breaks. What's the root cause?",
+      "options": [
+        "Service B shouldn't change response format",
+        "Cache deserialization fails on old cached format; cache should be invalidated on deploy",
+        "Service A has a bug",
+        "Network issue"
+      ],
+      "correct": 1,
+      "explanation": "Cached responses in old format can't be deserialized with new code expecting new format. Solution: version cache keys (include API version), invalidate cache on breaking changes, or use backward-compatible serialization."
+    },
+    {
+      "id": "cachescen-074",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A service experiences memory pressure. You see Redis SLOWLOG showing many slow DEL commands for large keys. What's happening?",
+          "options": [
+            "Redis is slow",
+            "Synchronous deletion of large keys blocks Redis; should use UNLINK",
+            "Too many deletes",
+            "Key names are too long"
+          ],
+          "correct": 1,
+          "explanation": "DEL is synchronous—deleting a large key (big list, set, hash) blocks Redis for milliseconds to seconds. UNLINK is asynchronous—marks for deletion, actual cleanup happens in background."
+        },
+        {
+          "question": "What key types are particularly problematic with synchronous DEL?",
+          "options": [
+            "String keys",
+            "Large lists, sets, sorted sets, hashes with many elements",
+            "Keys with long names",
+            "Expired keys"
+          ],
+          "correct": 1,
+          "explanation": "Collections with many elements (10K+ items) take time to free. Deleting a hash with 1M fields takes ~1 second. Strings are fast regardless of size. Use UNLINK for collections or delete incrementally."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-075",
+      "type": "multiple-choice",
+      "question": "A gaming company caches player inventories. A bug caused negative item counts in cache. Database has correct values. How do you fix it efficiently?",
+      "options": [
+        "Delete all inventory caches and let them rebuild",
+        "Run script to delete only affected inventory caches based on bug conditions",
+        "Wait for TTL expiration",
+        "Fix database values"
+      ],
+      "correct": 1,
+      "explanation": "Targeted invalidation: identify affected players/items from bug analysis, delete only those cache entries. Mass invalidation could cause thundering herd. Waiting serves bad data. Database is correct—only cache needs fixing."
+    },
+    {
+      "id": "cachescen-076",
+      "type": "multiple-choice",
+      "question": "Your cache stores serialized objects (JSON). You add a new required field to the object. Old cached entries don't have this field. What happens?",
+      "options": [
+        "Old entries automatically get the field",
+        "Deserialization may fail or return incomplete objects",
+        "Cache is unaffected",
+        "Field is null for old entries"
+      ],
+      "correct": 1,
+      "explanation": "Cached JSON lacks new required field. Depending on deserializer: may fail (strict mode), return null for missing field, or use default. Best practice: make new fields optional with defaults, or version your cache keys."
+    },
+    {
+      "id": "cachescen-077",
+      "type": "multi-select",
+      "question": "A compliance requirement states: 'User data must be deletable within 24 hours of request.' Your cache holds user data. What must you implement? (Select all that apply)",
+      "options": [
+        "Delete user data from cache immediately on deletion request",
+        "Ensure TTL is less than 24 hours",
+        "Track cached user data locations",
+        "Ignore—cache is temporary"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "GDPR/privacy compliance requires knowing where data is and deleting it. Cache is a data store—must delete user data there too. TTL < 24h ensures eventual deletion but explicit delete is cleaner. Can't ignore cache."
+    },
+    {
+      "id": "cachescen-078",
+      "type": "multiple-choice",
+      "question": "Your service uses read-through caching with database. Database primary fails, replica is promoted. Cache continues serving. What's the risk?",
+      "options": [
+        "No risk—cache is independent",
+        "Cache has data that was written to old primary but not replicated; serving data that 'doesn't exist' in new primary",
+        "Cache fails too",
+        "Performance risk only"
+      ],
+      "correct": 1,
+      "explanation": "If old primary had uncommitted or unreplicated data cached, cache may serve data the new primary doesn't have. After failover, those cached items are essentially orphaned—reads hit cache, writes create new records."
+    },
+    {
+      "id": "cachescen-079",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You're designing cache for a blog. Posts have comments. Should you cache posts and comments together or separately?",
+          "options": [
+            "Together—one cache entry per post",
+            "Separately—post cache and comments cache with post ID reference",
+            "Don't cache comments",
+            "Cache only on CDN"
+          ],
+          "correct": 1,
+          "explanation": "Posts and comments have different update frequencies. Posts are edited rarely; comments are added frequently. Caching together means invalidating post cache on every new comment (inefficient)."
+        },
+        {
+          "question": "A post with 1000 comments—how might you cache the comments?",
+          "options": [
+            "All comments in one cache entry",
+            "Paginated: comments:post:123:page:1, comments:post:123:page:2, etc.",
+            "Individual comment entries",
+            "Don't cache large comment threads"
+          ],
+          "correct": 1,
+          "explanation": "Paginated comment caching: each page cached separately. New comment only invalidates the page it appears on (usually page 1 for newest-first). All in one is too large to serialize/deserialize efficiently."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-080",
+      "type": "multiple-choice",
+      "question": "An A/B test runs with 50/50 traffic split. Users in group A see feature X, group B doesn't. How does this affect caching?",
+      "options": [
+        "No impact",
+        "Must include A/B group in cache key to prevent cross-group serving",
+        "Disable caching during A/B test",
+        "Cache only control group"
+      ],
+      "correct": 1,
+      "explanation": "Without group in cache key, User A might be served cached response generated for User B (or vice versa), contaminating the A/B test. Include group identifier in cache key: product:123:groupA, product:123:groupB."
+    },
+    {
+      "id": "cachescen-081",
+      "type": "multiple-choice",
+      "question": "Your CDN provides real-time cache hit/miss stats. You see 30% hit rate on a static image that should be 99%+. What's likely wrong?",
+      "options": [
+        "Image is too large",
+        "Cache-busting query parameters in URLs (?v=random) creating unique keys",
+        "CDN is misconfigured",
+        "Image keeps changing"
+      ],
+      "correct": 1,
+      "explanation": "Query strings often create unique cache keys. If URLs include random/timestamp parameters (analytics, cache-busting gone wrong), each request is a new key. Check: are URLs consistent? Remove unnecessary query params from cache key."
+    },
+    {
+      "id": "cachescen-082",
+      "type": "multi-select",
+      "question": "A newsletter service sends to 1M subscribers. Each email needs personalization (name, preferences). Where should caching help? (Select all that apply)",
+      "options": [
+        "Cache email templates (not personalized parts)",
+        "Cache subscriber preferences",
+        "Cache rendered emails per subscriber",
+        "Don't cache—everything is personalized"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Templates (header, footer, structure) are shared—cache them. Subscriber preferences are reused (for this and future sends)—cache them. Fully rendered emails are unique per-subscriber—not cacheable. Partial caching still helps."
+    },
+    {
+      "id": "cachescen-083",
+      "type": "multiple-choice",
+      "question": "A restaurant discovery app shows nearby restaurants. Results are location-based. How do you make caching effective?",
+      "options": [
+        "Can't cache—too many locations",
+        "Quantize locations to grid cells; cache results per cell",
+        "Cache only at city level",
+        "Cache user's exact location results"
+      ],
+      "correct": 1,
+      "explanation": "Infinite exact locations → can't cache each. Quantize to grid (geohash, S2 cell): users in same cell get same cached results. Balance cell size: smaller = more accurate but more cache keys; larger = better hit rate but less accurate."
+    },
+    {
+      "id": "cachescen-084",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your e-commerce site caches product listings. A product is discontinued and removed from database. What happens to cached listing?",
+          "options": [
+            "Automatically removed",
+            "Cached listing still shows discontinued product until TTL expires or invalidation",
+            "Cache automatically syncs",
+            "Product shows as unavailable"
+          ],
+          "correct": 1,
+          "explanation": "Cache doesn't know about database deletions. Cached listing still includes the product. Users might click through, find product doesn't exist—bad UX. Need explicit cache invalidation on product deletion."
+        },
+        {
+          "question": "User clicks the cached discontinued product. What should happen?",
+          "options": [
+            "Error page",
+            "Gracefully handle: show 'product unavailable' and invalidate the listing cache",
+            "Redirect to homepage",
+            "Show cached product detail"
+          ],
+          "correct": 1,
+          "explanation": "Handle gracefully: detect missing product, show appropriate message, AND invalidate the listing cache that contained it. This self-heals the cache. Don't show error or cached detail for non-existent product."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-085",
+      "type": "multiple-choice",
+      "question": "A high-security application never caches sensitive data in Redis because 'it's in-memory.' Is this reasoning sound?",
+      "options": [
+        "Yes—in-memory means less secure",
+        "No—Redis can be secured; the real concerns are access control, encryption, and persistence settings",
+        "Yes—only databases are secure",
+        "No—memory is more secure than disk"
+      ],
+      "correct": 1,
+      "explanation": "Redis security depends on configuration: TLS encryption, AUTH password/ACLs, network isolation, persistence/replication settings. In-memory vs disk isn't the security differentiator. Properly secured Redis can hold sensitive data."
+    },
+    {
+      "id": "cachescen-086",
+      "type": "multiple-choice",
+      "question": "You're implementing circuit breaker for a flaky upstream service. Cache plays what role?",
+      "options": [
+        "None—circuit breaker and cache are unrelated",
+        "When circuit is open (upstream down), serve stale cached data as fallback",
+        "Cache prevents circuit from opening",
+        "Circuit breaker manages cache"
+      ],
+      "correct": 1,
+      "explanation": "Cache enables graceful degradation: when circuit breaker opens (upstream confirmed unhealthy), serve stale cached data instead of failing. Users get somewhat stale data rather than errors. Cache is the fallback mechanism."
+    },
+    {
+      "id": "cachescen-087",
+      "type": "multi-select",
+      "question": "Your cache keys include timestamps for versioning: product:123:1699500000. What problems might this cause? (Select all that apply)",
+      "options": [
+        "Clock skew between servers creates inconsistent keys",
+        "Old versions accumulate in cache (not automatically evicted)",
+        "Harder to invalidate (need to know timestamp)",
+        "Good approach, no problems"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Clock skew: servers generate different timestamps → different keys → duplicate entries. Old versions pile up (new timestamp = new key, old key remains). Invalidation requires knowing which timestamp to invalidate. Version counters or hashes are safer."
+    },
+    {
+      "id": "cachescen-088",
+      "type": "multiple-choice",
+      "question": "Service A depends on Service B's cached data for 80% of its functionality. Service B's cache becomes unavailable. What happens?",
+      "options": [
+        "Service A unaffected—it has its own cache",
+        "Service A degrades—80% of functionality depends on B's cache being available",
+        "Automatic failover",
+        "Service A's cache fills in"
+      ],
+      "correct": 1,
+      "explanation": "Tight coupling: A depends on B's cache. If B's cache (Redis/infra) fails, A can't function. Solution: A should cache B's responses locally, have fallbacks, or B should expose resilient API that handles its own cache failures."
+    },
+    {
+      "id": "cachescen-089",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your Redis is experiencing high CPU. SLOWLOG shows INFO commands taking 100ms+. What's happening?",
+          "options": [
+            "Too many keys",
+            "INFO command scans all data; with many keys/large memory, it's slow",
+            "Redis bug",
+            "Network latency"
+          ],
+          "correct": 1,
+          "explanation": "INFO (especially INFO ALL) gathers statistics by scanning data structures. With millions of keys, this takes significant CPU time. Frequent INFO calls (monitoring) can cause latency spikes."
+        },
+        {
+          "question": "How do you fix monitoring causing performance issues?",
+          "options": [
+            "Stop monitoring",
+            "Reduce INFO frequency, use INFO section (e.g., INFO memory) instead of INFO ALL",
+            "Add more replicas",
+            "Increase memory"
+          ],
+          "correct": 1,
+          "explanation": "Request only needed sections: INFO memory, INFO stats, INFO replication—not INFO ALL. Reduce polling frequency. Monitor from replicas if possible. Don't sacrifice observability but be efficient about it."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-090",
+      "type": "multiple-choice",
+      "question": "A video streaming service caches video metadata and serves 100K requests/sec. Redis shows p99 latency of 50ms. Is this acceptable?",
+      "options": [
+        "Yes—50ms is fast",
+        "No—Redis p99 should be <1-5ms; 50ms indicates problems (network, hot keys, slow commands)",
+        "Depends on video length",
+        "Cannot determine"
+      ],
+      "correct": 1,
+      "explanation": "Redis in-memory operations should be sub-millisecond. 50ms p99 indicates problems: network issues, slow commands (KEYS, large Lua scripts), hot keys, or memory pressure. Investigate immediately—this is abnormal."
+    },
+    {
+      "id": "cachescen-091",
+      "type": "multiple-choice",
+      "question": "A data pipeline writes millions of records per minute to cache as temporary storage between processing stages. Is this a good use of cache?",
+      "options": [
+        "Yes—cache is fast",
+        "No—this is message queue workload; use Kafka/SQS instead",
+        "Yes—if TTL is set",
+        "Depends on data size"
+      ],
+      "correct": 1,
+      "explanation": "Cache (Redis) isn't designed for high-volume message passing between stages. Better: message queue (Kafka, RabbitMQ, SQS) designed for this pattern—ordering, acknowledgment, replay. Using cache for queuing is expensive and fragile."
+    },
+    {
+      "id": "cachescen-092",
+      "type": "multi-select",
+      "question": "A marketing campaign drives 10× normal traffic for 4 hours. How should you prepare caching? (Select all that apply)",
+      "options": [
+        "Pre-warm cache with campaign-related data",
+        "Temporarily scale up cache cluster",
+        "Increase TTL to reduce cache misses",
+        "Set up monitoring and alerting for cache metrics"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Pre-warm avoids cold-start thundering herd. Scale up handles 10× load. Monitoring detects issues early. Increasing TTL might help but isn't the primary lever—capacity and warming are more important."
+    },
+    {
+      "id": "cachescen-093",
+      "type": "multiple-choice",
+      "question": "After a security incident, you need to invalidate all user sessions immediately. Your session store is Redis with millions of sessions. What's the fastest approach?",
+      "options": [
+        "Delete each session key individually",
+        "FLUSHDB to clear all data",
+        "Use a global session version counter; increment it (all old sessions become invalid)",
+        "Wait for TTL expiration"
+      ],
+      "correct": 2,
+      "explanation": "Version counter approach: sessions include version, auth checks current version. Incrementing counter instantly invalidates all sessions without touching Redis. FLUSHDB might delete non-session data. Individual deletes are too slow."
+    },
+    {
+      "id": "cachescen-094",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your system uses cache-aside with 10-minute TTL. Business complains about 10-minute data staleness. What's the quickest fix?",
+          "options": [
+            "Reduce TTL to 1 minute",
+            "Add cache invalidation on data change",
+            "Remove caching",
+            "Use write-through"
+          ],
+          "correct": 0,
+          "explanation": "Quickest fix: reduce TTL. 1-minute max staleness. Trade-off: more cache misses → higher database load. It's the fastest change to make."
+        },
+        {
+          "question": "Database load increased 8× with 1-minute TTL. What's the better long-term solution?",
+          "options": [
+            "Increase TTL back to 10 minutes",
+            "Implement event-driven cache invalidation so data is fresh and you can keep longer TTL",
+            "Add more database replicas",
+            "Accept the load increase"
+          ],
+          "correct": 1,
+          "explanation": "Event-driven invalidation: publish events when data changes → invalidate cache immediately. This allows long TTL (less DB load) with fresh data (invalidated on change). Best of both worlds but more complex to implement."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-095",
+      "type": "multiple-choice",
+      "question": "A feature lets users upload custom avatars displayed on every comment they write. Currently, avatar URLs include user ID. What's the caching challenge when users change avatars?",
+      "options": [
+        "No challenge—new avatar replaces old",
+        "All comments with old avatar cached; need to invalidate comment caches or use version in avatar URL",
+        "Avatar file too large",
+        "Storage challenge, not caching"
+      ],
+      "correct": 1,
+      "explanation": "Comments cached with avatar URL. User changes avatar at same URL. Cached comments still have old avatar (URL same, CDN/browser cached old file). Solution: version avatar URLs (/avatar/user123/v2.jpg) or invalidate comment caches."
+    },
+    {
+      "id": "cachescen-096",
+      "type": "multiple-choice",
+      "question": "Your cache strategy works well for normal load but fails during traffic spikes. Database gets overwhelmed by cache misses. What pattern helps?",
+      "options": [
+        "Larger cache",
+        "Request coalescing / single-flight: deduplicate concurrent requests for same key",
+        "Longer TTL",
+        "Faster database"
+      ],
+      "correct": 1,
+      "explanation": "During spikes, many concurrent requests for same key = many database queries. Request coalescing ensures only one request fetches from DB; others wait for and share the result. Prevents spike-induced thundering herd."
+    },
+    {
+      "id": "cachescen-097",
+      "type": "multi-select",
+      "question": "You're designing a cache warming system for application startup. What should it do? (Select all that apply)",
+      "options": [
+        "Load most frequently accessed keys from previous cache state",
+        "Warm from database based on access patterns",
+        "Fill cache to 100% capacity",
+        "Gradually increase traffic while warming"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Load hot keys from dump/logs. Query database for frequently accessed data. Gradual traffic increase avoids overwhelming partially-warm cache. Don't fill to 100%—leave room for organic access patterns, and not all historical data is still relevant."
+    },
+    {
+      "id": "cachescen-098",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A sudden traffic spike hits your service. Cache hit rate drops from 90% to 50%. What's likely happening?",
+          "options": [
+            "Cache server failing",
+            "Traffic spike includes many new/different keys not in cache (different access pattern)",
+            "TTL coincidence",
+            "Database is slow"
+          ],
+          "correct": 1,
+          "explanation": "Sudden hit rate drop with traffic spike suggests new traffic has different patterns—keys not cached. Could be: new user cohort, bot traffic, attack, or viral content accessing cold keys."
+        },
+        {
+          "question": "Traffic is from a new marketing campaign targeting a new user demographic. What's the best response?",
+          "options": [
+            "Block the traffic",
+            "Scale up database and cache; campaign traffic will warm cache naturally",
+            "Invalidate all caches",
+            "Reduce TTL"
+          ],
+          "correct": 1,
+          "explanation": "Legitimate new traffic needs capacity to handle higher miss rate initially. Scale up database (temporary load), scale cache if needed. As campaign users revisit, cache naturally warms for this new pattern."
+        }
+      ]
+    },
+    {
+      "id": "cachescen-099",
+      "type": "multiple-choice",
+      "question": "Your cache stores calculated aggregations (sums, averages) that are expensive to compute. Underlying data changes frequently. What strategy balances freshness and performance?",
+      "options": [
+        "Recompute on every data change",
+        "Cache aggregations with short TTL; accept slightly stale aggregates",
+        "Never cache aggregations",
+        "Pre-compute and cache forever"
+      ],
+      "correct": 1,
+      "explanation": "Recomputing on every change is expensive for frequently-changing data. Caching with short TTL (minutes) serves fast responses with acceptable staleness. Most dashboards/analytics tolerate slightly stale aggregates."
+    },
+    {
+      "id": "cachescen-100",
+      "type": "multiple-choice",
+      "question": "You're reviewing a system design. The proposal suggests: 'Cache everything with 1-hour TTL, invalidate on all writes.' What's the flaw?",
+      "options": [
+        "TTL too long",
+        "TTL too short",
+        "Over-caching: caching data that's rarely read wastes memory; invalidating on all writes may cause thundering herd",
+        "Invalidation approach is correct"
+      ],
+      "correct": 2,
+      "explanation": "'Cache everything' wastes memory on rarely-accessed data. 'Invalidate on all writes' causes thundering herd for frequently-written data. Good caching is selective: cache read-heavy data, handle write-heavy data differently."
+    }
+  ]
+}
