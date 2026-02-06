@@ -1,0 +1,1636 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 1,
+  "chapterTitle": "Queue Fundamentals",
+  "chapterDescription": "Core messaging concepts: producers and consumers, synchronous vs asynchronous communication, point-to-point queues, message lifecycle, and when to decouple with a queue.",
+  "problems": [
+    {
+      "id": "msg-que-001",
+      "type": "multiple-choice",
+      "question": "Service A calls Services B, C, and D synchronously during each request. When Service C's latency spikes from 50ms to 5 seconds, Service A's P99 latency also spikes to 5+ seconds. What architectural change best addresses this coupling?",
+      "options": [
+        "Add a cache in front of Service C",
+        "Introduce a message queue so Service A publishes work for C asynchronously instead of calling it directly",
+        "Increase Service A's timeout to 10 seconds",
+        "Deploy more instances of Service A"
+      ],
+      "correct": 1,
+      "explanation": "A message queue decouples Service A from Service C's latency. Service A publishes a message and continues without waiting. Service C processes it when ready. This breaks the synchronous dependency chain — C's slowness no longer affects A's response time. This is the core value proposition of message queues: decoupling."
+    },
+    {
+      "id": "msg-que-002",
+      "type": "multiple-choice",
+      "question": "A web server processes an order synchronously: validate → charge payment → send confirmation email → return response. The email service takes 2 seconds. How can you reduce user-facing latency?",
+      "options": [
+        "Cache the email content",
+        "Send the email asynchronously via a message queue",
+        "Use a faster email provider",
+        "Batch emails into hourly sends"
+      ],
+      "correct": 1,
+      "explanation": "By publishing a 'send email' message to a queue and immediately returning the response, the user doesn't wait for the email to actually send. The email consumer processes it asynchronously. This removes 2 seconds from the user-facing latency while still ensuring the email is sent."
+    },
+    {
+      "id": "msg-que-003",
+      "type": "multiple-choice",
+      "question": "Service A directly calls Service B via HTTP. Service B goes down for 5 minutes. What happens to Service A's requests during this window?",
+      "options": [
+        "They're automatically retried by the network",
+        "They succeed using cached responses",
+        "They fail immediately or timeout, impacting Service A's availability",
+        "They're buffered by the operating system"
+      ],
+      "correct": 2,
+      "explanation": "With synchronous HTTP, Service A's fate is tied to Service B's availability. When B is down, A's requests fail or timeout. This tight coupling means B's outage cascades to A — a key motivation for introducing message queues."
+    },
+    {
+      "id": "msg-que-004",
+      "type": "multiple-choice",
+      "question": "Service A sends messages to Service B through a queue. Service B goes down for 5 minutes. What happens to the messages?",
+      "options": [
+        "They're lost permanently",
+        "They accumulate in the queue and are processed when B recovers",
+        "They're returned to Service A",
+        "They timeout after 30 seconds"
+      ],
+      "correct": 1,
+      "explanation": "The queue acts as a buffer. Messages persist in the queue while Service B is down. When B recovers, it picks up where it left off and processes the backlog. Service A is unaffected by B's outage — this is temporal decoupling."
+    },
+    {
+      "id": "msg-que-005",
+      "type": "multiple-choice",
+      "question": "A batch processing service runs nightly from 2-4 AM, but the web application that generates work items runs 24/7. With synchronous communication, work generated outside 2-4 AM would be lost. How does a message queue solve this?",
+      "options": [
+        "The queue forces the batch service to run 24/7",
+        "The queue stores messages until the batch service runs, enabling temporal decoupling — producer and consumer don't need to be running simultaneously",
+        "The queue discards messages generated outside 2-4 AM",
+        "The queue converts batch processing to real-time processing"
+      ],
+      "correct": 1,
+      "explanation": "Temporal decoupling: the web app produces messages throughout the day, and they accumulate in the queue. When the batch service starts at 2 AM, it drains the queue. Neither system needs to know the other's schedule. Without the queue, work generated while the batch service is offline would require a separate persistence mechanism."
+    },
+    {
+      "id": "msg-que-006",
+      "type": "multiple-choice",
+      "question": "A task queue distributes image resizing jobs to 5 worker instances. Each uploaded image needs to be resized exactly once. What happens if two workers accidentally process the same image?",
+      "options": [
+        "Nothing — duplicate processing is harmless for image resizing",
+        "The second resize overwrites the first with an identical result, wasting compute but causing no corruption",
+        "Both resized images are saved as separate files, potentially confusing downstream consumers",
+        "The outcome depends on the specific implementation — duplicate processing may cause wasted compute, duplicate storage writes, or inconsistent state depending on how results are stored"
+      ],
+      "correct": 3,
+      "explanation": "The impact of duplicate processing depends on the implementation. If workers write to the same key (idempotent), you just waste compute. If they write to different keys or append to a list, you get duplicates. Point-to-point queue semantics (each message delivered to exactly one consumer) combined with visibility timeouts help prevent this, but it's not guaranteed — consumers must be designed to handle potential duplicates."
+    },
+    {
+      "id": "msg-que-007",
+      "type": "multiple-choice",
+      "question": "A system's queue depth has been steadily increasing over the past hour. What does this indicate?",
+      "options": [
+        "The system is healthy and processing normally",
+        "Consumers are processing faster than producers are sending",
+        "Producers are sending faster than consumers can process",
+        "The queue storage is being compacted"
+      ],
+      "correct": 2,
+      "explanation": "Growing queue depth means messages are arriving faster than they're being consumed. This could indicate increased producer throughput, degraded consumer performance, or insufficient consumer capacity. If left unchecked, it leads to increased latency and potential queue overflow."
+    },
+    {
+      "id": "msg-que-008",
+      "type": "multiple-choice",
+      "question": "A queue has no maximum depth limit. Producers send 10,000 msg/s but consumers only process 2,000 msg/s. After 24 hours, the broker runs out of memory and crashes, losing all unprocessed messages. What design element was missing?",
+      "options": [
+        "Message encryption",
+        "Backpressure — a mechanism to slow or reject producers when the queue grows beyond a safe threshold",
+        "Message compression",
+        "Consumer auto-acknowledgment"
+      ],
+      "correct": 1,
+      "explanation": "Without backpressure, the queue grows without bound: (10,000 - 2,000) × 86,400 = 691 million messages accumulate in 24 hours. Backpressure mechanisms (queue depth limits, producer blocking, rate limiting) prevent this by signaling producers to slow down when consumers fall behind, avoiding unbounded growth and eventual resource exhaustion."
+    },
+    {
+      "id": "msg-que-009",
+      "type": "multiple-choice",
+      "question": "A message queue is configured with a maximum depth of 100,000 messages. The queue reaches this limit. What typically happens to new messages?",
+      "options": [
+        "They overwrite the oldest messages",
+        "They're silently dropped",
+        "The producer receives an error or is blocked until space is available",
+        "The queue automatically doubles its capacity"
+      ],
+      "correct": 2,
+      "explanation": "Most message brokers reject new messages (returning an error to the producer) or block the producer when the queue is full. This is a form of backpressure. The specific behavior depends on the broker configuration, but silent drops would violate delivery guarantees."
+    },
+    {
+      "id": "msg-que-010",
+      "type": "multiple-choice",
+      "question": "What is a 'visibility timeout' (or 'lease') in a message queue?",
+      "options": [
+        "How long a message is stored before being deleted",
+        "The period during which a message is invisible to other consumers after one consumer receives it",
+        "The network timeout for connecting to the broker",
+        "How long the broker waits for a producer's message"
+      ],
+      "correct": 1,
+      "explanation": "When a consumer receives a message, it becomes invisible to other consumers for the visibility timeout period. This prevents duplicate processing. If the consumer acknowledges the message within this window, it's deleted. If not (e.g., consumer crashes), the message reappears for another consumer to process."
+    },
+    {
+      "id": "msg-que-011",
+      "type": "multiple-choice",
+      "question": "Consumer A receives a message with a 30-second visibility timeout but crashes after 10 seconds without acknowledging. What happens?",
+      "options": [
+        "The message is permanently lost",
+        "The message reappears in the queue after the 30-second timeout for another consumer to process",
+        "The broker immediately sends a new copy",
+        "The producer is notified to resend"
+      ],
+      "correct": 1,
+      "explanation": "After the 30-second visibility timeout expires without an acknowledgment, the broker assumes the consumer failed and makes the message visible again. Another consumer can then pick it up. This is how queues provide at-least-once delivery — at the cost of potential duplicate processing if the original consumer actually succeeded but failed to ack."
+    },
+    {
+      "id": "msg-que-012",
+      "type": "multiple-choice",
+      "question": "A service sends 50 concurrent async requests via a queue and receives responses on a shared reply queue. Responses arrive out of order. How does the service match each response to the original request?",
+      "options": [
+        "By the order responses arrive — they always match the order sent",
+        "By including a unique correlation ID in each request, which the responder copies into its reply message",
+        "By inspecting the response body to infer which request it belongs to",
+        "By using a separate reply queue for each request"
+      ],
+      "correct": 1,
+      "explanation": "A correlation ID uniquely links each request to its response. The requester generates a unique ID, attaches it to the outgoing message, and the responder copies it to the reply. With 50 in-flight requests, the requester uses the correlation ID to match each arriving response to its original request, regardless of arrival order."
+    },
+    {
+      "id": "msg-que-013",
+      "type": "multiple-choice",
+      "question": "Which scenario is LEAST suitable for a message queue?",
+      "options": [
+        "Sending welcome emails after user registration",
+        "Processing uploaded videos into multiple formats",
+        "A user checking their account balance and needing an immediate response",
+        "Distributing click-stream events to analytics systems"
+      ],
+      "correct": 2,
+      "explanation": "Checking an account balance requires an immediate, synchronous response — the user is waiting for the result. Queues add latency and don't return results to the caller. The other scenarios are all background or fire-and-forget tasks that benefit from asynchronous processing."
+    },
+    {
+      "id": "msg-que-014",
+      "type": "multiple-choice",
+      "question": "What is the main tradeoff of asynchronous communication via queues compared to synchronous calls?",
+      "options": [
+        "Higher throughput and better fault isolation, but more complex error handling and eventual consistency",
+        "Lower latency and simpler code",
+        "Better security but slower performance",
+        "Less reliable message delivery"
+      ],
+      "correct": 0,
+      "explanation": "Queues improve throughput (via buffering) and fault isolation (services are decoupled), but introduce complexity: you can't get an immediate error response, you need to handle duplicate messages, and the system becomes eventually consistent. The caller doesn't know if or when the consumer succeeded."
+    },
+    {
+      "id": "msg-que-015",
+      "type": "multiple-choice",
+      "question": "In a messaging system, what does message acknowledgment (ack) indicate?",
+      "options": [
+        "The message was received by the broker from the producer",
+        "The message was encrypted successfully",
+        "The consumer has successfully processed the message and it can be removed from the queue",
+        "The message was delivered to all subscribers"
+      ],
+      "correct": 2,
+      "explanation": "A consumer acknowledgment tells the broker that the message has been successfully processed. The broker then removes the message from the queue. Without explicit acks, the broker wouldn't know if the consumer actually processed the message or just received it."
+    },
+    {
+      "id": "msg-que-016",
+      "type": "multiple-choice",
+      "question": "A consumer reads a message, processes it successfully, but crashes before sending an acknowledgment. In an at-least-once delivery system, what happens?",
+      "options": [
+        "The message is permanently lost",
+        "The message is redelivered to another consumer, potentially causing duplicate processing",
+        "The broker detects the successful processing automatically",
+        "Nothing — the work was done, so no ack is needed"
+      ],
+      "correct": 1,
+      "explanation": "Without an ack, the broker assumes the message wasn't processed. After the visibility timeout, it redelivers the message to another consumer. This means the work is done twice — at-least-once delivery guarantees no message loss but may cause duplicates. Consumers should be idempotent to handle this."
+    },
+    {
+      "id": "msg-que-017",
+      "type": "multiple-choice",
+      "question": "A consumer encounters a message with an invalid schema that causes a parsing exception on every attempt. The retry limit is set to 5. After 5 failures, the message is moved to a DLQ. An engineer notices 2,000 messages in the DLQ with the same error. What should the team investigate first?",
+      "options": [
+        "Whether the broker is corrupting messages",
+        "Whether a producer deployed a schema change that the consumer doesn't yet support",
+        "Whether the consumer needs more memory",
+        "Whether the DLQ is too small"
+      ],
+      "correct": 1,
+      "explanation": "A burst of DLQ messages with the same schema error strongly suggests a producer-side schema change that the consumer can't parse. This is a common issue in systems without schema registries or versioning. The fix is to update the consumer to handle the new schema, then replay the DLQ messages. The DLQ preserved the messages instead of losing them — exactly its purpose."
+    },
+    {
+      "id": "msg-que-018",
+      "type": "multiple-choice",
+      "question": "Which property of message queues enables 'load leveling'?",
+      "options": [
+        "Message encryption",
+        "The ability to buffer messages during traffic spikes so consumers process at a steady rate",
+        "Message compression",
+        "Consumer authentication"
+      ],
+      "correct": 1,
+      "explanation": "Load leveling means the queue absorbs traffic spikes by buffering excess messages. Consumers continue processing at their normal rate, and the backlog drains after the spike. This means you can provision consumers for average load rather than peak load, saving resources."
+    },
+    {
+      "id": "msg-que-019",
+      "type": "multiple-choice",
+      "question": "A message queue guarantees FIFO ordering. Producer sends messages A, B, C in order. With a single consumer, what is the processing order?",
+      "options": [
+        "Any order — queues don't guarantee ordering",
+        "A, B, C",
+        "C, B, A (newest first)",
+        "Determined by message priority"
+      ],
+      "correct": 1,
+      "explanation": "A FIFO (First-In, First-Out) queue delivers messages in the order they were enqueued. With a single consumer, processing order matches production order: A, B, C. Note that FIFO guarantees become more complex with multiple consumers or partitions."
+    },
+    {
+      "id": "msg-que-020",
+      "type": "multiple-choice",
+      "question": "Why does strict FIFO ordering across an entire queue limit throughput?",
+      "options": [
+        "FIFO queues use more memory than unordered queues",
+        "Only one message can be in-flight at a time to maintain global order",
+        "FIFO requires encryption, which is slow",
+        "Producers must wait for each consumer acknowledgment"
+      ],
+      "correct": 1,
+      "explanation": "To maintain strict global ordering, only one message can be processed at a time — you can't start message B until message A is acknowledged. This serializes processing to a single consumer, creating a throughput bottleneck. Partitioned ordering (per-key) is the common solution."
+    },
+    {
+      "id": "msg-que-021",
+      "type": "multiple-choice",
+      "question": "What is a common solution to maintain per-entity ordering while achieving parallelism in message queues?",
+      "options": [
+        "Use multiple consumers on a single FIFO queue",
+        "Partition the queue by a key (e.g., user ID) and guarantee ordering only within each partition",
+        "Disable acknowledgments for faster processing",
+        "Use larger message payloads"
+      ],
+      "correct": 1,
+      "explanation": "Partitioning by key (e.g., user ID, order ID) ensures all messages for the same entity go to the same partition and are processed in order. Different entities' messages go to different partitions and are processed in parallel. This gives you per-entity ordering with horizontal scalability."
+    },
+    {
+      "id": "msg-que-022",
+      "type": "multiple-choice",
+      "question": "A message body contains a 50 MB video file. Most message brokers recommend keeping messages small. What's the recommended pattern?",
+      "options": [
+        "Compress the video and send it in the message",
+        "Store the video in object storage (e.g., S3) and send a reference (URL or key) in the message",
+        "Split the video across 50 messages of 1 MB each",
+        "Increase the broker's max message size to 100 MB"
+      ],
+      "correct": 1,
+      "explanation": "The 'claim check' pattern: store large payloads in external storage and include only a reference in the message. This keeps messages small (reducing broker memory pressure and network overhead), and the consumer fetches the large payload separately. Most brokers have message size limits in the low MB range."
+    },
+    {
+      "id": "msg-que-023",
+      "type": "multiple-choice",
+      "question": "A metrics collection service publishes 100,000 telemetry events per second to a queue. The producer doesn't check if any consumer processes these events. If 0.1% of events are lost, the impact on dashboards is negligible. Which delivery pattern is this service using, and why is it appropriate here?",
+      "options": [
+        "Request-reply — the service needs confirmation of each event",
+        "Fire and forget — the producer publishes without waiting for processing confirmation, which is acceptable because individual metric losses don't affect aggregate accuracy",
+        "Exactly-once — every metric must be counted precisely",
+        "Transactional outbox — the service needs atomic writes"
+      ],
+      "correct": 1,
+      "explanation": "Fire and forget: the producer publishes and moves on without tracking individual message outcomes. At 100K events/s, tracking each one would add unacceptable overhead. For telemetry, small losses are tolerable because aggregations (averages, percentiles) are resilient to minor data gaps. This maximizes throughput at the cost of guaranteed delivery."
+    },
+    {
+      "id": "msg-que-024",
+      "type": "multiple-choice",
+      "question": "A flash sale queue has messages with a 5-minute TTL. The consumer pool goes down for 10 minutes during a deployment. When consumers recover, they find the queue empty. Meanwhile, 3,000 customers never received their order confirmations. What design mistake was made?",
+      "options": [
+        "The queue should have been larger",
+        "The TTL was too aggressive for the use case — critical order messages should have a TTL that exceeds the maximum expected downtime",
+        "The consumers should have processed faster",
+        "The producers should have stopped sending during the deployment"
+      ],
+      "correct": 1,
+      "explanation": "A 5-minute TTL on critical order messages is dangerous. Any consumer downtime exceeding 5 minutes causes permanent message loss. For order confirmations, TTL should be hours or days — long enough to survive outages, deployments, and recovery. TTL should match the business requirement: 'How old can this message be and still be worth processing?'"
+    },
+    {
+      "id": "msg-que-025",
+      "type": "multiple-choice",
+      "question": "An e-commerce system uses a queue for order processing. During a 2-hour broker outage, 50,000 orders are lost. What was missing?",
+      "options": [
+        "Load balancing",
+        "Message persistence — messages were stored only in memory and lost when the broker crashed",
+        "Message encryption",
+        "Consumer auto-scaling"
+      ],
+      "correct": 1,
+      "explanation": "Without persistence (durable storage), messages exist only in the broker's memory. If the broker crashes or restarts, all in-memory messages are lost. For critical workloads like orders, messages must be persisted to disk and ideally replicated to multiple broker nodes."
+    },
+    {
+      "id": "msg-que-026",
+      "type": "multiple-choice",
+      "question": "What is the difference between a 'persistent' and 'transient' message?",
+      "options": [
+        "Persistent messages are encrypted; transient messages are not",
+        "Persistent messages survive broker restarts (written to disk); transient messages are lost if the broker restarts",
+        "Persistent messages are larger than transient messages",
+        "Persistent messages can only be consumed once"
+      ],
+      "correct": 1,
+      "explanation": "Persistent messages are written to disk by the broker, surviving crashes and restarts. Transient messages live only in memory — faster but volatile. The choice depends on the use case: financial transactions need persistence; ephemeral metrics can tolerate transient delivery."
+    },
+    {
+      "id": "msg-que-027",
+      "type": "multiple-choice",
+      "question": "A consumer processes a message but encounters a transient error (e.g., a downstream service timeout). What's the appropriate action?",
+      "options": [
+        "Delete the message and log the error",
+        "Negatively acknowledge (nack) the message so it can be retried later",
+        "Shut down the consumer entirely",
+        "Forward the message to the dead letter queue immediately"
+      ],
+      "correct": 1,
+      "explanation": "For transient errors (temporary failures that may resolve), the consumer should nack the message so the broker can redeliver it later. The DLQ is for messages that fail permanently after multiple retries. Deleting the message loses data. Shutting down is too drastic for a single transient failure."
+    },
+    {
+      "id": "msg-que-028",
+      "type": "multiple-choice",
+      "question": "A payment queue uses at-least-once delivery. A network glitch causes 500 messages to be delivered twice. The team's deduplication strategy uses a cache of recently processed message IDs with a 1-hour window. However, some of the duplicate deliveries arrive 2 hours after the originals. What happens?",
+      "options": [
+        "All duplicates are caught by the dedup cache",
+        "Duplicates arriving after the 1-hour window are not caught — the original message IDs have been evicted from the cache, causing duplicate payment processing",
+        "The broker prevents duplicates regardless of the cache",
+        "The 2-hour-old duplicates are automatically discarded by TTL"
+      ],
+      "correct": 1,
+      "explanation": "Time-windowed deduplication has a blind spot: duplicates arriving outside the window are not detected because their IDs have been evicted from the cache. For critical operations like payments, the dedup window must exceed the maximum possible redelivery delay, or the consumer should use a persistent idempotency store (database) instead of a time-bounded cache."
+    },
+    {
+      "id": "msg-que-029",
+      "type": "multiple-choice",
+      "question": "An API receives 10,000 requests/second during peak but the downstream processing system handles only 2,000/second. Without a queue, what happens during peak?",
+      "options": [
+        "Requests are automatically queued by the OS",
+        "The downstream system automatically scales to match",
+        "The downstream system becomes overwhelmed, causing failures, timeouts, or dropped requests",
+        "The API automatically throttles to 2,000 req/s"
+      ],
+      "correct": 2,
+      "explanation": "Without a buffer, the downstream system receives 5x its capacity. Requests pile up in connection pools, memory grows, response times spike, and eventually the system fails or starts dropping requests. A queue between them would buffer the excess and let the downstream process at its own pace."
+    },
+    {
+      "id": "msg-que-030",
+      "type": "multiple-choice",
+      "question": "A checkout service publishes an OrderPlaced event. Inventory, email, and analytics services all need to process it. Which messaging pattern is most appropriate?",
+      "options": [
+        "A single point-to-point queue with round-robin delivery",
+        "A pub/sub topic where all three services subscribe independently",
+        "Three synchronous HTTP calls from the checkout service",
+        "A shared database table that all services poll"
+      ],
+      "correct": 1,
+      "explanation": "Pub/sub is the right fit: one event, multiple independent consumers. Each subscriber gets its own copy of the message and processes it independently. Point-to-point would deliver to only one consumer. HTTP calls would tightly couple checkout to all downstream services."
+    },
+    {
+      "id": "msg-que-031",
+      "type": "multiple-choice",
+      "question": "A FIFO queue contains messages for 1,000 different users. Processing is strictly sequential. One message encounters a slow downstream call taking 5 seconds. What happens to all messages behind it?",
+      "options": [
+        "They're processed in parallel by other consumers",
+        "They wait — the entire queue is blocked behind the slow message (head-of-line blocking)",
+        "They're rerouted to a different queue automatically",
+        "They expire after 1 second"
+      ],
+      "correct": 1,
+      "explanation": "In a strictly sequential FIFO queue, head-of-line blocking means one slow message stalls everything behind it. All 999 other users' messages wait even though they're unrelated. The solution is partitioning by user ID so different users' messages are processed independently."
+    },
+    {
+      "id": "msg-que-032",
+      "type": "multiple-choice",
+      "question": "A team debates whether to use synchronous HTTP or a message queue between their order service and notification service. What is the strongest argument FOR the queue?",
+      "options": [
+        "Queues provide lower latency than HTTP",
+        "The notification service can be temporarily down without affecting order placement",
+        "Queues are simpler to implement than HTTP",
+        "Queues provide stronger data consistency"
+      ],
+      "correct": 1,
+      "explanation": "The queue decouples availability: orders succeed even if the notification service is down. Messages buffer in the queue and are processed when the service recovers. With HTTP, a notification service outage would cause order failures or force the order service to handle complex retry logic."
+    },
+    {
+      "id": "msg-que-033",
+      "type": "multiple-choice",
+      "question": "What is the strongest argument AGAINST using a message queue between two services that currently communicate via HTTP?",
+      "options": [
+        "Queues don't support JSON payloads",
+        "Added operational complexity: a broker to deploy, monitor, maintain, and debug distributed async flows",
+        "Queues are always slower than HTTP",
+        "Queues require both services to be rewritten"
+      ],
+      "correct": 1,
+      "explanation": "The biggest cost of introducing a queue is operational complexity. You now have a broker to manage (availability, capacity, monitoring), distributed tracing is harder (requests cross async boundaries), error handling is more complex (no immediate response), and debugging requires understanding queue state."
+    },
+    {
+      "id": "msg-que-034",
+      "type": "multiple-choice",
+      "question": "A team adds a message queue between their web API and a slow third-party payment gateway. Users now get an immediate 'order received' response. A product manager asks: 'How will customers know if their payment failed?' What's the fundamental challenge the team must solve?",
+      "options": [
+        "The queue doesn't support error messages",
+        "The API can no longer return synchronous success/failure for payment — the team needs an async notification mechanism (email, push notification, webhook)",
+        "The payment gateway doesn't work with queues",
+        "The queue will lose the payment messages"
+      ],
+      "correct": 1,
+      "explanation": "Moving from synchronous to asynchronous breaks the immediate feedback loop. The user gets a fast response, but the actual payment result comes later. The team must build an async feedback channel — status polling, push notifications, email, or webhooks — to inform users of the outcome. This is a key tradeoff of async architectures."
+    },
+    {
+      "id": "msg-que-035",
+      "type": "multiple-choice",
+      "question": "A message queue has 10 consumers. During rolling deployments, 2 consumers are always down. What percentage of processing capacity is lost during deployment?",
+      "options": [
+        "10%",
+        "20%",
+        "25%",
+        "50%"
+      ],
+      "correct": 1,
+      "explanation": "With 2 of 10 consumers down, processing capacity drops by 2/10 = 20%. During rolling deployments, temporarily reduced consumer capacity can cause queue depth to grow. Graceful shutdown (finishing in-flight messages before stopping) helps minimize impact."
+    },
+    {
+      "id": "msg-que-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A monolithic application processes user signups synchronously: create account → send welcome email → provision storage → return 200 OK. The entire flow takes 8 seconds. What is the primary problem with this design?",
+          "options": [
+            "Users wait 8 seconds for a response, most of which is spent on non-critical background work",
+            "The database is overloaded",
+            "Too many HTTP connections",
+            "The email service is insecure"
+          ],
+          "correct": 0,
+          "explanation": "The user waits for the entire chain to complete, including non-critical tasks like email and storage provisioning. Only account creation is truly blocking — the user needs to know their account exists. The rest can happen asynchronously."
+        },
+        {
+          "question": "After moving email and storage provisioning to a message queue, user-facing latency drops to 200ms. But if the email service goes down, users don't receive welcome emails during the outage. How are emails eventually sent?",
+          "options": [
+            "The API retries the email synchronously on the next user request",
+            "The queue retains the messages; when the email service recovers, it processes the backlog",
+            "A cron job resends all emails daily",
+            "Users must manually request the welcome email"
+          ],
+          "correct": 1,
+          "explanation": "This is temporal decoupling in action. The queue buffers messages while the email service is down. When it recovers, it picks up all queued messages and sends the emails. No data is lost, and no manual intervention is needed."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Service A publishes 1,000 messages/second to a queue. Service B consumes at 800 messages/second. After one hour, approximately how many messages have accumulated in the queue?",
+          "options": [
+            "0",
+            "200,000",
+            "720,000",
+            "3,600,000"
+          ],
+          "correct": 2,
+          "explanation": "Net accumulation rate = 1,000 - 800 = 200 messages/second. Over one hour: 200 × 3,600 = 720,000 messages. The queue is growing because consumption can't keep pace with production."
+        },
+        {
+          "question": "The production rate of 1,000 msg/s reflects real user traffic and cannot be reduced. What should the team do?",
+          "options": [
+            "Delete old messages to keep the queue small",
+            "Scale out consumers to match or exceed the production rate",
+            "Tell users to generate fewer requests",
+            "Increase the message TTL"
+          ],
+          "correct": 1,
+          "explanation": "The fundamental problem is consumption rate < production rate. Adding more consumer instances (horizontal scaling) increases total throughput. With 2 consumers at 800 msg/s each, total capacity becomes 1,600 msg/s — well above the 1,000 msg/s production rate, and the backlog will drain."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer receives a message with a 30-second visibility timeout. Processing takes 45 seconds. What happens?",
+          "options": [
+            "The message is deleted after 30 seconds",
+            "Processing continues normally — the timeout is just advisory",
+            "The message becomes visible again at 30 seconds and another consumer picks it up, causing duplicate processing",
+            "The broker terminates the consumer's connection"
+          ],
+          "correct": 2,
+          "explanation": "The visibility timeout expired before the consumer finished processing. The broker makes the message visible again, and another consumer can receive it. Now two consumers are processing the same message — classic duplicate processing caused by a too-short visibility timeout."
+        },
+        {
+          "question": "How should the team fix this?",
+          "options": [
+            "Set the visibility timeout longer than the maximum expected processing time",
+            "Reduce message size so processing is faster",
+            "Disable the visibility timeout",
+            "Use a different message broker"
+          ],
+          "correct": 0,
+          "explanation": "The visibility timeout should exceed the maximum expected processing time with a safety margin. For the 45-second processing case, a 60-90 second timeout is appropriate. Alternatively, the consumer can periodically extend the timeout (heartbeat/renew lease) during long processing."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A queue-based system processes image thumbnails. During normal load, messages process in 5 seconds. During a traffic spike, queue depth grows to 100,000 and processing latency increases to 10 minutes. What pattern is the queue providing?",
+          "options": [
+            "Load balancing",
+            "Load leveling — absorbing the spike so consumers process at a steady rate",
+            "Circuit breaking",
+            "Rate limiting the producer"
+          ],
+          "correct": 1,
+          "explanation": "Load leveling: the queue buffers the traffic spike, and consumers continue processing at their steady rate. Latency increases (messages wait longer in the queue) but no messages are dropped. After the spike subsides, the backlog drains and latency returns to normal."
+        },
+        {
+          "question": "The team wants to reduce latency during spikes without over-provisioning for peak at all times. What's the most effective approach?",
+          "options": [
+            "Increase message size",
+            "Auto-scale consumer instances based on queue depth",
+            "Switch to synchronous processing",
+            "Reduce image quality"
+          ],
+          "correct": 1,
+          "explanation": "Auto-scaling consumers based on queue depth gives elastic capacity: more consumers spin up when the queue grows, and scale down when it drains. This handles spikes without permanently provisioning for peak load."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A payment service processes charges synchronously. It handles 500 req/s normally, but Black Friday generates 5,000 req/s. The payment gateway rate-limits at 1,000 req/s. Without a queue, what happens during the spike?",
+          "options": [
+            "All payments succeed but with higher latency",
+            "The payment gateway scales automatically",
+            "4,000 req/s are rejected by the gateway's rate limit, causing payment failures for 80% of customers",
+            "The web server caches payment responses"
+          ],
+          "correct": 2,
+          "explanation": "The gateway enforces 1,000 req/s, rejecting the remaining 4,000 req/s. That's 80% of customers getting payment errors during the most critical sales period. Without buffering, traffic beyond the rate limit is simply lost."
+        },
+        {
+          "question": "With a queue in front of the payment gateway, what changes during the spike?",
+          "options": [
+            "All 5,000 payments process instantly",
+            "Excess payments buffer in the queue and process at 1,000/s; the backlog drains after the spike",
+            "Payments are dropped to stay within the 1,000/s limit",
+            "The queue also rate-limits at 1,000/s"
+          ],
+          "correct": 1,
+          "explanation": "The queue absorbs the burst. Payments beyond 1,000/s wait in the queue instead of being rejected. After the spike passes, the queue drains. Some customers experience a delay in payment confirmation, but no payments are lost — a much better outcome than 80% failure."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A microservice writes to its database and then publishes a message to a queue. The service crashes after the database write but before the queue publish. What happens?",
+          "options": [
+            "The database write is automatically rolled back",
+            "The database is updated but no message is published, causing a data inconsistency",
+            "The queue receives the message from the database logs",
+            "Both operations fail cleanly"
+          ],
+          "correct": 1,
+          "explanation": "This is the 'dual-write problem.' The database commit and queue publish are two separate operations — if the process crashes between them, you get an inconsistent state: the database has the change but downstream consumers never learn about it."
+        },
+        {
+          "question": "What pattern solves this dual-write problem?",
+          "options": [
+            "Use a longer timeout between the two operations",
+            "The transactional outbox pattern: write the event to an outbox table in the same DB transaction, then a separate process publishes from the outbox to the queue",
+            "Always publish to the queue first, then write to the database",
+            "Disable database transactions"
+          ],
+          "correct": 1,
+          "explanation": "The transactional outbox pattern: write the domain data AND an outbox record in a single database transaction. A separate relay process reads the outbox and publishes to the queue. Since both writes are in one transaction, they either both succeed or both fail — no inconsistency."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system has 3 consumers processing from a queue. Consumer 1 and 2 process at 100 msg/s each. Consumer 3 processes at 50 msg/s due to slower hardware. In competing-consumer mode, what happens to message distribution?",
+          "options": [
+            "Each consumer gets exactly one-third of messages",
+            "Consumers that acknowledge faster naturally receive more messages",
+            "Consumer 3 receives no messages",
+            "All messages go to Consumer 1 only"
+          ],
+          "correct": 1,
+          "explanation": "With competing consumers and prefetch/pull-based delivery, faster consumers pull more messages because they're ready sooner. Consumer 1 and 2 each handle roughly 40% of the load, while Consumer 3 handles roughly 20%. This provides natural load balancing proportional to processing speed."
+        },
+        {
+          "question": "Consumer 3 has a bug causing 50% of its messages to fail and be nacked. Without a DLQ or retry limit, what symptom would the team observe?",
+          "options": [
+            "Consumer 3 silently discards failed messages",
+            "The same messages cycle between the queue and Consumer 3 repeatedly, inflating redelivery counts and wasting resources",
+            "Consumers 1 and 2 stop receiving messages",
+            "The queue empties faster than normal"
+          ],
+          "correct": 1,
+          "explanation": "Failed messages are nacked, return to the queue, and may be picked up by Consumer 3 again — creating a retry loop. These 'poison messages' waste processing capacity and inflate metrics. A DLQ with a max retry count would catch them after N failures."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A queue consumer processes messages that each require calling an external API. The API goes down. The consumer nacks each message immediately, and they're instantly redelivered. This repeats hundreds of times per second. What's the problem?",
+          "options": [
+            "The messages are corrupted",
+            "A tight retry loop wastes resources and may overwhelm the API when it recovers",
+            "The queue is too small",
+            "The consumer needs more memory"
+          ],
+          "correct": 1,
+          "explanation": "Without a delay between retries, the consumer creates a hot loop: receive → fail → nack → receive → fail → nack, hundreds of times per second. This wastes CPU, generates noise in logs/metrics, and can hammer the recovering API with a thundering herd when it comes back."
+        },
+        {
+          "question": "What pattern prevents this tight retry loop?",
+          "options": [
+            "Delete messages on first failure",
+            "Exponential backoff: increase the delay between retries (1s, 2s, 4s, 8s…)",
+            "Disable message redelivery entirely",
+            "Switch to synchronous HTTP"
+          ],
+          "correct": 1,
+          "explanation": "Exponential backoff progressively increases the wait between retries, giving the downstream API time to recover without being hammered. Adding jitter (random variation in delay) further prevents multiple consumers from retrying simultaneously."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An analytics pipeline receives 50,000 events/second. Each event is 1 KB. What minimum throughput must the messaging system sustain?",
+          "options": [
+            "50 KB/s",
+            "5 MB/s",
+            "50 MB/s",
+            "500 MB/s"
+          ],
+          "correct": 2,
+          "explanation": "50,000 events/s × 1 KB/event = 50,000 KB/s = approximately 50 MB/s. This is the minimum sustained throughput — the messaging system needs headroom above this for traffic spikes and overhead."
+        },
+        {
+          "question": "The team also needs 7 days of message retention for replay capability. Approximately how much storage is required?",
+          "options": [
+            "35 GB",
+            "350 GB",
+            "3.5 TB",
+            "30 TB"
+          ],
+          "correct": 3,
+          "explanation": "50 MB/s × 86,400 s/day × 7 days = 50 × 604,800 = 30,240,000 MB ≈ 30 TB. High-volume streaming systems require significant storage for retention. Compression can reduce this, but the raw requirement is substantial."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team sets message TTL to 24 hours on their email notification queue. A 25-hour broker outage causes all pending emails to be lost when the broker recovers. What happened?",
+          "options": [
+            "The broker deleted messages as spam",
+            "Messages exceeding the 24-hour TTL were automatically discarded",
+            "Consumers deleted them during recovery",
+            "Network issues corrupted the messages"
+          ],
+          "correct": 1,
+          "explanation": "TTL is enforced even during outages. Messages that exceeded their 24-hour TTL while the broker was down were discarded when the broker recovered and evaluated their expiration. The TTL was too aggressive for a system that needs guaranteed delivery."
+        },
+        {
+          "question": "How should the team prevent this in the future?",
+          "options": [
+            "Remove TTL entirely for all queues",
+            "Set a TTL appropriate for the use case (e.g., 7 days for emails) and route expired messages to a DLQ for recovery",
+            "Use shorter TTLs to clear messages faster",
+            "Stop using message queues for email"
+          ],
+          "correct": 1,
+          "explanation": "Set the TTL to match the business requirement — how old can a notification be and still be worth sending? For emails, days or weeks is reasonable. Routing expired messages to a DLQ (instead of discarding) provides a safety net for recovery."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer sends messages with a correlation ID. The consumer processes each message and publishes a response to a reply queue with the same correlation ID. What messaging pattern is this?",
+          "options": [
+            "Fire and forget",
+            "Request-reply over messaging",
+            "Pub/sub fan-out",
+            "Event sourcing"
+          ],
+          "correct": 1,
+          "explanation": "Request-reply over messaging: the producer sends a request message with a correlation ID and listens on a reply queue. The consumer processes the request and sends a response to the reply queue with the matching correlation ID, allowing the producer to match responses to requests."
+        },
+        {
+          "question": "Compared to synchronous HTTP request-response, what's the main disadvantage of request-reply over messaging?",
+          "options": [
+            "Lower throughput",
+            "Higher complexity: the producer must manage a reply queue, correlation IDs, and timeouts for missing replies",
+            "Cannot send JSON payloads",
+            "Less reliable delivery"
+          ],
+          "correct": 1,
+          "explanation": "Request-reply over messaging adds significant complexity: managing reply queues, correlating responses, handling timeouts when replies never arrive, and dealing with out-of-order responses. Use it when you need the decoupling benefits of messaging but still need a response — otherwise, HTTP is simpler."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A video processing pipeline uses a queue. Each job takes 2-10 minutes. A consumer receives a message and begins processing. The broker's default visibility timeout is 30 seconds. What will happen?",
+          "options": [
+            "Processing completes normally",
+            "The message is redelivered to another consumer while the first is still processing, causing duplicate work",
+            "The broker waits until processing finishes",
+            "The message is moved to the DLQ"
+          ],
+          "correct": 1,
+          "explanation": "The 30-second visibility timeout expires long before the 2-10 minute job completes. The broker makes the message visible again, another consumer picks it up, and both consumers now process the same video — wasting resources and potentially creating corrupt output."
+        },
+        {
+          "question": "Besides increasing the visibility timeout, what's another approach for long-running jobs?",
+          "options": [
+            "Use synchronous processing instead",
+            "The consumer periodically extends the visibility timeout (heartbeat/renew lease) while processing continues",
+            "Delete the message immediately upon receipt before processing",
+            "Split every video into 30-second chunks"
+          ],
+          "correct": 1,
+          "explanation": "Heartbeat/lease renewal: the consumer periodically extends the visibility timeout (e.g., every 20 seconds for a 30-second timeout). This signals the broker that the consumer is still alive and working. If the consumer crashes, it stops heartbeating and the message becomes visible for redelivery."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system uses competing consumers: 5 instances processing from one queue. The team needs to add 3 more consumers during peak hours. What happens when new consumers join?",
+          "options": [
+            "They must wait for existing consumers to finish current messages",
+            "They immediately start pulling messages from the queue alongside existing consumers",
+            "They need to be manually registered with the broker",
+            "Existing messages must be rebalanced across all 8 consumers"
+          ],
+          "correct": 1,
+          "explanation": "With competing consumers on a standard queue, new consumers simply start pulling messages. The queue distributes work to whichever consumer asks next. No rebalancing or registration is needed — this is one of the simplest scaling patterns in messaging."
+        },
+        {
+          "question": "When peak hours end and the 3 extra consumers are shut down, what happens to messages they were mid-processing?",
+          "options": [
+            "Those messages are permanently lost",
+            "If not yet acknowledged, those messages become visible again after the visibility timeout and are processed by the remaining consumers",
+            "They remain in a 'processing' state forever",
+            "The queue stops accepting new messages"
+          ],
+          "correct": 1,
+          "explanation": "Graceful shutdown: ideally, consumers finish their in-flight messages and ack them before stopping. If a consumer is killed without acking, the visibility timeout ensures the message reappears for the remaining consumers. No messages are lost either way."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer sends messages A, B, C to a queue. Two competing consumers are attached. Consumer 1 picks up A, Consumer 2 picks up B. Consumer 2 finishes B before Consumer 1 finishes A. In what order are messages completed?",
+          "options": [
+            "Always A, B, C regardless of consumer speed",
+            "B completes before A — processing order differs from enqueue order with competing consumers",
+            "The queue blocks B until A is done",
+            "Both complete simultaneously"
+          ],
+          "correct": 1,
+          "explanation": "With competing consumers, messages are processed in parallel by different consumers. Processing completion order depends on each consumer's speed, not enqueue order. If strict ordering matters, you need either a single consumer or partitioning by key."
+        },
+        {
+          "question": "The system requires that messages for the same customer are always processed in order, but different customers can be processed in parallel. How?",
+          "options": [
+            "Use a single consumer for all messages",
+            "Partition messages by customer ID — all messages for the same customer go to the same partition and are processed sequentially",
+            "Sort messages by timestamp in the consumer",
+            "Use message priorities"
+          ],
+          "correct": 1,
+          "explanation": "Partitioning by customer ID ensures per-customer ordering while allowing parallelism across customers. Customer A's messages always go to partition 1, Customer B's to partition 2, etc. Each partition has one consumer, maintaining order within the partition."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team is choosing between pull-based and push-based consumer models. In pull-based, the consumer requests messages. In push-based, the broker sends messages to the consumer. Which gives the consumer more control over its processing rate?",
+          "options": [
+            "Push-based",
+            "Pull-based",
+            "They're equivalent",
+            "Neither — the broker always controls the rate"
+          ],
+          "correct": 1,
+          "explanation": "Pull-based gives the consumer full rate control — it only requests messages when ready. Push-based means the broker decides when to send, which can overwhelm a slow consumer. Pull-based is better for consumers with variable processing times or limited resources."
+        },
+        {
+          "question": "What's the main downside of pull-based consumption?",
+          "options": [
+            "Consumers can be overwhelmed by too many messages",
+            "If the consumer polls too infrequently, latency increases; too frequently wastes resources on empty polls",
+            "Pull-based doesn't support acknowledgments",
+            "Pull-based can't handle high throughput"
+          ],
+          "correct": 1,
+          "explanation": "Pull-based requires tuning the poll interval. Too slow = messages sit in the queue longer than necessary. Too fast = wasted network calls when the queue is empty. Long polling (blocking until a message arrives or timeout) is a common mitigation, combining the rate control of pull with the responsiveness of push."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A queue-based system sends order confirmations. During testing, customers occasionally receive duplicate confirmation emails. What is the most likely cause?",
+          "options": [
+            "The producer intentionally sends each message twice",
+            "The consumer processed the message but didn't ack before the visibility timeout expired, causing redelivery and duplicate processing",
+            "The email service has a built-in retry mechanism",
+            "The queue duplicated the message during replication"
+          ],
+          "correct": 1,
+          "explanation": "The classic at-least-once duplicate scenario: consumer processes the message (sends email), but crashes or is slow before acknowledging. The broker redelivers the message, and another consumer sends the email again. The first consumer's work was invisible to the system."
+        },
+        {
+          "question": "How can the team prevent duplicate emails even if messages are delivered more than once?",
+          "options": [
+            "Switch to exactly-once delivery",
+            "Make the consumer idempotent: check if a confirmation for this order was already sent before sending",
+            "Process messages faster to always beat the visibility timeout",
+            "Use a longer visibility timeout"
+          ],
+          "correct": 1,
+          "explanation": "Idempotent consumers produce the same result regardless of how many times they process a message. Before sending an email, check: 'Did I already send a confirmation for order #12345?' If yes, skip and ack. This is more practical than trying to achieve exactly-once delivery, which is extremely difficult in distributed systems."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A message contains: {\"orderId\": \"12345\", \"action\": \"process_refund\", \"amount\": 49.99}. The producer retries this message due to a network timeout (the first send actually succeeded). What problem does this create?",
+          "options": [
+            "The message is too large",
+            "The queue now has two copies of the same refund message, potentially causing a double refund",
+            "The message format is invalid",
+            "The broker rejects duplicate messages automatically"
+          ],
+          "correct": 1,
+          "explanation": "Producer retries are a common source of duplicates. The first send succeeded (the broker got the message) but the ack was lost in the network. The producer, not knowing the first send worked, sends again. Now the queue has two identical refund messages."
+        },
+        {
+          "question": "How does the consumer use the orderId to prevent processing the refund twice?",
+          "options": [
+            "Compare message timestamps",
+            "Before processing, check if a refund for orderId 12345 was already issued (idempotency check against a database or cache)",
+            "Reject messages with the same orderId",
+            "Process both but with half the amount each"
+          ],
+          "correct": 1,
+          "explanation": "The consumer uses orderId as an idempotency key. Before processing: 'Has orderId 12345 already been refunded?' If yes, ack the message and skip. If no, process the refund and record it. This makes the consumer safe against duplicates from any source — producer retries, broker redelivery, or consumer restarts."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A queue has messages from many tenants in a multi-tenant SaaS. Tenant A sends 100x more messages than others, dominating consumer processing time. What's this problem called?",
+          "options": [
+            "Message priority inversion",
+            "The noisy neighbor problem",
+            "Queue starvation",
+            "Consumer affinity"
+          ],
+          "correct": 1,
+          "explanation": "The noisy neighbor problem: one tenant's disproportionate usage degrades service quality for all other tenants. In a shared queue, Tenant A's messages consume most of the consumer capacity, leaving other tenants' messages waiting."
+        },
+        {
+          "question": "How can the system ensure fair processing across tenants?",
+          "options": [
+            "Delete Tenant A's excess messages",
+            "Use separate queues per tenant, or weighted fair queuing to guarantee each tenant a minimum share of processing capacity",
+            "Process all messages in strict FIFO order regardless of tenant",
+            "Rate-limit all tenants to the lowest tenant's volume"
+          ],
+          "correct": 1,
+          "explanation": "Per-tenant queues or weighted fair queuing ensures each tenant gets a fair share of consumer resources. The system can allocate dedicated consumers per tenant, use priority levels, or implement round-robin across tenant queues. This isolates tenants from each other's load patterns."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer receives a batch of 100 messages, processes 97 successfully, but fails on 3. How should the consumer handle this?",
+          "options": [
+            "Acknowledge all 100 and log the 3 failures",
+            "Nack all 100 messages for reprocessing",
+            "Acknowledge the 97 successful messages individually and nack the 3 failed ones for retry",
+            "Shut down and restart the consumer"
+          ],
+          "correct": 2,
+          "explanation": "Acknowledge successful messages to remove them from the queue, and nack failed messages for redelivery. This prevents re-processing the 97 that already succeeded while giving the 3 failures another chance. Most brokers support per-message ack/nack within a batch."
+        },
+        {
+          "question": "One of the 3 failed messages contains malformed JSON that will never parse successfully. After 5 retry attempts, what should happen to it?",
+          "options": [
+            "Keep retrying indefinitely — the data is important",
+            "Move it to a dead letter queue for manual investigation",
+            "Delete it silently",
+            "Return it to the producer"
+          ],
+          "correct": 1,
+          "explanation": "A message that can never be processed (poison message) should be moved to a DLQ after exceeding the retry limit. The DLQ preserves the message for debugging — an engineer can inspect the malformed payload, fix the root cause, and decide whether to reprocess it."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team runs their message broker as a single instance. During maintenance, they must take it down for 30 minutes. What happens to the system?",
+          "options": [
+            "Messages are buffered by producers locally",
+            "All messaging stops — producers can't send and consumers can't receive",
+            "Messages route through an alternative path automatically",
+            "Consumers process from their local cache"
+          ],
+          "correct": 1,
+          "explanation": "A single-instance broker is a single point of failure. When it's down, the entire messaging system is unavailable. Producers can't publish (unless they have local buffering), and consumers can't consume. This defeats the purpose of using a queue for fault isolation."
+        },
+        {
+          "question": "How should the team architect the broker for high availability?",
+          "options": [
+            "Use a larger, more powerful server",
+            "Run a cluster of broker nodes with replication, so if one node fails others continue serving",
+            "Schedule all maintenance during off-peak hours",
+            "Add a caching layer in front of the broker"
+          ],
+          "correct": 1,
+          "explanation": "A broker cluster with replication provides high availability. Messages are replicated across multiple nodes, so the failure of any single node doesn't cause data loss or service interruption. The remaining nodes continue serving producers and consumers. This is standard for production messaging systems."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A queue has 10 consumers. During a rolling deployment (restarting consumers one at a time), the team notices messages temporarily accumulate. Why?",
+          "options": [
+            "The queue is broken during deployments",
+            "During rolling restarts, active consumer count drops, temporarily reducing processing capacity",
+            "Messages are duplicated during deployments",
+            "The broker is also restarting"
+          ],
+          "correct": 1,
+          "explanation": "During a rolling restart, at any given moment some consumers are down (stopping or starting). With fewer active consumers, total processing throughput decreases temporarily, causing messages to accumulate. The backlog clears once all consumers are back up."
+        },
+        {
+          "question": "What practice minimizes message accumulation during deployments?",
+          "options": [
+            "Deploy all consumers simultaneously to minimize the total downtime window",
+            "Use graceful shutdown: let each consumer finish its in-flight messages before stopping, and ensure new consumers start before old ones stop",
+            "Pause all producers during deployment",
+            "Increase message TTL before deploying"
+          ],
+          "correct": 1,
+          "explanation": "Graceful shutdown (drain then stop) combined with starting new instances before stopping old ones maintains consumer capacity throughout the deployment. Some teams temporarily over-provision during deployments to ensure no capacity drop."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system needs to process 100,000 messages during a 10-minute spike, then returns to 1,000 messages/minute. Without a queue, the processing system must handle the peak rate. What is that rate?",
+          "options": [
+            "1,000 messages/minute",
+            "10,000 messages/minute",
+            "50,000 messages/minute",
+            "100,000 messages/minute"
+          ],
+          "correct": 1,
+          "explanation": "100,000 messages over 10 minutes = 10,000 messages/minute at peak. Without a queue, the processing system must handle 10,000 msg/min to avoid dropping messages, even though the normal rate is only 1,000 msg/min — 10x over-provisioning for occasional spikes."
+        },
+        {
+          "question": "With a queue, the processing system can be provisioned for approximately what rate?",
+          "options": [
+            "The same 10,000 messages/minute peak rate",
+            "A rate closer to the average — the queue buffers the spike and the backlog drains afterward",
+            "Zero — the queue handles all processing",
+            "Exactly 1,000 messages/minute with no flexibility"
+          ],
+          "correct": 1,
+          "explanation": "The queue buffers the spike. If provisioned for, say, 2,000 msg/min (2x normal), the system processes steadily while the queue absorbs the burst. The 100,000-message backlog drains in about 100 minutes at the excess capacity of ~1,000 msg/min. Much cheaper than provisioning for 10,000 msg/min."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system publishes OrderPlaced events to a queue. Currently only the inventory service consumes them. A new requirement says analytics must also process every OrderPlaced event. Adding a second consumer to the same point-to-point queue would mean each event goes to EITHER inventory OR analytics. What's wrong with this?",
+          "options": [
+            "Nothing — both consumers get every message",
+            "Each message goes to only one consumer in point-to-point mode, so analytics would miss events that go to inventory and vice versa",
+            "The queue would slow down",
+            "The messages would be too large"
+          ],
+          "correct": 1,
+          "explanation": "Point-to-point semantics: each message is delivered to exactly one consumer. With two competing consumers, roughly half the events go to inventory and half to analytics — neither gets the full stream. This is the wrong pattern when multiple services each need every message."
+        },
+        {
+          "question": "What messaging pattern should the team adopt instead?",
+          "options": [
+            "Have the producer send each message twice",
+            "Pub/sub: publish OrderPlaced to a topic, and let inventory and analytics subscribe independently — each gets every message",
+            "Use a database instead of a queue",
+            "Add a third consumer to duplicate messages"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub solves this: the producer publishes once to a topic, and every subscriber gets its own copy. Inventory and analytics subscribe independently, each receiving the full stream. Adding new subscribers later requires no changes to the producer."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer receives messages and writes results to a database. The team wants to ensure that if the consumer crashes after the DB write but before the ack, the message isn't processed again (causing a duplicate DB write). What's this challenge called?",
+          "options": [
+            "The idempotency problem",
+            "The dual-write problem — the DB write and the queue ack are two separate operations that can't be made atomic",
+            "The ordering problem",
+            "The serialization problem"
+          ],
+          "correct": 1,
+          "explanation": "The consumer faces a dual-write problem: it must write to the database AND acknowledge the message. If it crashes between these operations, either the write is lost (if ack happens first) or the write is duplicated (if DB write happens first). These two operations can't be wrapped in a single transaction across different systems."
+        },
+        {
+          "question": "What's the most practical solution for this consumer-side dual-write?",
+          "options": [
+            "Always ack before writing to the database",
+            "Make the database write idempotent (e.g., use upsert with a unique message ID), so duplicate processing produces the same result",
+            "Use a two-phase commit between the queue and database",
+            "Don't use acknowledgments"
+          ],
+          "correct": 1,
+          "explanation": "Making the consumer idempotent is the most practical approach. Use the message's unique ID or business key to perform an upsert (insert or update). If the message is processed twice, the second write either has no effect (duplicate insert blocked) or produces the same state. This is simpler and more reliable than distributed transactions."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team monitors their queue and sees: queue depth is 0, consumer CPU is 5%, and producer send rate is 100 msg/s. What does this indicate?",
+          "options": [
+            "The system is broken",
+            "Consumers are processing messages as fast as they arrive — the system is healthy and keeping up",
+            "The producers aren't sending messages",
+            "Messages are being lost"
+          ],
+          "correct": 1,
+          "explanation": "Zero queue depth with active producers means consumers are consuming messages as fast as they're produced — ideal steady state. Low CPU suggests the consumers have ample headroom. This is a healthy system with capacity to spare."
+        },
+        {
+          "question": "The next day, the same dashboard shows: queue depth is 500,000, consumer CPU is 98%, and producer rate is still 100 msg/s. What likely happened?",
+          "options": [
+            "The producers started sending faster",
+            "Nothing has changed — this is normal",
+            "Consumer processing time increased (perhaps a downstream dependency slowed), reducing throughput below the production rate",
+            "The queue is misconfigured"
+          ],
+          "correct": 2,
+          "explanation": "The production rate hasn't changed (still 100 msg/s), but queue depth is growing and consumers are maxed out. This means consumer throughput dropped below 100 msg/s. A common cause: a downstream service (database, API) slowed down, making each message take longer to process. The team should investigate what's making consumers slower."
+        }
+      ]
+    },
+    {
+      "id": "msg-que-061",
+      "type": "multi-select",
+      "question": "Which of the following are benefits of introducing a message queue between two services? (Select all that apply)",
+      "options": [
+        "Temporal decoupling — producer and consumer don't need to be running simultaneously",
+        "Reduced total end-to-end processing latency from message creation to completion",
+        "Load leveling — buffering traffic spikes so consumers process at a steady rate",
+        "Fault isolation — one service's failure doesn't immediately cascade to the other"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Queues provide temporal decoupling, load leveling, and fault isolation. However, they INCREASE total end-to-end latency (message spends time in the queue before processing). Queues can reduce user-facing latency by making work asynchronous, but the total time from creation to completion goes up."
+    },
+    {
+      "id": "msg-que-062",
+      "type": "multi-select",
+      "question": "Which scenarios are good candidates for asynchronous processing via a message queue? (Select all that apply)",
+      "options": [
+        "Sending a notification email after a purchase",
+        "Validating a user's password during login",
+        "Generating a PDF report from a large dataset",
+        "Resizing uploaded images into multiple thumbnails"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Email notifications, PDF generation, and image resizing are all non-blocking background tasks — the user doesn't need to wait for them. Password validation must be synchronous: the user is waiting to know if they can log in, and the response (success/failure) is needed immediately."
+    },
+    {
+      "id": "msg-que-063",
+      "type": "multi-select",
+      "question": "Which are valid strategies to increase message processing throughput? (Select all that apply)",
+      "options": [
+        "Add more consumer instances (horizontal scaling)",
+        "Increase the number of queue partitions to enable more parallelism",
+        "Increase message TTL",
+        "Process messages in batches rather than one at a time"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "More consumers, more partitions, and batch processing all increase throughput. Message TTL only controls how long unprocessed messages live — it doesn't affect processing speed. Increasing TTL just means messages stick around longer before expiring."
+    },
+    {
+      "id": "msg-que-064",
+      "type": "multi-select",
+      "question": "A consumer crashes mid-processing. Which mechanisms help ensure the message is not lost? (Select all that apply)",
+      "options": [
+        "Message persistence — messages are written to disk by the broker",
+        "Manual acknowledgment — messages are only removed from the queue after an explicit ack",
+        "Visibility timeout — the message reappears in the queue if not acknowledged within the timeout",
+        "Auto-acknowledgment on receive"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Persistence ensures messages survive broker restarts. Manual ack ensures the message stays in the queue until confirmed processed. Visibility timeout ensures unacknowledged messages are redelivered. Auto-ack on receive removes the message immediately upon delivery — if the consumer then crashes, the message is lost."
+    },
+    {
+      "id": "msg-que-065",
+      "type": "multi-select",
+      "question": "Which are typical components of a message in a messaging system? (Select all that apply)",
+      "options": [
+        "Headers — metadata like content-type, correlation ID, timestamp",
+        "Body — the actual payload data",
+        "Routing key — determines which queue or topic receives the message",
+        "Consumer IP address"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Messages typically consist of headers (metadata), body (payload), and optionally a routing key that the broker uses to direct the message. The consumer's IP address is not part of the message — the broker manages delivery to consumers independently of message content."
+    },
+    {
+      "id": "msg-que-066",
+      "type": "multi-select",
+      "question": "Which of the following cause a growing queue depth? (Select all that apply)",
+      "options": [
+        "Consumers processing slower than producers are sending",
+        "A consumer bug causing repeated nacks — messages return to the queue and are redelivered",
+        "A sudden traffic spike from producers",
+        "Increasing the number of consumer instances"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "All of the first three cause growing queue depth: slow consumers, retry loops from nack storms, and production spikes. Adding more consumers DECREASES queue depth by increasing total consumption capacity."
+    },
+    {
+      "id": "msg-que-067",
+      "type": "multi-select",
+      "question": "Which properties distinguish a message queue from a simple in-memory buffer (like an array)? (Select all that apply)",
+      "options": [
+        "Persistence — messages survive process restarts",
+        "Network accessibility — producers and consumers can be on different machines",
+        "Acknowledgment semantics — messages are only removed after confirmed processing",
+        "Faster read/write performance than in-memory data structures"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Message queues provide persistence, network accessibility, and acknowledgment semantics that in-memory buffers lack. However, in-memory buffers are generally FASTER (no network hop, no disk I/O). Queues trade raw speed for durability, distribution, and reliability."
+    },
+    {
+      "id": "msg-que-068",
+      "type": "multi-select",
+      "question": "Which are valid reasons to set a message TTL (time-to-live)? (Select all that apply)",
+      "options": [
+        "Prevent stale data from being processed (e.g., time-sensitive promotions that have expired)",
+        "Limit queue storage growth from unprocessed messages",
+        "Improve message processing throughput",
+        "Automatically discard messages that are no longer relevant after a deadline"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "TTL prevents stale data processing, limits storage growth, and discards irrelevant messages. TTL does NOT improve throughput — it just removes old messages. The same number of messages still need to be processed within the TTL window."
+    },
+    {
+      "id": "msg-que-069",
+      "type": "multi-select",
+      "question": "A system uses competing consumers (multiple consumers on one queue). Which statements are true? (Select all that apply)",
+      "options": [
+        "Each message is delivered to exactly one consumer",
+        "Message processing order across all messages is guaranteed to match enqueue order",
+        "Adding more consumers increases total throughput",
+        "If one consumer is slow, other consumers continue processing unaffected"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "With competing consumers: each message goes to one consumer (point-to-point), more consumers means more throughput, and slow consumers don't block others. However, processing ORDER is NOT guaranteed — fast consumers may complete later messages before slow consumers finish earlier ones."
+    },
+    {
+      "id": "msg-que-070",
+      "type": "multi-select",
+      "question": "Which are risks or tradeoffs of introducing a message queue into your architecture? (Select all that apply)",
+      "options": [
+        "Added operational complexity — another component to monitor, deploy, and maintain",
+        "Potential for message loss if persistence isn't configured correctly",
+        "Increased total end-to-end processing latency compared to synchronous calls",
+        "Reduced coupling between services"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Operational complexity, potential message loss, and increased latency are all genuine risks/tradeoffs. Reduced coupling is a BENEFIT, not a risk — it's one of the primary reasons to use a queue."
+    },
+    {
+      "id": "msg-que-071",
+      "type": "multi-select",
+      "question": "Which techniques help handle 'poison messages' — messages that consistently fail processing? (Select all that apply)",
+      "options": [
+        "A retry limit that moves messages to a dead letter queue after N failures",
+        "Schema validation before attempting to process the message body",
+        "Logging the message content and error details for debugging",
+        "Increasing consumer memory allocation"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Retry limits with DLQ prevent infinite retry loops. Schema validation catches malformed messages early. Logging provides debugging data. Increasing memory doesn't help with messages that are structurally invalid or trigger application bugs — the problem is the message content, not resource constraints."
+    },
+    {
+      "id": "msg-que-072",
+      "type": "multi-select",
+      "question": "Which are critical monitoring metrics for a message queue in production? (Select all that apply)",
+      "options": [
+        "Queue depth — number of pending messages",
+        "Consumer lag — how far behind consumers are",
+        "Message age — time since the oldest unprocessed message was enqueued",
+        "Total number of queues in the broker"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Queue depth, consumer lag, and message age are the core health indicators. Rising queue depth means consumers are falling behind. High consumer lag confirms it. Old messages mean latency is unacceptable. Total queue count is an administrative metric, not a health indicator — a system can be healthy with many queues."
+    },
+    {
+      "id": "msg-que-073",
+      "type": "multi-select",
+      "question": "When is synchronous (direct) communication preferred over a message queue? (Select all that apply)",
+      "options": [
+        "The caller needs an immediate response to proceed (e.g., authorization check)",
+        "The operation is simple and both services have high availability",
+        "The result must be returned to the end user in the same HTTP response",
+        "The downstream service processes long-running background jobs"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Synchronous is preferred when the caller needs an immediate response, when simplicity suffices given high availability, and when the result must be in the same HTTP response. Long-running background jobs are a textbook use case FOR queues, not against them."
+    },
+    {
+      "id": "msg-que-074",
+      "type": "multi-select",
+      "question": "Which pairs of queue properties involve genuine tradeoffs against each other? (Select all that apply)",
+      "options": [
+        "Strict global ordering vs. high throughput with parallel consumers",
+        "Message persistence (durability) vs. write latency",
+        "Exactly-once delivery vs. system simplicity",
+        "Queue depth vs. message size"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Strict ordering limits parallelism (tradeoff). Persistence requires disk writes, adding latency (tradeoff). Exactly-once requires complex dedup/transactional machinery (tradeoff). Queue depth and message size are independent dimensions — one doesn't constrain the other."
+    },
+    {
+      "id": "msg-que-075",
+      "type": "multi-select",
+      "question": "Which are commonly used message serialization formats in production messaging systems? (Select all that apply)",
+      "options": [
+        "JSON",
+        "Protocol Buffers (protobuf)",
+        "Apache Avro",
+        "Raw JPEG image data directly as the message body"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "JSON, protobuf, and Avro are all standard serialization formats for message payloads. Large binary data like images should use the claim check pattern — store the image in object storage (S3) and put a reference in the message. Embedding large binaries in messages wastes broker resources."
+    },
+    {
+      "id": "msg-que-076",
+      "type": "multi-select",
+      "question": "Which describe the 'claim check' pattern in messaging? (Select all that apply)",
+      "options": [
+        "Store large payloads in external storage (e.g., S3) and put only a reference in the message",
+        "Reduces message size and broker memory pressure",
+        "Requires the consumer to fetch the large payload from external storage during processing",
+        "Eliminates the need for message acknowledgment"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "The claim check pattern offloads large data to external storage, with the message containing only a reference (the 'claim check'). This reduces message size and broker load, but the consumer must fetch the payload separately. Acknowledgment is still needed — the claim check pattern only changes what's in the message body."
+    },
+    {
+      "id": "msg-que-077",
+      "type": "multi-select",
+      "question": "Which are valid approaches for a consumer to receive messages from a broker? (Select all that apply)",
+      "options": [
+        "Short polling — consumer checks for messages and returns immediately, even if queue is empty",
+        "Long polling — consumer waits up to a timeout for messages before returning",
+        "Push — the broker sends messages to the consumer as they arrive",
+        "Broadcast — the consumer automatically receives copies of messages from all queues in the broker"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Short polling, long polling, and push are all valid delivery mechanisms. Broadcast to all queues is not — consumers subscribe to specific queues or topics. Receiving from all queues would be a security and architectural problem."
+    },
+    {
+      "id": "msg-que-078",
+      "type": "numeric-input",
+      "question": "A queue processes 200 messages per second. Each message takes an average of 50 milliseconds to process. What is the minimum number of consumers needed to keep up?",
+      "answer": 10,
+      "unit": "consumers",
+      "tolerance": "exact",
+      "explanation": "Each consumer processes 1 message per 50ms = 1,000ms / 50ms = 20 messages per second. To handle 200 msg/s: 200 / 20 = 10 consumers minimum."
+    },
+    {
+      "id": "msg-que-079",
+      "type": "numeric-input",
+      "question": "A producer sends 5,000 messages per minute. Each message is 2 KB. What is the throughput in MB per minute? (Use 1 MB = 1,000 KB)",
+      "answer": 10,
+      "unit": "MB/min",
+      "tolerance": 0.1,
+      "explanation": "5,000 messages × 2 KB = 10,000 KB per minute = 10 MB per minute."
+    },
+    {
+      "id": "msg-que-080",
+      "type": "numeric-input",
+      "question": "A consumer's P99 processing time is 45 seconds. The team wants a visibility timeout with at least a 2x safety margin (timeout ≥ 2 × P99). What is the minimum visibility timeout in seconds?",
+      "answer": 90,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Minimum timeout = 2 × P99 = 2 × 45 = 90 seconds. The 2x margin accounts for occasional processing spikes beyond P99. If processing ever exceeds the timeout, the message is redelivered and potentially processed twice. Some teams use an even higher margin (3x) for critical workloads, or implement heartbeat-based lease extension."
+    },
+    {
+      "id": "msg-que-081",
+      "type": "numeric-input",
+      "question": "A queue has 50,000 pending messages. 4 consumers each process 500 messages per second. Assuming no new messages arrive, how many seconds until the queue is drained?",
+      "answer": 25,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Total consumption rate = 4 × 500 = 2,000 messages per second. Time to drain = 50,000 / 2,000 = 25 seconds."
+    },
+    {
+      "id": "msg-que-082",
+      "type": "numeric-input",
+      "question": "A system sends 1 million messages per day. Each message is 500 bytes. The queue retains messages for 3 days. How many GB of storage is needed? (Use 1 GB = 1,000,000,000 bytes)",
+      "answer": 1.5,
+      "unit": "GB",
+      "tolerance": 0.1,
+      "explanation": "Storage = 1,000,000 messages/day × 500 bytes × 3 days = 1,500,000,000 bytes = 1.5 GB. In practice, add overhead for message headers, indexes, and broker metadata."
+    },
+    {
+      "id": "msg-que-083",
+      "type": "numeric-input",
+      "question": "A consumer processes 100 messages per second. Each message takes 8 milliseconds to process. What percentage of the consumer's time is spent idle (waiting for messages)?",
+      "answer": 20,
+      "unit": "%",
+      "tolerance": 0.05,
+      "explanation": "Total processing time per second = 100 messages × 8 ms = 800 ms. Idle time = 1,000 ms - 800 ms = 200 ms. Idle percentage = 200 / 1,000 = 20%. This consumer has 20% headroom."
+    },
+    {
+      "id": "msg-que-084",
+      "type": "numeric-input",
+      "question": "A retry policy uses exponential backoff: delay = base × 2^(attempt-1), with a base of 2 seconds. What is the delay in seconds before the 4th retry attempt?",
+      "answer": 16,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Retry 1: 2 × 2^0 = 2s. Retry 2: 2 × 2^1 = 4s. Retry 3: 2 × 2^2 = 8s. Retry 4: 2 × 2^3 = 16s. Exponential backoff prevents retry storms by progressively increasing wait times."
+    },
+    {
+      "id": "msg-que-085",
+      "type": "numeric-input",
+      "question": "A queue has 300,000 messages in its backlog after a traffic spike. Consumers process at 2,000 msg/s and producers have returned to 500 msg/s. How many seconds will it take to drain the backlog?",
+      "answer": 200,
+      "unit": "seconds",
+      "tolerance": 0.05,
+      "explanation": "Net drain rate = consumer rate - producer rate = 2,000 - 500 = 1,500 msg/s. Time to drain = 300,000 / 1,500 = 200 seconds. Consumers don't get the full 2,000 msg/s for draining because producers are still sending — you must subtract the incoming rate."
+    },
+    {
+      "id": "msg-que-086",
+      "type": "numeric-input",
+      "question": "A queue receives 3,000 messages per second during a 5-minute traffic spike. Consumers process at a steady 2,000 messages per second throughout the spike. How many messages are in the backlog when the spike ends?",
+      "answer": 300000,
+      "unit": "messages",
+      "tolerance": 0.05,
+      "explanation": "Net accumulation rate = 3,000 - 2,000 = 1,000 messages/second. Over 5 minutes (300 seconds): 1,000 × 300 = 300,000 messages in the backlog. After the spike, the consumers will drain this backlog at whatever rate exceeds incoming traffic."
+    },
+    {
+      "id": "msg-que-087",
+      "type": "numeric-input",
+      "question": "A single consumer processes messages at 200 msg/s. The team adds 4 more identical consumers (5 total). Assuming even distribution, what is the total throughput?",
+      "answer": 1000,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "Total throughput = 5 consumers × 200 msg/s = 1,000 msg/s. Competing consumers scale throughput linearly (assuming the queue can distribute messages fast enough and there are no shared bottlenecks)."
+    },
+    {
+      "id": "msg-que-088",
+      "type": "numeric-input",
+      "question": "A message broker receives 10,000 messages per second. Each message is replicated to 2 additional broker nodes for durability. How many total message writes per second occur across all broker nodes?",
+      "answer": 30000,
+      "unit": "writes/s",
+      "tolerance": "exact",
+      "explanation": "Each message is written to 3 nodes total (1 primary + 2 replicas): 10,000 × 3 = 30,000 writes/s. Replication multiplies write I/O — a key consideration for broker capacity planning."
+    },
+    {
+      "id": "msg-que-089",
+      "type": "numeric-input",
+      "question": "A producer sends 100 messages per second. The average end-to-end latency (enqueue to processing complete) is 200 milliseconds. Using Little's Law (L = λ × W), how many messages are in the system at any given moment?",
+      "answer": 20,
+      "unit": "messages",
+      "tolerance": 0.1,
+      "explanation": "Little's Law: L = λ × W = 100 msg/s × 0.2s = 20 messages in the system at any moment. This helps size queues, consumer pools, and memory — you know how many messages are concurrently in-flight."
+    },
+    {
+      "id": "msg-que-090",
+      "type": "ordering",
+      "question": "Rank these communication patterns from tightest to loosest coupling:",
+      "items": [
+        "Message queue",
+        "Shared database",
+        "Synchronous HTTP call",
+        "Event-driven pub/sub"
+      ],
+      "correctOrder": [1, 2, 0, 3],
+      "explanation": "Shared database is tightest (services share schema and state). Synchronous HTTP is next (defined interface, but caller blocks on callee). Message queue decouples in time and availability. Event-driven pub/sub is loosest — producers publish events without knowing who consumes them."
+    },
+    {
+      "id": "msg-que-091",
+      "type": "ordering",
+      "question": "Rank these message delivery guarantees from least to most reliable:",
+      "items": [
+        "At-most-once (fire and forget)",
+        "At-least-once (retry until acknowledged)",
+        "Exactly-once (effectively once via deduplication)"
+      ],
+      "correctOrder": [0, 1, 2],
+      "explanation": "At-most-once can lose messages (least reliable). At-least-once ensures delivery but may duplicate. Exactly-once (achieved via idempotent consumers or transactional processing) is most reliable but hardest to implement."
+    },
+    {
+      "id": "msg-que-092",
+      "type": "ordering",
+      "question": "Rank the stages of a message's lifecycle in order:",
+      "items": [
+        "Consumer acknowledges the message",
+        "Producer sends the message to the broker",
+        "Consumer processes the message",
+        "Broker stores the message in the queue",
+        "Consumer receives the message from the queue"
+      ],
+      "correctOrder": [1, 3, 4, 2, 0],
+      "explanation": "The lifecycle: Producer sends → Broker stores → Consumer receives → Consumer processes → Consumer acknowledges. The ack is the final step that tells the broker to remove the message."
+    },
+    {
+      "id": "msg-que-093",
+      "type": "ordering",
+      "question": "Queue depth is growing unexpectedly. Rank these investigation steps from first to last:",
+      "items": [
+        "Replace the message broker",
+        "Check if consumer instances are running and healthy",
+        "Check if the producer send rate has spiked",
+        "Check consumer error logs for processing failures"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "First check consumers (are they even running?), then check error logs (are they failing?), then check producers (has traffic spiked?). Replacing the broker is a last resort after ruling out simpler causes — most queue depth issues are consumer-side."
+    },
+    {
+      "id": "msg-que-094",
+      "type": "ordering",
+      "question": "Rank these retry strategies from least to most sophisticated:",
+      "items": [
+        "Exponential backoff with jitter",
+        "Immediate retry (no delay)",
+        "Fixed delay retry (constant wait between retries)",
+        "Exponential backoff (doubling delay)"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "Immediate retry is simplest but causes tight loops. Fixed delay adds breathing room but doesn't adapt. Exponential backoff increases delay progressively, reducing load on failing systems. Adding jitter (random variation) prevents thundering herd when many consumers retry simultaneously."
+    },
+    {
+      "id": "msg-que-095",
+      "type": "ordering",
+      "question": "Rank these queue configurations from lowest to highest durability:",
+      "items": [
+        "In-memory queue with no replication",
+        "Persistent queue with synchronous replication to 2 additional nodes",
+        "Persistent queue on a single disk",
+        "In-memory queue with asynchronous replication to 1 node"
+      ],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "In-memory with no replication loses everything on crash (lowest). In-memory with async replication is slightly better but recent messages may be lost. Persistent on single disk survives restarts but not disk failure. Persistent with sync replication to 2 nodes is the most durable — data is on 3 disks before the write is confirmed."
+    },
+    {
+      "id": "msg-que-096",
+      "type": "ordering",
+      "question": "Rank these scenarios from most to least suitable for asynchronous processing via a message queue:",
+      "items": [
+        "Generating monthly PDF reports from large datasets",
+        "User login authentication",
+        "Sending post-purchase notification emails",
+        "Processing webhook callbacks from a payment provider"
+      ],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "PDF generation (long-running background job) is ideal for queues. Email notifications (fire-and-forget, non-blocking) are a classic async use case. Webhook processing is naturally async (respond 200 immediately, process via queue). Login authentication must be synchronous — the user is blocked waiting for an access decision."
+    },
+    {
+      "id": "msg-que-097",
+      "type": "ordering",
+      "question": "Rank these approaches for handling a persistently failing message, from least to most sophisticated:",
+      "items": [
+        "Log the error and discard the message",
+        "Immediate retry with no limit",
+        "Retry with exponential backoff, then move to a dead letter queue after max attempts",
+        "Skip the message and alert an on-call engineer"
+      ],
+      "correctOrder": [0, 1, 3, 2],
+      "explanation": "Log and discard is least sophisticated (loses data). Unlimited immediate retry adds persistence but creates infinite loops. Alert + skip adds human oversight but no automated recovery. Retry with backoff + DLQ is most sophisticated: automated retry handles transient failures, backoff prevents retry storms, and the DLQ preserves messages for investigation and replay."
+    },
+    {
+      "id": "msg-que-098",
+      "type": "ordering",
+      "question": "Rank these message sizes from most to least appropriate for including directly in a queue message body:",
+      "items": [
+        "100-byte JSON event",
+        "1 KB order details",
+        "10 MB image file",
+        "500 MB video file"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "100 bytes and 1 KB are ideal for message bodies. 10 MB is borderline — many brokers support it but it strains broker memory and network. 500 MB should never be in a message body — use the claim check pattern (store in S3, send a reference). Most brokers have hard limits in the 1-10 MB range."
+    },
+    {
+      "id": "msg-que-099",
+      "type": "ordering",
+      "question": "A team is adopting message queues for the first time. Rank these steps in the order they should be implemented:",
+      "items": [
+        "Add monitoring and alerting for queue depth and consumer lag",
+        "Set up a dead letter queue for failed messages",
+        "Deploy a basic producer-consumer with manual acknowledgment",
+        "Add retry logic with exponential backoff"
+      ],
+      "correctOrder": [2, 3, 1, 0],
+      "explanation": "Start with the basics: a working producer-consumer with manual ack (ensures messages aren't lost). Then add retry logic (handles transient failures). Then a DLQ (catches persistent failures). Finally, monitoring and alerting (operational maturity). Each layer builds on the previous one."
+    },
+    {
+      "id": "msg-que-100",
+      "type": "ordering",
+      "question": "Rank these from fastest to slowest message delivery latency:",
+      "items": [
+        "In-process in-memory queue (same process/JVM)",
+        "Cross-region message broker (e.g., US East to EU West)",
+        "Local network message broker (same data center)",
+        "Cross-availability-zone message broker (same region, different AZ)"
+      ],
+      "correctOrder": [0, 2, 3, 1],
+      "explanation": "In-process: microseconds (no network). Same data center: sub-millisecond to low milliseconds. Cross-AZ: a few milliseconds (short distance within a region). Cross-region: tens to hundreds of milliseconds (continental distances). Network latency dominates messaging latency in distributed systems."
+    }
+  ]
+}

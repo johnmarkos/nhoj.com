@@ -78,6 +78,20 @@ export const CONFIG = {
         { num: 7, title: 'Distributed Caching', ready: true },
         { num: 8, title: 'Caching Scenarios', ready: true }
       ]
+    },
+    {
+      id: 6,
+      title: 'Messaging & Async',
+      chapters: [
+        { num: 1, title: 'Queue Fundamentals', ready: true },
+        { num: 2, title: 'Pub/Sub & Topics', ready: false },
+        { num: 3, title: 'Delivery Guarantees', ready: false },
+        { num: 4, title: 'Patterns & Reliability', ready: false },
+        { num: 5, title: 'Event-Driven Architecture', ready: false },
+        { num: 6, title: 'Stream Processing', ready: false },
+        { num: 7, title: 'Technology Selection', ready: false },
+        { num: 8, title: 'Messaging Scenarios', ready: false }
+      ]
     }
   ]
 };
