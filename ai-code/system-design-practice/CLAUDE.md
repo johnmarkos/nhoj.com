@@ -12,6 +12,22 @@ Guidance for Claude Code working on this repository.
 
 **The Bus Test:** Every *problem* must be solvable in under a minute on a phone with no prep. Atomic, self-contained, immediate feedback. Session length is user's choice — large problem banks (50-100 per chapter) with randomization provide variety without repeats. Spaced repetition is v2; volume is fake spaced repetition for now.
 
+## Project Structure
+
+Before making any file changes, confirm which repository and directory the changes belong in. The main repos are:
+- **nhoj.com** (`/home/nhoj/Documents/learning/web/nhoj.com/`) — Personal site, including this project at `ai-code/system-design-practice/`
+- **openquizzer** (`/home/nhoj/Documents/learning/web/openquizzer/`) — Canonical quiz engine and generic UI
+
+Never cross-pollinate changes between repos without explicit user confirmation.
+
+## Content Generation
+
+When generating large content files (e.g., 100+ problem JSON files), break them into smaller batches (25-30 items at a time) and append to the file incrementally. Never try to generate the entire file in a single output.
+
+## Workflow Rules
+
+For multi-chapter or multi-unit tasks, always process ONE chapter at a time: write, review, fix, commit, then move to the next. Never try to load or process an entire unit at once. See "Content Creation Workflow" below for the full per-chapter loop.
+
 ## Development
 
 No build system. Edit files directly and push to `main` for deployment. Fix forward if anything breaks.
@@ -147,6 +163,17 @@ When starting a **new unit**, plan it in detail before writing any content:
 - Define all 8 chapter topics with scope descriptions
 - Identify the key concepts each chapter should cover
 - Get user approval on the plan before proceeding
+
+## Content Review
+
+Follow the author/reviewer dialogue pattern. Review one chapter at a time, present findings, wait for user approval before proceeding to the next chapter. Do not batch reviews. Use a subagent to keep the review's full JSON content out of the main context window.
+
+## Pre-Commit Checklist
+
+When building new apps or features, always validate:
+1. Correct target directory (ask if unclear)
+2. No syntax errors in config files
+3. Run tests (`node --test config.test.js`) and verify they pass before committing
 
 ## Process
 
