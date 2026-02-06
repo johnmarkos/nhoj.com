@@ -1,0 +1,1636 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 2,
+  "chapterTitle": "Pub/Sub & Topics",
+  "chapterDescription": "Publish-subscribe messaging: topics, subscriptions, fan-out patterns, message filtering, ordering guarantees, and designing topic structures for multi-subscriber systems.",
+  "problems": [
+    {
+      "id": "msg-pub-001",
+      "type": "multiple-choice",
+      "question": "An e-commerce platform publishes OrderPlaced events. Currently, inventory and billing subscribe. The team wants to add a recommendations service that also reacts to orders. With pub/sub, what changes are needed to the order service?",
+      "options": [
+        "None — the new service subscribes to the existing topic independently",
+        "The order service must be updated to route messages to the new service",
+        "A new topic must be created for the recommendations service",
+        "The order service must be redeployed with a new configuration"
+      ],
+      "correct": 0,
+      "explanation": "This is pub/sub's core value: adding subscribers requires zero changes to the publisher. The recommendations service creates its own subscription to the existing OrderPlaced topic and starts receiving events. The order service doesn't know or care who subscribes."
+    },
+    {
+      "id": "msg-pub-002",
+      "type": "multiple-choice",
+      "question": "A system uses a point-to-point queue for order events. Three services need every event: inventory, email, analytics. What problem arises with this setup?",
+      "options": [
+        "Each message goes to only one of the three services, so each service misses roughly two-thirds of events",
+        "Messages are automatically duplicated to all three",
+        "The queue becomes slower with 3 consumers",
+        "No problem — all three services receive every message"
+      ],
+      "correct": 0,
+      "explanation": "Point-to-point delivers each message to exactly one consumer. With three competing consumers, each gets roughly one-third of events — none gets the full stream. Pub/sub solves this: each subscriber gets its own copy of every message."
+    },
+    {
+      "id": "msg-pub-003",
+      "type": "multiple-choice",
+      "question": "In a pub/sub system with no durable subscriptions, a publisher sends a message to a topic that currently has zero active subscribers. What happens to the message?",
+      "options": [
+        "It's queued until a subscriber connects",
+        "It's discarded — with no active subscriptions, there's no one to deliver to",
+        "The publisher receives an error",
+        "It's forwarded to a dead letter queue"
+      ],
+      "correct": 1,
+      "explanation": "With no subscriptions (durable or active), the broker has no delivery target. The message is discarded. This is a key difference from queues, where messages persist until consumed. If late-joining subscribers need historical data, use durable subscriptions or topic retention."
+    },
+    {
+      "id": "msg-pub-004",
+      "type": "multiple-choice",
+      "question": "A notification system publishes UserSignedUp events. 5 services subscribe: welcome email, onboarding, analytics, CRM sync, and fraud detection. The publisher sends 1,000 events per hour. How many total message deliveries occur per hour across all subscribers?",
+      "options": [
+        "1,000",
+        "2,000",
+        "5,000",
+        "10,000"
+      ],
+      "correct": 2,
+      "explanation": "Fan-out: each message is delivered to every subscriber. 1,000 events × 5 subscribers = 5,000 total deliveries. The broker's outbound work scales linearly with subscriber count — a key capacity planning consideration for pub/sub."
+    },
+    {
+      "id": "msg-pub-005",
+      "type": "multiple-choice",
+      "question": "A microservices architecture has 20 services. Service A notifies B, C, D, E, F when a user profile changes via direct HTTP. Service C also notifies G, H, I. The dependency graph keeps growing. What pattern prevents this coupling explosion?",
+      "options": [
+        "Add a load balancer between all services",
+        "Use pub/sub: services publish domain events to topics and subscribe to topics they care about, replacing direct service-to-service calls",
+        "Use a shared database for all inter-service communication",
+        "Add a service mesh with retries"
+      ],
+      "correct": 1,
+      "explanation": "Pub/sub replaces the N-to-M direct dependency web with indirect communication through topics. Service A publishes ProfileUpdated to a topic without knowing who consumes it. Services B-F subscribe independently. Adding new consumers or producers requires no changes to existing services."
+    },
+    {
+      "id": "msg-pub-006",
+      "type": "multiple-choice",
+      "question": "A team has a single topic called 'events' where all microservices publish everything: orders, payments, user updates, inventory changes. The analytics service subscribes but only cares about order events. What's the problem with this design?",
+      "options": [
+        "No problem — the analytics service can filter what it needs",
+        "The analytics service receives all event types, wasting bandwidth and CPU on deserializing and discarding irrelevant messages. More granular topics would let it receive only order events",
+        "The topic will run out of storage",
+        "Other services can read analytics data"
+      ],
+      "correct": 1,
+      "explanation": "A single catch-all topic forces every subscriber to receive everything and filter client-side. At high throughput, this wastes significant bandwidth and processing power. Separate topics per domain (orders, payments, users) let subscribers receive only relevant events — either through topic selection or server-side filtering."
+    },
+    {
+      "id": "msg-pub-007",
+      "type": "multiple-choice",
+      "question": "A pub/sub topic 'order-events' has 3 subscribers: inventory, email, analytics. The inventory subscriber falls behind by 100,000 messages. Does this affect the email and analytics subscribers?",
+      "options": [
+        "Yes — all subscribers are blocked until inventory catches up",
+        "No — each subscriber maintains an independent position and processes at its own pace",
+        "Only if they share the same consumer group",
+        "The topic stops accepting new messages until inventory catches up"
+      ],
+      "correct": 1,
+      "explanation": "Subscriber independence: each subscription tracks its own offset/position in the topic. Inventory's backlog has no effect on email or analytics — they continue consuming at full speed. This isolation is a fundamental advantage of pub/sub over designs where consumers share state."
+    },
+    {
+      "id": "msg-pub-008",
+      "type": "multiple-choice",
+      "question": "A team debates separate topics per event type (OrderCreated, OrderUpdated, OrderCancelled) vs. a single 'orders' topic with event type in the message body. What is the main advantage of a single 'orders' topic?",
+      "options": [
+        "Better throughput due to fewer topics",
+        "All order lifecycle events can be routed to the same partition by order ID, guaranteeing per-order event ordering",
+        "Lower storage costs",
+        "Simpler message serialization"
+      ],
+      "correct": 1,
+      "explanation": "A single topic with partition-by-order-ID ensures all events for order #12345 (Created, Updated, Cancelled) go to the same partition and are delivered in order. With separate topics, cross-topic ordering isn't guaranteed — a subscriber might see OrderCancelled before OrderCreated."
+    },
+    {
+      "id": "msg-pub-009",
+      "type": "multiple-choice",
+      "question": "A subscriber goes offline for 2 hours of maintenance. When it reconnects, it needs to process the messages it missed. Which subscription type supports this?",
+      "options": [
+        "Ephemeral — messages are buffered in the subscriber's local memory",
+        "Durable — the broker retains messages for this subscription, and the subscriber resumes from its last position",
+        "Both — the broker always retains all messages regardless of subscription type",
+        "Neither — messages published during downtime are always lost"
+      ],
+      "correct": 1,
+      "explanation": "Durable subscriptions: the broker tracks the subscription's position and retains messages while the subscriber is offline. On reconnect, the subscriber picks up from where it left off. Ephemeral subscriptions don't retain messages — anything published during downtime is lost."
+    },
+    {
+      "id": "msg-pub-010",
+      "type": "multiple-choice",
+      "question": "A pub/sub topic has 10 subscribers, but only 3 of them need messages with priority = 'critical'. The broker supports attribute-based filtering. If the 3 critical-subscribers use a server-side filter, what changes for the other 7 subscribers?",
+      "options": [
+        "The other 7 subscribers also stop receiving critical messages",
+        "Nothing — each subscription's filter is independent. The 7 unfiltered subscribers continue receiving all messages including critical ones",
+        "The topic stops accepting critical messages",
+        "The broker routes critical messages to a separate topic"
+      ],
+      "correct": 1,
+      "explanation": "Subscription filters are per-subscription, not topic-wide. Each subscriber sets its own filter independently. The 3 filtered subscribers get only critical messages, while the 7 unfiltered subscribers continue receiving the full stream. Filters don't modify the topic or affect other subscriptions."
+    },
+    {
+      "id": "msg-pub-011",
+      "type": "multiple-choice",
+      "question": "Ten different microservices all publish telemetry data to the same 'metrics' topic. This pattern — multiple producers, one topic — is called:",
+      "options": [
+        "Fan-out",
+        "Fan-in — multiple producers publishing to a single topic",
+        "Broadcast",
+        "Multicast"
+      ],
+      "correct": 1,
+      "explanation": "Fan-in: many producers converge on a single topic. This is the complement of fan-out (one topic, many subscribers). Fan-in is useful for aggregation patterns — a single metrics topic collects data from many services, and analytics subscribers get a unified stream."
+    },
+    {
+      "id": "msg-pub-012",
+      "type": "multiple-choice",
+      "question": "A 'notifications' topic uses push-based delivery. During a traffic spike, the broker pushes 50,000 msg/s to a subscriber that can handle only 5,000 msg/s. What happens?",
+      "options": [
+        "The subscriber processes all messages normally with some delay",
+        "The subscriber is overwhelmed — its receive buffer fills, potentially causing message drops, out-of-memory errors, or process crashes",
+        "The broker automatically slows down to match the subscriber's rate",
+        "Messages are rerouted to a faster subscriber"
+      ],
+      "correct": 1,
+      "explanation": "Push delivery doesn't respect the subscriber's processing capacity. The broker sends as fast as it can, overwhelming slow subscribers. The subscriber's TCP buffers fill, heap memory grows, and eventually it fails. This is why pull-based delivery (subscriber controls rate) is preferred for subscribers with variable or limited capacity."
+    },
+    {
+      "id": "msg-pub-013",
+      "type": "multiple-choice",
+      "question": "A pub/sub topic has 3 subscriptions: A (email), B (analytics), C (fraud). Subscription B uses shared mode with 4 competing consumers. How are messages delivered?",
+      "options": [
+        "All 4 consumers in subscription B get every message",
+        "Each message in subscription B goes to exactly one of the 4 consumers, while subscriptions A and C each independently receive every message",
+        "Only subscription B receives messages",
+        "Messages alternate between subscriptions A, B, and C"
+      ],
+      "correct": 1,
+      "explanation": "Shared subscriptions combine pub/sub with competing consumers. Across subscriptions (A, B, C), each gets every message (pub/sub fan-out). Within subscription B, the 4 consumers compete — each message goes to one of them (point-to-point within the subscription). This lets B scale horizontally while A and C are unaffected."
+    },
+    {
+      "id": "msg-pub-014",
+      "type": "multiple-choice",
+      "question": "A pub/sub topic has 5 subscribers. Subscriber A falls behind and accumulates a 50 million message backlog. The team considers deleting subscriber A's subscription and recreating it to skip the backlog. What data is lost?",
+      "options": [
+        "Nothing — the subscription can be recreated at the same position",
+        "The 50 million unprocessed messages in A's backlog. Recreating the subscription starts from 'latest' by default, permanently skipping those messages",
+        "Messages for all subscribers, not just A",
+        "The topic's entire message history"
+      ],
+      "correct": 1,
+      "explanation": "Deleting a subscription discards its offset tracking and backlog. A new subscription starts from 'latest' (or 'earliest' if configured), but the original 50M-message gap can't be recovered to the exact prior position. If those messages matter, the team should scale up A's consumers to drain the backlog rather than skip it."
+    },
+    {
+      "id": "msg-pub-015",
+      "type": "multiple-choice",
+      "question": "A pub/sub subscriber processes events from two topics: 'orders' and 'payments'. It must correlate payment events with the corresponding order events (e.g., match PaymentCompleted to the original OrderPlaced). What's the primary challenge?",
+      "options": [
+        "The two topics share the same partition space",
+        "Events from different topics arrive independently with no guaranteed relative ordering, so the subscriber must handle cases where a payment event arrives before its corresponding order event",
+        "The subscriber can only subscribe to one topic at a time",
+        "The broker automatically correlates events across topics"
+      ],
+      "correct": 1,
+      "explanation": "Cross-topic correlation is a common challenge in pub/sub. Events on separate topics have independent ordering and delivery timing. The subscriber must buffer events and match them by a shared key (order ID). It needs to handle out-of-order arrivals, missing counterparts, and timeouts for events that never arrive."
+    },
+    {
+      "id": "msg-pub-016",
+      "type": "multiple-choice",
+      "question": "A subscriber processes messages from a topic and commits its offset after each batch. If the subscriber crashes before committing, what happens when it restarts?",
+      "options": [
+        "It skips the uncommitted messages permanently",
+        "It replays messages from the last committed offset, potentially processing some messages a second time",
+        "It starts from the very beginning of the topic",
+        "The broker detects the crash and marks those messages as processed"
+      ],
+      "correct": 1,
+      "explanation": "The subscriber resumes from its last committed offset. Messages processed after that offset but before the crash are redelivered — they were processed but the offset wasn't saved. This is the classic at-least-once pattern: the subscriber must be idempotent to handle these duplicate deliveries."
+    },
+    {
+      "id": "msg-pub-017",
+      "type": "multiple-choice",
+      "question": "A real-time dashboard subscribes to a 'metrics' topic. It only needs the latest value for each metric — historical messages are irrelevant. What subscription starting position is most appropriate?",
+      "options": [
+        "Earliest — replay all historical messages",
+        "Latest — start receiving only new messages published after subscribing",
+        "A specific timestamp from yesterday",
+        "The middle of the topic"
+      ],
+      "correct": 1,
+      "explanation": "For a real-time dashboard, historical messages would create a flood of stale data during startup. Starting from 'latest' means the dashboard immediately receives current data. An ephemeral subscription is also appropriate here — if the dashboard restarts, it only needs current values, not the backlog."
+    },
+    {
+      "id": "msg-pub-018",
+      "type": "multiple-choice",
+      "question": "A compliance audit service must process every transaction event, even during maintenance windows. What subscription characteristic is essential?",
+      "options": [
+        "Ephemeral subscription with fast startup",
+        "Durable subscription with sufficient retention — the broker retains messages while the service is offline",
+        "Push-based delivery for speed",
+        "Message filtering for transaction events only"
+      ],
+      "correct": 1,
+      "explanation": "Durability is critical: the subscription must retain messages during any downtime. When the audit service reconnects, it resumes from its last position and processes the backlog. The retention period must exceed the maximum expected downtime — if maintenance takes 8 hours, a 1-hour retention would lose data."
+    },
+    {
+      "id": "msg-pub-019",
+      "type": "multiple-choice",
+      "question": "A topic 'user-events' carries 100 message types. The email service only needs 3 types but receives all 100 without filtering. At 50,000 msg/s total, the email service discards 97% of messages. Beyond wasted bandwidth, what's the operational cost?",
+      "options": [
+        "No additional cost — discarding is trivial",
+        "The email service must be provisioned to receive and deserialize 50,000 msg/s instead of 1,500 msg/s — requiring roughly 33x more network and CPU capacity than necessary",
+        "The email service processes all 50,000 messages",
+        "The topic becomes slower for other subscribers"
+      ],
+      "correct": 1,
+      "explanation": "Even though most messages are discarded, the email service must still receive them over the network and deserialize them to check the type. At 50K msg/s, this requires substantial infrastructure for what's effectively 1,500 msg/s of useful work. Server-side filtering would reduce the email service's resource requirements by ~97%."
+    },
+    {
+      "id": "msg-pub-020",
+      "type": "multiple-choice",
+      "question": "A pub/sub broker supports wildcard topic subscriptions. Topics are: orders.us.created, orders.eu.created, orders.us.cancelled. A subscriber wants all US order events. Which wildcard pattern matches?",
+      "options": [
+        "orders.*.created",
+        "orders.us.*",
+        "*.us.*",
+        "orders.created.*"
+      ],
+      "correct": 1,
+      "explanation": "orders.us.* matches any topic starting with 'orders.us.' — capturing both orders.us.created and orders.us.cancelled. The * wildcard matches a single level. This is a common pattern in MQTT and AMQP-style topic hierarchies."
+    },
+    {
+      "id": "msg-pub-021",
+      "type": "multiple-choice",
+      "question": "A team debates 50 fine-grained topics (one per event type) vs. 5 coarse topics (one per domain). What is the main disadvantage of 50 fine-grained topics?",
+      "options": [
+        "Subscribers get irrelevant messages (this is actually an advantage of fine-grained — they don't)",
+        "Operational overhead: more topics to create, manage, monitor, set permissions for; subscribers needing multiple event types must manage many subscriptions",
+        "Lower throughput per topic",
+        "Higher message latency"
+      ],
+      "correct": 1,
+      "explanation": "Fine-grained topics give precise delivery but create operational burden: 50 topics means 50 sets of configs, ACLs, monitors, and alerts. A service that needs 20 event types must manage 20 subscriptions. The sweet spot is usually domain-level topics (orders, payments, users) with server-side filtering for event types within each."
+    },
+    {
+      "id": "msg-pub-022",
+      "type": "multiple-choice",
+      "question": "A pub/sub subscriber increments a 'total_orders' counter in a database each time it receives an OrderCreated event. Due to at-least-once redelivery, some events arrive twice. After processing 10,000 events with a 1% duplicate rate, what is the counter's value?",
+      "options": [
+        "10,000 (correct count)",
+        "10,100 (inflated by the duplicates, since each duplicate increments the counter again)",
+        "9,900 (some were skipped)",
+        "10,000 — the broker deduplicates automatically"
+      ],
+      "correct": 1,
+      "explanation": "Unlike inserts (which can use unique constraints), counter increments are not naturally idempotent — each execution changes state. 10,000 events + 100 duplicate deliveries = 10,100 increments. To fix this, the subscriber must track which events have already been counted (e.g., by storing processed event IDs) before incrementing."
+    },
+    {
+      "id": "msg-pub-023",
+      "type": "multiple-choice",
+      "question": "A multi-tenant SaaS publishes all tenant events to a single 'events' topic. Tenant A generates 90% of traffic. Tenant B's subscriber falls behind because its messages are interspersed with Tenant A's high-volume stream. What design change improves isolation?",
+      "options": [
+        "Increase the topic's partition count",
+        "Use per-tenant topics or partition by tenant ID so each tenant's event stream is isolated",
+        "Add more subscribers for Tenant B",
+        "Rate-limit Tenant A's publisher"
+      ],
+      "correct": 1,
+      "explanation": "Per-tenant topics or tenant-ID-based partitioning isolate each tenant's messages. Tenant B's subscriber processes only Tenant B's stream without being affected by Tenant A's volume. This prevents noisy-neighbor problems and allows per-tenant scaling and monitoring."
+    },
+    {
+      "id": "msg-pub-024",
+      "type": "multiple-choice",
+      "question": "An event-driven system has a circular dependency: Service A publishes to Topic X, Service B subscribes to X and publishes to Topic Y, Service A subscribes to Y. What risk does this create?",
+      "options": [
+        "No risk — this is normal in event-driven architectures",
+        "Potential for infinite message loops if events trigger cascading publishes between the two services",
+        "The topics will fill up with duplicates",
+        "The broker will crash from circular routing"
+      ],
+      "correct": 1,
+      "explanation": "Circular event flows can create infinite loops: A publishes → B reacts and publishes → A reacts and publishes → B reacts... Each cycle amplifies the message count. Prevention requires careful event design: distinguish triggering events from reaction events, include loop-detection metadata (e.g., causation chain), or break the cycle with explicit termination conditions."
+    },
+    {
+      "id": "msg-pub-025",
+      "type": "multiple-choice",
+      "question": "A topic has 6 partitions with customer ID as the partition key. One enterprise customer generates 80% of all traffic. All of that customer's messages hash to partition 3. What problem occurs?",
+      "options": [
+        "No problem — the broker redistributes load automatically",
+        "Hot partition: partition 3 handles 80% of the traffic while the other 5 partitions share 20%, creating severe consumer imbalance",
+        "Messages for the enterprise customer are rate-limited",
+        "The partition splits automatically"
+      ],
+      "correct": 1,
+      "explanation": "A single high-volume key creates a hot partition. The consumer assigned to partition 3 handles 80% of all traffic while 5 other consumers split the remaining 20%. Solutions: use a compound key (customer_id + random_suffix) to spread the load across partitions (sacrificing per-message ordering for that customer), or use per-tenant topics."
+    },
+    {
+      "id": "msg-pub-026",
+      "type": "multiple-choice",
+      "question": "A durable subscription has a 7-day retention policy. The subscriber goes offline for 8 days. When it reconnects, what happened to messages from day 1?",
+      "options": [
+        "All messages are available — durable means retained forever",
+        "Messages older than 7 days were deleted per the retention policy. The subscriber permanently missed them",
+        "They were moved to a dead letter queue",
+        "The subscription was automatically deleted"
+      ],
+      "correct": 1,
+      "explanation": "Durable doesn't mean infinite. Retention defines how long messages are kept. Messages older than the retention period are deleted regardless of whether subscribers consumed them. For critical data, set retention to exceed the maximum expected downtime with a safety margin."
+    },
+    {
+      "id": "msg-pub-027",
+      "type": "multiple-choice",
+      "question": "A topic partition delivers messages A, B, C in order to a subscriber. The subscriber processes A and B, commits its offset, then crashes before processing C. When it restarts, which message does it receive?",
+      "options": [
+        "A — it starts from the beginning",
+        "B — the last successfully committed message",
+        "C — it resumes from the committed offset (after B)",
+        "Nothing — C was lost when the subscriber crashed"
+      ],
+      "correct": 2,
+      "explanation": "The subscriber committed its offset after B, so the broker knows B was the last confirmed message. On restart, delivery resumes from the next message after the committed offset: C. This is why committing offsets is critical — it's the subscriber's checkpoint for crash recovery."
+    },
+    {
+      "id": "msg-pub-028",
+      "type": "multiple-choice",
+      "question": "A company's pub/sub spans 3 regions: US, EU, Asia. A publisher in the US publishes to a topic. Subscribers in all regions need the messages. What is the primary architectural challenge?",
+      "options": [
+        "Message format incompatibility across regions",
+        "Cross-region replication adds latency, and the team must choose between sync replication (higher publish latency) or async (risk of message loss during region failure)",
+        "Subscribers in different regions can't read the same topic format",
+        "The broker can only run in one region at a time"
+      ],
+      "correct": 1,
+      "explanation": "Cross-region messaging involves a fundamental tradeoff: synchronous replication ensures every region has every message before confirming the publish (safe but slow — 100-300ms per region hop), while async replication is fast but risks losing messages if the source region fails before replication completes."
+    },
+    {
+      "id": "msg-pub-029",
+      "type": "multiple-choice",
+      "question": "A financial trading system requires all subscribers to process events in exactly the same global order. The topic has 1 partition. What's the tradeoff?",
+      "options": [
+        "No tradeoff — single partition is ideal for high-throughput systems",
+        "Throughput is limited to what one partition and one consumer per subscription can handle — no parallelism is possible",
+        "Messages are more reliable with a single partition",
+        "Subscribers process events faster"
+      ],
+      "correct": 1,
+      "explanation": "A single partition guarantees global ordering but serializes all processing. With one partition, each subscription can have only one active consumer (otherwise ordering breaks). Throughput is capped by that single consumer's speed. This is acceptable for low-volume, ordering-critical use cases but doesn't scale for high throughput."
+    },
+    {
+      "id": "msg-pub-030",
+      "type": "multiple-choice",
+      "question": "A topic has 12 partitions. A subscriber's consumer group has 15 instances. How many consumer instances are idle?",
+      "options": [
+        "0",
+        "3",
+        "12",
+        "15"
+      ],
+      "correct": 1,
+      "explanation": "Each partition is assigned to exactly one consumer within a group. With 12 partitions and 15 consumers, 12 consumers each get one partition and 3 sit idle with no work. Adding more consumers beyond the partition count provides no throughput benefit — to scale further, increase the partition count."
+    },
+    {
+      "id": "msg-pub-031",
+      "type": "multiple-choice",
+      "question": "A subscriber with a durable subscription has been offline for 6 hours. During that time, 20 million messages accumulated. When the subscriber reconnects with 4 consumer instances, what should the team expect?",
+      "options": [
+        "The subscriber immediately catches up with no visible effect",
+        "A temporary spike in processing as the subscriber works through the 20 million message backlog, during which end-to-end latency for this subscriber is elevated",
+        "The 20 million messages are lost",
+        "The broker rejects the subscriber until the backlog is cleared"
+      ],
+      "correct": 1,
+      "explanation": "The subscriber must drain the backlog before it catches up to real-time. During catch-up, it processes old messages — end-to-end latency (time from publish to processing) is high. The team should monitor backlog drain rate and consider temporarily scaling up consumers to clear the backlog faster."
+    },
+    {
+      "id": "msg-pub-032",
+      "type": "multiple-choice",
+      "question": "A system uses a 'notifications' topic. The publisher includes a priority field (high/medium/low) in each message. All priorities go to the same topic in FIFO order. During a spike, low-priority messages delay high-priority alerts. What design change ensures high-priority messages are processed first?",
+      "options": [
+        "Increase broker throughput",
+        "Use separate topics per priority (notifications-high, notifications-low) with the subscriber reading the high-priority topic first",
+        "Add more partitions to the single topic",
+        "Filter by priority at the subscriber"
+      ],
+      "correct": 1,
+      "explanation": "A single FIFO topic can't differentiate priorities. Separate topics per priority let the subscriber prioritize: always drain the high-priority topic before processing medium or low. This ensures critical alerts aren't delayed behind a flood of low-priority messages."
+    },
+    {
+      "id": "msg-pub-033",
+      "type": "multiple-choice",
+      "question": "A topic has 12 partitions. A new subscriber creates a consumer group with 4 instances. How many partitions does each consumer handle?",
+      "options": [
+        "1",
+        "3",
+        "4",
+        "12"
+      ],
+      "correct": 1,
+      "explanation": "12 partitions / 4 consumers = 3 partitions each. Each consumer processes all messages from its assigned partitions. If one consumer is slower, its 3 partitions accumulate a backlog while others stay current."
+    },
+    {
+      "id": "msg-pub-034",
+      "type": "multiple-choice",
+      "question": "A team has 5 pub/sub topics, each with 3-8 subscribers. A new monitoring requirement says they must alert when any subscriber's lag exceeds 5 minutes. What's the best way to implement this?",
+      "options": [
+        "Have each subscriber log its current lag to a file",
+        "Monitor the broker's per-subscription consumer lag metric and set alerts when it exceeds the threshold — the broker already tracks each subscription's position",
+        "Have the publisher track which subscribers have processed each message",
+        "Poll each subscriber's health endpoint"
+      ],
+      "correct": 1,
+      "explanation": "Brokers track each subscription's committed offset vs. the topic's latest offset. Consumer lag (the difference) is a standard broker metric exposed via monitoring APIs. Alert on this metric — no changes to publishers or subscribers needed. This is the primary operational metric for pub/sub health."
+    },
+    {
+      "id": "msg-pub-035",
+      "type": "multiple-choice",
+      "question": "A team wants to test a new version of their invoice service alongside the old one. They create a second durable subscription to the 'orders' topic. Both subscriptions receive all messages independently. After validating the new version, they decommission the old subscription. What must they clean up?",
+      "options": [
+        "Nothing — the broker handles cleanup automatically",
+        "Delete the old subscription to stop the broker from retaining messages for it and consuming storage",
+        "Delete the entire topic and recreate it",
+        "Restart the broker to release the subscription"
+      ],
+      "correct": 1,
+      "explanation": "Orphaned durable subscriptions continue consuming broker storage — the broker retains messages for a subscription that no consumer will ever read. This backlog grows indefinitely (up to retention limits), wasting disk and potentially triggering storage alerts. Always delete subscriptions when they're no longer needed."
+    },
+    {
+      "id": "msg-pub-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A monolith is being decomposed into microservices. Currently, when an order is placed, a single function calls inventory.update(), email.send(), and analytics.track() in sequence. The team wants to decouple these. What messaging pattern replaces the direct calls?",
+          "options": [
+            "Three separate point-to-point queues from the order service to each downstream service",
+            "Pub/sub: the order service publishes OrderPlaced to a topic, and inventory, email, analytics each subscribe independently",
+            "A shared database table that all services poll",
+            "RPC calls between services"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub is the right pattern: the order service publishes once, and each downstream service subscribes independently. No direct dependencies. Unlike point-to-point queues, the order service doesn't need to know about or manage connections to each consumer."
+        },
+        {
+          "question": "Six months later, the team adds 4 more subscriber services (fraud, loyalty, warehouse, recommendations). What changes were needed to the order service?",
+          "options": [
+            "Major refactoring to integrate 4 new downstream services",
+            "None — new services subscribe to the existing topic. The order service is unchanged",
+            "Adding 4 new queue connections to the order service",
+            "Increasing the order service's instance count"
+          ],
+          "correct": 1,
+          "explanation": "This is the payoff of pub/sub: 4 new subscribers added over 6 months, zero changes to the publisher. Each new team independently subscribes to the OrderPlaced topic. The order service doesn't know or care about downstream consumers — true decoupling."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A topic has 3 subscribers. The publisher sends 5,000 msg/s. Each subscriber receives the full stream. What total delivery rate must the broker sustain?",
+          "options": [
+            "5,000 msg/s",
+            "10,000 msg/s",
+            "15,000 msg/s",
+            "20,000 msg/s"
+          ],
+          "correct": 2,
+          "explanation": "Fan-out: 5,000 msg/s × 3 subscribers = 15,000 deliveries/second. The broker's outbound work scales linearly with subscriber count."
+        },
+        {
+          "question": "The team adds 2 more subscribers (5 total). By what percentage did the broker's total delivery rate increase compared to the original 3 subscribers?",
+          "options": [
+            "40%",
+            "67%",
+            "100%",
+            "167%"
+          ],
+          "correct": 1,
+          "explanation": "From 15,000 (3 subscribers) to 25,000 (5 subscribers) = increase of 10,000. Percentage increase = 10,000 / 15,000 = 66.7% ≈ 67%. Each subscriber adds a linear increment to the broker's delivery load."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A durable subscriber is offline for 3 hours. The topic receives 1,000 messages per second. How many messages are in the subscriber's backlog when it reconnects?",
+          "options": [
+            "180,000",
+            "1,080,000",
+            "10,800,000",
+            "108,000,000"
+          ],
+          "correct": 2,
+          "explanation": "1,000 msg/s × 3 hours × 3,600 s/hour = 10,800,000 messages accumulated in the subscription's backlog."
+        },
+        {
+          "question": "The subscriber reconnects with 5 consumer instances, each processing 500 msg/s. The topic continues receiving 1,000 msg/s. How long until the backlog is drained?",
+          "options": [
+            "30 minutes",
+            "1 hour",
+            "2 hours",
+            "6 hours"
+          ],
+          "correct": 2,
+          "explanation": "Total consumption = 5 × 500 = 2,500 msg/s. But new messages keep arriving at 1,000 msg/s. Net drain rate = 2,500 - 1,000 = 1,500 msg/s. Time = 10,800,000 / 1,500 = 7,200 seconds = 2 hours."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A trading dashboard uses an ephemeral subscription to a 'stock-prices' topic. The dashboard disconnects for 5 minutes due to a network issue. When it reconnects, what does it see?",
+          "options": [
+            "All price updates from the past 5 minutes",
+            "Only new price updates published after reconnection — the 5 minutes of updates are lost",
+            "An error preventing reconnection",
+            "The last price update before disconnection, then new ones"
+          ],
+          "correct": 1,
+          "explanation": "Ephemeral subscriptions don't retain messages during disconnection. The 5 minutes of price updates are gone. The dashboard resumes with only new data. For a real-time price display, this is acceptable — stale prices aren't useful."
+        },
+        {
+          "question": "The compliance team says they need a full audit trail and cannot miss any price updates, even during outages. What subscription type should they use?",
+          "options": [
+            "Ephemeral with faster reconnection",
+            "Durable subscription — messages are retained while the subscriber is offline, ensuring no gaps in the audit trail",
+            "A separate topic with manual backup",
+            "Polling the publisher's database directly"
+          ],
+          "correct": 1,
+          "explanation": "Durability is non-negotiable for audit trails. The durable subscription retains all messages while the compliance service is down. On reconnect, it processes the backlog in order, ensuring a complete record. The retention period must exceed the maximum expected downtime."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A 'user-events' topic carries UserCreated, ProfileUpdated, and UserDeleted events at 100,000 msg/s total. The email service only needs UserCreated (5% of traffic). Without filtering, how many irrelevant messages per second does the email service receive?",
+          "options": [
+            "5,000",
+            "50,000",
+            "95,000",
+            "100,000"
+          ],
+          "correct": 2,
+          "explanation": "The email service receives all 100,000 msg/s but only 5% (5,000) are relevant. The other 95% (95,000 msg/s) are received, deserialized, type-checked, and discarded — pure waste."
+        },
+        {
+          "question": "What feature eliminates this waste?",
+          "options": [
+            "Message compression",
+            "Server-side subscription filtering — the broker only delivers messages matching the filter (eventType = UserCreated), reducing delivery to 5,000 msg/s",
+            "Larger consumer instances to handle the full stream",
+            "Message batching"
+          ],
+          "correct": 1,
+          "explanation": "Server-side filtering at the broker eliminates 95% of unnecessary network transfer and consumer processing. The email service receives only 5,000 relevant messages/s instead of 100,000. This enables using much smaller (cheaper) consumer instances."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team splits a single 'events' topic into 15 event-specific topics (UserCreated, OrderPlaced, PaymentCompleted, etc.). The analytics service needs events from all 15 topics. What operational challenge does this create?",
+          "options": [
+            "No challenge — subscribing to 15 topics is trivial",
+            "The analytics service must manage 15 separate subscriptions, each with its own offset tracking, error handling, and monitoring",
+            "The events are duplicated across topics",
+            "The broker can't handle 15 topics"
+          ],
+          "correct": 1,
+          "explanation": "Managing 15 subscriptions means 15 sets of offsets to commit, 15 consumer groups to monitor, 15 potential sources of lag or errors. A bug in one subscription's handling could go unnoticed. The operational burden grows with topic count."
+        },
+        {
+          "question": "What alternative design gives targeted delivery without excessive topic proliferation?",
+          "options": [
+            "A single broad topic with server-side subscription filters — subscribers specify which event types they want, and the broker filters before delivery",
+            "Create even more fine-grained topics",
+            "Use shared subscriptions across all topics",
+            "Merge all events into one large message"
+          ],
+          "correct": 0,
+          "explanation": "A smaller number of domain-level topics (e.g., 'users', 'orders', 'payments') with server-side filtering gives the best of both worlds: the analytics service subscribes to a few broad topics (low operational overhead) while the email service applies a filter to receive only the event types it needs (low bandwidth waste)."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A pub/sub topic for order events has 3 subscribers. The publisher sends messages with an order ID as the partition key, ensuring all events for order #12345 go to the same partition. Why is per-order partitioning important?",
+          "options": [
+            "It reduces broker storage requirements",
+            "It guarantees that events for the same order (Created → Updated → Shipped) are delivered in order to each subscriber",
+            "It increases overall throughput",
+            "It prevents message duplication"
+          ],
+          "correct": 1,
+          "explanation": "Within a partition, messages are delivered in FIFO order. All events for order #12345 in the same partition means subscribers always see OrderCreated before OrderUpdated before OrderShipped — the correct lifecycle sequence."
+        },
+        {
+          "question": "The team also wants per-customer ordering (all orders for customer #789 in sequence). But order ID and customer ID would map to different partitions. What's the tradeoff?",
+          "options": [
+            "No tradeoff — use both keys simultaneously",
+            "You can only partition by one key. Choose order ID (per-order ordering) or customer ID (per-customer ordering), or use a single partition for global ordering at the cost of throughput",
+            "Customer ordering is never needed",
+            "Use random partitioning"
+          ],
+          "correct": 1,
+          "explanation": "Partition keys determine ordering scope. You can't partition by two different keys simultaneously — messages are assigned to one partition. Per-order-ID gives per-order ordering (most common). Per-customer-ID gives per-customer ordering but not per-order. Global ordering (one partition) gives both but eliminates parallelism."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A subscriber with a shared subscription has 6 consumers across a 12-partition topic (2 partitions per consumer). One consumer crashes. What happens to its 2 partitions?",
+          "options": [
+            "Those partitions stop being processed entirely",
+            "The broker triggers a rebalance, reassigning the 2 orphaned partitions to the remaining 5 consumers",
+            "The crashed consumer's unprocessed messages are lost",
+            "The publisher is notified to resend messages"
+          ],
+          "correct": 1,
+          "explanation": "Consumer group rebalancing: when a consumer leaves (crash or shutdown), the broker detects the absence and redistributes its partitions among remaining consumers. The 5 remaining consumers now handle 12 partitions — some get 2, some get 3."
+        },
+        {
+          "question": "During the rebalance, what is the impact on message processing?",
+          "options": [
+            "No impact — processing continues seamlessly",
+            "A brief pause on some or all partitions while the broker reassigns ownership. The duration and scope depend on the rebalancing protocol (eager pauses all partitions; cooperative pauses only the reassigned ones)",
+            "All messages published during rebalance are permanently lost",
+            "The topic stops accepting new messages until rebalance completes"
+          ],
+          "correct": 1,
+          "explanation": "Rebalancing causes a processing pause. With eager (stop-the-world) rebalancing, all partitions are revoked and reassigned, pausing the entire consumer group briefly. With cooperative (incremental) rebalancing, only the affected partitions pause while others continue. After rebalance, consumers resume from their last committed offsets — no messages are lost."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An event-driven system uses pub/sub. Service A publishes PaymentReceived. Service B subscribes and publishes InvoiceGenerated. Service C subscribes to InvoiceGenerated and publishes ShipmentCreated. What type of workflow coordination is this?",
+          "options": [
+            "Synchronous request-response",
+            "Event-driven choreography — services independently react to events and produce new events, forming an implicit workflow",
+            "Centralized orchestration with a workflow engine",
+            "Batch processing pipeline"
+          ],
+          "correct": 1,
+          "explanation": "Choreography: no central controller. Each service listens for relevant events, does its work, and publishes outcome events. The workflow emerges from the interactions. This is loosely coupled but harder to reason about than centralized orchestration."
+        },
+        {
+          "question": "A new requirement: if invoice generation fails, the payment should be reversed. In choreography, how is this compensation typically handled?",
+          "options": [
+            "Service B calls Service A's HTTP API to reverse the payment",
+            "Service B publishes an InvoiceGenerationFailed event, and Service A subscribes to it and handles the payment reversal",
+            "A central orchestrator detects the failure and reverses the payment",
+            "The payment is left in place and reconciled manually"
+          ],
+          "correct": 1,
+          "explanation": "In choreography, compensation follows the same event-driven pattern. Service B publishes a failure event, and Service A (the payment service) subscribes to it and triggers reversal. Each service is responsible for its own compensation logic. This keeps the decoupling intact — no direct service-to-service calls."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A company migrates 50 microservices from HTTP-based communication to pub/sub. After migration, what metric should decrease?",
+          "options": [
+            "Total number of messages in the system",
+            "Direct service-to-service dependencies — services now depend on topics, not on each other",
+            "Total system latency",
+            "Number of infrastructure components"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub replaces direct N-to-M service dependencies with indirect topic-based communication. A service that previously called 5 other services now publishes to 1 topic. The dependency graph becomes much simpler and more maintainable."
+        },
+        {
+          "question": "After the migration, a developer changes Service A's event schema (adding a new required field). 8 subscriber services break because they can't parse the new format. What practice prevents this?",
+          "options": [
+            "Never change event schemas",
+            "Schema versioning and backward-compatible evolution — new fields should be optional, and subscribers should tolerate unknown fields",
+            "Force all subscribers to deploy simultaneously with the publisher",
+            "Use plain text instead of structured messages"
+          ],
+          "correct": 1,
+          "explanation": "Backward-compatible schema evolution: add fields as optional (with defaults), never remove or rename required fields, and use a schema registry to validate compatibility before deployment. Subscribers should ignore unknown fields. This lets producers and consumers evolve independently — a key benefit of decoupling."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A topic retains messages for 7 days. A new subscriber joins 3 days after the topic was created and reads from 'earliest'. How far back can it read?",
+          "options": [
+            "7 days (the full retention period)",
+            "3 days (back to the topic's creation — that's all the history available)",
+            "0 — it can only read new messages",
+            "1 day"
+          ],
+          "correct": 1,
+          "explanation": "The topic has only 3 days of data (it was created 3 days ago). Reading from 'earliest' gives the subscriber all available history — 3 days. The 7-day retention hasn't been fully utilized yet."
+        },
+        {
+          "question": "A different subscriber joins 10 days after topic creation, also reading from 'earliest'. How far back can it read?",
+          "options": [
+            "10 days",
+            "7 days — the oldest 3 days were deleted per the retention policy",
+            "3 days",
+            "0 days"
+          ],
+          "correct": 1,
+          "explanation": "After 10 days, messages from days 1-3 have exceeded the 7-day retention and been deleted. Only days 4-10 remain. The subscriber can read back 7 days — the maximum the retention policy allows. This is why retention period is a critical configuration for replay scenarios."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team needs to replay 2 weeks of events from a topic to backfill a new subscriber's database. The topic's retention is 30 days. Can they do this?",
+          "options": [
+            "No — pub/sub events can't be replayed once delivered",
+            "Yes — the subscriber can set its starting offset to 2 weeks ago and reprocess all events from that point",
+            "Only if the publisher resends the events",
+            "Only if a separate backup system exists"
+          ],
+          "correct": 1,
+          "explanation": "Topics with retention act as replayable event logs. A new subscriber can start from any point within the retention window. This is a powerful pattern for: backfilling new services, rebuilding state after bugs, migrating data, and testing new consumer logic against historical data."
+        },
+        {
+          "question": "The backlog is approximately 6 billion messages (5,000 msg/s × 14 days). The subscriber processes at 50,000 msg/s. Approximately how long will the backfill take?",
+          "options": [
+            "About 3 hours",
+            "About 12 hours",
+            "About 33 hours",
+            "About 5 days"
+          ],
+          "correct": 2,
+          "explanation": "5,000 msg/s × 14 days × 86,400 s/day ≈ 6.05 billion messages. At 50,000 msg/s: 6,050,000,000 / 50,000 ≈ 121,000 seconds ≈ 33.6 hours. Backfilling large topics takes significant time — plan for it and ensure the subscriber can handle the sustained throughput."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A topic has messages with a tenant_id attribute. The broker supports attribute-based filtering. Subscriber A creates a filter: tenant_id = 'acme-corp'. What does subscriber A receive?",
+          "options": [
+            "All messages on the topic",
+            "Only messages where tenant_id equals 'acme-corp'",
+            "Messages without a tenant_id attribute",
+            "Messages from all tenants except acme-corp"
+          ],
+          "correct": 1,
+          "explanation": "Attribute-based filtering at the broker evaluates each message's attributes against the subscriber's filter expression. Only matching messages are delivered. This reduces the subscriber's processing load to just its tenant's events."
+        },
+        {
+          "question": "The team creates 200 subscriber instances, one per tenant, each filtered by tenant_id. The broker evaluates the filter for every subscriber on every message. At 100,000 msg/s with 200 filters, what concern should the team have?",
+          "options": [
+            "No concern — broker-side filtering is free",
+            "Filter evaluation overhead: 100,000 × 200 = 20 million filter evaluations per second, which may strain broker CPU",
+            "Messages will be lost during evaluation",
+            "The topic will run out of storage"
+          ],
+          "correct": 1,
+          "explanation": "Each message must be evaluated against every filter subscription. At scale, this becomes a significant CPU cost. Alternatives include: per-tenant topics (no filter evaluation needed), coarser filter expressions, or broker implementations optimized for high-cardinality filtering."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An IoT topic receives data from 10,000 devices. A regional analytics service subscribes with a filter: device_region = 'us-west'. Only 2,000 devices are in US-West. What percentage of network bandwidth is saved by the filter compared to receiving all messages?",
+          "options": [
+            "20%",
+            "50%",
+            "80%",
+            "100%"
+          ],
+          "correct": 2,
+          "explanation": "Without filtering: all 10,000 devices' data. With filtering: only 2,000 devices (20% of traffic). Bandwidth saved = 80%. The subscriber only receives and processes what it needs."
+        },
+        {
+          "question": "The team considers using separate topics per region instead of filters. What's the advantage of separate topics over filtered subscriptions?",
+          "options": [
+            "No advantage — filters are always preferable",
+            "No per-message filter evaluation overhead at the broker, and each topic's throughput is independently scalable",
+            "Separate topics always use less storage",
+            "Separate topics guarantee message ordering across regions"
+          ],
+          "correct": 1,
+          "explanation": "Separate topics eliminate the broker's filter evaluation cost entirely — messages are routed by topic at publish time. Each regional topic can be independently configured (partitions, retention, replication). The tradeoff: more topics to manage operationally, and publishers must route to the correct topic."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A topic has 3 subscriptions: A, B, C. Subscription A has 4 consumers, B has 8 consumers, C has 2 consumers. The topic has 8 partitions. How many of subscription A's consumers are active?",
+          "options": [
+            "4 — all are active since 4 ≤ 8 partitions",
+            "8 — they share partitions with other subscriptions",
+            "2 — only as many as the smallest consumer group",
+            "1 — only one consumer per subscription"
+          ],
+          "correct": 0,
+          "explanation": "Each subscription has its own independent consumer group. Subscription A has 4 consumers for 8 partitions — all 4 are active, each handling 2 partitions. Subscription B has 8 consumers for 8 partitions — all active, 1 each. Subscription C has 2 consumers — both active, each handling 4 partitions. Subscriptions don't compete for partitions."
+        },
+        {
+          "question": "Subscription A scales to 10 consumers. How many are now active?",
+          "options": [
+            "4",
+            "8 — limited by the partition count",
+            "10",
+            "12"
+          ],
+          "correct": 1,
+          "explanation": "With 8 partitions and 10 consumers, only 8 can be assigned partitions. 2 consumers sit idle. To utilize all 10, the topic would need at least 10 partitions."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A microservices team publishes UserDeleted events via pub/sub. Subscriber services must: (1) delete user data, (2) cancel pending orders, (3) revoke API keys. Subscriber 2 fails to process the event. Are the other subscribers affected?",
+          "options": [
+            "Yes — all subscribers fail together to maintain consistency",
+            "No — each subscriber processes independently. Subscriber 2's failure doesn't affect 1 or 3",
+            "Only if they share a database",
+            "The publisher must retry for all subscribers simultaneously"
+          ],
+          "correct": 1,
+          "explanation": "Subscriber independence: each subscription processes events at its own pace with its own error handling. Subscriber 2's failure has no impact on subscribers 1 and 3. This is a benefit (fault isolation) and a challenge (potential cross-subscriber inconsistency)."
+        },
+        {
+          "question": "Subscriber 2 fails and the event goes to its DLQ. User data is deleted (subscriber 1 succeeded) but pending orders remain (subscriber 2 failed). How should the team handle this inconsistency?",
+          "options": [
+            "Roll back subscriber 1's deletion",
+            "Monitor the DLQ, investigate subscriber 2's failure, fix the root cause, and replay the event from the DLQ to complete the order cancellation",
+            "Ignore it — it will resolve itself",
+            "Delete all data for this user manually"
+          ],
+          "correct": 1,
+          "explanation": "DLQ monitoring is critical in event-driven systems. The team investigates the failure (bug? downstream dependency?), fixes the root cause, and replays the failed event. This achieves eventual consistency — all subscribers eventually process the event, though not simultaneously."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A pub/sub topic has messages averaging 2 KB each. The topic has 5 subscribers, and the publisher sends 10,000 msg/s. What is the total outbound bandwidth from the broker?",
+          "options": [
+            "20 MB/s",
+            "50 MB/s",
+            "100 MB/s",
+            "200 MB/s"
+          ],
+          "correct": 2,
+          "explanation": "Fan-out bandwidth: 10,000 msg/s × 2 KB/msg × 5 subscribers = 100,000 KB/s = 100 MB/s. The broker must have sufficient network capacity for this outbound throughput."
+        },
+        {
+          "question": "Adding 5 more subscribers (10 total) changes outbound bandwidth to:",
+          "options": [
+            "100 MB/s",
+            "150 MB/s",
+            "200 MB/s",
+            "500 MB/s"
+          ],
+          "correct": 2,
+          "explanation": "10,000 msg/s × 2 KB × 10 subscribers = 200 MB/s. Outbound bandwidth doubled when subscribers doubled. Fan-out bandwidth scales linearly with subscriber count — a critical factor in broker capacity planning."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A subscriber is configured to auto-acknowledge messages upon receipt (before processing). The consumer crashes mid-processing. What happens to the unprocessed message?",
+          "options": [
+            "It's redelivered to another consumer",
+            "It's permanently lost — the broker already received the ack and removed it",
+            "The broker detects the crash and re-queues it",
+            "The publisher is notified to resend"
+          ],
+          "correct": 1,
+          "explanation": "Auto-ack removes the message from the subscription the instant it's delivered. If the consumer crashes before finishing processing, the message is gone — the broker considers it successfully consumed. Auto-ack is only safe for non-critical workloads where occasional message loss is acceptable."
+        },
+        {
+          "question": "What acknowledgment mode should be used for critical workloads like payment processing?",
+          "options": [
+            "Auto-ack for maximum throughput",
+            "Manual ack after successful processing — the message is only removed after the subscriber explicitly confirms completion",
+            "No ack — the broker tracks completion automatically",
+            "Batch ack every hour"
+          ],
+          "correct": 1,
+          "explanation": "Manual acknowledgment: the subscriber processes the message, confirms success, then explicitly acks. The broker only removes the message after receiving the ack. If the consumer crashes before acking, the message is redelivered. This ensures at-least-once delivery for critical workloads."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A pub/sub system uses topic hierarchies: events/orders/created, events/orders/updated, events/payments/completed. A subscriber wants all order events but not payment events. Using the wildcard subscription events/orders/*, what does it receive?",
+          "options": [
+            "Only events/orders/created",
+            "Both events/orders/created and events/orders/updated",
+            "All events including payments",
+            "Nothing — wildcards aren't supported"
+          ],
+          "correct": 1,
+          "explanation": "The single-level wildcard * matches any one segment. events/orders/* matches events/orders/created and events/orders/updated, but not events/payments/completed (different path). Topic hierarchies with wildcards provide flexible routing without managing many individual subscriptions."
+        },
+        {
+          "question": "Another subscriber needs ALL events across all domains. What wildcard pattern captures everything?",
+          "options": [
+            "events/*",
+            "events/# (multi-level wildcard matching any number of sub-levels)",
+            "events/orders/*",
+            "*"
+          ],
+          "correct": 1,
+          "explanation": "The multi-level wildcard # (or ** in some systems) matches across multiple path segments. events/# captures events/orders/created, events/orders/updated, events/payments/completed, and any future event types. events/* would only match one level deeper (e.g., events/foo, not events/orders/created)."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system uses pub/sub for inter-service events. Service A publishes OrderCreated. Service B subscribes and inserts an invoice row. Due to at-least-once redelivery, B receives the same event twice. Without any idempotency handling, what happens?",
+          "options": [
+            "The duplicate is automatically detected by the broker",
+            "A duplicate invoice row is inserted in Service B's database",
+            "The second delivery is silently dropped",
+            "Service B crashes"
+          ],
+          "correct": 1,
+          "explanation": "Without idempotency, the consumer blindly inserts another row. At-least-once delivery means duplicates are expected, not exceptional. Consumers must be designed to handle them."
+        },
+        {
+          "question": "How should Service B prevent duplicate invoice rows?",
+          "options": [
+            "Use a unique constraint on order ID in the database — the duplicate insert fails harmlessly, and the subscriber acks the message",
+            "Process messages faster to avoid redeliveries",
+            "Switch to exactly-once delivery at the broker level",
+            "Add more database capacity"
+          ],
+          "correct": 0,
+          "explanation": "A unique constraint makes the consumer idempotent: the first insert succeeds, and any subsequent inserts for the same order ID fail with a constraint violation. The consumer catches this expected error and acks the message. The outcome is the same regardless of how many times the message is delivered."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A pub/sub system has 3 subscribers to a 'transactions' topic. Subscriber A processes in 10ms, B in 100ms, C in 5 seconds. A regulation requires all subscribers to finish before a transaction is considered complete. What determines the end-to-end latency?",
+          "options": [
+            "The average processing time across all subscribers (1.7 seconds)",
+            "The fastest subscriber (10ms)",
+            "The slowest subscriber (5 seconds) — the chain is only as fast as its slowest link",
+            "The sum of all processing times (5.11 seconds)"
+          ],
+          "correct": 2,
+          "explanation": "When all subscribers must complete, end-to-end latency is determined by the slowest one. Even though A and B finish quickly, the system waits for C. This is a common challenge in regulated systems — one slow subscriber bottlenecks the entire workflow."
+        },
+        {
+          "question": "How can the team reduce the impact of the slow subscriber without removing the completion requirement?",
+          "options": [
+            "Slow down A and B to match C's speed for consistency",
+            "Optimize C's processing (parallelize, reduce external calls) or use a shared subscription with more consumer instances to increase C's throughput",
+            "Delete subscriber C",
+            "Buffer messages at the publisher for 5 seconds"
+          ],
+          "correct": 1,
+          "explanation": "The bottleneck is C's processing speed. Options: optimize C's code, scale C horizontally with shared subscriptions (multiple consumers processing C's messages in parallel), or break C's work into smaller async steps. The goal is bringing C's effective latency closer to A and B."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A company migrates from HTTP to pub/sub between its order and inventory services. Previously, the order service called inventory and received an immediate success/failure response. After migration, the order service publishes and moves on. How does it learn if inventory reservation succeeded?",
+          "options": [
+            "The publisher checks the subscription status on the broker",
+            "The order service subscribes to response events (InventoryReserved or InventoryInsufficient) published by the inventory service",
+            "The broker confirms processing success",
+            "It doesn't need to know — fire and forget"
+          ],
+          "correct": 1,
+          "explanation": "In async pub/sub, the publisher doesn't get a synchronous response. To learn outcomes, the order service subscribes to result events from the inventory service. This creates bidirectional event flow: order → inventory (OrderPlaced) and inventory → order (InventoryReserved/InventoryInsufficient)."
+        },
+        {
+          "question": "This bidirectional event flow creates two topics with both services acting as publisher and subscriber. What must the team be careful about?",
+          "options": [
+            "Message size limits between the two topics",
+            "Avoiding infinite event loops and ensuring correlation IDs link response events back to the original order",
+            "Topic naming conventions",
+            "Broker storage capacity"
+          ],
+          "correct": 1,
+          "explanation": "Bidirectional events risk loops: order publishes → inventory reacts → publishes → order reacts → publishes... Correlation IDs are essential to link InventoryReserved back to the original OrderPlaced. Event design must distinguish between triggering events and result events to prevent cascading reactions."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team monitors their pub/sub system and sees subscription A's consumer lag is 0 and subscription B's lag is 5 million messages. Both subscribe to the same topic. What does this tell them?",
+          "options": [
+            "The topic is broken",
+            "Subscription A is processing in real-time while Subscription B has fallen significantly behind",
+            "Subscription B has more consumers",
+            "The publisher is sending messages only to Subscription A"
+          ],
+          "correct": 1,
+          "explanation": "Consumer lag = backlog of unprocessed messages. Subscription A (lag 0) is keeping up in real time. Subscription B (lag 5M) is far behind. Possible causes: B has fewer consumers, B's processing is slower, or B was recently offline. The topic delivers the same messages to both — the difference is subscriber-side."
+        },
+        {
+          "question": "Subscription B's lag continues growing at 1,000 messages per second. The topic receives 10,000 msg/s. What is Subscription B's effective processing rate?",
+          "options": [
+            "1,000 msg/s",
+            "9,000 msg/s",
+            "10,000 msg/s",
+            "11,000 msg/s"
+          ],
+          "correct": 1,
+          "explanation": "If the backlog grows by 1,000 msg/s, the subscriber is consuming at 10,000 - 1,000 = 9,000 msg/s. It's 1,000 msg/s short of keeping up. The team needs to add approximately 11% more consumer capacity (or optimize processing speed) to stop the lag from growing."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system publishes OrderPlaced events. Currently, only the inventory service consumes them via a point-to-point queue. A new requirement says analytics must also process every OrderPlaced event. Adding a second consumer to the existing queue would cause each event to go to only one consumer. What's the solution?",
+          "options": [
+            "Have the order service publish each message twice",
+            "Migrate to pub/sub: the order service publishes to a topic, and both inventory and analytics create independent subscriptions",
+            "Create a second queue and have the producer publish to both",
+            "Have inventory forward events to analytics after processing"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub naturally supports multiple independent consumers. The order service publishes once, and each subscriber gets the full stream. This scales cleanly — when a third, fourth, or fifth service needs OrderPlaced events, they just subscribe."
+        },
+        {
+          "question": "The team chooses the separate-queues approach instead of pub/sub: they create a second queue and publish to both. Six months later, 5 services need OrderPlaced events. What problem has accumulated?",
+          "options": [
+            "No problem — 5 queues works fine",
+            "The order service now publishes to 5 separate queues, creating tight coupling. Adding or removing a consumer requires changing the order service's configuration and redeploying it",
+            "The queues are slower with more consumers",
+            "Messages are duplicated across all queues"
+          ],
+          "correct": 1,
+          "explanation": "With point-to-point queues, the publisher must know about and manage every consumer's queue. Each new consumer requires a publisher change. This is the coupling problem pub/sub solves — the publisher publishes once to a topic, and subscriber management is decentralized."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A subscriber processes events and commits offsets in batches of 1,000 messages. It processes messages 1-1,000 and commits. It processes 1,001-2,000 but crashes at message 1,800 without committing. When it restarts, which message does it receive?",
+          "options": [
+            "Message 1,801 — the exact point of the crash",
+            "Message 1,001 — the offset after the last commit, replaying 800 already-processed messages",
+            "Message 2,001 — it skips the uncommitted batch",
+            "Message 1 — it restarts from the beginning"
+          ],
+          "correct": 1,
+          "explanation": "The last committed offset was at message 1,000. On restart, the subscriber resumes from message 1,001. Messages 1,001-1,800 are reprocessed (duplicates). This is the at-least-once tradeoff of batch offset commits — the window of potential reprocessing equals the batch size."
+        },
+        {
+          "question": "What can the team do to reduce the number of duplicate messages reprocessed after a crash?",
+          "options": [
+            "Increase the batch size for better throughput",
+            "Decrease the commit interval (commit more frequently), shrinking the window of uncommitted messages at the cost of more frequent offset writes",
+            "Disable offset commits entirely",
+            "Use a larger consumer instance"
+          ],
+          "correct": 1,
+          "explanation": "Smaller commit intervals = fewer uncommitted messages at any point = less reprocessing after a crash. The tradeoff: more frequent commits add I/O overhead. A commit every 100 messages risks replaying at most 100, vs. every 1,000 risking up to 1,000. The consumer should still be idempotent regardless of commit frequency."
+        }
+      ]
+    },
+    {
+      "id": "msg-pub-061",
+      "type": "multi-select",
+      "question": "Which are advantages of pub/sub over point-to-point queues? (Select all that apply)",
+      "options": [
+        "Multiple subscribers each receive every message independently",
+        "Adding new subscribers requires no changes to the publisher",
+        "Messages are delivered with lower latency than point-to-point queues",
+        "Publisher and subscribers are decoupled — the publisher doesn't know who subscribes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Pub/sub provides fan-out (all subscribers get every message), publisher decoupling (no changes needed for new subscribers), and identity decoupling (publisher doesn't know subscribers). Latency isn't inherently lower — both patterns have similar delivery latency for a single consumer."
+    },
+    {
+      "id": "msg-pub-062",
+      "type": "multi-select",
+      "question": "Which scenarios are best suited for pub/sub rather than point-to-point? (Select all that apply)",
+      "options": [
+        "One event needs to trigger actions in multiple independent services",
+        "A single worker pool processes background jobs (each job handled by one worker)",
+        "Broadcasting configuration updates to all service instances",
+        "Distributing click-stream events to analytics, fraud detection, and recommendations simultaneously"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Pub/sub excels when multiple consumers each need every message: event fan-out to multiple services, broadcast to all instances, and distributing events to multiple analytics pipelines. A single worker pool (each job goes to one worker) is point-to-point — competing consumers on a queue."
+    },
+    {
+      "id": "msg-pub-063",
+      "type": "multi-select",
+      "question": "Which are true about durable subscriptions? (Select all that apply)",
+      "options": [
+        "Messages are retained by the broker even when the subscriber is offline",
+        "The subscriber can resume from where it left off after reconnecting",
+        "They consume broker storage proportional to the unprocessed backlog",
+        "They guarantee exactly-once delivery"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Durable subscriptions retain messages during offline periods, support resume-from-last-position, and consume storage for the backlog. They do NOT guarantee exactly-once delivery — delivery semantics (at-most-once, at-least-once, exactly-once) are a separate concern from subscription durability."
+    },
+    {
+      "id": "msg-pub-064",
+      "type": "multi-select",
+      "question": "Which factors increase the total outbound bandwidth of a pub/sub topic? (Select all that apply)",
+      "options": [
+        "Adding more subscribers (each gets a copy of every message)",
+        "Increasing average message size",
+        "Increasing publisher throughput (messages per second)",
+        "Increasing message retention period"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Outbound bandwidth = message_rate × message_size × subscriber_count. More subscribers, larger messages, and higher throughput all increase it. Retention period affects storage (disk), not outbound bandwidth (network) — retained messages sit on disk until a subscriber reads them."
+    },
+    {
+      "id": "msg-pub-065",
+      "type": "multi-select",
+      "question": "Which are valid strategies for managing message ordering in pub/sub? (Select all that apply)",
+      "options": [
+        "Partition by a key (e.g., customer ID) to guarantee per-key ordering",
+        "Use a single partition for strict global ordering at the cost of throughput",
+        "Include sequence numbers in messages so subscribers can detect and correct out-of-order delivery",
+        "Add more subscribers to improve ordering"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Key-based partitioning gives per-key order. A single partition gives global order (but limits parallelism). Sequence numbers let consumers detect gaps or reorder. Adding subscribers doesn't affect ordering — it's a delivery fan-out concern, not an ordering mechanism."
+    },
+    {
+      "id": "msg-pub-066",
+      "type": "multi-select",
+      "question": "Which are risks of having too many fine-grained topics? (Select all that apply)",
+      "options": [
+        "Higher operational overhead: more topics to create, configure, monitor, and set permissions for",
+        "Subscribers needing multiple event types must manage many individual subscriptions",
+        "Cross-topic ordering is not guaranteed, making event sequencing harder",
+        "Lower message throughput per topic"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Fine-grained topics increase management burden, subscription complexity, and cross-topic ordering challenges. Per-topic throughput isn't inherently lower — each topic's throughput is independent. The real cost is operational, not performance."
+    },
+    {
+      "id": "msg-pub-067",
+      "type": "multi-select",
+      "question": "Which techniques help a pub/sub subscriber achieve idempotent processing? (Select all that apply)",
+      "options": [
+        "Unique constraint on the business key in the database (duplicate inserts fail harmlessly)",
+        "Track processed message IDs in a deduplication store",
+        "Use upsert (insert-or-update) instead of blind insert",
+        "Increase the visibility timeout to reduce redeliveries"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Unique constraints, dedup stores, and upserts all make processing idempotent — safe to execute multiple times. Increasing the visibility timeout reduces the frequency of redeliveries but doesn't eliminate them. Idempotency is about making the consumer safe regardless of how many times a message arrives."
+    },
+    {
+      "id": "msg-pub-068",
+      "type": "multi-select",
+      "question": "Which are valid subscription modes in common pub/sub systems? (Select all that apply)",
+      "options": [
+        "Exclusive: exactly one consumer per subscription, receives all messages",
+        "Shared: multiple consumers compete for messages within the subscription (each message to one consumer)",
+        "Failover: one active consumer, others on standby — if the active fails, a standby takes over",
+        "Synchronous: the publisher blocks until all subscribers acknowledge each message"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Exclusive (one consumer), shared (competing consumers), and failover (active-standby) are standard subscription modes. 'Synchronous' isn't a subscription mode — pub/sub is inherently asynchronous. Publisher-side acknowledgment (that the broker received the message) is separate from subscriber processing."
+    },
+    {
+      "id": "msg-pub-069",
+      "type": "multi-select",
+      "question": "What should a team monitor for each pub/sub subscription? (Select all that apply)",
+      "options": [
+        "Subscription backlog (number of undelivered messages)",
+        "Consumer lag (age of the oldest unprocessed message)",
+        "Message delivery rate vs. publish rate",
+        "Total number of topics in the broker"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Backlog count, consumer lag (message age), and delivery-vs-publish rate are core per-subscription health metrics. Growing backlog or lag means the subscriber is falling behind. Total topic count is a global broker metric, not a per-subscription health indicator."
+    },
+    {
+      "id": "msg-pub-070",
+      "type": "multi-select",
+      "question": "Which are true about message filtering in pub/sub? (Select all that apply)",
+      "options": [
+        "Server-side filtering reduces network bandwidth by delivering only matching messages",
+        "Client-side filtering is simpler to implement but wastes bandwidth on irrelevant messages",
+        "Filters can match on message attributes and headers",
+        "Server-side filters guarantee that messages are processed in order"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Server-side filtering saves bandwidth, client-side is simpler but wasteful, and filters typically match on attributes/headers. Filtering doesn't affect ordering guarantees — ordering is determined by partitioning and consumer configuration, not filter logic."
+    },
+    {
+      "id": "msg-pub-071",
+      "type": "multi-select",
+      "question": "Which are consequences of a subscriber falling far behind (large backlog)? (Select all that apply)",
+      "options": [
+        "Increased broker storage consumption for retained messages",
+        "Higher end-to-end latency for that subscriber's processing",
+        "Other subscribers' processing performance is degraded",
+        "Risk of data loss if the backlog exceeds the topic's retention period"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "A large backlog consumes broker storage, increases that subscriber's processing latency (old messages), and risks data loss if messages age past the retention window. Other subscribers are NOT affected — each subscription's progress is independent."
+    },
+    {
+      "id": "msg-pub-072",
+      "type": "multi-select",
+      "question": "Which are valid reasons to use separate topics per domain instead of one topic with filters? (Select all that apply)",
+      "options": [
+        "Eliminates per-message filter evaluation overhead at the broker",
+        "Independent scaling and configuration per topic (partitions, retention, replication)",
+        "Clearer ownership — each team owns their domain's topic",
+        "Guaranteed cross-topic message ordering"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Separate topics eliminate filter overhead, allow independent configuration, and enable clear team ownership. Cross-topic ordering is NOT a benefit — separate topics make cross-topic ordering harder, since each topic has its own independent partition ordering."
+    },
+    {
+      "id": "msg-pub-073",
+      "type": "multi-select",
+      "question": "A publisher changes its event schema (adds a new field). Which practices help prevent breaking existing subscribers? (Select all that apply)",
+      "options": [
+        "Make new fields optional with default values (backward-compatible evolution)",
+        "Use a schema registry to validate compatibility before publishing the new schema",
+        "Version event types (e.g., OrderCreated.v2) so subscribers can handle multiple versions",
+        "Require all subscribers to deploy the new schema simultaneously with the publisher"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Optional fields, schema registries, and versioning enable independent evolution — producers and consumers deploy on their own schedules. Requiring simultaneous deployment defeats the purpose of decoupling and is impractical at scale with many independent subscriber teams."
+    },
+    {
+      "id": "msg-pub-074",
+      "type": "multi-select",
+      "question": "Which are true about pub/sub message retention? (Select all that apply)",
+      "options": [
+        "Messages can be retained for a configurable period (e.g., 7 days, 30 days)",
+        "Retained messages enable new subscribers to replay historical events",
+        "Retention consumes broker storage proportional to throughput × retention period",
+        "Longer retention periods improve message delivery latency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Retention is configurable, enables replay for new subscribers, and costs storage (rate × time × message_size). Retention does NOT improve delivery latency — it's about how long historical messages are available, not how fast current messages are delivered."
+    },
+    {
+      "id": "msg-pub-075",
+      "type": "multi-select",
+      "question": "Which are challenges of cross-region pub/sub replication? (Select all that apply)",
+      "options": [
+        "Added latency for inter-region message delivery (100-300ms per region hop)",
+        "Risk of message loss if async replication is used and a region fails before replication completes",
+        "Potential for duplicate messages when failover occurs between regions",
+        "Reduced message throughput within a single region"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cross-region replication adds inter-region latency, risks message loss with async replication, and can produce duplicates during failovers. Within-region throughput is not directly reduced — the local broker handles local traffic independently of replication (though replication consumes some broker resources)."
+    },
+    {
+      "id": "msg-pub-076",
+      "type": "multi-select",
+      "question": "Which are benefits of using partition keys in pub/sub? (Select all that apply)",
+      "options": [
+        "Messages with the same key go to the same partition, enabling per-key ordering",
+        "Consumers can be assigned specific key ranges for data locality",
+        "Key-based distribution spreads load across partitions",
+        "Partition keys guarantee exactly-once delivery"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Partition keys enable per-key ordering, data locality, and load distribution across partitions. They do not affect delivery guarantees — exactly-once requires additional mechanisms (idempotent consumers, transactional processing) regardless of how messages are partitioned."
+    },
+    {
+      "id": "msg-pub-077",
+      "type": "multi-select",
+      "question": "An orphaned durable subscription (no active consumers, subscription still exists) causes which problems? (Select all that apply)",
+      "options": [
+        "The broker continues retaining messages for the subscription, consuming storage",
+        "The subscription's backlog grows indefinitely until retention limits are hit",
+        "It can trigger false alerts in monitoring systems (e.g., high consumer lag)",
+        "It causes other subscriptions to process messages more slowly"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Orphaned subscriptions consume storage (broker retains messages nobody reads), grow unbounded backlogs, and trigger misleading alerts (subscription lag looks critical). They do NOT affect other subscriptions' performance — each subscription's delivery is independent."
+    },
+    {
+      "id": "msg-pub-078",
+      "type": "numeric-input",
+      "question": "A topic has 20 partitions. A subscriber's consumer group has 8 instances. If partitions are distributed as evenly as possible, how many partitions does the busiest consumer handle?",
+      "answer": 3,
+      "unit": "partitions",
+      "tolerance": "exact",
+      "explanation": "20 partitions / 8 consumers = 2.5, so partitions can't be perfectly even. 4 consumers get 3 partitions each (4 × 3 = 12) and 4 consumers get 2 each (4 × 2 = 8), totaling 20. The busiest consumers handle 3 partitions — 50% more load than those with 2. Uneven partition distribution can cause consumer hotspots."
+    },
+    {
+      "id": "msg-pub-079",
+      "type": "numeric-input",
+      "question": "A topic has 7-day retention at 5,000 msg/s, 1 KB each. The team needs to add a new subscriber that replays from the beginning. How many GB must the subscriber process for the full backfill? (Use 1 GB = 1,000,000 KB)",
+      "answer": 3024,
+      "unit": "GB",
+      "tolerance": 0.1,
+      "explanation": "Data per second: 5,000 × 1 KB = 5,000 KB/s. Per day: 5,000 × 86,400 = 432,000,000 KB = 432 GB. Over 7 days: 432 × 7 = 3,024 GB. The new subscriber must process over 3 TB just to catch up — backfill capacity planning matters."
+    },
+    {
+      "id": "msg-pub-080",
+      "type": "numeric-input",
+      "question": "A subscriber commits offsets every 10 seconds. It processes 5,000 msg/s. If it crashes at the worst possible moment (just before a commit), how many messages will be reprocessed as duplicates on restart?",
+      "answer": 50000,
+      "unit": "messages",
+      "tolerance": "exact",
+      "explanation": "Worst case: the subscriber crashes just before committing, having processed up to 10 seconds of messages since the last commit. 5,000 msg/s × 10 s = 50,000 messages replayed. Smaller commit intervals reduce this window but add I/O overhead."
+    },
+    {
+      "id": "msg-pub-081",
+      "type": "numeric-input",
+      "question": "A durable subscription has a backlog of 2 million messages. The subscriber processes 10,000 messages per second. The publisher continues sending 2,000 msg/s. How many seconds until the backlog is drained?",
+      "answer": 250,
+      "unit": "seconds",
+      "tolerance": 0.05,
+      "explanation": "Net drain rate = consumption rate - production rate = 10,000 - 2,000 = 8,000 msg/s. Time to drain = 2,000,000 / 8,000 = 250 seconds. The subscriber must consume faster than the publisher produces to make progress on the backlog."
+    },
+    {
+      "id": "msg-pub-082",
+      "type": "numeric-input",
+      "question": "A topic receives 100,000 msg/s. A subscriber uses server-side filtering matching 15% of messages (15,000 msg/s delivered). Without filtering, the subscriber needed 20 consumer instances. Assuming linear scaling, how many instances does it need with filtering?",
+      "answer": 3,
+      "unit": "instances",
+      "tolerance": "exact",
+      "explanation": "Without filtering: 20 instances for 100,000 msg/s = 5,000 msg/s per instance. With filtering: 15,000 msg/s / 5,000 per instance = 3 instances. Server-side filtering cuts infrastructure cost from 20 to 3 instances — an 85% reduction in consumer fleet size."
+    },
+    {
+      "id": "msg-pub-083",
+      "type": "numeric-input",
+      "question": "A pub/sub topic receives 2,000 msg/s. Each message is 1 KB. The broker retains messages for 3 days. How much storage does this topic require in GB? (Use 1 GB = 1,000,000 KB)",
+      "answer": 518.4,
+      "unit": "GB",
+      "tolerance": 0.1,
+      "explanation": "Storage rate = 2,000 msg/s × 1 KB = 2,000 KB/s. Per day: 2,000 × 86,400 = 172,800,000 KB. For 3 days: 172,800,000 × 3 = 518,400,000 KB = 518.4 GB. High-throughput topics with multi-day retention require significant disk capacity."
+    },
+    {
+      "id": "msg-pub-084",
+      "type": "numeric-input",
+      "question": "A topic has 6 partitions receiving 12,000 msg/s total (evenly distributed). A subscriber has 3 consumers, each assigned 2 partitions. What is each consumer's throughput in msg/s?",
+      "answer": 4000,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "Per partition: 12,000 / 6 = 2,000 msg/s. Each consumer handles 2 partitions: 2 × 2,000 = 4,000 msg/s per consumer."
+    },
+    {
+      "id": "msg-pub-085",
+      "type": "numeric-input",
+      "question": "A subscriber has 10 parallel consumer threads. Each thread processes one message at a time, taking 2 milliseconds on average. What is the subscriber instance's maximum throughput in msg/s?",
+      "answer": 5000,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "Each thread: 1,000 ms / 2 ms = 500 msg/s. With 10 threads: 10 × 500 = 5,000 msg/s maximum throughput per instance."
+    },
+    {
+      "id": "msg-pub-086",
+      "type": "numeric-input",
+      "question": "A topic has 5 subscribers. A 6th subscriber is added. By what percentage does the broker's total outbound message delivery increase?",
+      "answer": 20,
+      "unit": "%",
+      "tolerance": 0.01,
+      "explanation": "From 5 to 6 subscribers = 1 additional copy per message. Percentage increase = 1/5 = 20%. Each new subscriber adds a fixed increment to the broker's outbound load."
+    },
+    {
+      "id": "msg-pub-087",
+      "type": "numeric-input",
+      "question": "A topic retains messages for 7 days at 10,000 msg/s, 500 bytes each. The team wants to increase retention to 14 days. How many additional TB of storage are needed? (Use 1 TB = 1,000 GB, 1 GB = 1,000 MB, 1 MB = 1,000 KB, 1 KB = 1,000 bytes)",
+      "answer": 3,
+      "unit": "TB",
+      "tolerance": 0.1,
+      "explanation": "Data rate: 10,000 × 500 = 5,000,000 bytes/s = 5 MB/s. Per day: 5 × 86,400 = 432,000 MB = 432 GB. Current (7 days) = 3,024 GB ≈ 3 TB. New (14 days) = 6,048 GB ≈ 6 TB. Additional = 3 TB."
+    },
+    {
+      "id": "msg-pub-088",
+      "type": "numeric-input",
+      "question": "A pub/sub topic receives 50,000 msg/s. 200 subscriptions each have a filter that the broker evaluates per message. Each filter evaluation takes 0.01 milliseconds. How many CPU-seconds of filter evaluation are required per second?",
+      "answer": 100,
+      "unit": "CPU-seconds",
+      "tolerance": 0.1,
+      "explanation": "Evaluations per second: 50,000 msg/s × 200 filters = 10,000,000 evaluations. CPU time: 10,000,000 × 0.01 ms = 10,000,000 × 0.00001 s = 100 CPU-seconds per second. This means 100 CPU cores dedicated solely to filter evaluation — a significant cost at scale."
+    },
+    {
+      "id": "msg-pub-089",
+      "type": "numeric-input",
+      "question": "A subscriber commits its offset every 5 seconds. If the subscriber crashes just before a commit, what is the maximum number of messages that could be reprocessed on restart? The consumption rate is 2,000 msg/s.",
+      "answer": 10000,
+      "unit": "messages",
+      "tolerance": "exact",
+      "explanation": "Worst case: crash happens just before a commit, so up to 5 seconds of processed-but-uncommitted messages are replayed. 2,000 msg/s × 5 s = 10,000 messages. Smaller commit intervals reduce this window but add commit overhead."
+    },
+    {
+      "id": "msg-pub-090",
+      "type": "ordering",
+      "question": "Rank these messaging patterns from narrowest to broadest message distribution:",
+      "items": [
+        "Pub/sub topic with 10 subscribers",
+        "Point-to-point queue with competing consumers (each message to 1 of N workers)",
+        "Pub/sub topic with 3 subscribers",
+        "Pub/sub topic with 1 subscriber"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "Point-to-point: each message goes to exactly 1 consumer (narrowest). Pub/sub with 1 subscriber: also 1 copy, but the pub/sub infrastructure supports adding more. Pub/sub with 3: 3 copies per message. Pub/sub with 10: 10 copies (broadest). Distribution breadth scales linearly with subscriber count."
+    },
+    {
+      "id": "msg-pub-091",
+      "type": "ordering",
+      "question": "Rank these subscription types from least to most data preservation during subscriber downtime:",
+      "items": [
+        "Ephemeral subscription (no message retention for this subscriber)",
+        "Durable subscription with 7-day retention",
+        "Durable subscription with 1-hour retention",
+        "Durable subscription with 30-day retention"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Ephemeral: zero retention (all missed messages lost). 1-hour durable: messages older than 1 hour during downtime are lost. 7-day: covers most planned maintenance windows. 30-day: maximum preservation, survives extended outages."
+    },
+    {
+      "id": "msg-pub-092",
+      "type": "ordering",
+      "question": "Rank these steps for safely adding a new subscriber to a production pub/sub topic:",
+      "items": [
+        "Monitor the new subscriber's processing metrics and error rates in production",
+        "Deploy and validate the subscriber in a staging environment with test events",
+        "Create a durable subscription on the production topic",
+        "Deploy the subscriber to production connected to the new subscription"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "First validate in staging (catch bugs early). Then create the production subscription (starts accumulating messages). Then deploy the production subscriber (processes the backlog and live traffic). Finally monitor (verify it's healthy). Creating the subscription before deploying ensures no messages are missed during deployment."
+    },
+    {
+      "id": "msg-pub-093",
+      "type": "ordering",
+      "question": "Rank these from least to most subscriber coupling to the publisher:",
+      "items": [
+        "Direct HTTP call to the publisher's API",
+        "Subscribe to a pub/sub topic (subscriber doesn't know who publishes)",
+        "Poll a shared database table for changes",
+        "Subscribe to a point-to-point queue from the publisher"
+      ],
+      "correctOrder": [1, 3, 2, 0],
+      "explanation": "Pub/sub: loosest — subscriber only knows the topic name, not the publisher. Point-to-point queue: knows the queue, somewhat coupled to the producer's output channel. Shared database: coupled to the schema and database availability. Direct HTTP: tightest — subscriber must know the publisher's API address, endpoints, and contract."
+    },
+    {
+      "id": "msg-pub-094",
+      "type": "ordering",
+      "question": "Rank these approaches for directing relevant messages to subscribers, from simplest to most powerful:",
+      "items": [
+        "No filtering — every subscriber receives and processes all messages",
+        "Separate topics per event type — subscribers choose which topics to subscribe to",
+        "Server-side attribute filtering — broker evaluates filter expressions on message headers before delivery",
+        "Content-based routing — broker inspects the message body to route to specific subscriptions"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "No filtering: simplest, but subscribers waste resources on irrelevant messages. Separate topics: straightforward routing by topic, but limited flexibility and more topics to manage. Server-side attribute filtering: flexible header-based matching without topic proliferation. Content-based routing: most powerful (can filter on any message content) but requires the broker to parse payloads — highest complexity and CPU cost."
+    },
+    {
+      "id": "msg-pub-095",
+      "type": "ordering",
+      "question": "Rank these topic granularity approaches from coarsest to finest:",
+      "items": [
+        "One topic per bounded context (e.g., 'orders')",
+        "One topic per event type (e.g., 'order-created')",
+        "One topic for all events in the entire system",
+        "One topic per entity instance (e.g., 'order-12345')"
+      ],
+      "correctOrder": [2, 0, 1, 3],
+      "explanation": "All events in one topic: coarsest (maximum noise per subscriber). Per bounded context: moderate (domain-scoped). Per event type: fine (targeted delivery). Per entity instance: finest (maximum isolation but massive topic proliferation). Most systems use per-context or per-event-type granularity."
+    },
+    {
+      "id": "msg-pub-096",
+      "type": "ordering",
+      "question": "Rank these from least to most publisher-side effort per event when distributing to 20 consumer services:",
+      "items": [
+        "Publish once to a pub/sub topic (broker fans out to 20 subscriptions)",
+        "Write to a shared database table (20 services poll independently)",
+        "Publish to 20 separate point-to-point queues",
+        "Make 20 synchronous HTTP calls"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Pub/sub: one publish call, broker handles all distribution (least effort). Shared DB: one write, but requires schema management. 20 queues: 20 separate publish calls per event. 20 HTTP calls: 20 network round-trips with error handling per call (most effort). Pub/sub's efficiency grows with subscriber count."
+    },
+    {
+      "id": "msg-pub-097",
+      "type": "ordering",
+      "question": "Rank these message ordering guarantees from weakest to strongest:",
+      "items": [
+        "Best-effort (messages may arrive in any order)",
+        "Per-partition FIFO (ordered within each partition, unordered across partitions)",
+        "Single-partition total order (one partition, strict global sequence)",
+        "Per-key FIFO across multiple partitions (all messages with the same key are ordered)"
+      ],
+      "correctOrder": [0, 3, 1, 2],
+      "explanation": "Best-effort: no guarantees (weakest). Per-key FIFO: messages with the same key are ordered, but different keys may interleave. Per-partition FIFO: all messages in a partition are ordered regardless of key — stronger because it orders across keys within a partition. Single-partition total order: strict global sequence for all messages (strongest, but limits throughput to one partition)."
+    },
+    {
+      "id": "msg-pub-098",
+      "type": "ordering",
+      "question": "Rank these schema change strategies from least to most disruptive to existing subscribers (assume subscribers use strict schema validation):",
+      "items": [
+        "Add an optional field with a default value",
+        "Rename an existing required field",
+        "Add a new required field without a default value",
+        "Remove a field that subscribers depend on"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "Optional field with default: backward-compatible, existing subscribers unaffected. New required field: old subscribers that ignore unknown fields are fine, but strict validators may reject it. Rename: breaks all subscribers reading the old field name. Remove: breaks all subscribers that depend on the field. Schema evolution should always prefer additive, optional changes."
+    },
+    {
+      "id": "msg-pub-099",
+      "type": "ordering",
+      "question": "Rank these from least to most operationally complex pub/sub deployments:",
+      "items": [
+        "Single-region, single-broker instance",
+        "Single-region broker cluster with replication",
+        "Multi-region active-passive (one region publishes, others replicate)",
+        "Multi-region active-active (all regions publish and subscribe)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Single broker: simplest but least resilient. Regional cluster: adds replication and failover. Active-passive multi-region: adds cross-region replication and failover procedures. Active-active multi-region: most complex — conflict resolution, global ordering challenges, and cross-region consistency."
+    },
+    {
+      "id": "msg-pub-100",
+      "type": "ordering",
+      "question": "A subscriber has stopped processing messages. Rank these investigation steps from first to last:",
+      "items": [
+        "Restart the broker cluster",
+        "Check if the subscriber's consumer instances are running and connected",
+        "Check the subscriber's error logs for processing failures",
+        "Check the subscription's backlog and consumer lag metrics"
+      ],
+      "correctOrder": [1, 2, 3, 0],
+      "explanation": "First verify consumers are running (most common issue). Then check error logs (are they failing?). Then check metrics (is it a throughput problem?). Restarting the broker is a last resort — it's rarely the cause of a single subscriber's issues and risks disrupting other subscribers."
+    }
+  ]
+}

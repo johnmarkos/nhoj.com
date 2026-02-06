@@ -84,7 +84,7 @@ export const CONFIG = {
       title: 'Messaging & Async',
       chapters: [
         { num: 1, title: 'Queue Fundamentals', ready: true },
-        { num: 2, title: 'Pub/Sub & Topics', ready: false },
+        { num: 2, title: 'Pub/Sub & Topics', ready: true },
         { num: 3, title: 'Delivery Guarantees', ready: false },
         { num: 4, title: 'Patterns & Reliability', ready: false },
         { num: 5, title: 'Event-Driven Architecture', ready: false },
