@@ -1,0 +1,1493 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 3,
+  "chapterTitle": "Delivery Guarantees",
+  "chapterDescription": "Message delivery semantics: at-most-once, at-least-once, and exactly-once processing, plus the idempotency, deduplication, and transactional techniques that make them practical.",
+  "problems": [
+    {
+      "id": "msg-del-001",
+      "type": "multiple-choice",
+      "question": "A payment service receives the same charge message twice due to a producer retry. The customer is charged double. Which delivery semantic was the system operating under, and what was missing?",
+      "options": [
+        "At-most-once — the message should have been dropped",
+        "At-least-once without idempotent consumers — retries caused duplicates that weren't handled",
+        "Exactly-once — the system worked correctly",
+        "Best-effort — delivery guarantees don't apply to payments"
+      ],
+      "correct": 1,
+      "explanation": "At-least-once delivery guarantees the message arrives but may produce duplicates (from producer retries, consumer redelivery, etc.). Without idempotent consumers that detect and ignore duplicates, these retries cause real-world harm like double charges. The delivery guarantee worked — the consumer's lack of idempotency was the gap."
+    },
+    {
+      "id": "msg-del-002",
+      "type": "multiple-choice",
+      "question": "A logging pipeline uses at-most-once delivery. During a network hiccup, 0.1% of log events are lost. The team decides this is acceptable. Why might at-most-once be the right choice here?",
+      "options": [
+        "It's never the right choice",
+        "Logging tolerates small data gaps, and at-most-once provides maximum throughput with minimum overhead — no retries, no deduplication, no ack tracking",
+        "At-most-once is more reliable than at-least-once",
+        "The lost logs can be recovered from the producer"
+      ],
+      "correct": 1,
+      "explanation": "At-most-once: fire and forget. No retry logic, no acknowledgment tracking, no dedup overhead. For high-volume, loss-tolerant workloads like logging or telemetry, the simplicity and throughput gains outweigh the small data loss. The 0.1% gap doesn't affect aggregate analytics or alerting."
+    },
+    {
+      "id": "msg-del-003",
+      "type": "multiple-choice",
+      "question": "A consumer processes a message, writes results to a database, but crashes before sending an acknowledgment. The broker redelivers the message. What delivery semantic does this behavior represent?",
+      "options": [
+        "At-most-once — the message was delivered once",
+        "At-least-once — the broker ensures delivery by redelivering unacknowledged messages, even if this causes duplicates",
+        "Exactly-once — each message is processed exactly once",
+        "Best-effort — no guarantees are provided"
+      ],
+      "correct": 1,
+      "explanation": "At-least-once: the broker redelivers any message that wasn't acknowledged, ensuring no message is lost. The tradeoff is potential duplicate processing — the first consumer may have already completed the work before crashing. The consumer must be idempotent to handle this safely."
+    },
+    {
+      "id": "msg-del-004",
+      "type": "multiple-choice",
+      "question": "Why is true exactly-once delivery considered impossible in distributed systems, leading engineers to talk about 'effectively exactly-once' instead?",
+      "options": [
+        "Brokers can't count messages accurately",
+        "Network failures make it impossible to distinguish between 'message lost' and 'acknowledgment lost' — the sender can never know if the receiver processed the message without communicating, which itself can fail",
+        "Exactly-once requires infinite storage",
+        "Message brokers don't support it"
+      ],
+      "correct": 1,
+      "explanation": "The Two Generals' Problem: after sending a message, the sender needs confirmation. But the confirmation itself can be lost. Did the receiver process the message and the ack was lost? Or did the message never arrive? Without reliable confirmation, the sender must choose: retry (risking duplicates) or give up (risking loss). 'Effectively exactly-once' uses idempotency to make retries safe."
+    },
+    {
+      "id": "msg-del-005",
+      "type": "multiple-choice",
+      "question": "A message broker advertises 'exactly-once delivery.' In practice, what does this typically mean?",
+      "options": [
+        "The broker magically prevents all duplicates in all scenarios",
+        "The broker provides at-least-once delivery with built-in deduplication or transactional support, achieving effectively-exactly-once within the broker's scope — but the consumer's side effects must still be idempotent",
+        "Messages are never retried",
+        "The broker buffers messages indefinitely until confirmed"
+      ],
+      "correct": 1,
+      "explanation": "Broker-level 'exactly-once' typically means: idempotent producers (dedup at broker), transactional writes (atomic publish to multiple partitions), and consumer offset management within the same transaction. But once the consumer performs external side effects (DB writes, API calls), the consumer must ensure those are idempotent — the broker can't control external systems."
+    },
+    {
+      "id": "msg-del-006",
+      "type": "multiple-choice",
+      "question": "A producer sends a message to a broker. The broker writes the message to disk but the acknowledgment is lost in the network. The producer, not receiving an ack, retries. What happens?",
+      "options": [
+        "The retry is automatically detected and ignored",
+        "The broker now has two copies of the same message (unless it has producer-side deduplication)",
+        "The original message is overwritten by the retry",
+        "The producer receives an error on the retry"
+      ],
+      "correct": 1,
+      "explanation": "Without producer-side deduplication, the broker treats the retry as a new message. Now the queue has two copies. This is a fundamental source of duplicates in at-least-once systems — the producer can't distinguish 'message lost' from 'ack lost.' Idempotent producers (using sequence numbers) solve this at the broker level."
+    },
+    {
+      "id": "msg-del-007",
+      "type": "multiple-choice",
+      "question": "A producer sends a message to a broker, the broker persists it, but the ack is lost. The producer retries. With idempotent producers enabled, the broker silently discards the retry. What metadata did the producer attach to enable this?",
+      "options": [
+        "A timestamp of when the message was created",
+        "A producer ID and monotonically increasing sequence number — the broker compares against the last seen sequence for that producer and discards duplicates",
+        "A hash of the message body",
+        "The consumer group ID"
+      ],
+      "correct": 1,
+      "explanation": "Idempotent producers tag each message with (producer_id, sequence_number). The broker tracks the latest sequence per producer. A retry has the same sequence as the already-persisted message, so the broker discards it. This eliminates producer-side duplicates — a key building block for exactly-once semantics."
+    },
+    {
+      "id": "msg-del-008",
+      "type": "multiple-choice",
+      "question": "A consumer auto-acks a batch of 50 messages upon receipt, then begins processing them sequentially. After processing 38 messages, the consumer crashes. How many messages are permanently lost?",
+      "options": [
+        "0 — the broker redelivers unprocessed messages",
+        "12 — the 38 processed messages are safe, and the remaining 12 are lost because the broker already removed all 50 from the queue at delivery time",
+        "50 — the entire batch is lost",
+        "38 — only the processed messages are lost"
+      ],
+      "correct": 1,
+      "explanation": "Auto-ack on receipt means the broker removes all 50 messages immediately. The 38 that were processed are fine (results in the DB). The 12 unprocessed messages are gone — the broker has no record of them. This is the at-most-once tradeoff: maximum throughput but no safety net for crashes during processing."
+    },
+    {
+      "id": "msg-del-009",
+      "type": "multiple-choice",
+      "question": "A consumer uses manual ack with a prefetch of 20 messages. It processes all 20 successfully, but crashes before acknowledging any of them. When a new consumer picks up the queue, what happens?",
+      "options": [
+        "The 20 messages are gone — they were already delivered",
+        "All 20 messages are redelivered — the broker has no ack for any of them, so all 20 are processed again by the new consumer, creating 20 duplicate side effects",
+        "Only the last message is redelivered",
+        "The broker waits for the crashed consumer to recover"
+      ],
+      "correct": 1,
+      "explanation": "Without acknowledgment, the broker treats all 20 messages as unprocessed. The prefetch size determines the 'blast radius' of a crash: with a prefetch of 20, up to 20 messages may be reprocessed. Smaller prefetch limits the duplicate window but reduces throughput. This is why prefetch-with-manual-ack consumers must be idempotent."
+    },
+    {
+      "id": "msg-del-010",
+      "type": "multiple-choice",
+      "question": "An order processing system must ensure no order is lost AND no order is processed twice (which would result in double shipments). What combination of techniques achieves this?",
+      "options": [
+        "At-most-once delivery with fast processing",
+        "At-least-once delivery with idempotent consumers — retries ensure no loss, idempotency ensures no duplicate side effects",
+        "Fire-and-forget with producer retries",
+        "Manual acknowledgment without any deduplication"
+      ],
+      "correct": 1,
+      "explanation": "At-least-once ensures no message is lost (the broker retries until acknowledged). Idempotent consumers ensure that duplicate deliveries don't cause duplicate shipments (e.g., check if order #12345 was already shipped before shipping again). Together, they achieve effectively-exactly-once processing."
+    },
+    {
+      "id": "msg-del-011",
+      "type": "multiple-choice",
+      "question": "A consumer receives an OrderShipped event twice due to at-least-once delivery. The second time, it queries a database table, finds a matching record, and skips processing. What did it look up, and what property must this value have?",
+      "options": [
+        "The message timestamp — it must be unique per second",
+        "An idempotency key (e.g., order_id) — it must uniquely identify the logical operation so the consumer can detect that this specific order was already shipped",
+        "The consumer's IP address — it must be static",
+        "The broker's partition number — it must be sequential"
+      ],
+      "correct": 1,
+      "explanation": "The consumer checked an idempotency key — a value that uniquely identifies the business operation (not just the message). The order_id is ideal: it's the same across retries of the same logical event. The key must be deterministic (same value for the same operation) and durable (stored in a database, not just memory)."
+    },
+    {
+      "id": "msg-del-012",
+      "type": "multiple-choice",
+      "question": "A consumer maintains a set of recently processed message IDs in an in-memory cache with a 1-hour TTL. A duplicate message arrives 2 hours after the original. What happens?",
+      "options": [
+        "The duplicate is caught and discarded",
+        "The original message ID has been evicted from the cache, so the duplicate is processed as if it were new",
+        "The cache automatically extends its TTL for important messages",
+        "The broker prevents delivery of messages older than 1 hour"
+      ],
+      "correct": 1,
+      "explanation": "Time-windowed deduplication has a blind spot: duplicates arriving outside the window aren't detected. The original ID was evicted after 1 hour, so the 2-hour-late duplicate looks new. For critical operations, use a persistent dedup store (database) rather than an in-memory cache with a time window."
+    },
+    {
+      "id": "msg-del-013",
+      "type": "multiple-choice",
+      "question": "A microservice writes an order to its database and publishes an OrderCreated event. The event is published, but the database write was slow — it commits 500ms later. A downstream inventory service receives the event and immediately queries the order service's API. What happens?",
+      "options": [
+        "The API returns the order successfully",
+        "The API returns 404 — the event was published before the database write committed, so the order doesn't exist yet when the downstream service queries it",
+        "The inventory service waits for the database write",
+        "The broker delays the event until the database commits"
+      ],
+      "correct": 1,
+      "explanation": "This is a variant of the dual-write timing problem: even without a crash, publishing before the DB commit creates a race condition. The event signals 'order exists' but the data isn't queryable yet. Solutions: publish only after DB commit (still not atomic), use the outbox pattern (event derived from committed data), or have downstream services handle eventual consistency with retries."
+    },
+    {
+      "id": "msg-del-014",
+      "type": "multiple-choice",
+      "question": "A team's events are sometimes lost when their service crashes between writing to the database and publishing to the broker. They add an 'outbox' table to their database. What changes in the write path?",
+      "options": [
+        "The service publishes to the broker first, then writes to the outbox",
+        "The service writes domain data AND an outbox record in a single database transaction. A separate relay reads the outbox and publishes to the broker — eliminating the dual-write",
+        "The outbox table replaces the message broker entirely",
+        "The service writes to the outbox instead of the domain tables"
+      ],
+      "correct": 1,
+      "explanation": "The transactional outbox pattern replaces the dual-write (DB + broker) with a single-DB transaction (domain data + outbox record). A relay process asynchronously publishes outbox entries to the broker. Since both the data and the event are in one DB transaction, they either both commit or both roll back — no more lost events from mid-operation crashes."
+    },
+    {
+      "id": "msg-del-015",
+      "type": "multiple-choice",
+      "question": "Change Data Capture (CDC) can be used as an alternative to the outbox pattern. How does it work for event publishing?",
+      "options": [
+        "It captures changes from the application's logs",
+        "It reads the database's write-ahead log (WAL/binlog) and publishes each committed change as an event — no outbox table needed since the database itself is the source of events",
+        "It intercepts network traffic between services",
+        "It polls the database for changes every second"
+      ],
+      "correct": 1,
+      "explanation": "CDC tools (like Debezium) read the database's transaction log, which captures every committed write. Each change is published as an event. This is reliable (log-based, not polling), low-latency, and doesn't require an outbox table. The database's commit = the event's existence, so there's no dual-write problem."
+    },
+    {
+      "id": "msg-del-016",
+      "type": "multiple-choice",
+      "question": "A consumer calls a third-party shipping API to create a label. The API returns a network timeout after 30 seconds — the consumer doesn't know if the request succeeded or failed. The message will be redelivered. What's the safest approach?",
+      "options": [
+        "Retry immediately — the timeout means it failed",
+        "Query the shipping API for the label using the order ID before retrying. If the label exists, skip creation. If not, retry with an idempotency key so even a duplicate create is safe",
+        "Assume the call failed and create a new label",
+        "Wait for the shipping API to send a confirmation callback"
+      ],
+      "correct": 1,
+      "explanation": "A timeout is ambiguous: the API may have succeeded (label created) or failed (request never arrived). Retrying blindly risks creating a duplicate label. The safe approach: check if the side effect already happened (query for existing label), then retry with an idempotency key as a belt-and-suspenders defense. This handles both the 'succeeded but timeout' and 'genuinely failed' cases."
+    },
+    {
+      "id": "msg-del-017",
+      "type": "multiple-choice",
+      "question": "A team debates between acking messages before vs. after processing. What is the fundamental tradeoff?",
+      "options": [
+        "Ack before: faster processing; ack after: slower processing",
+        "Ack before: at-most-once (risk of message loss on crash); ack after: at-least-once (risk of duplicate processing on crash)",
+        "Ack before: more reliable; ack after: less reliable",
+        "There is no difference"
+      ],
+      "correct": 1,
+      "explanation": "Ack before processing: the message is removed immediately. If processing fails, the message is lost (at-most-once). Ack after processing: the message stays until processing succeeds. If the consumer crashes after processing but before acking, the message is redelivered (at-least-once). Choose based on which failure mode is more acceptable."
+    },
+    {
+      "id": "msg-del-018",
+      "type": "multiple-choice",
+      "question": "A distributed system uses a saga pattern for a multi-step workflow: reserve inventory → charge payment → ship order. The payment step fails. What should happen in a saga?",
+      "options": [
+        "Retry the payment indefinitely",
+        "Execute compensating transactions for completed steps — release the inventory reservation",
+        "Ignore the failure and continue to shipping",
+        "Roll back the entire database to before the saga started"
+      ],
+      "correct": 1,
+      "explanation": "Sagas handle failures through compensating transactions, not rollbacks. Each step has a corresponding compensation action. When payment fails, the saga runs the compensation for inventory (release reservation). This achieves eventual consistency without distributed transactions — each service manages its own data."
+    },
+    {
+      "id": "msg-del-019",
+      "type": "multiple-choice",
+      "question": "A consumer receives a malformed JSON message it cannot parse. It doesn't want to lose the message (it might be a serialization bug that can be fixed), but processing it now is impossible. What should the consumer send to the broker?",
+      "options": [
+        "An ack — mark it as done and move on",
+        "A negative acknowledgment (nack) — telling the broker the consumer couldn't process it. The broker redelivers it (or routes it to a DLQ after max retries), preserving the message for later investigation",
+        "Nothing — let the visibility timeout expire",
+        "A new message with the error details"
+      ],
+      "correct": 1,
+      "explanation": "Nacking explicitly tells the broker: 'I received this but couldn't handle it.' The broker can redeliver (maybe a code fix will arrive) or route to a DLQ after max retries (for manual investigation). Acking would lose the message. Letting the timeout expire works but is slower — nacking provides immediate, explicit failure signaling."
+    },
+    {
+      "id": "msg-del-020",
+      "type": "multiple-choice",
+      "question": "A consumer reads a batch of 500 messages from a topic and commits its offset after the entire batch is processed. What is the maximum number of messages that could be reprocessed if the consumer crashes mid-batch?",
+      "options": [
+        "0",
+        "1",
+        "Up to 500 — the entire batch since the last committed offset",
+        "Exactly 250 (half the batch)"
+      ],
+      "correct": 2,
+      "explanation": "The offset was last committed before this batch. If the consumer crashes at any point during processing (even after processing 499 messages), all 500 will be redelivered on restart because the offset was never advanced. This is the at-least-once window for batch offset commits."
+    },
+    {
+      "id": "msg-del-021",
+      "type": "multiple-choice",
+      "question": "A producer must ensure a message is stored by the broker before considering the send successful. What mechanism provides this guarantee?",
+      "options": [
+        "Fire and forget — the producer assumes success",
+        "Producer-side acknowledgment — the broker confirms it received and persisted the message before the producer proceeds",
+        "The producer reads the message back from the queue",
+        "The consumer sends a confirmation to the producer"
+      ],
+      "correct": 1,
+      "explanation": "Producer acks: the broker sends a confirmation back to the producer after durably storing the message (on disk, replicated, etc.). The producer waits for this ack before considering the send complete. Without it, the message could be lost if the broker crashes before persisting — the producer would never know."
+    },
+    {
+      "id": "msg-del-022",
+      "type": "multiple-choice",
+      "question": "A broker replicates messages to 2 follower nodes before acknowledging the producer. The leader node crashes immediately after the ack. What happens to the message?",
+      "options": [
+        "The message is lost — it was only on the leader",
+        "The message survives — it was replicated to 2 followers before the ack was sent, so a follower can be promoted to leader with the message intact",
+        "The followers also crash",
+        "The producer must resend"
+      ],
+      "correct": 1,
+      "explanation": "Synchronous replication before ack: the message exists on 2 followers when the leader dies. A follower is promoted to leader, and the message is available. This is why replication factor and ack settings matter — 'acks=all' with replication factor 3 means the message survives any single-node failure."
+    },
+    {
+      "id": "msg-del-023",
+      "type": "multiple-choice",
+      "question": "A system uses 'acks=1' (leader-only acknowledgment). The producer sends a message, the leader writes it and acks. Before the message replicates to followers, the leader crashes. What happens?",
+      "options": [
+        "The message is safe on the followers",
+        "The message is lost — it was only on the crashed leader and hadn't been replicated yet",
+        "The broker automatically resends the message",
+        "The producer detects the crash and retries"
+      ],
+      "correct": 1,
+      "explanation": "With acks=1, the leader acks before replication. If the leader crashes before replication completes, the message exists only on the failed node. When a follower is promoted to leader, it doesn't have the message — it's lost. For critical data, use acks=all to ensure replication before acknowledgment."
+    },
+    {
+      "id": "msg-del-024",
+      "type": "multiple-choice",
+      "question": "An e-commerce system processes refunds. The refund consumer is idempotent: before processing, it checks a 'processed_refunds' table for the refund ID. If found, it skips and acks. If not, it processes the refund and records the ID. Why does the order of these operations matter?",
+      "options": [
+        "It doesn't matter — any order works",
+        "The refund must be processed AND the ID recorded in the same atomic transaction. Otherwise, a crash between processing and recording leaves an incomplete state",
+        "The ID must be recorded first, then the refund processed",
+        "The consumer should process refunds without recording IDs"
+      ],
+      "correct": 1,
+      "explanation": "If the consumer processes the refund but crashes before recording the ID, the next delivery won't find the ID in the table and will process the refund again (double refund). The refund processing and ID recording must be atomic — ideally in the same database transaction. This ensures the idempotency check is reliable."
+    },
+    {
+      "id": "msg-del-025",
+      "type": "multiple-choice",
+      "question": "A consumer uses upsert (INSERT ... ON CONFLICT UPDATE) instead of plain INSERT when processing messages. Why does this help with at-least-once delivery?",
+      "options": [
+        "Upsert is faster than insert",
+        "Upsert is naturally idempotent: the first delivery inserts the record, and duplicate deliveries update it to the same values — the final state is the same regardless of how many times the message is processed",
+        "Upsert prevents the consumer from reading old data",
+        "Upsert locks the table during processing"
+      ],
+      "correct": 1,
+      "explanation": "Upsert makes the write idempotent by design. First execution: inserts the record. Subsequent executions: updates the existing record to the same values (no-op or re-applies the same state). The database reaches the same state whether the message is processed once or ten times — exactly the property needed for at-least-once consumers."
+    },
+    {
+      "id": "msg-del-026",
+      "type": "multiple-choice",
+      "question": "A consumer processes messages but occasionally takes 90 seconds for a single message due to a slow downstream API. The visibility timeout is 60 seconds. What delivery issue does this cause?",
+      "options": [
+        "No issue — the consumer finishes processing normally",
+        "The message is redelivered after 60 seconds (while the original consumer is still processing), causing duplicate processing by two consumers simultaneously",
+        "The broker drops the message after 60 seconds",
+        "The consumer receives an error after 60 seconds"
+      ],
+      "correct": 1,
+      "explanation": "When processing exceeds the visibility timeout, the broker assumes the consumer failed and makes the message visible to other consumers. Now two consumers process the same message concurrently — a race condition. Solutions: increase the timeout, implement heartbeat/lease extension, or ensure the consumer is idempotent."
+    },
+    {
+      "id": "msg-del-027",
+      "type": "multiple-choice",
+      "question": "A team implements idempotent producers by assigning each message a monotonically increasing sequence number. The broker tracks the latest sequence number per producer. If a message arrives with a sequence number ≤ the latest, it's a duplicate. What happens if the producer restarts and its sequence counter resets to 0?",
+      "options": [
+        "Nothing — the broker handles restarts automatically",
+        "All new messages appear to be duplicates (sequence 0, 1, 2... ≤ the broker's stored sequence), causing them to be silently dropped until the sequence catches up",
+        "The broker resets its counter too",
+        "The producer automatically resumes from the broker's last sequence"
+      ],
+      "correct": 1,
+      "explanation": "If the producer's sequence resets without the broker's knowledge, legitimate new messages look like stale duplicates. Solutions: use a unique producer ID that changes on restart (so the broker starts fresh for the new ID), or persist the sequence number to durable storage so it survives restarts."
+    },
+    {
+      "id": "msg-del-028",
+      "type": "multiple-choice",
+      "question": "A consumer processes DebitAccount messages using 'UPDATE accounts SET balance = balance - amount WHERE id = ?'. This is not idempotent. The team needs to make it safe for at-least-once delivery. What's the best approach?",
+      "options": [
+        "Switch to at-most-once delivery to avoid retries",
+        "Before applying the debit, check a 'processed_transactions' table for the transaction_id. If found, skip. If not, apply the debit AND insert the transaction_id in the same database transaction",
+        "Set a flag on the account after debiting and check it before each debit",
+        "Use a larger visibility timeout to reduce redeliveries"
+      ],
+      "correct": 1,
+      "explanation": "The idempotency key (transaction_id) gates the debit. The check-then-apply pattern, wrapped in a single DB transaction, ensures the debit executes exactly once: first delivery inserts the ID and applies the debit atomically. Duplicate deliveries find the ID already recorded and skip. The atomic transaction prevents the gap between check and apply."
+    },
+    {
+      "id": "msg-del-029",
+      "type": "multiple-choice",
+      "question": "A consumer processes UpdateUserProfile events. Its handler does: (1) UPDATE users SET name = event.name, email = event.email WHERE id = event.user_id; (2) INSERT INTO profile_changes (user_id, changed_at) VALUES (event.user_id, NOW()). The same event is delivered twice. What's the result?",
+      "options": [
+        "Both operations are idempotent — no issues",
+        "The UPDATE is fine (same result each time), but the INSERT creates a duplicate row in profile_changes — the handler is only partially idempotent",
+        "Both operations fail on the second delivery",
+        "The UPDATE fails because the data is unchanged"
+      ],
+      "correct": 1,
+      "explanation": "The UPDATE with absolute values (SET name = 'X') is idempotent — running it twice produces the same state. But the INSERT appends a new row each time (the audit log grows with duplicates). The handler is partially idempotent: the side effects differ by operation type. Fix: add a unique constraint on (user_id, event_id) to the profile_changes table, or use an upsert."
+    },
+    {
+      "id": "msg-del-030",
+      "type": "multiple-choice",
+      "question": "A system sends an email for each OrderShipped event. The consumer is idempotent for database writes (using upsert), but the email send itself is not idempotent — sending twice means the customer gets two emails. How should the consumer handle this?",
+      "options": [
+        "Accept that customers may receive duplicate emails — it's a minor inconvenience",
+        "Record intent to send in the same DB transaction as other writes (status 'pending'). After commit, send the email and mark 'sent'. On redelivery, check the record — 'pending' or 'sent' means skip the send",
+        "Never use at-least-once delivery with email",
+        "Send the email before writing to the database"
+      ],
+      "correct": 1,
+      "explanation": "Track email intent in the database using a state machine: pending → sent. Before sending, check if this order's email was already recorded. If 'pending' or 'sent,' skip. If not found, insert as 'pending' in the same DB transaction, then send, then mark 'sent.' There's a small window for duplicates (crash after send, before 'sent' update), but this minimizes them to a rare edge case."
+    },
+    {
+      "id": "msg-del-031",
+      "type": "multiple-choice",
+      "question": "A consumer reads messages from a topic and writes the results to another topic (a stream processing pipeline). To achieve exactly-once within this pipeline, the consumer commits its input offset and writes its output message in the same atomic operation. What is this called?",
+      "options": [
+        "Two-phase commit",
+        "Transactional consume-transform-produce — the input offset commit and output write are in the same broker transaction, ensuring both succeed or both fail",
+        "Event sourcing",
+        "Saga pattern"
+      ],
+      "correct": 1,
+      "explanation": "Transactional consume-transform-produce (e.g., Kafka transactions): the consumer reads from topic A, processes, writes to topic B, and commits its offset on topic A — all atomically. If any step fails, everything is rolled back. This provides exactly-once within the broker's scope, but external side effects still need idempotency."
+    },
+    {
+      "id": "msg-del-032",
+      "type": "multiple-choice",
+      "question": "A distributed system needs to coordinate a write across two services: Service A's database and Service B's database. A traditional two-phase commit (2PC) is proposed. What's the main drawback?",
+      "options": [
+        "2PC is too fast for production use",
+        "2PC requires all participants to be available and responsive during the entire transaction, creating tight coupling and blocking — if any participant fails or is slow, all others are blocked",
+        "2PC doesn't guarantee atomicity",
+        "2PC only works with a single database"
+      ],
+      "correct": 1,
+      "explanation": "2PC has a blocking phase: after the coordinator says 'prepare,' all participants must hold locks until the coordinator says 'commit' or 'abort.' If the coordinator crashes, participants are stuck holding locks indefinitely. This tight coupling and blocking makes 2PC impractical for high-throughput distributed systems — sagas are the common alternative."
+    },
+    {
+      "id": "msg-del-033",
+      "type": "multiple-choice",
+      "question": "A saga's step 2 (charge $50 payment) succeeded, but step 3 (reserve shipping) failed. The saga must undo step 2. What specific action does the compensation perform, and why isn't it a database rollback?",
+      "options": [
+        "It rolls back the payment transaction in the database",
+        "It issues a $50 refund — a new business operation. It's not a DB rollback because the charge was already committed and may have been sent to the payment provider. The refund is a forward action that reverses the business effect",
+        "It marks the payment as 'pending' and retries step 3",
+        "It deletes the charge record from the database"
+      ],
+      "correct": 1,
+      "explanation": "Compensating transactions are forward actions, not rollbacks. The charge was committed (possibly already visible on the customer's statement). The compensation is a refund — a new operation that reverses the business effect. This is fundamentally different from a DB rollback: the customer sees 'charge $50' then 'refund $50' in their history, not 'nothing happened.'"
+    },
+    {
+      "id": "msg-del-034",
+      "type": "multiple-choice",
+      "question": "A consumer uses an in-memory dedup set to track processed message IDs. The consumer crashes and restarts. On restart, a previously processed message is redelivered. What happens?",
+      "options": [
+        "The dedup set detects the duplicate and skips it",
+        "The in-memory dedup set was lost on crash — it starts empty. The redelivered message appears new and is processed again, creating a duplicate side effect",
+        "The broker prevents redelivery after a consumer restart",
+        "The message is automatically routed to the DLQ"
+      ],
+      "correct": 1,
+      "explanation": "In-memory dedup is volatile — it dies with the process. After a restart, every message appears new because the dedup set is empty. This is the fundamental weakness of in-memory dedup: it only catches duplicates during a single consumer lifetime. For crash-safe dedup, use a persistent store (database, Redis) that survives restarts."
+    },
+    {
+      "id": "msg-del-035",
+      "type": "multiple-choice",
+      "question": "A consumer processes events and stores results in a database. To ensure exactly-once semantics, the consumer stores the message offset alongside the result in the same database transaction. On restart, it reads the last stored offset and seeks to that position. Why is this effective?",
+      "options": [
+        "It's not effective — databases can't store offsets",
+        "By storing the offset and the result atomically, the consumer's state is always consistent: either both the result and the offset are committed, or neither is. On restart, it resumes from exactly the right position",
+        "The database is faster than the broker for offset storage",
+        "This only works for single-partition topics"
+      ],
+      "correct": 1,
+      "explanation": "This is the 'store offset with result' pattern. The database transaction ensures the processing result and the offset are committed together. If the consumer crashes after writing but before the next poll, the restart reads the stored offset and resumes correctly — no reprocessing, no gap. The consumer effectively manages its own exactly-once guarantee."
+    },
+    {
+      "id": "msg-del-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A stock trading platform sends BuyOrder messages. The consumer executes trades. Due to at-least-once redelivery, the same BuyOrder is delivered twice. Without idempotency, what happens?",
+          "options": [
+            "The second order is automatically cancelled",
+            "The customer buys double the intended amount of stock",
+            "The broker refunds the duplicate trade",
+            "The exchange rejects the duplicate order"
+          ],
+          "correct": 1,
+          "explanation": "Without idempotency, each delivery triggers a new trade. The customer intended to buy 100 shares but ends up with 200. Financial systems are especially sensitive to duplicates because the side effects (real money, real trades) can't be easily reversed."
+        },
+        {
+          "question": "The team adds an idempotency key (order_id) to each BuyOrder. Before executing, the consumer checks if order_id was already processed. What data store should hold the processed order IDs?",
+          "options": [
+            "An in-memory set that's cleared on restart",
+            "A durable database — the idempotency check must survive consumer restarts, otherwise restarts create a window for duplicates",
+            "A local file on the consumer's disk",
+            "The message broker's metadata store"
+          ],
+          "correct": 1,
+          "explanation": "The idempotency store must be durable and survive consumer restarts. An in-memory set loses all IDs on restart, allowing every message to appear 'new.' A database persists the IDs across restarts, crashes, and even consumer replacements. For financial systems, this durability is non-negotiable."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A microservice writes an order to its database and publishes an OrderCreated event to a broker. These are two separate operations. If the service crashes after the DB write but before the broker publish, what's the inconsistency?",
+          "options": [
+            "The broker has the event but the database doesn't have the order",
+            "The database has the order but downstream services are never notified — data divergence between the source and subscribers",
+            "Both operations are rolled back",
+            "The broker detects the crash and compensates"
+          ],
+          "correct": 1,
+          "explanation": "The dual-write problem: the database and broker are separate systems that can't share a transaction. A crash between them leaves the database updated but the event unpublished. Downstream services (billing, shipping) never learn about the order."
+        },
+        {
+          "question": "The team implements the transactional outbox pattern. Now the service writes the order AND an outbox record in a single database transaction. A relay process publishes outbox records to the broker. The relay crashes after reading an outbox record but before publishing. What happens?",
+          "options": [
+            "The outbox record is lost",
+            "The relay restarts and re-reads the unpublished outbox record (since it's still marked as unpublished), and publishes it — no data is lost",
+            "The database rolls back the order",
+            "The broker creates the event from the database directly"
+          ],
+          "correct": 1,
+          "explanation": "The outbox record persists in the database regardless of relay crashes. The relay picks up unpublished records on restart. The event may be published with some delay, but it's never lost. The relay itself should be idempotent — publishing the same event twice is handled by consumer-side dedup."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer calls a third-party email API to send order confirmation emails. The API has no idempotency support. The team wants at-least-once delivery for reliability. How many layers of dedup defense should they implement?",
+          "options": [
+            "Zero — at-least-once handles everything",
+            "At least two: (1) check a local 'sent_emails' table before calling the API, and (2) use the message's idempotency key to prevent duplicate processing. Defense in depth compensates for the API's lack of idempotency support",
+            "One — just use the broker's dedup feature",
+            "Three — one per message hop"
+          ],
+          "correct": 1,
+          "explanation": "When external APIs lack idempotency support, the consumer must build its own protection layers. The local dedup table catches most duplicates. The idempotency key check prevents reprocessing. Together, they minimize the window for duplicate emails. No single layer is perfect (crash between check and send), so defense in depth is the practical standard."
+        },
+        {
+          "question": "Despite both layers, a crash occurs after the email is sent but before the 'sent_emails' record is committed. The email is sent again on redelivery. The team asks: can this gap be fully closed?",
+          "options": [
+            "Yes — use a distributed transaction between the email API and the database",
+            "No — the email send and the database write are fundamentally separate operations. Reducing the gap is possible, but eliminating it requires the external API to support idempotency. Without that, some rare duplicates are inevitable",
+            "Yes — send the email faster",
+            "Yes — use synchronous processing instead of messaging"
+          ],
+          "correct": 1,
+          "explanation": "This is the external side-effect problem: two separate systems (email API, local DB) can't be made atomic. The gap can be shrunk (record 'pending' before sending, update to 'sent' after) but not eliminated without API-side idempotency. For APIs that support idempotency keys, the gap closes because the API itself rejects duplicates."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes messages with a 60-second visibility timeout. Average processing time is 10 seconds, but P99 is 55 seconds. Approximately how often will messages be redelivered due to timeout?",
+          "options": [
+            "Never — 60 seconds is well above the average",
+            "Rarely — about 1% of messages exceed P99, and some of those may exceed 60 seconds, causing occasional redeliveries",
+            "Frequently — 50% of messages exceed the timeout",
+            "Always — the timeout is too short for any message"
+          ],
+          "correct": 1,
+          "explanation": "With P99 at 55 seconds and timeout at 60 seconds, there's only a 5-second margin for the slowest 1% of messages. Some of those (P99.5, P99.9) likely exceed 60 seconds, causing redeliveries. The timeout should have a comfortable margin above P99.9 — or the consumer should use heartbeat extension for long-running messages."
+        },
+        {
+          "question": "The team sets the visibility timeout to 120 seconds (2x P99). What's the downside of a longer timeout?",
+          "options": [
+            "Messages take longer to process",
+            "If a consumer truly crashes, its messages are invisible for 120 seconds before being redelivered to another consumer — increasing recovery latency",
+            "The broker uses more storage",
+            "The producer must wait longer"
+          ],
+          "correct": 1,
+          "explanation": "Longer timeouts mean longer recovery time after real crashes. A consumer that crashes at second 1 of a 120-second timeout leaves messages invisible for 119 more seconds. This is the visibility timeout tradeoff: too short causes spurious redeliveries, too long delays crash recovery. Heartbeat-based lease extension gets the best of both worlds."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A saga orchestrates: (1) reserve inventory, (2) charge payment, (3) schedule shipping. Step 2 (charge payment) fails. What must the saga do?",
+          "options": [
+            "Retry step 2 indefinitely",
+            "Run compensation for step 1: release the inventory reservation. Step 3 was never executed, so no compensation is needed for it",
+            "Roll back the database to before step 1",
+            "Skip to step 3 and ship without payment"
+          ],
+          "correct": 1,
+          "explanation": "The saga runs compensations in reverse order for completed steps. Step 1 succeeded (inventory reserved), so it must be compensated (inventory released). Step 2 failed, so no compensation needed (the charge never went through). Step 3 never started. After compensation, the system is back to a consistent state."
+        },
+        {
+          "question": "The compensation for step 1 (release inventory) also fails due to a network error. What happens?",
+          "options": [
+            "The saga gives up and leaves the system inconsistent",
+            "The compensation must be retried — compensating transactions must be designed to be idempotent and eventually succeed, often with exponential backoff and alerting",
+            "The original saga is retried from step 1",
+            "The inventory service detects the failure and self-corrects"
+          ],
+          "correct": 1,
+          "explanation": "Compensations must eventually succeed — they're the system's consistency mechanism. If a compensation fails, it's retried with backoff. Compensations should be idempotent (releasing an already-released reservation is a no-op). If compensations permanently fail, the system enters an inconsistent state requiring manual intervention — which is why compensation failures trigger high-severity alerts."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer sends 10,000 messages per second with acks=all and a replication factor of 3. The broker must write to the leader and 2 followers before acknowledging. What impact does this have compared to acks=1 (leader-only)?",
+          "options": [
+            "No difference in latency",
+            "Higher publish latency — the producer waits for 3 nodes to confirm the write instead of 1, adding replication time to each message",
+            "Lower publish latency due to parallelism",
+            "The producer sends more messages"
+          ],
+          "correct": 1,
+          "explanation": "acks=all adds replication latency to every publish. Instead of waiting for just the leader (acks=1), the producer waits for all in-sync replicas to confirm. This increases per-message latency but ensures the message survives any single node failure. It's the durability-latency tradeoff."
+        },
+        {
+          "question": "The team switches to acks=0 (fire-and-forget) for their telemetry pipeline. The producer doesn't wait for any acknowledgment. What does the team gain and lose?",
+          "options": [
+            "Gains reliability, loses throughput",
+            "Gains maximum throughput and minimum latency, but loses delivery guarantees — messages can be lost without the producer knowing",
+            "Gains exactly-once semantics",
+            "No change from acks=all"
+          ],
+          "correct": 1,
+          "explanation": "acks=0: the producer sends and immediately moves on. No waiting, maximum throughput. But if the broker crashes before writing the message, or the message is lost in transit, the producer never knows. This is at-most-once at the producer level — acceptable for telemetry where small losses are tolerable."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer reads from a topic and writes results to an external database. It commits offsets to the broker after each batch. If the consumer crashes after the DB write but before the offset commit, what happens on restart?",
+          "options": [
+            "The database writes are rolled back",
+            "The consumer re-reads the batch (offset wasn't committed) and writes to the database again — creating duplicate DB records unless the writes are idempotent",
+            "The broker skips the uncommitted batch",
+            "The consumer resumes from the correct position"
+          ],
+          "correct": 1,
+          "explanation": "The DB write and offset commit are two separate operations (another dual-write!). The DB has the data, but the offset wasn't committed. On restart, the consumer re-reads from the last committed offset, reprocessing the batch. DB writes must be idempotent (upsert, unique constraints) to handle this."
+        },
+        {
+          "question": "The team changes the design: instead of committing offsets to the broker, the consumer stores the offset in the same database transaction as the result. Why is this better?",
+          "options": [
+            "It's not better — offsets should always be stored in the broker",
+            "The offset and result are committed atomically in one transaction. On restart, the consumer reads its last offset from the database and seeks to that position — no reprocessing, no duplicates",
+            "The database is faster for offset storage",
+            "The broker is freed from offset management"
+          ],
+          "correct": 1,
+          "explanation": "Storing offsets with results in one DB transaction eliminates the dual-write between broker and database. The consumer's state is always consistent: either both the result and offset are committed, or neither is. This achieves exactly-once for the database write without requiring separate idempotency logic."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A notification system sends push notifications, emails, and SMS for each event. The team wants at-least-once delivery for event processing but acknowledges that duplicate notifications are a bad user experience. What's their best approach?",
+          "options": [
+            "Switch to at-most-once delivery to avoid duplicates",
+            "Use at-least-once delivery with idempotent notification tracking: check if a notification was already sent for this event before sending, using a durable 'sent_notifications' table",
+            "Accept duplicate notifications as inevitable",
+            "Buffer all notifications and send them in a daily batch"
+          ],
+          "correct": 1,
+          "explanation": "At-least-once ensures no events are lost. Idempotent notification tracking prevents duplicate sends: before sending, check the 'sent_notifications' table for this event ID. If found, skip. If not, insert a record and send. There's still a small race window (crash after send, before insert), but it minimizes duplicates to a rare edge case."
+        },
+        {
+          "question": "The race condition: the consumer sends the SMS, then crashes before recording it in the 'sent_notifications' table. On redelivery, it sends the SMS again. What's the best practical mitigation?",
+          "options": [
+            "Record the notification as 'pending' BEFORE sending, then update to 'sent' after. On redelivery, 'pending' means 'likely already sent' — skip the send. This minimizes duplicates but can't fully eliminate them (crash before 'pending' write)",
+            "Use a distributed transaction between the SMS API and the database",
+            "Send the SMS faster to reduce the crash window",
+            "Use synchronous communication instead of messaging"
+          ],
+          "correct": 0,
+          "explanation": "The pending/sent state machine is the best practical mitigation. Write 'pending' before sending, send, then write 'sent.' On redelivery, 'pending' or 'sent' means skip. The gap can't be fully closed (crash before the 'pending' write still allows a duplicate), but this shrinks the window from 'entire send duration' to 'time to write one DB row.' For external side effects, this best-effort dedup is the practical standard."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer publishes messages with a unique message_id. The broker stores each message_id for 5 minutes to detect duplicates. A network outage causes a producer retry after 7 minutes. What happens?",
+          "options": [
+            "The broker detects the duplicate",
+            "The broker's dedup window has expired (5 minutes), so the retry is accepted as a new message — creating a duplicate in the topic",
+            "The producer generates a new message_id",
+            "The outage prevents the retry from reaching the broker"
+          ],
+          "correct": 1,
+          "explanation": "Broker-side deduplication uses a time-windowed ID cache. After the window expires, the broker forgets the ID. A 7-minute-delayed retry falls outside the 5-minute window, so it's treated as new. The dedup window must exceed the maximum possible retry delay — or the producer must use persistent sequence numbers instead of time-windowed dedup."
+        },
+        {
+          "question": "To handle this, the team uses idempotent producers with persistent sequence numbers instead of time-windowed dedup. What's the advantage?",
+          "options": [
+            "Sequence numbers expire faster than message IDs",
+            "The broker tracks the latest sequence per producer permanently (or with very long retention). Any message with a sequence ≤ the latest is rejected as a duplicate, regardless of how much time has passed",
+            "Sequence numbers are smaller, saving storage",
+            "The producer doesn't need to retry"
+          ],
+          "correct": 1,
+          "explanation": "Sequence-based dedup is not time-limited. The broker stores the latest sequence number per producer. Any out-of-order or duplicate message (sequence ≤ latest) is rejected regardless of when it arrives. This is stronger than time-windowed dedup for long outages or slow retries."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes events and uses a database table to track processed event IDs for idempotency. Over 6 months, the table grows to 500 million rows. Query performance degrades. What's causing this?",
+          "options": [
+            "The database doesn't support large tables",
+            "The idempotency table grows indefinitely — every processed message ID is stored forever, and the 'check if ID exists' query slows as the table grows",
+            "The consumer has a memory leak",
+            "The broker is sending too many messages"
+          ],
+          "correct": 1,
+          "explanation": "Persistent idempotency stores grow unboundedly unless cleaned up. 500 million rows means every idempotency check scans a massive index. The table needs a retention policy: delete entries older than the maximum possible redelivery window (e.g., 7 days) using a background cleanup job."
+        },
+        {
+          "question": "The team adds a cleanup job that deletes idempotency records older than 24 hours. Under what condition could this cause duplicate processing?",
+          "options": [
+            "It can't — 24 hours is always sufficient",
+            "If a message is redelivered more than 24 hours after original processing — the idempotency record is gone, so the consumer treats it as new",
+            "If the cleanup job crashes",
+            "If the database is slow"
+          ],
+          "correct": 1,
+          "explanation": "The retention window must exceed the maximum possible redelivery delay. If a consumer crashes and the message sits in the queue for 25 hours before being picked up, the idempotency record is gone. Set the retention based on your system's maximum end-to-end redelivery time, with a safety margin."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A choreographed saga processes an order: OrderService publishes OrderPlaced → InventoryService reserves stock and publishes StockReserved → PaymentService charges and publishes PaymentCompleted → ShippingService ships. PaymentService fails to charge. In choreography, who initiates compensation?",
+          "options": [
+            "The OrderService, since it started the saga",
+            "The PaymentService publishes a PaymentFailed event. Each previous service subscribes to it and compensates independently",
+            "A central saga orchestrator",
+            "No one — the system stays inconsistent"
+          ],
+          "correct": 1,
+          "explanation": "In choreography, there's no central coordinator. PaymentService publishes PaymentFailed. InventoryService subscribes to this event and releases the reservation. OrderService subscribes and marks the order as failed. Each service independently knows what to compensate based on the failure event."
+        },
+        {
+          "question": "Compared to an orchestrated saga (where a central coordinator directs the workflow), what's the main disadvantage of choreography?",
+          "options": [
+            "Choreography is always slower",
+            "The workflow logic is distributed across services, making it harder to understand, debug, and modify the end-to-end flow. No single place shows the complete saga",
+            "Choreography can't handle failures",
+            "Choreography requires more infrastructure"
+          ],
+          "correct": 1,
+          "explanation": "In choreography, the saga's logic is implicit — it emerges from the event subscriptions across many services. No single service or diagram shows the full flow. Debugging requires tracing events across multiple services. Adding a new step means modifying multiple services. Orchestration centralizes this logic, making it explicit and easier to reason about."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes messages and commits its offset every 100 messages. It crashes after processing 80 messages in the current batch (without committing). How many messages are reprocessed on restart?",
+          "options": [
+            "0 — the 80 processed messages are saved",
+            "20 — only the unprocessed ones",
+            "80 — all messages since the last committed offset",
+            "100 — the entire batch"
+          ],
+          "correct": 2,
+          "explanation": "The last committed offset was before this batch. All 80 already-processed messages are in the uncommitted window. On restart, the consumer resumes from the last committed offset and re-reads all 80 (plus the 20 that weren't processed). In practice, 80 are duplicates and 20 are new — but the consumer processes all 100."
+        },
+        {
+          "question": "The team wants to reduce the reprocessing window. What are the tradeoffs of committing after every single message?",
+          "options": [
+            "No tradeoffs — always commit after every message",
+            "Maximum at-most-once window of 1 message, but significantly higher I/O overhead — every message requires an offset commit operation, reducing throughput",
+            "Messages process slower",
+            "The broker runs out of storage for offsets"
+          ],
+          "correct": 1,
+          "explanation": "Per-message commits minimize the reprocessing window to 1 message but add an I/O operation per message. At 10,000 msg/s, that's 10,000 offset commits per second — significant overhead. The sweet spot depends on the workload: critical financial data warrants committing every message, while analytics might commit every 1,000 or every 5 seconds."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team uses acks=all with a replication factor of 3 (1 leader + 2 followers). During a network partition, one follower becomes unreachable. The leader has only 1 in-sync replica (ISR) instead of 2. What should the broker do when a producer sends a message?",
+          "options": [
+            "Accept the message — 1 replica is enough",
+            "It depends on the min.insync.replicas setting. If set to 2, the broker rejects the write (not enough replicas). If set to 1, it accepts the write with reduced durability",
+            "Wait for the follower to recover",
+            "Switch to acks=0 automatically"
+          ],
+          "correct": 1,
+          "explanation": "min.insync.replicas controls the minimum number of replicas that must confirm a write for acks=all. With min.insync.replicas=2, the broker rejects writes when only 1 replica is in sync — preserving durability guarantees at the cost of availability. With min.insync.replicas=1, writes continue but with weaker durability. This is a CAP theorem tradeoff."
+        },
+        {
+          "question": "The team sets min.insync.replicas=2 with replication factor 3. During a single-node failure, what happens to producers?",
+          "options": [
+            "Producers are unaffected",
+            "Producers can still write — 2 out of 3 nodes are available, meeting the min.insync.replicas=2 requirement",
+            "Producers are blocked until the failed node recovers",
+            "The topic becomes read-only"
+          ],
+          "correct": 1,
+          "explanation": "With 3 replicas and min.insync.replicas=2, the system tolerates 1 node failure: 2 remaining nodes satisfy the requirement. A second simultaneous failure would drop ISR below 2, blocking writes. This is the standard production configuration: replication factor 3, min ISR 2 — survives any single failure with full guarantees."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An API endpoint receives a user request, writes to a database, and publishes an event to a broker. A test reveals that under high load, 0.01% of events are published but the corresponding database writes fail (the publish happened first, then the DB write failed). What's the root cause?",
+          "options": [
+            "The broker is unreliable",
+            "The system publishes the event before the database write is confirmed, creating a window where the event exists but the data doesn't",
+            "The database is too slow",
+            "The API has a concurrency bug"
+          ],
+          "correct": 1,
+          "explanation": "Publishing before the DB write means the event can go out even if the DB write fails. Downstream services act on an event for data that doesn't exist. The fix: write to the database first, then publish. Or better: use the outbox pattern to make both atomic."
+        },
+        {
+          "question": "The team reverses the order: database write first, then publish. Now 0.01% of events are never published (DB write succeeds but publish fails). Is this better than the original problem?",
+          "options": [
+            "No — both orderings are equally bad",
+            "Yes — a missing event can be detected and republished (the data exists in the DB), while a phantom event for nonexistent data causes downstream errors that are harder to fix",
+            "No — it's worse because events are lost",
+            "The order doesn't matter"
+          ],
+          "correct": 1,
+          "explanation": "DB-first is safer. A missing event is detectable: a background process can scan the DB for records without corresponding events and republish them. But a phantom event (event without data) causes downstream services to fail when they try to look up the data. Missing events are recoverable; phantom events cause cascading errors."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer receives an UpdateAccountBalance event with {account_id: 789, new_balance: 500.00}. It executes: UPDATE accounts SET balance = 500.00 WHERE id = 789. Is this operation idempotent?",
+          "options": [
+            "No — it modifies the database",
+            "Yes — running it 1 time or 100 times produces the same result: balance = $500.00. The final state is the same regardless of execution count",
+            "Only if the account exists",
+            "Only if the balance was different before"
+          ],
+          "correct": 1,
+          "explanation": "SET balance = 500 is idempotent because it's a state assignment, not a delta. Whether executed once or many times, the account ends up with $500. Compare with 'balance = balance + 100' (not idempotent — each execution adds $100). Designing events as state assertions rather than deltas naturally supports idempotency."
+        },
+        {
+          "question": "A different event arrives: {account_id: 789, adjustment: -50.00}. The consumer executes: UPDATE accounts SET balance = balance - 50 WHERE id = 789. Is this idempotent?",
+          "options": [
+            "Yes — it always subtracts $50",
+            "No — each execution subtracts another $50. Processing it twice deducts $100 total instead of $50. The consumer needs an idempotency check (e.g., track processed event IDs) to make this safe",
+            "It depends on the current balance",
+            "Yes — as long as the balance doesn't go negative"
+          ],
+          "correct": 1,
+          "explanation": "Delta operations (balance - 50) are not idempotent — each execution changes the state differently. To make it safe with at-least-once delivery: check if this event's ID was already applied before executing the adjustment. Or redesign the event as a state assertion (new_balance = 450) instead of a delta."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system processes messages in this order: (1) receive message, (2) write to DB, (3) call external API, (4) ack message. The consumer crashes after step 3 but before step 4. On redelivery, step 3 (external API call) will execute again. If the API is a payment gateway, what's at risk?",
+          "options": [
+            "Nothing — the gateway is stateless",
+            "The payment is charged twice — the gateway doesn't know the first call succeeded, and the consumer has no record to check",
+            "The DB write is rolled back",
+            "The broker prevents the redelivery"
+          ],
+          "correct": 1,
+          "explanation": "The external API call (step 3) is the hardest to make idempotent because it's outside the consumer's control. The first call succeeded but was never recorded. On redelivery, the consumer retries the API call — double-charging the customer."
+        },
+        {
+          "question": "The team redesigns the flow: (1) receive message, (2) record intent in DB with idempotency key, (3) call external API with idempotency key, (4) record result in DB, (5) ack. If the consumer crashes after step 3 now, what happens on redelivery?",
+          "options": [
+            "The payment is still double-charged",
+            "Step 2 detects the intent record exists (idempotency check passes). Step 3 sends the same idempotency key to the gateway, which returns the cached result instead of charging again. No duplicate charge",
+            "The DB prevents the redelivery",
+            "Step 1 is skipped"
+          ],
+          "correct": 1,
+          "explanation": "The idempotency key flows through the entire pipeline. The DB record (step 2) prevents double-processing on the consumer side. The API idempotency key (step 3) prevents double-execution on the gateway side. Even if the consumer retries, both the local and external operations are safe."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team uses at-most-once delivery for their user analytics pipeline to maximize throughput. They discover that 0.5% of events are lost. A new compliance requirement mandates that user consent events (GDPR) must never be lost. What should they do?",
+          "options": [
+            "Accept the 0.5% loss for all events",
+            "Use different delivery semantics for different event types: at-most-once for general analytics (loss-tolerant) and at-least-once with idempotency for consent events (loss-intolerant)",
+            "Switch everything to exactly-once",
+            "Stop collecting analytics events"
+          ],
+          "correct": 1,
+          "explanation": "Different data has different reliability requirements. General analytics tolerate small losses (at-most-once is fine). GDPR consent events are legally critical and must never be lost (at-least-once minimum). Separate topics with different delivery configurations let the team optimize each stream for its requirements."
+        },
+        {
+          "question": "For the consent events, the team uses at-least-once delivery. A consent revocation event is delivered twice. The system revokes consent, then revokes again. Is this a problem?",
+          "options": [
+            "Yes — double revocation corrupts the user's record",
+            "No — revoking already-revoked consent is a no-op. This operation is naturally idempotent: the end state (consent revoked) is the same regardless of how many times the revocation is applied",
+            "It depends on the database",
+            "Yes — the user must re-consent"
+          ],
+          "correct": 1,
+          "explanation": "Consent revocation is naturally idempotent: 'set consent = revoked' produces the same result whether applied once or ten times. This is a state assertion (setting a value) rather than a delta (incrementing/decrementing). Naturally idempotent operations are the easiest to build reliable systems with."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes a message, writes to its database, and then publishes a derived event to another topic. These are three separate operations (read, write DB, write topic). To make this exactly-once within the messaging system, the team uses Kafka transactions. What does the transaction encompass?",
+          "options": [
+            "Only the database write",
+            "The input offset commit AND the output topic write — both are committed atomically within the broker. The database write is NOT part of the Kafka transaction",
+            "All three operations including the database",
+            "Only the output topic write"
+          ],
+          "correct": 1,
+          "explanation": "Kafka transactions atomically commit the consumer's input offset and the producer's output messages. This provides exactly-once within the Kafka ecosystem (consume-transform-produce). The database write is outside Kafka's transactional scope — it needs its own idempotency handling (upsert, unique constraints, etc.)."
+        },
+        {
+          "question": "Given that the database write is outside the Kafka transaction, what happens if the DB write fails but the Kafka transaction succeeds?",
+          "options": [
+            "Everything is rolled back",
+            "The Kafka offset is committed (message won't be redelivered) and the output event is published, but the database is missing the data — an inconsistency that requires separate handling",
+            "The Kafka transaction also fails",
+            "The output message is not published"
+          ],
+          "correct": 1,
+          "explanation": "This is why exactly-once within the broker doesn't mean exactly-once for the entire system. The Kafka transaction committed successfully, but the DB write failed. The consumer won't reprocess the message (offset committed), so the DB data is permanently missing unless the team adds recovery logic (e.g., reconciliation, compensation)."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A message broker has a deduplication window of 5 minutes. Producer A sends message M1, and the broker stores its ID. 4 minutes later, Producer A retries M1 (within the window). The broker detects the duplicate and discards it. What is the broker's space cost for maintaining this dedup window at 100,000 msg/s?",
+          "options": [
+            "Negligible — a few kilobytes",
+            "Approximately 30 million message IDs in memory (100,000 msg/s × 300 seconds), requiring significant memory depending on ID size",
+            "The broker stores full message copies",
+            "The broker uses no extra memory for dedup"
+          ],
+          "correct": 1,
+          "explanation": "The broker must store every message ID from the last 5 minutes: 100,000 × 300 = 30 million IDs. If each ID is 36 bytes (UUID), that's about 1 GB of memory. At higher throughput or longer windows, dedup storage becomes a significant broker resource cost."
+        },
+        {
+          "question": "To reduce memory cost, the team considers using a Bloom filter instead of exact ID storage for deduplication. What's the tradeoff?",
+          "options": [
+            "Bloom filters are slower than hash sets",
+            "Bloom filters are space-efficient but have false positives: they may incorrectly identify new messages as duplicates, causing legitimate messages to be dropped. They never have false negatives (duplicates always detected)",
+            "Bloom filters don't support time windows",
+            "Bloom filters require the full message body"
+          ],
+          "correct": 1,
+          "explanation": "Bloom filters use ~10 bits per element vs. 36+ bytes for UUIDs — a 30x+ space reduction. The cost: false positives (0.1-1% depending on configuration) mean some new messages are incorrectly flagged as duplicates and discarded. For some use cases this is acceptable; for financial transactions, it's not."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team implements the outbox pattern. Domain writes and outbox inserts happen in the same transaction. A relay process polls the outbox table every 500ms and publishes new entries to the broker. What's the maximum end-to-end latency added by this pattern?",
+          "options": [
+            "0 — the outbox adds no latency",
+            "Up to the poll interval (500ms) plus publish time — in the worst case, an outbox entry is written just after a poll, so it waits for the next poll cycle",
+            "The outbox adds minutes of latency",
+            "It depends on the database size"
+          ],
+          "correct": 1,
+          "explanation": "The relay polls periodically. An event written at time T won't be published until the next poll at T+500ms (worst case). Average added latency is half the poll interval (250ms). For lower latency, decrease the poll interval or use database change notifications (triggers/LISTEN-NOTIFY) to wake the relay immediately."
+        },
+        {
+          "question": "The outbox table grows as events accumulate. After 6 months, it has 50 million rows. What operational problem does this create, and how should it be handled?",
+          "options": [
+            "No problem — databases handle large tables easily",
+            "The relay's poll query slows as it scans more rows. The team should add a cleanup job that deletes published outbox entries older than a retention window (e.g., 7 days), keeping the table bounded",
+            "The database runs out of disk space immediately",
+            "The relay should stop processing until the table is manually truncated"
+          ],
+          "correct": 1,
+          "explanation": "The outbox table grows indefinitely unless cleaned up. The relay queries for unpublished entries, and index maintenance on a 50M-row table adds overhead. The fix: a cleanup job that deletes entries marked 'published' older than a safety window (long enough to handle any in-flight relay operations). This keeps the table small and the relay's queries fast."
+        }
+      ]
+    },
+    {
+      "id": "msg-del-056",
+      "type": "multi-select",
+      "question": "Which are characteristics of at-most-once delivery? (Select all that apply)",
+      "options": [
+        "Messages may be lost if the broker or consumer fails",
+        "Messages are never delivered more than once (no duplicates)",
+        "No retry logic is needed — send and move on",
+        "Consumers must be idempotent to handle duplicates"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "At-most-once: no retries, no duplicates, but messages can be lost. Consumers don't need idempotency because duplicates don't occur. This is the simplest and highest-throughput delivery mode, suitable for loss-tolerant workloads like metrics and logging."
+    },
+    {
+      "id": "msg-del-057",
+      "type": "multi-select",
+      "question": "Which are characteristics of at-least-once delivery? (Select all that apply)",
+      "options": [
+        "No messages are lost — every message is delivered at least once",
+        "Duplicate deliveries are possible and expected",
+        "Consumers must be idempotent to avoid duplicate side effects",
+        "The broker never retries failed deliveries"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "At-least-once: the broker retries until the message is acknowledged, ensuring no loss. The tradeoff is potential duplicates from retries. Consumers must be idempotent to safely handle duplicates. The broker absolutely does retry — that's the mechanism that ensures 'at least once.'"
+    },
+    {
+      "id": "msg-del-058",
+      "type": "multi-select",
+      "question": "Which techniques help achieve effectively-exactly-once processing? (Select all that apply)",
+      "options": [
+        "Idempotent consumers that produce the same result regardless of delivery count",
+        "Broker-side message deduplication using producer sequence numbers",
+        "Transactional offset commits (atomic commit of offset + output)",
+        "Using faster network hardware"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Idempotent consumers handle duplicate deliveries safely. Broker dedup prevents duplicate messages from producer retries. Transactional commits ensure atomic consume-produce within the broker. Faster hardware doesn't affect delivery semantics — it reduces latency but doesn't prevent duplicates or losses."
+    },
+    {
+      "id": "msg-del-059",
+      "type": "multi-select",
+      "question": "Which operations are naturally idempotent? (Select all that apply)",
+      "options": [
+        "SET status = 'completed' WHERE id = 123",
+        "INSERT INTO logs (message) VALUES ('event occurred')",
+        "DELETE FROM sessions WHERE user_id = 456",
+        "UPDATE counters SET count = count + 1 WHERE id = 789"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "SET status = 'completed' is idempotent (same result each time). DELETE with a condition is idempotent (deleting non-existent rows is a no-op). INSERT without a unique constraint creates duplicates (not idempotent). count + 1 accumulates with each execution (not idempotent)."
+    },
+    {
+      "id": "msg-del-060",
+      "type": "multi-select",
+      "question": "Which are components of the transactional outbox pattern? (Select all that apply)",
+      "options": [
+        "An outbox table in the application's database that stores events to be published",
+        "A single database transaction that writes domain data and the outbox record together",
+        "A relay process that reads the outbox and publishes events to the message broker",
+        "A distributed transaction coordinator between the database and the broker"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "The outbox pattern has three parts: an outbox table (stores pending events), a single-DB transaction (atomic write of data + outbox), and a relay (publishes outbox entries to the broker). It explicitly avoids distributed transactions between the DB and broker — that's the whole point. The single-DB transaction replaces the need for a distributed coordinator."
+    },
+    {
+      "id": "msg-del-061",
+      "type": "multi-select",
+      "question": "Which are valid idempotency strategies for message consumers? (Select all that apply)",
+      "options": [
+        "Use database unique constraints to reject duplicate inserts",
+        "Track processed message IDs in a deduplication table",
+        "Use upsert operations instead of plain inserts",
+        "Process messages in larger batches"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Unique constraints reject duplicates at the DB level. Dedup tables let consumers explicitly check before processing. Upserts produce the same state regardless of execution count. Batch processing doesn't make individual operations idempotent — it just processes more messages at once."
+    },
+    {
+      "id": "msg-del-062",
+      "type": "multi-select",
+      "question": "Which are sources of duplicate messages in a messaging system? (Select all that apply)",
+      "options": [
+        "Producer retries after a network timeout (message was received but ack was lost)",
+        "Consumer crashes after processing but before acknowledging",
+        "Broker failover during replication (message may be re-sent to consumers)",
+        "Using a message compression algorithm"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Producer retries (ack lost), consumer crash (redelivery), and broker failover (re-sent from new leader) are all real sources of duplicates. Message compression affects payload size, not delivery semantics — it doesn't create duplicates."
+    },
+    {
+      "id": "msg-del-063",
+      "type": "multi-select",
+      "question": "Which are tradeoffs of the transactional outbox pattern? (Select all that apply)",
+      "options": [
+        "Added latency — events are published asynchronously by a relay, not immediately",
+        "Operational complexity — the relay process must be deployed, monitored, and made highly available",
+        "Events may be published more than once if the relay crashes and retries",
+        "The outbox pattern requires the database and message broker to support distributed transactions"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "The relay adds latency (polling interval). The relay itself needs HA and monitoring. Relay crashes cause duplicate publishes (consumers need idempotency). However, the outbox pattern specifically avoids distributed transactions between the DB and broker — that's its key design advantage. It uses only the database's local transactions."
+    },
+    {
+      "id": "msg-del-064",
+      "type": "multi-select",
+      "question": "Which are true about saga compensations? (Select all that apply)",
+      "options": [
+        "Compensations semantically undo previously completed steps",
+        "Compensations must be idempotent — they may be retried if they fail",
+        "Compensations can always restore the exact previous state",
+        "Compensations must eventually succeed to maintain system consistency"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Compensations undo business effects (refund a charge, release a reservation), must be idempotent (safe to retry), and must eventually succeed. However, they can't always restore the exact previous state — a refund isn't the same as 'the charge never happened' (the user saw a charge on their statement). Compensations achieve semantic reversal, not state rollback."
+    },
+    {
+      "id": "msg-del-065",
+      "type": "multi-select",
+      "question": "When should a team choose at-most-once delivery over at-least-once? (Select all that apply)",
+      "options": [
+        "The workload tolerates occasional message loss (e.g., metrics, telemetry)",
+        "Maximum throughput and minimum latency are priorities",
+        "No consumer-side idempotency logic is needed (simpler consumers)",
+        "The system processes financial transactions"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "At-most-once is appropriate for loss-tolerant, throughput-sensitive workloads. It simplifies consumers (no dedup needed) and maximizes throughput (no ack round-trips). Financial transactions require at-least-once (with idempotency) — losing a payment event is unacceptable."
+    },
+    {
+      "id": "msg-del-066",
+      "type": "multi-select",
+      "question": "Which producer acknowledgment settings trade durability for throughput? (Select all that apply)",
+      "options": [
+        "acks=0 (fire-and-forget, no broker confirmation)",
+        "acks=1 (leader-only confirmation, no replication wait)",
+        "acks=all (all in-sync replicas must confirm)",
+        "Batching messages and sending in bulk"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "acks=0 trades all durability for maximum throughput (messages can be lost). acks=1 trades some durability for lower latency (messages lost if leader crashes before replication). acks=all maximizes durability (doesn't trade it away). Batching improves throughput without reducing durability — it's an efficiency gain, not a durability tradeoff."
+    },
+    {
+      "id": "msg-del-067",
+      "type": "multi-select",
+      "question": "Which are challenges of consumer-side deduplication? (Select all that apply)",
+      "options": [
+        "The dedup store grows over time and requires cleanup policies",
+        "Dedup checks add latency to every message processing",
+        "Time-windowed dedup misses duplicates arriving after the window expires",
+        "Deduplication eliminates the need for idempotent operations"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Dedup stores grow (need cleanup), add per-message lookup latency, and time-windowed approaches have blind spots. Deduplication does NOT eliminate the need for idempotent operations — it reduces duplicate processing but can't prevent all edge cases (e.g., crash between dedup check and processing). Defense in depth: use both dedup and idempotent operations."
+    },
+    {
+      "id": "msg-del-068",
+      "type": "multi-select",
+      "question": "Which are valid alternatives to two-phase commit (2PC) for maintaining consistency across services? (Select all that apply)",
+      "options": [
+        "Saga pattern with compensating transactions",
+        "Transactional outbox pattern",
+        "Eventual consistency with idempotent consumers",
+        "Using a single shared database for all services"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Sagas provide eventual consistency through compensations. The outbox pattern ensures atomic write + event publish within a single service. Idempotent consumers with at-least-once delivery achieve effectively-exactly-once processing. A shared database is technically possible but defeats the purpose of microservices — it creates tight data coupling."
+    },
+    {
+      "id": "msg-del-069",
+      "type": "multi-select",
+      "question": "Which factors determine the appropriate visibility timeout for a message queue? (Select all that apply)",
+      "options": [
+        "The consumer's maximum expected processing time (P99 or P99.9)",
+        "The desired recovery time after consumer crashes (longer timeout = longer recovery delay)",
+        "Whether the consumer supports heartbeat/lease extension",
+        "The number of partitions in the topic"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "The timeout should exceed max processing time (prevent spurious redeliveries). But longer timeouts mean slower crash recovery (messages invisible longer). Heartbeat support allows a shorter base timeout with dynamic extension. Partition count is unrelated to visibility timeout — it affects parallelism, not per-message processing windows."
+    },
+    {
+      "id": "msg-del-070",
+      "type": "multi-select",
+      "question": "Which are true about idempotency keys? (Select all that apply)",
+      "options": [
+        "They uniquely identify a logical operation (e.g., order ID, transaction ID)",
+        "The consumer checks the key before processing to detect duplicates",
+        "They must be generated by the consumer",
+        "They enable safe retries across both producers and consumers"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Idempotency keys identify operations, enable dedup checks, and make retries safe. They are typically generated by the producer (or derived from the business entity — e.g., order ID), not the consumer. The consumer uses the key but doesn't create it — the key must be consistent across retries of the same logical operation."
+    },
+    {
+      "id": "msg-del-071",
+      "type": "multi-select",
+      "question": "Which are true about Change Data Capture (CDC) as an event publishing mechanism? (Select all that apply)",
+      "options": [
+        "It reads the database's transaction log (WAL/binlog) to capture committed changes",
+        "It eliminates the dual-write problem since events are derived from the database write itself",
+        "It requires modifying application code to publish events",
+        "It can publish events for any database change, including direct SQL modifications"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "CDC reads the transaction log (no dual-write), captures all committed changes (including direct SQL — no application code changes needed), and publishes them as events. It doesn't require application code modifications — the database's own log is the event source. This is why CDC is powerful: it captures ALL changes regardless of how they're made."
+    },
+    {
+      "id": "msg-del-072",
+      "type": "multi-select",
+      "question": "In a choreographed saga, which are challenges compared to orchestrated sagas? (Select all that apply)",
+      "options": [
+        "The workflow logic is distributed across services, making it hard to understand the full flow",
+        "Adding a new step requires modifying multiple services' event subscriptions",
+        "Debugging requires tracing events across many services",
+        "Choreographed sagas require a central coordinator service to manage workflow state"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Choreography challenges: the implicit workflow is hard to visualize, adding steps requires multi-service changes, and debugging is distributed across services. However, choreography does NOT require a central coordinator — that's orchestration. Choreography's defining characteristic is that services react independently to events with no central controller."
+    },
+    {
+      "id": "msg-del-073",
+      "type": "numeric-input",
+      "question": "A consumer processes 5,000 msg/s and commits offsets every 2 seconds. Each message triggers an external API call at $0.001 per call. If the consumer crashes at the worst moment and all reprocessed messages hit the API again, what's the maximum wasted API cost in dollars?",
+      "answer": 10,
+      "unit": "dollars",
+      "tolerance": "exact",
+      "explanation": "Worst case: crash just before a commit, so up to 2 seconds of messages are uncommitted. Reprocessed messages: 5,000 × 2 = 10,000. API cost: 10,000 × $0.001 = $10 wasted per crash. This quantifies the business cost of the reprocessing window — a useful framing for choosing commit intervals and investing in idempotency."
+    },
+    {
+      "id": "msg-del-074",
+      "type": "numeric-input",
+      "question": "A producer sends 10,000 msg/s. Due to network retries, 0.1% are duplicates. The broker has no deduplication. Each message triggers a $10 payment capture. If consumers lack idempotency, what is the total dollar value of duplicate charges per minute?",
+      "answer": 6000,
+      "unit": "dollars",
+      "tolerance": "exact",
+      "explanation": "Duplicates per second: 10,000 × 0.001 = 10. Per minute: 10 × 60 = 600 duplicate messages. Dollar impact: 600 × $10 = $6,000/min in duplicate charges. This illustrates why financial systems require both broker dedup (idempotent producers) and consumer-side idempotency — even a small duplicate rate becomes expensive at scale."
+    },
+    {
+      "id": "msg-del-075",
+      "type": "numeric-input",
+      "question": "A dedup cache holds message IDs (16-byte UUIDs) for 10 minutes. The system processes 20,000 msg/s. How many MB of memory does the cache require at steady state? (Use 1 MB = 1,000,000 bytes.)",
+      "answer": 192,
+      "unit": "MB",
+      "tolerance": 0.1,
+      "explanation": "Cache size = 20,000 msg/s × 600 s = 12,000,000 IDs. Memory = 12,000,000 × 16 bytes = 192,000,000 bytes ≈ 192 MB. This is a non-trivial per-consumer memory cost. Doubling the window to 20 minutes doubles the memory to 384 MB — teams must balance dedup coverage against resource costs."
+    },
+    {
+      "id": "msg-del-076",
+      "type": "numeric-input",
+      "question": "A broker replicates each message to 2 followers before acknowledging (acks=all, replication factor 3). Each replication adds 5ms of latency. Compared to acks=1 (leader-only), how many additional milliseconds of publish latency does acks=all add?",
+      "answer": 5,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "With acks=all, the broker waits for both followers to replicate. The followers replicate in parallel, so the added latency is max(follower1_time, follower2_time) = 5ms (assuming similar speeds). It's not 10ms (2 × 5ms) because replication to both followers happens concurrently."
+    },
+    {
+      "id": "msg-del-077",
+      "type": "numeric-input",
+      "question": "A consumer's P50 processing time is 200ms and P99.9 is 3 seconds. The team uses the rule '2× P99.9' for the visibility timeout. If the consumer truly crashes at second 1, how many seconds of unnecessary invisibility remain before the message is redelivered to another consumer?",
+      "answer": 5,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Visibility timeout = 2 × 3 = 6 seconds. Consumer crashes at second 1. The message remains invisible for 5 more seconds (6 - 1 = 5) before being redelivered. This is the crash recovery latency cost of a generous timeout. Heartbeat-based lease extension solves this: use a short base timeout (e.g., 5s) and extend it during processing, so crashes are detected quickly."
+    },
+    {
+      "id": "msg-del-078",
+      "type": "numeric-input",
+      "question": "A saga has 7 steps. Step 5 fails. Step 2's compensation (refund payment) also fails on the first attempt and must be retried 3 times before succeeding. How many total compensation operations are executed (including retries)?",
+      "answer": 7,
+      "unit": "operations",
+      "tolerance": "exact",
+      "explanation": "Steps 1-4 completed successfully. Step 5 failed. Compensations run in reverse: step 4 (1 attempt), step 3 (1 attempt), step 2 (3 retries + 1 success = but the question says retried 3 times before succeeding, so 3 failed + 1 success = 4 attempts), step 1 (1 attempt). Total: 1 + 1 + 4 + 1 = 7 operations. Compensation retries are critical — they must eventually succeed to maintain consistency."
+    },
+    {
+      "id": "msg-del-079",
+      "type": "numeric-input",
+      "question": "An outbox relay polls every 200ms, and each publish takes 10ms. The relay publishes events sequentially. During a burst, 50 events accumulate in the outbox between polls. What's the total time (in ms) from the poll starting to the last event being published?",
+      "answer": 500,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "The relay reads all 50 events in one poll, then publishes them sequentially: 50 × 10ms = 500ms. The first event publishes at ~10ms after the poll, the last at ~500ms. Under burst load, sequential publishing can make the relay a bottleneck — batch publishing or parallel publishing can reduce this."
+    },
+    {
+      "id": "msg-del-080",
+      "type": "numeric-input",
+      "question": "A producer uses acks=all with min.insync.replicas=2 and replication factor=3. One broker node fails. How many more node failures can the system tolerate before writes are rejected?",
+      "answer": 0,
+      "unit": "failures",
+      "tolerance": "exact",
+      "explanation": "After 1 failure: 2 nodes remain (= min.insync.replicas), so writes still work. If another node fails: only 1 node remains (< min.insync.replicas=2), so writes are rejected. The system can tolerate 0 additional failures. Replication factor 3 with min ISR 2 tolerates exactly 1 node failure."
+    },
+    {
+      "id": "msg-del-081",
+      "type": "numeric-input",
+      "question": "A consumer processes 1,000 messages per second. It stores processed message IDs in a dedup table with a 24-hour retention. A cleanup job runs daily. Approximately how many rows are in the dedup table at peak (just before cleanup)?",
+      "answer": 86400000,
+      "unit": "rows",
+      "tolerance": 0.05,
+      "explanation": "Rows = throughput × retention = 1,000 msg/s × 86,400 s/day = 86,400,000 rows. This table needs efficient indexing (on message_id) and the cleanup job must handle deleting millions of rows without blocking the consumer's dedup checks."
+    },
+    {
+      "id": "msg-del-082",
+      "type": "numeric-input",
+      "question": "A dedup system must track 10 million message IDs. Option A: a Bloom filter at 10 bits per element. Option B: a hash set of 16-byte UUIDs. How many times more memory does the hash set use compared to the Bloom filter? (Round to nearest whole number.)",
+      "answer": 13,
+      "unit": "×",
+      "tolerance": 0.1,
+      "explanation": "Bloom filter: 10M × 10 bits = 100M bits = 12.5 MB. Hash set: 10M × 16 bytes = 160 MB. Ratio: 160 / 12.5 = 12.8 ≈ 13×. The Bloom filter saves ~92% of memory at the cost of a 0.1% false positive rate (some new messages incorrectly flagged as duplicates). For high-throughput dedup where occasional false positives are acceptable, this tradeoff is compelling."
+    },
+    {
+      "id": "msg-del-083",
+      "type": "numeric-input",
+      "question": "A system processes 50,000 events per second. At-least-once delivery causes 0.01% duplicates. The consumer has no dedup. How many duplicate side effects occur per hour?",
+      "answer": 18000,
+      "unit": "duplicates",
+      "tolerance": 0.05,
+      "explanation": "Duplicates per second: 50,000 × 0.0001 = 5. Per hour: 5 × 3,600 = 18,000 duplicate side effects. For a payment system, that's 18,000 double-charges per hour — clearly unacceptable without idempotency."
+    },
+    {
+      "id": "msg-del-084",
+      "type": "numeric-input",
+      "question": "A consumer commits offsets to the broker every 5 seconds. An alternative design stores the offset in the consumer's database transaction alongside each result. If the consumer processes 2,000 msg/s, how many offset-update operations per second does the per-message approach require?",
+      "answer": 2000,
+      "unit": "operations/s",
+      "tolerance": "exact",
+      "explanation": "Per-message offset storage means 1 offset update per message processed: 2,000 msg/s = 2,000 offset updates/s. In the original design, the broker received 1 offset commit every 5 seconds (0.2/s). The per-message approach trades massive write amplification (2,000 vs 0.2 offset ops/s) for zero reprocessing window — each offset is atomically committed with the result."
+    },
+    {
+      "id": "msg-del-085",
+      "type": "ordering",
+      "question": "Rank these delivery guarantees from least to most complex to implement:",
+      "items": [
+        "At-most-once (fire and forget)",
+        "At-least-once (retry until acknowledged)",
+        "Effectively exactly-once (at-least-once + idempotent consumers + deduplication)"
+      ],
+      "correctOrder": [0, 1, 2],
+      "explanation": "At-most-once: send and forget (simplest — no retries, no acks, no dedup). At-least-once: add acknowledgments and retries (moderate). Effectively exactly-once: add idempotent consumers, dedup stores, possibly transactional outbox (most complex). Each level adds infrastructure and application logic."
+    },
+    {
+      "id": "msg-del-086",
+      "type": "ordering",
+      "question": "Rank these producer acknowledgment modes from lowest to highest durability:",
+      "items": [
+        "acks=0 (fire and forget)",
+        "acks=all (all in-sync replicas confirm)",
+        "acks=1 (leader-only confirmation)"
+      ],
+      "correctOrder": [0, 2, 1],
+      "explanation": "acks=0: no confirmation — message may never reach the broker (lowest durability). acks=1: leader confirms, but message lost if leader crashes before replication. acks=all: all replicas confirm — survives any single node failure (highest durability)."
+    },
+    {
+      "id": "msg-del-087",
+      "type": "ordering",
+      "question": "Rank these consumer acknowledgment strategies from highest to lowest risk of message loss:",
+      "items": [
+        "Auto-ack on receive (before processing)",
+        "Manual ack after processing",
+        "Transactional ack (offset committed with processing result atomically)"
+      ],
+      "correctOrder": [0, 1, 2],
+      "explanation": "Auto-ack: highest loss risk — message gone if consumer crashes during processing. Manual ack after processing: lower risk — message redelivered on crash (duplicates possible, but no loss). Transactional ack: lowest risk — offset and result committed atomically, no loss and no duplicates within the transaction scope."
+    },
+    {
+      "id": "msg-del-088",
+      "type": "ordering",
+      "question": "A dual-write bug: the service writes to the DB and publishes an event, but they're not atomic. Rank these orderings from safest to most dangerous:",
+      "items": [
+        "Write to DB first, then publish event (missing event is recoverable)",
+        "Publish event first, then write to DB (phantom event for nonexistent data)",
+        "Use transactional outbox (both atomic, no dual-write)",
+        "No ordering consideration (random failures in either order)"
+      ],
+      "correctOrder": [2, 0, 3, 1],
+      "explanation": "Outbox: safest (no dual-write problem). DB-first: second-best (missing events can be detected and republished by scanning the DB). Random: unpredictable failures in both directions. Event-first: most dangerous — phantom events cause downstream services to reference nonexistent data, creating cascading errors."
+    },
+    {
+      "id": "msg-del-089",
+      "type": "ordering",
+      "question": "Rank these operations from most to least naturally idempotent:",
+      "items": [
+        "SET balance = 500 (absolute state assignment)",
+        "UPSERT order with id=123 (insert or update to same state)",
+        "INSERT INTO audit_log (event) VALUES (...) — no unique constraint (append-only log entry)",
+        "UPDATE counters SET count = count + 1 (increment)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "SET absolute value: perfectly idempotent (same result every time). UPSERT: idempotent (first call inserts, subsequent calls update to same state). INSERT into audit log: not naturally idempotent (creates duplicates — needs unique constraint). Increment: least idempotent (each execution changes state differently)."
+    },
+    {
+      "id": "msg-del-090",
+      "type": "ordering",
+      "question": "Rank these from least to most durable message storage configurations:",
+      "items": [
+        "In-memory only, no replication",
+        "Persistent (disk), replication factor 3, acks=all",
+        "Persistent (disk), no replication",
+        "In-memory, async replication to 1 node"
+      ],
+      "correctOrder": [0, 3, 2, 1],
+      "explanation": "In-memory, no replication: any failure loses everything. In-memory with async replication: slightly better, but recent messages can be lost. Persistent single disk: survives process restarts but not disk failure. Persistent with 3x replication and acks=all: survives any single-node failure, highest durability."
+    },
+    {
+      "id": "msg-del-091",
+      "type": "ordering",
+      "question": "Rank these idempotency approaches from least robust to most robust:",
+      "items": [
+        "No idempotency handling (accept duplicates)",
+        "Database unique constraint on business key",
+        "In-memory dedup cache with time window",
+        "Persistent dedup table with idempotency key checks before every operation"
+      ],
+      "correctOrder": [0, 2, 1, 3],
+      "explanation": "No handling: least robust — duplicates cause real problems. In-memory dedup: volatile (lost on restart) with time-window blind spots. DB unique constraint: durable but only catches duplicate inserts (not updates or external calls). Persistent dedup table: most robust — survives restarts, catches all duplicates, works for any operation type."
+    },
+    {
+      "id": "msg-del-092",
+      "type": "ordering",
+      "question": "Rank these dual-write solutions from least to most decoupled:",
+      "items": [
+        "Two-phase commit (2PC) between database and broker",
+        "Publish directly to broker after DB write (no atomicity)",
+        "Transactional outbox with relay process",
+        "Change Data Capture (CDC) from database log"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "2PC: tightest coupling — both systems are synchronously coordinated and locked during the write path. Direct publish: application explicitly calls the broker (coupled to the broker's availability). Outbox: decoupled via relay — the application only writes to its own DB. CDC: most decoupled — the application has no knowledge of event publishing; events are derived from the database log by an entirely independent process."
+    },
+    {
+      "id": "msg-del-093",
+      "type": "ordering",
+      "question": "A consumer encounters a message processing failure. Rank these responses from simplest to most sophisticated:",
+      "items": [
+        "Nack immediately for instant redelivery",
+        "Discard the message and log the error",
+        "Nack with exponential backoff delay, then move to DLQ after max retries",
+        "Nack with fixed delay between retries"
+      ],
+      "correctOrder": [1, 0, 3, 2],
+      "explanation": "Discard and log: simplest but loses the message. Immediate nack: simple retry but risks tight loops. Fixed-delay nack: adds breathing room between retries. Exponential backoff + DLQ: most sophisticated — progressive delays prevent resource waste, and the DLQ preserves permanently failing messages for investigation."
+    },
+    {
+      "id": "msg-del-094",
+      "type": "ordering",
+      "question": "Rank these saga types from simplest to most complex coordination:",
+      "items": [
+        "Choreographed saga (services react to events independently)",
+        "Orchestrated saga (central coordinator directs the workflow)",
+        "Simple retry with manual compensation",
+        "Choreographed saga with automatic compensation across 10+ services"
+      ],
+      "correctOrder": [2, 0, 1, 3],
+      "explanation": "Manual retry/compensation: simplest (human handles failures). Basic choreography: decentralized, each service reacts (moderate for small flows). Orchestration: centralized control, easier to reason about but more infrastructure. Large-scale choreography: hardest to debug, modify, and ensure correct compensation across many services."
+    },
+    {
+      "id": "msg-del-095",
+      "type": "ordering",
+      "question": "Assuming a consumer processing 5,000 msg/s, rank these commit strategies from largest to smallest reprocessing window after a crash:",
+      "items": [
+        "Commit after every message",
+        "Commit every 1,000 messages",
+        "Commit every 10 seconds",
+        "Store offset in database with each processing transaction"
+      ],
+      "correctOrder": [2, 1, 0, 3],
+      "explanation": "Every 10 seconds: largest window (at 5,000 msg/s, up to 50,000 messages replayed). Every 1,000 messages: up to 1,000 replayed. Every message: at most 1 replayed. DB-stored offset: zero reprocessing (offset and result are atomic). Smaller windows add I/O overhead but reduce duplicate exposure."
+    }
+  ]
+}
