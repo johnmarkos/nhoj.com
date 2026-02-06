@@ -59,40 +59,18 @@ Uses the nhoj.com design system (see parent `CLAUDE.md`):
 
 ## Content Structure
 
-**10 units planned:**
+**10 units planned** (see `ROADMAP.md` for current progress):
 
 1. Estimation (complete — 1,007 problems, 8 chapters)
 2. Data Modeling (complete — 800 problems, 8 chapters)
-3. API Design
-4. Storage Selection
-5. Caching
-6. Messaging & Async
+3. API Design (complete — 791 problems, 8 chapters)
+4. Storage Selection (complete — 800 problems, 8 chapters)
+5. Caching (complete — 800 problems, 8 chapters)
+6. Messaging & Async (in progress)
 7. Scaling Compute
 8. Consistency & Coordination
 9. Reliability
 10. Classic Designs Decomposed
-
-**Unit 1: Estimation chapters:**
-
-1. Reference Numbers
-2. Time Math
-3. Storage Math
-4. Bandwidth Math
-5. QPS & Load
-6. Growth Projections
-7. Reasonableness Checks
-8. Compound Scenarios
-
-**Unit 2: Data Modeling chapters:**
-
-1. Entity Identification
-2. Relationships
-3. Keys & Indexes
-4. Normalization
-5. Denormalization
-6. Access Patterns
-7. Schema Evolution
-8. Modeling Scenarios
 
 Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
 
@@ -131,20 +109,44 @@ To add a chapter: create the JSON file, set `ready: true` in the `units` array i
 
 ## Roadmap & Changelog
 
-Future features are tracked in `ROADMAP.md`. Completed work is recorded in `CHANGELOG.md`.
+**Keep these files up to date.** They are the project's source of truth for what's done and what's next.
 
-## Self-Review Loop
+- **`ROADMAP.md`** — What's done, what's in progress, what's next. Update after completing each chapter or milestone.
+- **`CHANGELOG.md`** — Record of completed work with problem counts and chapter details. Update when finishing a chapter or unit.
 
-After completing each milestone, switch to a **reviewer role** and critique your own work harshly. Look for:
+## Getting Started (for a fresh agent)
 
-- Problems with ambiguous or incorrect answers
-- UX friction on mobile
-- Code that's not extensible for future units
-- Anything that fails the bus test
+1. Read this `CLAUDE.md` for project context and guidelines.
+2. Read `ROADMAP.md` to find your next task — look at the "Now (In Progress)" section.
+3. If starting a new unit, plan it in detail first (chapter topics, problem distribution, scope). Get user approval before writing content.
+4. If resuming a unit in progress, pick up the next unfinished chapter.
 
-Fix issues. Review again. **Iterate until the reviewer finds nothing significant.**
+## Content Creation Workflow
 
-**Escape hatch:** If the same issue recurs or you're uncertain, flag it for human review and move on. Perfect is the enemy of shipped.
+**CRITICAL: Work one chapter at a time.** Do not attempt to write or review multiple chapters in a single session. Context overflow causes quality degradation — reviewing a whole unit at once leads to missed issues and sloppy fixes.
+
+The loop for each chapter:
+
+1. **Write content** — Create the JSON file with ~100 problems (target: ~35 MC, ~25 two-stage, ~17 multi-select, ~12 numeric, ~11 ordering). ID format: `msg-{abbrev}-{NNN}` (adjust prefix per unit).
+2. **Update config** — Set `ready: true` in `config.js` for the new chapter.
+3. **Run tests** — `node --test config.test.js` to validate structure.
+4. **Review content** — Launch a subagent to do a thorough content review. Be harsh. Check for:
+   - Wrong answers (verify correct indices, math, ordering)
+   - Near-duplicate problems (same concept, same structure)
+   - Processing artifacts ("Wait", "Hmm", "Let me")
+   - Too-easy definition questions (should be scenario-based for L5/L6)
+   - Multi-select issues (all-correct without distractor, single-correct should be MC)
+   - Debatable answers, pure arithmetic, ambiguous orderings
+   - Thematic over-saturation (>3 problems on the same narrow concept)
+5. **Fix all issues** — Work through the review findings, make edits.
+6. **Run tests again** — Verify fixes didn't break anything.
+7. **Commit and push** — One commit per chapter.
+8. **Move to next chapter** — Repeat from step 1.
+
+When starting a **new unit**, plan it in detail before writing any content:
+- Define all 8 chapter topics with scope descriptions
+- Identify the key concepts each chapter should cover
+- Get user approval on the plan before proceeding
 
 ## Process
 
@@ -180,6 +182,15 @@ Insights captured from development:
 - Generate more problems than needed, expect to cull 10-20%
 - Run automated checks for uncertainty markers ("Hmm", "Wait", "Let me") in explanations — these often indicate math errors that need fixing
 - "Depends on X" answers are valid L6 content when they test real-world nuance (e.g., "depends on database implementation"), but verify each one
+- Near-duplicate detection and thematic over-saturation are the most common review findings — the most effective fix is replacing one problem in the pair with a different angle on the concept, not just rewording
+- Definition questions ("What is X?") should be reworked into scenarios ("A team encounters Y. What technique solves this, and why?") for L5/L6 difficulty
+- Pure arithmetic problems need systems context — instead of "5000 × 2 = ?", ask about the business cost or capacity implication of the number
+
+**Content review process:**
+- Review ONE chapter at a time, not a whole unit — context overflow degrades review quality
+- Use a subagent for reviews to protect the main context window from the full JSON content
+- The review checklist (wrong answers, near-duplicates, definitions, multi-select issues, etc.) is in the Content Creation Workflow section above
+- Typical chapter review finds 15-25 issues; expect to make 15-30 edits per chapter
 
 **Process:**
 - The bus test applies to individual problems, not sessions — 100 problems per chapter is fine because users control session length

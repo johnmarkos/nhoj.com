@@ -1,5 +1,44 @@
 # Changelog
 
+## Unit 6: Messaging & Async (in progress — 295 problems so far)
+
+1. Queue Fundamentals (100 problems) — Producers/consumers, sync vs async, point-to-point, message lifecycle, visibility timeouts, backpressure, DLQs, FIFO ordering
+2. Pub/Sub & Topics (100 problems) — Fan-out/fan-in, durable/ephemeral subscriptions, push vs pull, filtering, topic granularity, consumer groups, schema evolution
+3. Delivery Guarantees (95 problems) — At-most/at-least/exactly-once, idempotency keys, deduplication, transactional outbox, CDC, sagas, compensating transactions
+
+## Unit 5: Caching (800 problems)
+
+1. Cache Fundamentals (100 problems)
+2. Cache Placement (100 problems)
+3. Caching Strategies (100 problems)
+4. TTLs & Expiration (100 problems)
+5. Cache Invalidation (100 problems)
+6. Eviction Policies (100 problems)
+7. Distributed Caching (100 problems)
+8. Caching Scenarios (100 problems)
+
+## Unit 4: Storage Selection (800 problems)
+
+1. Relational Databases (100 problems)
+2. Document Stores (100 problems)
+3. Key-Value Stores (100 problems)
+4. Wide-Column & Time-Series (100 problems)
+5. Graph & Search Engines (100 problems)
+6. Object Storage (100 problems)
+7. Hybrid Architectures (100 problems)
+8. Storage Selection Scenarios (100 problems)
+
+## Unit 3: API Design (791 problems)
+
+1. REST Fundamentals (94 problems)
+2. API Modeling (100 problems)
+3. Pagination & Filtering (100 problems)
+4. Rate Limiting & Quotas (100 problems)
+5. Versioning & Evolution (100 problems)
+6. Error Handling (97 problems)
+7. GraphQL & Alternatives (100 problems)
+8. API Design Scenarios (100 problems)
+
 ## Problem ID display
 
 - Synced index.html from OpenQuizzer v2.1 with configurable problem ID feature
