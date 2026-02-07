@@ -17,7 +17,7 @@
   - [x] Chapter 4: Patterns & Reliability — 95 problems
   - [x] Chapter 5: Event-Driven Architecture — 95 problems
   - [x] Chapter 6: Stream Processing — 95 problems (partitions, consumer groups, offsets, windowing, Kafka model)
-  - [ ] Chapter 7: Technology Selection — RabbitMQ vs Kafka vs SQS vs Pub/Sub vs Redis Streams, decision frameworks
+  - [x] Chapter 7: Technology Selection — 95 problems (RabbitMQ vs Kafka vs SQS vs Pub/Sub vs Redis Streams, decision frameworks)
   - [ ] Chapter 8: Messaging Scenarios — Real-world design problems combining all chapter topics
 
 ## Next (Units 7-10)

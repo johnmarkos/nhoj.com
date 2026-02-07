@@ -1,0 +1,1573 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 7,
+  "chapterTitle": "Technology Selection",
+  "chapterDescription": "Choosing between Kafka, RabbitMQ, SQS, Pub/Sub, Redis Streams, and hybrid patterns using requirement-driven trade-offs.",
+  "problems": [
+    {
+      "id": "msg-tech-001",
+      "type": "multiple-choice",
+      "question": "A team needs immutable event history with replay for new consumers and analytics backfills. Which broker is the best default?",
+      "options": [
+        "RabbitMQ classic queues",
+        "Kafka",
+        "SQS Standard queue",
+        "Redis Pub/Sub"
+      ],
+      "correct": 1,
+      "explanation": "Kafka is built around durable append-only logs with retention and offset-based replay. The others are queue-first systems or ephemeral pub/sub."
+    },
+    {
+      "id": "msg-tech-002",
+      "type": "multiple-choice",
+      "question": "A system needs per-message delay timers and priority queues with rich routing keys for operational workflows. Which choice fits best?",
+      "options": [
+        "Kafka",
+        "RabbitMQ",
+        "SQS FIFO",
+        "Google Pub/Sub"
+      ],
+      "correct": 1,
+      "explanation": "RabbitMQ provides mature exchange/routing models, priority queues, and delay plugins/features commonly used for workflow orchestration."
+    },
+    {
+      "id": "msg-tech-003",
+      "type": "multiple-choice",
+      "question": "A startup wants near-zero ops and accepts at-least-once delivery for background jobs in AWS. Which is the most pragmatic pick?",
+      "options": [
+        "Self-managed Kafka",
+        "SQS Standard",
+        "RabbitMQ on EC2",
+        "Redis Streams on ECS"
+      ],
+      "correct": 1,
+      "explanation": "SQS Standard is fully managed and simple operationally in AWS. It trades strict ordering/exactly-once for scale and low ops burden."
+    },
+    {
+      "id": "msg-tech-004",
+      "type": "multiple-choice",
+      "question": "A payment pipeline requires strict in-order processing per account and deduplication within a queue. Which AWS service mode is designed for this?",
+      "options": [
+        "SQS Standard",
+        "SQS FIFO",
+        "Kinesis Data Streams",
+        "EventBridge"
+      ],
+      "correct": 1,
+      "explanation": "SQS FIFO provides ordering within message groups and deduplication windows, suitable for per-account ordered workflows."
+    },
+    {
+      "id": "msg-tech-005",
+      "type": "multiple-choice",
+      "question": "A team already runs GCP and wants globally available managed pub/sub with push or pull subscriptions and auto-scaling consumers. Pick one.",
+      "options": [
+        "Kafka",
+        "Google Pub/Sub",
+        "RabbitMQ",
+        "Redis Streams"
+      ],
+      "correct": 1,
+      "explanation": "Google Pub/Sub is the managed GCP-native pub/sub service with pull/push subscriptions and autoscaling integration patterns."
+    },
+    {
+      "id": "msg-tech-006",
+      "type": "multiple-choice",
+      "question": "Which technology is least appropriate when consumers must independently replay 30 days of history from any offset?",
+      "options": [
+        "Kafka",
+        "Google Pub/Sub with retention",
+        "Redis Streams with adequate retention",
+        "RabbitMQ ephemeral queue without durable log strategy"
+      ],
+      "correct": 3,
+      "explanation": "RabbitMQ is queue-centric and not primarily an immutable log replay platform. Kafka is typically strongest for large-scale replay use cases."
+    },
+    {
+      "id": "msg-tech-007",
+      "type": "multiple-choice",
+      "question": "A workload is small (2k msg/s), needs low latency, and already uses Redis heavily for caching. Which option can be a pragmatic fit?",
+      "options": [
+        "Redis Streams",
+        "Self-managed Kafka only",
+        "SQS FIFO only",
+        "No broker needed"
+      ],
+      "correct": 0,
+      "explanation": "Redis Streams can be a pragmatic choice for moderate throughput if Redis is already operationally established and persistence settings are understood."
+    },
+    {
+      "id": "msg-tech-008",
+      "type": "multiple-choice",
+      "question": "A team needs exactly-once stream processing semantics within the messaging platform and downstream Kafka topics. Which ecosystem best supports this natively?",
+      "options": [
+        "RabbitMQ + manual dedupe",
+        "Kafka + transactions/idempotent producers + stream processing",
+        "SQS Standard",
+        "Redis Pub/Sub"
+      ],
+      "correct": 1,
+      "explanation": "Kafka transactions and idempotent producers, plus stream processing frameworks, provide native patterns for exactly-once within Kafka boundaries."
+    },
+    {
+      "id": "msg-tech-009",
+      "type": "multiple-choice",
+      "question": "Which broker model maps best to \"competing workers consume and remove jobs from a queue\"?",
+      "options": [
+        "Queue semantics (RabbitMQ/SQS)",
+        "Append-only log semantics only",
+        "CDN cache semantics",
+        "RDBMS transaction log direct"
+      ],
+      "correct": 0,
+      "explanation": "Queue systems are built around work distribution with consumption/removal visibility semantics."
+    },
+    {
+      "id": "msg-tech-010",
+      "type": "multiple-choice",
+      "question": "A product requires fan-out to 25 independent consumers, each with own retention and replay cursor. Which is generally easiest?",
+      "options": [
+        "Kafka consumer groups",
+        "Single shared RabbitMQ queue",
+        "SQS one queue without SNS fan-out",
+        "Redis list"
+      ],
+      "correct": 0,
+      "explanation": "Kafka consumer groups give each group an independent offset/cursor while reusing the same stored log."
+    },
+    {
+      "id": "msg-tech-011",
+      "type": "multiple-choice",
+      "question": "Team must avoid managing ZooKeeper/KRaft clusters and broker storage tuning. What is the strongest argument for managed services?",
+      "options": [
+        "Lower control",
+        "Higher day-2 operational burden",
+        "Reduced operational complexity",
+        "Worse SLA by design"
+      ],
+      "correct": 2,
+      "explanation": "Managed services offload broker operations, patching, and capacity planning, reducing day-2 toil."
+    },
+    {
+      "id": "msg-tech-012",
+      "type": "multiple-choice",
+      "question": "A team needs request/response style RPC over messaging with temporary reply queues and correlation IDs. Which tool is most idiomatic?",
+      "options": [
+        "Kafka topic partitions",
+        "RabbitMQ",
+        "SQS Standard",
+        "Pub/Sub push endpoint only"
+      ],
+      "correct": 1,
+      "explanation": "RabbitMQ patterns commonly support RPC-like messaging with reply-to queues and correlation IDs."
+    },
+    {
+      "id": "msg-tech-013",
+      "type": "multiple-choice",
+      "question": "If message ordering across the entire topic is required at high throughput, what is the main architectural reality?",
+      "options": [
+        "Any broker gives global order with unlimited scale",
+        "Global order usually forces single partition/serial bottlenecks",
+        "Use more partitions for stricter global order",
+        "Use retries to enforce order"
+      ],
+      "correct": 1,
+      "explanation": "Global strict ordering usually constrains parallelism and throughput, often requiring serial processing."
+    },
+    {
+      "id": "msg-tech-014",
+      "type": "multiple-choice",
+      "question": "A team migrates from cron+DB polling to event-driven architecture and wants minimum migration risk first. Best first broker choice?",
+      "options": [
+        "Most complex distributed log platform immediately",
+        "Simple managed queue aligned with current workflow",
+        "Build custom broker",
+        "Skip observability"
+      ],
+      "correct": 1,
+      "explanation": "For incremental migration, a simple managed queue often reduces risk and accelerates adoption before advanced streaming features are needed."
+    },
+    {
+      "id": "msg-tech-015",
+      "type": "multiple-choice",
+      "question": "Which is the best fit for \"fire-and-forget notifications to mobile/web backends\" where occasional duplicates are acceptable?",
+      "options": [
+        "SQS Standard or Pub/Sub",
+        "SQS FIFO only",
+        "Single-threaded RabbitMQ mandatory",
+        "Custom TCP sockets"
+      ],
+      "correct": 0,
+      "explanation": "Standard managed pub/sub or queue services are often appropriate when at-least-once is acceptable and simplicity is prioritized."
+    },
+    {
+      "id": "msg-tech-016",
+      "type": "multiple-choice",
+      "question": "A team needs to route messages by topic patterns and headers to multiple queues. Which feature set points to RabbitMQ?",
+      "options": [
+        "Partition rebalancing",
+        "Exchanges with binding/routing keys",
+        "Offset commits",
+        "Consumer groups with partitions"
+      ],
+      "correct": 1,
+      "explanation": "RabbitMQ exchanges and bindings are designed for rich routing patterns."
+    },
+    {
+      "id": "msg-tech-017",
+      "type": "multiple-choice",
+      "question": "What is a common reason to choose Kafka over SQS for analytics pipelines?",
+      "options": [
+        "SQS has stronger replay guarantees by offset",
+        "Kafka supports high-throughput partitioned logs and long retention for reprocessing",
+        "SQS requires self-hosting",
+        "Kafka has no operational overhead"
+      ],
+      "correct": 1,
+      "explanation": "Kafka excels for high-throughput analytics/event streaming with retention and replay mechanics."
+    },
+    {
+      "id": "msg-tech-018",
+      "type": "multiple-choice",
+      "question": "A team wants to avoid vendor lock-in and run identical broker stack on-prem and cloud. Which path aligns best?",
+      "options": [
+        "Cloud-only proprietary pub/sub",
+        "Self-managed open-source broker like Kafka or RabbitMQ",
+        "SQS only",
+        "No message broker"
+      ],
+      "correct": 1,
+      "explanation": "Open-source self-managed brokers provide portability across environments, at the cost of higher ops work."
+    },
+    {
+      "id": "msg-tech-019",
+      "type": "multiple-choice",
+      "question": "A workload has extreme burst traffic and idle periods; cost should track usage with no always-on broker nodes. Best model?",
+      "options": [
+        "Provisioned Kafka cluster",
+        "Serverless queue/pub-sub billing by request/throughput",
+        "Always-on RabbitMQ VM",
+        "Dedicated Redis sentinel cluster"
+      ],
+      "correct": 1,
+      "explanation": "Serverless managed messaging often matches bursty patterns with pay-per-use economics."
+    },
+    {
+      "id": "msg-tech-020",
+      "type": "multiple-choice",
+      "question": "A team uses Kafka and needs delayed processing (e.g., retry in 30 minutes). Which approach is most common?",
+      "options": [
+        "Native per-message delay in core Kafka",
+        "Use delay topics / scheduled consumers / stream-time logic",
+        "Not possible in Kafka",
+        "Use random sleep in consumers only"
+      ],
+      "correct": 1,
+      "explanation": "Kafka lacks first-class per-message delay queues; teams usually model delay via topics/time-based processing strategies."
+    },
+    {
+      "id": "msg-tech-021",
+      "type": "multiple-choice",
+      "question": "Which statement about SQS Standard is accurate?",
+      "options": [
+        "Exactly-once and strict ordering are guaranteed",
+        "At-least-once with best-effort ordering",
+        "No retries supported",
+        "Requires partition planning"
+      ],
+      "correct": 1,
+      "explanation": "SQS Standard provides at-least-once delivery and does not guarantee strict ordering."
+    },
+    {
+      "id": "msg-tech-022",
+      "type": "multiple-choice",
+      "question": "A team needs dead-letter queues with redrive and visibility timeout semantics. Which service family is most directly aligned?",
+      "options": [
+        "Queue systems like SQS/RabbitMQ",
+        "Pure append-only log only",
+        "Object storage",
+        "DNS"
+      ],
+      "correct": 0,
+      "explanation": "DLQ + visibility timeout are core queue workflow concepts widely available in queue systems."
+    },
+    {
+      "id": "msg-tech-023",
+      "type": "multiple-choice",
+      "question": "If you need millions of small retained events and many independent consumers with own cursors, what is the key scaling dimension?",
+      "options": [
+        "Number of exchanges only",
+        "Partition/cursor scaling and storage throughput",
+        "CPU cache line only",
+        "TLS cipher selection only"
+      ],
+      "correct": 1,
+      "explanation": "At this scale, storage throughput, partitioning, and independent consumer cursor handling dominate architecture choice."
+    },
+    {
+      "id": "msg-tech-024",
+      "type": "multiple-choice",
+      "question": "Which is a warning sign that Redis Pub/Sub (not Streams) is the wrong tool?",
+      "options": [
+        "Need low latency fanout",
+        "Need durable replay after consumer downtime",
+        "Already run Redis",
+        "Small message payloads"
+      ],
+      "correct": 1,
+      "explanation": "Redis Pub/Sub is ephemeral; it does not provide durable retention/replay like Streams or log brokers."
+    },
+    {
+      "id": "msg-tech-025",
+      "type": "multiple-choice",
+      "question": "A team selecting between RabbitMQ and Kafka for task queues should prioritize which criterion first?",
+      "options": [
+        "Logo preference",
+        "Message model fit: queue workflow vs append-only event log",
+        "Random benchmark tweet",
+        "Broker startup time only"
+      ],
+      "correct": 1,
+      "explanation": "The semantic fit of the workload model is usually more important than isolated benchmark numbers."
+    },
+    {
+      "id": "msg-tech-026",
+      "type": "multiple-choice",
+      "question": "What is the biggest hidden cost of self-managed broker clusters for small teams?",
+      "options": [
+        "No monitoring needed",
+        "Operational staffing, upgrades, incident response, and capacity planning",
+        "Free storage forever",
+        "Guaranteed lower latency"
+      ],
+      "correct": 1,
+      "explanation": "Day-2 operational ownership is often the dominant cost for small teams."
+    },
+    {
+      "id": "msg-tech-027",
+      "type": "multiple-choice",
+      "question": "A platform team wants schema compatibility checks and stream governance in Kafka ecosystem. Which add-on capability is commonly used?",
+      "options": [
+        "Schema registry and compatibility policies",
+        "RabbitMQ shovel plugin",
+        "SQS visibility timeout",
+        "DNS TXT records"
+      ],
+      "correct": 0,
+      "explanation": "Schema registries are common in Kafka ecosystems for enforcing producer/consumer contract evolution."
+    },
+    {
+      "id": "msg-tech-028",
+      "type": "multiple-choice",
+      "question": "A team needs ordered processing per customer but high parallelism globally. Best partitioning strategy?",
+      "options": [
+        "Single global partition",
+        "Partition by customer_id",
+        "Random partition for each event",
+        "Round-robin with no key"
+      ],
+      "correct": 1,
+      "explanation": "Partitioning by customer_id preserves per-customer order while enabling parallelism across customers."
+    },
+    {
+      "id": "msg-tech-029",
+      "type": "multiple-choice",
+      "question": "What is a typical reason to choose Pub/Sub over self-managed Kafka on GCP for moderate scale?",
+      "options": [
+        "Need to manage brokers manually",
+        "Reduced ops burden with managed integration",
+        "No IAM integration",
+        "No push delivery support"
+      ],
+      "correct": 1,
+      "explanation": "Managed Pub/Sub lowers operational burden and integrates well with GCP IAM and services."
+    },
+    {
+      "id": "msg-tech-030",
+      "type": "multiple-choice",
+      "question": "A team evaluating FIFO queues sees throughput constraints compared with standard mode. What is the core trade-off?",
+      "options": [
+        "More ordering guarantees, less raw throughput",
+        "Less durability and less throughput",
+        "Same guarantees and same throughput",
+        "No DLQ support"
+      ],
+      "correct": 0,
+      "explanation": "Stronger ordering/dedupe constraints generally reduce achievable parallel throughput."
+    },
+    {
+      "id": "msg-tech-031",
+      "type": "multiple-choice",
+      "question": "A company needs to mirror events across regions and replay from checkpoints for DR testing. Which platform is usually strongest starting point?",
+      "options": [
+        "Kafka with replication tooling and retained logs",
+        "RabbitMQ temporary queues only",
+        "Redis Pub/Sub only",
+        "SQS without persistence strategy"
+      ],
+      "correct": 0,
+      "explanation": "Kafka retained logs and ecosystem tooling are commonly used for cross-region replication and replay-driven DR testing."
+    },
+    {
+      "id": "msg-tech-032",
+      "type": "multiple-choice",
+      "question": "For \"job queue with 10-second SLA, simple retries, minimal infra team\", which first choice is often right?",
+      "options": [
+        "Managed queue (SQS or equivalent)",
+        "Build distributed log cluster immediately",
+        "Custom broker in-house",
+        "Avoid retries entirely"
+      ],
+      "correct": 0,
+      "explanation": "Managed queues typically satisfy simple job-SLA workloads with minimal operational overhead."
+    },
+    {
+      "id": "msg-tech-033",
+      "type": "multiple-choice",
+      "question": "Which decision framework is most defensible in architecture reviews?",
+      "options": [
+        "Choose tool with most stars",
+        "Define workload requirements and evaluate weighted trade-offs against candidate brokers",
+        "Always choose newest tech",
+        "Copy previous team blindly"
+      ],
+      "correct": 1,
+      "explanation": "A requirement-driven weighted trade-off framework is auditable and resilient to bias."
+    },
+    {
+      "id": "msg-tech-034",
+      "type": "multiple-choice",
+      "question": "A team has strict compliance requiring message encryption in transit and at rest plus IAM-scoped access. What selection step is mandatory?",
+      "options": [
+        "Ignore security features until later",
+        "Evaluate broker-native security controls and auditability as first-class requirements",
+        "Pick cheapest option only",
+        "Use no auth in dev/prod"
+      ],
+      "correct": 1,
+      "explanation": "Security and compliance constraints are first-class selection criteria, not post-hoc add-ons."
+    },
+    {
+      "id": "msg-tech-035",
+      "type": "multiple-choice",
+      "question": "A team needs strict low-latency command handling and also a separate analytics feed. What is usually the cleanest design?",
+      "options": [
+        "Use only one queue and drop analytics replay",
+        "Use command-oriented broker path plus event-log pipeline with clear boundaries",
+        "Disable commands during analytics windows",
+        "Write CSV files manually"
+      ],
+      "correct": 1,
+      "explanation": "Separating command and event-log paths is common when both semantics are required, provided boundaries are explicit."
+    },
+    {
+      "id": "msg-tech-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce team currently runs delayed retries, priorities, and routing by order type. They now also want 7-day replay for analytics. Which primary model should they evaluate first?",
+          "options": [
+            "Pure queue-first model only",
+            "Event-log model with retained history",
+            "In-memory pub/sub only",
+            "Cron jobs"
+          ],
+          "correct": 1,
+          "explanation": "Replay-heavy analytics points toward retained event-log systems."
+        },
+        {
+          "question": "They keep RabbitMQ for operational workflows and add Kafka for analytics/event backbone. What architectural pattern is this?",
+          "options": [
+            "Dual-broker architecture with bounded responsibilities",
+            "Anti-pattern always",
+            "Single point of failure by definition",
+            "No integration needed"
+          ],
+          "correct": 0,
+          "explanation": "Using two brokers can be valid when each serves distinct workload semantics with clear ownership boundaries."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A fintech platform must process account debits in order per account and cannot lose events. Throughput is moderate. Which AWS queue mode is most appropriate initially?",
+          "options": [
+            "SQS Standard",
+            "SQS FIFO with message groups",
+            "SNS topic only",
+            "EventBridge schedule"
+          ],
+          "correct": 1,
+          "explanation": "FIFO with message groups provides per-key ordering and dedupe behavior."
+        },
+        {
+          "question": "Traffic later grows 20x and FIFO throughput becomes bottlenecked. What next step is most pragmatic?",
+          "options": [
+            "Blindly keep FIFO",
+            "Re-partition by finer-grained message groups and revisit exactly-once strategy boundaries",
+            "Turn off ordering",
+            "Drop durability"
+          ],
+          "correct": 1,
+          "explanation": "Scale often requires finer grouping and explicit trade-off review between strict ordering and throughput."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A media company on GCP wants fully managed pub/sub and push delivery to Cloud Run. Which default choice fits?",
+          "options": [
+            "Kafka on GKE",
+            "Google Pub/Sub",
+            "RabbitMQ on Compute Engine",
+            "Redis Streams"
+          ],
+          "correct": 1,
+          "explanation": "Pub/Sub is the managed native fit on GCP."
+        },
+        {
+          "question": "They later need deterministic replay for 30-day backfills with many independent consumer groups. What should they check first?",
+          "options": [
+            "Retention/replay limits, subscription model, and whether managed Kafka/log platform is needed",
+            "Only UI dashboard theme",
+            "Only producer library language",
+            "Turn off monitoring"
+          ],
+          "correct": 0,
+          "explanation": "Replay requirements may shift selection toward log-centric platforms or hybrid design."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team compares Redis Pub/Sub and Redis Streams for IoT telemetry. They need durable catch-up after consumer downtime. Which is correct?",
+          "options": [
+            "Redis Pub/Sub",
+            "Redis Streams",
+            "Either identical",
+            "Neither supports consumers"
+          ],
+          "correct": 1,
+          "explanation": "Streams supports persistence, IDs, and consumer groups; Pub/Sub is ephemeral."
+        },
+        {
+          "question": "They choose Streams and notice one key dominates traffic. What risk appears first?",
+          "options": [
+            "Hot shard/partition causing uneven load",
+            "Immediate global outage by design",
+            "No memory use",
+            "No ordering issues possible"
+          ],
+          "correct": 0,
+          "explanation": "Skewed keys create hot shard bottlenecks and lag concentration."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A logistics app needs rich routing (region + priority + type) and short-lived operational commands. Which broker is typically strongest?",
+          "options": [
+            "Kafka",
+            "RabbitMQ exchanges and bindings",
+            "SQS Standard without SNS",
+            "Object storage events only"
+          ],
+          "correct": 1,
+          "explanation": "RabbitMQ routing features are built for this command workflow style."
+        },
+        {
+          "question": "If the same app later needs full historical replay for ML training, what is a common evolution?",
+          "options": [
+            "Keep one short-lived command queue only",
+            "Introduce event-log pipeline for replay use cases",
+            "Disable persistence",
+            "Replace everything with cron"
+          ],
+          "correct": 1,
+          "explanation": "Replay and long retention typically drive an event-log addition."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS platform requires at-least-once background processing with minimal ops and DLQ support in AWS. Which service is default?",
+          "options": [
+            "RabbitMQ self-managed",
+            "SQS Standard",
+            "Kafka self-managed",
+            "Redis Pub/Sub"
+          ],
+          "correct": 1,
+          "explanation": "SQS Standard is usually the low-ops default for this requirement set."
+        },
+        {
+          "question": "They add strict per-customer ordering for one workflow only. What is a practical adaptation?",
+          "options": [
+            "Move all traffic to FIFO",
+            "Use a dedicated FIFO queue for ordered workflow while keeping Standard for others",
+            "Drop ordering need",
+            "Use email"
+          ],
+          "correct": 1,
+          "explanation": "Split workflows by semantics to avoid unnecessary throughput constraints platform-wide."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A platform team wants a broker choice justified to leadership. What should stage 1 produce?",
+          "options": [
+            "One benchmark screenshot",
+            "Weighted requirements matrix with must-have constraints",
+            "Only anecdotal opinions",
+            "Random vote"
+          ],
+          "correct": 1,
+          "explanation": "A weighted matrix improves decision transparency."
+        },
+        {
+          "question": "Stage 2 of the framework should include what?",
+          "options": [
+            "Ignore failure testing",
+            "Proof-of-concept against representative load/failure scenarios",
+            "Skip security review",
+            "No cost model"
+          ],
+          "correct": 1,
+          "explanation": "POC validation on realistic scenarios catches assumption gaps before commitment."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team needs exactly-once processing from broker to external DB. Which statement is accurate?",
+          "options": [
+            "All brokers solve this automatically",
+            "Requires idempotent sink/outbox or transactional design beyond broker-only guarantees",
+            "Not possible ever",
+            "Disable retries"
+          ],
+          "correct": 1,
+          "explanation": "External sink exactly-once needs end-to-end idempotency/transaction strategy."
+        },
+        {
+          "question": "Given this, what is a good selection criterion?",
+          "options": [
+            "Broker logo",
+            "How well platform supports idempotency keys/transactions/replay for recovery",
+            "Number of conference talks",
+            "Most defaults"
+          ],
+          "correct": 1,
+          "explanation": "Selection should emphasize recovery semantics and tooling for correctness."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A payments team expects 200k events/s and 6-month retention. Which family is likely strongest?",
+          "options": [
+            "Queue-only workflow broker",
+            "Distributed log platform",
+            "In-memory ephemeral pub/sub",
+            "Local file writes"
+          ],
+          "correct": 1,
+          "explanation": "High throughput + long retention aligns with log platforms."
+        },
+        {
+          "question": "They also need low-latency command routing to fraud workers. What architecture is common?",
+          "options": [
+            "Single tool for all semantics no trade-offs",
+            "Use log for event backbone plus queue/routing channel for commands",
+            "Disable fraud routing",
+            "Poll database"
+          ],
+          "correct": 1,
+          "explanation": "Mixed semantics often justify mixed messaging patterns."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An internal tool has 100 msg/s and two workers. Team proposes Kafka due to future growth. What is sensible today?",
+          "options": [
+            "Adopt most complex stack immediately",
+            "Choose simplest option meeting current SLOs, with migration path",
+            "No broker ever",
+            "Build custom Raft log"
+          ],
+          "correct": 1,
+          "explanation": "Right-sizing now with explicit migration path usually minimizes waste."
+        },
+        {
+          "question": "What evidence should trigger migration later?",
+          "options": [
+            "Personal preference changes",
+            "Measured gaps: replay needs, throughput ceilings, or operational constraints",
+            "Day of week",
+            "Number of tabs open"
+          ],
+          "correct": 1,
+          "explanation": "Trigger on measurable requirement deltas, not fashion."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team on Kubernetes self-manages RabbitMQ and suffers frequent partition incidents. They can use managed cloud services. What is first evaluation axis?",
+          "options": [
+            "Color palette",
+            "Ops burden and reliability risk reduction",
+            "Language rewrite",
+            "Ignore incidents"
+          ],
+          "correct": 1,
+          "explanation": "Service reliability/ops burden are core business drivers for managed migration."
+        },
+        {
+          "question": "They still need AMQP routing semantics. Best near-term move?",
+          "options": [
+            "Migrate to unrelated service with missing semantics",
+            "Use managed RabbitMQ offering or keep AMQP-compatible path while reducing ops toil",
+            "Drop routing",
+            "Use spreadsheets"
+          ],
+          "correct": 1,
+          "explanation": "Preserve required semantics while reducing operational risk."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A data team compares Pub/Sub and Kafka. They care most about open ecosystem portability. Which concern is valid?",
+          "options": [
+            "Portability has no value",
+            "Managed cloud lock-in may affect long-term portability decisions",
+            "Only latency matters",
+            "No compliance impacts"
+          ],
+          "correct": 1,
+          "explanation": "Portability vs managed convenience is a real strategic trade-off."
+        },
+        {
+          "question": "How should they de-risk this choice?",
+          "options": [
+            "Avoid abstraction",
+            "Define producer/consumer contracts and adapters to reduce migration friction",
+            "Hardcode vendor APIs everywhere",
+            "Disable tests"
+          ],
+          "correct": 1,
+          "explanation": "Abstraction boundaries and contracts reduce future migration cost."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A gaming platform needs sub-100ms fanout notifications and can tolerate occasional loss for presence updates. Which model fits best?",
+          "options": [
+            "Heavy durable log mandatory",
+            "Low-latency pub/sub path",
+            "Batch ETL only",
+            "Queue with 7-day replay only"
+          ],
+          "correct": 1,
+          "explanation": "Ephemeral presence updates often prefer low-latency pub/sub over heavy durability."
+        },
+        {
+          "question": "For purchase events on the same platform, what should change?",
+          "options": [
+            "Same ephemeral channel",
+            "Use durable messaging path with retries/idempotency",
+            "Drop events",
+            "Use UDP multicast only"
+          ],
+          "correct": 1,
+          "explanation": "Different event classes need different reliability semantics."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team must process GDPR delete events across many services. Which capability matters most?",
+          "options": [
+            "Cute dashboard",
+            "Reliable fanout with auditable delivery/retry/dead-letter handling",
+            "No retries",
+            "No identifiers"
+          ],
+          "correct": 1,
+          "explanation": "Compliance workflows require reliable, observable delivery behavior."
+        },
+        {
+          "question": "If one consumer is consistently failing deletes, what selection concern does this expose?",
+          "options": [
+            "No concern",
+            "Operational tooling maturity for retries, DLQ, and redrive",
+            "Only serialization format",
+            "Only CPU speed"
+          ],
+          "correct": 1,
+          "explanation": "Strong ops tooling is essential for compliance-critical workflows."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A retail team uses Kafka but struggles with small-message request/reply workflows. Which complement is often used?",
+          "options": [
+            "No complement possible",
+            "Introduce queue/RPC-friendly broker for command path where needed",
+            "Replace with FTP",
+            "Disable request/reply"
+          ],
+          "correct": 1,
+          "explanation": "Kafka is great for event logs; command-style RPC workflows may fit queue brokers better."
+        },
+        {
+          "question": "How to avoid architecture sprawl?",
+          "options": [
+            "Add tools without boundaries",
+            "Define clear ownership and use-case boundaries per broker",
+            "No documentation",
+            "Ban observability"
+          ],
+          "correct": 1,
+          "explanation": "Bounded responsibilities prevent uncontrolled tool proliferation."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A platform has strict budget pressure. Which pricing misunderstanding is common?",
+          "options": [
+            "Ignoring data egress, storage retention, and cross-zone costs",
+            "Assuming all managed services bill identically",
+            "Thinking self-managed has no people cost",
+            "All of the above"
+          ],
+          "correct": 3,
+          "explanation": "Cost evaluation must include infra, people, and traffic/storage nuances."
+        },
+        {
+          "question": "What should a robust cost comparison include?",
+          "options": [
+            "Only happy-path throughput",
+            "Peak + average traffic, retention, failure overhead, and staffing costs",
+            "Only one-month trial",
+            "Only CPU cores"
+          ],
+          "correct": 1,
+          "explanation": "Comprehensive TCO models avoid surprise spend after launch."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team needs guaranteed ordering per key and very high throughput. What first design action is best?",
+          "options": [
+            "Single global queue",
+            "Choose key-partitioned model and estimate hot-key risk",
+            "Disable ordering requirement immediately",
+            "Use random partitioning"
+          ],
+          "correct": 1,
+          "explanation": "Per-key ordering generally maps to partition-by-key with skew analysis."
+        },
+        {
+          "question": "If one key becomes hot, what mitigation is common?",
+          "options": [
+            "Do nothing",
+            "Key bucketing/sharding with downstream re-aggregation where acceptable",
+            "Reduce partitions to 1",
+            "Turn off metrics"
+          ],
+          "correct": 1,
+          "explanation": "Hot key mitigation often requires key bucketing and design trade-offs."
+        }
+      ]
+    },
+    {
+      "id": "msg-tech-053",
+      "type": "multi-select",
+      "question": "Which criteria should be weighted early in a broker technology-selection matrix? (Select all that apply)",
+      "options": [
+        "Delivery guarantees and ordering requirements",
+        "Replay/retention requirements",
+        "Operational ownership model",
+        "Favorite mascot"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Semantics, retention/replay, and ops model are core; mascot preference is not a defensible criterion."
+    },
+    {
+      "id": "msg-tech-054",
+      "type": "multi-select",
+      "question": "Which scenarios strongly favor Kafka over queue-first brokers? (Select all that apply)",
+      "options": [
+        "Long retention with replay from arbitrary offsets",
+        "High-throughput event streaming analytics",
+        "Simple one-off background jobs with tiny scale only",
+        "Multiple independent consumer groups reading same event history"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Kafka is strongest for retained event-log patterns and independent multi-consumer analytics."
+    },
+    {
+      "id": "msg-tech-055",
+      "type": "multi-select",
+      "question": "Which capabilities are classic RabbitMQ strengths? (Select all that apply)",
+      "options": [
+        "Flexible routing via exchanges/bindings",
+        "Task queue workflows with ACK/requeue semantics",
+        "Native large-scale historical replay as primary model",
+        "Priority and delayed message patterns"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "RabbitMQ excels at routing/workflow queues; it is not primarily a long-retention replay log."
+    },
+    {
+      "id": "msg-tech-056",
+      "type": "multi-select",
+      "question": "When is SQS Standard usually a good default? (Select all that apply)",
+      "options": [
+        "Need low-ops managed queue in AWS",
+        "At-least-once delivery is acceptable",
+        "Strict global ordering is mandatory",
+        "Bursty workloads benefit from serverless pricing model"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "SQS Standard fits low-ops at-least-once workloads, but not strict ordering requirements."
+    },
+    {
+      "id": "msg-tech-057",
+      "type": "multi-select",
+      "question": "Which are common hidden costs in self-managed broker deployments? (Select all that apply)",
+      "options": [
+        "On-call/incident response staffing",
+        "Upgrade/patch management",
+        "Capacity planning and performance tuning",
+        "Zero observability cost by definition"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "People/process costs are substantial in self-managed systems; observability also costs effort and tooling."
+    },
+    {
+      "id": "msg-tech-058",
+      "type": "multi-select",
+      "question": "Which patterns help reduce vendor lock-in risk? (Select all that apply)",
+      "options": [
+        "Define internal event contracts independent of broker APIs",
+        "Use adapter layers around producer/consumer SDK usage",
+        "Hardcode vendor-specific features everywhere immediately",
+        "Document migration playbooks and data export strategy"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Contract boundaries and adapters lower switching friction; deep hardcoding increases lock-in."
+    },
+    {
+      "id": "msg-tech-059",
+      "type": "multi-select",
+      "question": "A workload requires end-to-end correctness with external DB sinks. Which measures help? (Select all that apply)",
+      "options": [
+        "Idempotency keys at sink writes",
+        "Transactional outbox/inbox patterns",
+        "Assume broker-only exactly-once covers external DB automatically",
+        "Replay-safe processing design"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "External sink correctness needs explicit idempotency/transaction patterns and replay-safe logic."
+    },
+    {
+      "id": "msg-tech-060",
+      "type": "multi-select",
+      "question": "Which factors should influence partition/queue sharding decisions? (Select all that apply)",
+      "options": [
+        "Target throughput and consumer parallelism",
+        "Per-key ordering requirements",
+        "Skew/hot-key risk",
+        "UI color theme"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Throughput, ordering, and skew directly drive sharding strategy."
+    },
+    {
+      "id": "msg-tech-061",
+      "type": "multi-select",
+      "question": "Which signals indicate your queue-first setup may need event-log augmentation? (Select all that apply)",
+      "options": [
+        "Frequent need to replay historical events for backfills",
+        "Many independent downstream consumers need own cursors",
+        "No retention requirement and tiny workload",
+        "Analytics teams repeatedly ask for raw event history"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Replay and independent consumer history needs often push toward log-based architecture."
+    },
+    {
+      "id": "msg-tech-062",
+      "type": "multi-select",
+      "question": "Which are valid reasons to keep two brokers in one platform? (Select all that apply)",
+      "options": [
+        "Distinct workload semantics (commands vs event backbone)",
+        "Clear ownership boundaries and operational competence",
+        "No governance or architecture standards",
+        "Measured business value outweighs added complexity"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Dual-broker can be valid with clear boundaries/governance and demonstrated value."
+    },
+    {
+      "id": "msg-tech-063",
+      "type": "multi-select",
+      "question": "Which checks belong in a production-readiness review for broker selection? (Select all that apply)",
+      "options": [
+        "Failure-mode testing (broker outage, consumer lag, poison messages)",
+        "Security/compliance controls validation",
+        "Cost under peak and off-peak scenarios",
+        "Skip DLQ/redrive behavior testing"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Readiness review must include resilience, security, and realistic cost testing; DLQ behavior cannot be skipped."
+    },
+    {
+      "id": "msg-tech-064",
+      "type": "multi-select",
+      "question": "For GCP-native systems, which are reasons to consider Pub/Sub? (Select all that apply)",
+      "options": [
+        "Managed service with low operational overhead",
+        "Integration with IAM and GCP ecosystem",
+        "Guaranteed strict global ordering at arbitrary throughput",
+        "Push and pull delivery modes"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Pub/Sub offers managed ops and integrations; strict global ordering at arbitrary scale is not the default premise."
+    },
+    {
+      "id": "msg-tech-065",
+      "type": "multi-select",
+      "question": "Which scenarios make Redis Streams a reasonable option? (Select all that apply)",
+      "options": [
+        "Moderate throughput where Redis is already operationally mature",
+        "Need durable consumer groups and replay",
+        "Need months of very large retained history at Kafka-scale throughput",
+        "Low-latency stream workflows with bounded retention"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Redis Streams can fit moderate workloads and bounded retention; massive long-term event-log workloads usually favor dedicated log platforms."
+    },
+    {
+      "id": "msg-tech-066",
+      "type": "multi-select",
+      "question": "Which anti-patterns commonly derail technology selection? (Select all that apply)",
+      "options": [
+        "Choosing based on hype without requirements",
+        "Ignoring day-2 ops and incident history",
+        "Running representative POCs before committing",
+        "Treating all event types as having identical reliability needs"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Hype-driven and one-size-fits-all choices often fail; representative POCs are good practice."
+    },
+    {
+      "id": "msg-tech-067",
+      "type": "multi-select",
+      "question": "Which telemetry should you monitor regardless of broker choice? (Select all that apply)",
+      "options": [
+        "Consumer lag/backlog",
+        "End-to-end processing latency",
+        "DLQ rate and retry exhaustion",
+        "Only CPU temperature"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Lag, latency, and DLQ/retry metrics are universal operational health indicators."
+    },
+    {
+      "id": "msg-tech-068",
+      "type": "numeric-input",
+      "question": "A team ingests 120,000 events/second. Each consumer instance sustainably handles 15,000 events/second. What is the minimum number of consumers needed?",
+      "answer": 8,
+      "unit": "consumers",
+      "tolerance": "exact",
+      "explanation": "120,000 / 15,000 = 8 consumers minimum (ignoring buffer headroom)."
+    },
+    {
+      "id": "msg-tech-069",
+      "type": "numeric-input",
+      "question": "An SQS-like queue receives 9 million messages/day. Processing cost is $0.40 per million requests. Approximate daily request cost?",
+      "answer": 3.6,
+      "unit": "USD/day",
+      "tolerance": 0.05,
+      "explanation": "9 million / 1 million * $0.40 = $3.60/day."
+    },
+    {
+      "id": "msg-tech-070",
+      "type": "numeric-input",
+      "question": "Kafka topic retention is 14 days. Ingest rate is 25 MB/s. Approximate retained data volume in TB (decimal, 1 TB = 1,000,000 MB)?",
+      "answer": 30.24,
+      "unit": "TB",
+      "tolerance": 0.1,
+      "explanation": "25 MB/s * 86,400 s/day * 14 days = 30,240,000 MB = 30.24 TB."
+    },
+    {
+      "id": "msg-tech-071",
+      "type": "numeric-input",
+      "question": "A FIFO queue processes 3,000 msgs/s with 10 message groups evenly loaded. What is average msgs/s per group?",
+      "answer": 300,
+      "unit": "msg/s per group",
+      "tolerance": "exact",
+      "explanation": "3,000 / 10 = 300 msg/s per message group."
+    },
+    {
+      "id": "msg-tech-072",
+      "type": "numeric-input",
+      "question": "A consumer backlog is 4,500,000 messages. Net drain rate is 30,000 msg/s (after accounting for incoming traffic). How many seconds to catch up?",
+      "answer": 150,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "4,500,000 / 30,000 = 150 seconds."
+    },
+    {
+      "id": "msg-tech-073",
+      "type": "numeric-input",
+      "question": "A broker cluster stores 18 TB replicated data with replication factor 3. What is logical (pre-replication) data volume?",
+      "answer": 6,
+      "unit": "TB",
+      "tolerance": "exact",
+      "explanation": "Logical data = physical / replication factor = 18 / 3 = 6 TB."
+    },
+    {
+      "id": "msg-tech-074",
+      "type": "numeric-input",
+      "question": "A managed pub/sub bill has: ingest $1,200, egress $900, retention $300, cross-zone traffic $200. Total monthly cost?",
+      "answer": 2600,
+      "unit": "USD/month",
+      "tolerance": "exact",
+      "explanation": "1,200 + 900 + 300 + 200 = 2,600."
+    },
+    {
+      "id": "msg-tech-075",
+      "type": "numeric-input",
+      "question": "A team runs 12 consumer pods at $0.08/hour each for 24 hours. What is daily compute cost?",
+      "answer": 23.04,
+      "unit": "USD/day",
+      "tolerance": 0.02,
+      "explanation": "12 * 0.08 * 24 = 23.04 USD/day."
+    },
+    {
+      "id": "msg-tech-076",
+      "type": "numeric-input",
+      "question": "Producer rate is 70,000 msg/s. Current consumers drain 55,000 msg/s. How fast does lag grow?",
+      "answer": 15000,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "Lag growth = incoming - processed = 70,000 - 55,000 = 15,000 msg/s."
+    },
+    {
+      "id": "msg-tech-077",
+      "type": "numeric-input",
+      "question": "A DLQ gets 2,400 messages in an hour while total processed is 1,200,000 messages. What is DLQ rate percentage?",
+      "answer": 0.2,
+      "unit": "percent",
+      "tolerance": 0.05,
+      "explanation": "2,400 / 1,200,000 = 0.002 = 0.2%."
+    },
+    {
+      "id": "msg-tech-078",
+      "type": "numeric-input",
+      "question": "A Kafka consumer group has 48 partitions and 12 consumers. How many partitions per consumer on average?",
+      "answer": 4,
+      "unit": "partitions",
+      "tolerance": "exact",
+      "explanation": "48 / 12 = 4 partitions per consumer."
+    },
+    {
+      "id": "msg-tech-079",
+      "type": "numeric-input",
+      "question": "A queue service has p99 processing latency target 2s. Current p99 is 2.6s. By what percentage is target exceeded?",
+      "answer": 30,
+      "unit": "percent",
+      "tolerance": 0.1,
+      "explanation": "(2.6 - 2.0) / 2.0 = 0.3 = 30% over target."
+    },
+    {
+      "id": "msg-tech-080",
+      "type": "numeric-input",
+      "question": "A system sends 50,000 events/s at 500 bytes each. What is outbound data rate in MB/s (decimal MB)?",
+      "answer": 25,
+      "unit": "MB/s",
+      "tolerance": 0.05,
+      "explanation": "50,000 * 500 = 25,000,000 bytes/s = 25 MB/s (decimal)."
+    },
+    {
+      "id": "msg-tech-081",
+      "type": "numeric-input",
+      "question": "During a failover, throughput drops from 160,000 msg/s to 120,000 msg/s. What is the percentage drop?",
+      "answer": 25,
+      "unit": "percent",
+      "tolerance": 0.1,
+      "explanation": "(160k - 120k) / 160k = 25% drop."
+    },
+    {
+      "id": "msg-tech-082",
+      "type": "ordering",
+      "question": "Rank these broker-selection steps from first to last:",
+      "items": [
+        "Run representative POC tests",
+        "Define hard requirements and constraints",
+        "Choose final architecture and rollout plan",
+        "Score candidates with weighted matrix"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        0,
+        2
+      ],
+      "explanation": "Start with requirements, then score options, validate with POC, and finally decide rollout."
+    },
+    {
+      "id": "msg-tech-083",
+      "type": "ordering",
+      "question": "Rank these delivery guarantees from weakest to strongest:",
+      "items": [
+        "Exactly-once",
+        "At-most-once",
+        "At-least-once",
+        "Effectively-once with idempotent sink design"
+      ],
+      "correctOrder": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "explanation": "At-most-once is weakest; exactly-once strongest in idealized guarantee hierarchy."
+    },
+    {
+      "id": "msg-tech-084",
+      "type": "ordering",
+      "question": "Rank these messaging patterns from most command/workflow-oriented to most event-log-oriented:",
+      "items": [
+        "Task queue with ACK/retry",
+        "Append-only retained event log",
+        "RPC-over-queue",
+        "Fan-out durable event stream"
+      ],
+      "correctOrder": [
+        2,
+        0,
+        3,
+        1
+      ],
+      "explanation": "RPC and task queues are command-oriented; fan-out event stream and retained logs are event-oriented."
+    },
+    {
+      "id": "msg-tech-085",
+      "type": "ordering",
+      "question": "Rank these migration approaches from lowest to highest operational risk:",
+      "items": [
+        "Big-bang broker replacement across all services",
+        "Pilot one bounded workflow first",
+        "Run dual-write/dual-read canary phase",
+        "Cut over all traffic after pilot validation"
+      ],
+      "correctOrder": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "explanation": "Bounded pilot then canary then broader cutover is lower risk than big-bang replacement."
+    },
+    {
+      "id": "msg-tech-086",
+      "type": "ordering",
+      "question": "Rank these factors from least to most likely to create long-term TCO surprises:",
+      "items": [
+        "Compute instance hourly cost",
+        "Cross-zone/network egress charges",
+        "On-call/incident staffing burden",
+        "Storage retention growth over time"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        3,
+        2
+      ],
+      "explanation": "People/ops burden and retention growth are common long-term surprises."
+    },
+    {
+      "id": "msg-tech-087",
+      "type": "ordering",
+      "question": "Rank these queue/backlog states from healthiest to riskiest:",
+      "items": [
+        "Stable low lag with occasional spikes recovered quickly",
+        "Sustained lag growth for hours",
+        "Lag near zero and p99 within SLA",
+        "Lag oscillates with retries and DLQ spikes"
+      ],
+      "correctOrder": [
+        2,
+        0,
+        3,
+        1
+      ],
+      "explanation": "Near-zero lag is healthiest; sustained growth is riskiest."
+    },
+    {
+      "id": "msg-tech-088",
+      "type": "ordering",
+      "question": "Rank these replay needs from smallest to largest retained-history demand:",
+      "items": [
+        "No replay needed",
+        "Replay last 24 hours for bugfix",
+        "Replay last 30 days for analytics",
+        "Replay 1 year for audits"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Retention and replay demand increases from none to annual audit needs."
+    },
+    {
+      "id": "msg-tech-089",
+      "type": "ordering",
+      "question": "Rank these consumer scaling actions from quickest to slowest to execute safely:",
+      "items": [
+        "Increase consumer replicas when partitions already sufficient",
+        "Tune batch/concurrency settings",
+        "Increase partition count and rebalance",
+        "Re-architect processing model"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Replica and tuning changes are usually faster than repartitioning or major redesign."
+    },
+    {
+      "id": "msg-tech-090",
+      "type": "ordering",
+      "question": "Rank these selection artifacts from earliest to latest in a mature decision process:",
+      "items": [
+        "Postmortem-informed iteration after rollout",
+        "Initial requirement document",
+        "Weighted candidate comparison",
+        "POC benchmark/failure report"
+      ],
+      "correctOrder": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "explanation": "Requirements come first, then scoring, then POC report, then post-rollout iteration."
+    },
+    {
+      "id": "msg-tech-091",
+      "type": "ordering",
+      "question": "Rank these message paths from least to most durable by default assumptions:",
+      "items": [
+        "Ephemeral pub/sub channel",
+        "Managed queue with persistence",
+        "Replicated retained event log",
+        "In-memory local process queue"
+      ],
+      "correctOrder": [
+        3,
+        0,
+        1,
+        2
+      ],
+      "explanation": "In-memory local queues are least durable; replicated retained logs are most durable."
+    },
+    {
+      "id": "msg-tech-092",
+      "type": "ordering",
+      "question": "Rank these broker-ops tasks from most frequent to least frequent in steady state:",
+      "items": [
+        "Monitoring lag/latency dashboards",
+        "Handling broker version upgrades",
+        "Incident response for spikes/failures",
+        "Quarterly capacity reforecasting"
+      ],
+      "correctOrder": [
+        0,
+        2,
+        3,
+        1
+      ],
+      "explanation": "Monitoring is continuous; incidents recurring; capacity periodic; upgrades less frequent."
+    },
+    {
+      "id": "msg-tech-093",
+      "type": "ordering",
+      "question": "Rank these architecture choices from lowest to highest vendor lock-in risk:",
+      "items": [
+        "Abstracted internal event interface + adapters",
+        "Open protocol/self-managed broker",
+        "Managed broker with thin wrappers",
+        "Deep use of proprietary features in core domain"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Deep proprietary feature coupling in core domain increases lock-in risk most."
+    },
+    {
+      "id": "msg-tech-094",
+      "type": "ordering",
+      "question": "Rank these rollout guardrails from first to last during production cutover:",
+      "items": [
+        "Define rollback criteria and SLO alarms",
+        "Shift 5% traffic canary",
+        "Observe metrics and compare against baseline",
+        "Expand to 100% traffic"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Set rollback criteria before canary, observe, then expand."
+    },
+    {
+      "id": "msg-tech-095",
+      "type": "ordering",
+      "question": "Rank these evidence sources from weakest to strongest for architecture approval:",
+      "items": [
+        "Anecdotal preference",
+        "Single synthetic benchmark",
+        "Workload-specific POC with failure injection",
+        "Production metrics from staged rollout"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Production-like evidence from staged rollout is strongest."
+    }
+  ]
+}
