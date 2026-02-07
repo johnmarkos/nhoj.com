@@ -1,5 +1,12 @@
 # Changelog
 
+## Unit 5 quality fixes (2026-02-07)
+
+- Applied review fixes across `content/unit-5-chapter-1.json` through `content/unit-5-chapter-8.json`.
+- Corrected several ambiguous or inconsistent prompts/explanations (including TTL freshness framing, invalidation race handling, and LFU aging examples).
+- Converted a few misfit numeric problems to multiple-choice where the intent was conceptual, not arithmetic.
+- Removed/adjusted low-quality all-correct multi-select items by adding proper distractors and tightening answer keys.
+
 ## Agent instruction migration (2026-02-07)
 
 - Added `AGENTS.md` as the canonical instruction file by porting existing `CLAUDE.md` guidance.

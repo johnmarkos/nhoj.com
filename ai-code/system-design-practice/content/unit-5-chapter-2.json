@@ -617,7 +617,7 @@
       "question": "Rank these database access patterns from fastest to slowest:",
       "items": ["Data in shared_buffers (PostgreSQL memory)", "Data in OS page cache", "Data on SSD", "Data in application Redis cache"],
       "correctOrder": [3, 0, 1, 2],
-      "explanation": "Redis (~1ms network + lookup) → shared_buffers (~0.1ms, but still needs query execution) → OS page cache (~1ms file read) → SSD (~0.1-1ms seek + read). Redis wins for repeated access because it skips query execution entirely."
+      "explanation": "Redis (~0.5-1ms: network hop + key lookup, no SQL overhead) → shared_buffers (~1-5ms: query parse/plan/execute with data already in RAM) → OS page cache (~5-20ms: query execution + filesystem reads) → SSD (~10-100ms: query execution + disk I/O). Redis wins because a key-value lookup skips SQL execution entirely."
     },
     {
       "id": "cache-place-043",
@@ -746,15 +746,15 @@
           "explanation": "8/10 = 80% of components served from fragment cache. Only 2 personalized components need rendering per request. Fragment caching provides partial page caching when full page caching isn't possible."
         },
         {
-          "question": "The 2 personalized components are user name (simple) and activity feed (complex, 100ms to render). What's the total render time savings?",
+          "question": "The 2 personalized components are user name (simple) and activity feed (complex, 100ms to render). The 8 cached fragments normally take 300ms total to render. What's the render time savings?",
           "options": [
-            "Depends on render time of the 8 cached fragments",
-            "Can't determine without knowing cached fragment render times",
-            "100ms saved",
+            "100ms",
+            "300ms",
+            "400ms",
             "No savings"
           ],
           "correct": 1,
-          "explanation": "If the 8 cached fragments normally take 200ms to render, fragment caching saves 200ms. The complex activity feed still takes 100ms. Total savings = cached fragments' render time. Measure to know actual savings."
+          "explanation": "Fragment caching saves the 300ms of rendering for the 8 cached fragments. The 2 personalized components (name + activity feed) still render normally. Savings = cached fragments' total render time = 300ms."
         }
       ]
     },
@@ -821,15 +821,15 @@
           "explanation": "Edge computing: CDN edge knows user's location (from IP). It can modify cached pages to inject country-specific content. One cached page + edge personalization = localized experience without origin round-trip."
         },
         {
-          "question": "This pattern is called:",
+          "question": "This broad pattern of running logic at CDN edges is called:",
           "options": [
-            "Edge-side includes (ESI)",
+            "Edge computing",
             "Server-side rendering",
             "Client-side rendering",
             "Origin shielding"
           ],
           "correct": 0,
-          "explanation": "Edge Side Includes (ESI) and similar edge computing patterns let caches assemble pages from cached fragments plus edge-computed parts. Varnish supports ESI. Modern edge functions (Workers) offer more flexibility."
+          "explanation": "Edge computing runs application logic at CDN edge nodes. Examples: Cloudflare Workers, Lambda@Edge. A related but more specific technique is Edge Side Includes (ESI), which assembles pages from fragments at the edge. Modern edge functions offer more flexibility than ESI."
         }
       ]
     },
@@ -1066,7 +1066,7 @@
       "stages": [
         {
           "question": "Your session cookie is 4KB. Each page loads 50 assets from your main domain. How much extra data is sent due to cookies?",
-          "options": ["4KB", "50KB", "200KB", "4KB × 50 = 200KB"],
+          "options": ["4KB", "50KB", "100KB", "200KB"],
           "correct": 3,
           "explanation": "4KB cookie × 50 requests = 200KB of cookie data sent. That's significant upload overhead on every page load, especially on slow connections."
         },

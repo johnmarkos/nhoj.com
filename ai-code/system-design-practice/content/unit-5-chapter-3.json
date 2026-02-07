@@ -388,9 +388,9 @@
       "id": "cache-strat-025",
       "type": "ordering",
       "question": "Rank write strategies from lowest to highest write latency:",
-      "items": ["Write-behind", "Write-through", "Write-around", "Database-only (no cache)"],
+      "items": ["Write-behind", "Write-through", "Write-around", "Cache-aside with invalidation (write DB + delete cache key)"],
       "correctOrder": [0, 2, 3, 1],
-      "explanation": "Write-behind (cache only, async DB): fastest. Write-around (DB only, no cache write): same as DB-only. Database-only: just DB write. Write-through (cache + DB sync): slowest due to two sync writes."
+      "explanation": "Write-behind (cache only, async DB): fastest. Write-around (DB write, no cache touch): DB latency only. Cache-aside invalidation (DB write + cache delete): slightly more than DB-only. Write-through (cache write + DB write sync): slowest."
     },
     {
       "id": "cache-strat-026",
@@ -581,7 +581,7 @@
       "question": "Rank these strategies by read-your-writes consistency (best to worst):",
       "items": ["Write-through", "Cache-aside with delete-on-write", "Write-behind", "Write-around"],
       "correctOrder": [0, 2, 1, 3],
-      "explanation": "Write-through: immediate (cache updated sync). Write-behind: immediate (cache updated, DB async). Cache-aside delete: miss after write (goes to DB, correct but delayed). Write-around: miss, reads stale until DB read (worst)."
+      "explanation": "Write-through: immediate (cache and DB both updated sync). Write-behind: cache updated immediately (reads from cache see new data), but DB is async — any read that bypasses cache and goes to DB might see stale data. Cache-aside delete: cache miss after write, correct but delayed. Write-around: reads stale until cache repopulates from DB (worst)."
     },
     {
       "id": "cache-strat-038",
@@ -1138,11 +1138,31 @@
     },
     {
       "id": "cache-strat-070",
-      "type": "ordering",
-      "question": "Match these data types to most appropriate write strategy (in order):",
-      "items": ["Financial transaction", "Page view counter", "User session", "Audit log"],
-      "correctOrder": [0, 2, 1, 3],
-      "explanation": "Financial: write-through (must persist). Session: write-through (consistency) or write-behind (if loss OK). Counter: write-behind (speed, loss OK). Audit log: write-through or write-around (must persist, rarely re-read)."
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Which write strategy is most appropriate for financial transactions (e.g., balance updates)?",
+          "options": [
+            "Write-behind (fast, async to DB)",
+            "Write-through (sync to both cache and DB)",
+            "Write-around (DB only, skip cache)",
+            "Cache-only (no DB write)"
+          ],
+          "correct": 1,
+          "explanation": "Financial data must persist reliably and be immediately consistent. Write-through ensures both cache and DB are updated synchronously. No risk of data loss from cache failure."
+        },
+        {
+          "question": "Which write strategy fits page view counters (high volume, minor loss acceptable)?",
+          "options": [
+            "Write-through (sync to both)",
+            "Write-behind (fast writes, batch to DB async)",
+            "Write-around (DB only)",
+            "No caching needed"
+          ],
+          "correct": 1,
+          "explanation": "View counters are high-volume, loss-tolerant analytics. Write-behind gives fast writes with async batched persistence. Losing a few counts in a crash is acceptable for analytics."
+        }
+      ]
     },
     {
       "id": "cache-strat-071",
@@ -1244,16 +1264,31 @@
     },
     {
       "id": "cache-strat-077",
-      "type": "multiple-choice",
-      "question": "What is 'look-aside' caching?",
-      "options": [
-        "A visual caching technique",
-        "Another name for cache-aside",
-        "Looking at the cache sideways",
-        "A backup cache"
-      ],
-      "correct": 1,
-      "explanation": "Look-aside and cache-aside are synonyms. Both describe the pattern where the application 'looks at' the cache first, then 'looks aside' to the database on miss. The cache sits 'to the side' of the data path."
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "You have 5 microservices all using cache-aside with different TTLs and invalidation logic. What problem is likely to emerge?",
+          "options": [
+            "Cache is too fast",
+            "Inconsistent caching behavior — services may see different data or have conflicting invalidation",
+            "Database becomes faster",
+            "No problem"
+          ],
+          "correct": 1,
+          "explanation": "Duplicated cache logic across services leads to divergence: different TTLs, some invalidate while others don't, race conditions across service boundaries. Consistency suffers."
+        },
+        {
+          "question": "Which approach addresses this?",
+          "options": [
+            "Longer TTLs",
+            "Centralized caching layer (read-through cache or shared cache service)",
+            "Remove caching entirely",
+            "More microservices"
+          ],
+          "correct": 1,
+          "explanation": "A centralized cache layer (read-through, or a shared cache service with consistent invalidation logic) ensures all services see the same cached data with the same freshness guarantees. Trade-off: adds a dependency."
+        }
+      ]
     },
     {
       "id": "cache-strat-078",
@@ -1636,11 +1671,31 @@
     },
     {
       "id": "cache-strat-099",
-      "type": "ordering",
-      "question": "For an e-commerce site, match these data types to write strategies (most appropriate order):",
-      "items": ["Product prices (must be accurate)", "Shopping cart", "Page view analytics", "User sessions"],
-      "correctOrder": [0, 1, 3, 2],
-      "explanation": "Prices: write-through (consistency critical). Cart: write-through (user sees changes). Sessions: write-through or write-behind (fast, consistent). Analytics: write-behind (speed, loss OK). Order by criticality."
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "E-commerce site: product prices must be accurate at checkout. Which write strategy for price updates?",
+          "options": [
+            "Write-behind (fast, async)",
+            "Write-through (sync to cache and DB)",
+            "Write-around (DB only, skip cache)",
+            "Cache-aside with long TTL"
+          ],
+          "correct": 1,
+          "explanation": "Price accuracy at checkout is critical — wrong prices cause legal and trust issues. Write-through ensures cache and DB are always in sync. No window for stale pricing."
+        },
+        {
+          "question": "Same site: shopping cart updates should feel instant to the user. Which strategy?",
+          "options": [
+            "Write-around (skip cache)",
+            "Write-through or write-behind (cache updated immediately, user sees changes)",
+            "Cache-aside with delete-on-write",
+            "No caching for cart"
+          ],
+          "correct": 1,
+          "explanation": "Users expect instant cart feedback. Write-through or write-behind both update cache immediately. Write-through is safer (DB synced); write-behind is faster. Either works — choose based on durability tolerance for cart data."
+        }
+      ]
     },
     {
       "id": "cache-strat-100",

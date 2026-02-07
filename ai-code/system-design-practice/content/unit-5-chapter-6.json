@@ -467,10 +467,10 @@
         "Memory overhead per item",
         "CPU cost per access/eviction",
         "Workload access patterns",
-        "Implementation complexity"
+        "Total dataset size on disk"
       ],
-      "correctIndices": [0, 1, 2, 3],
-      "explanation": "All factors matter: Memory overhead (LFU > LRU > FIFO > Random). CPU cost (true LRU updates on every hit). Access patterns (scans favor 2Q/ARC). Complexity (simple LRU is easier to debug/maintain)."
+      "correctIndices": [0, 1, 2],
+      "explanation": "Key factors: Memory overhead (LFU > LRU > FIFO > Random). CPU cost (true LRU updates on every hit). Access patterns (scans favor 2Q/ARC). Total dataset size on disk doesn't directly influence eviction policy choice — what matters is the working set relative to cache size, not raw dataset size."
     },
     {
       "id": "evict-041",
@@ -631,7 +631,7 @@
     {
       "id": "evict-053",
       "type": "multiple-choice",
-      "question": "What is 'ghost caching' or 'negative caching'?",
+      "question": "What is 'ghost caching' (also called 'shadow caching')?",
       "options": [
         "Caching deletion markers for recently deleted items",
         "Caching metadata for recently evicted items to inform future decisions",
@@ -991,16 +991,16 @@
       "type": "two-stage",
       "stages": [
         {
-          "question": "A cache uses LFU with no aging. After running for 1 year, item X has 1 million accesses. New item Y is accessed 10 times/second. How long until Y has enough count to avoid eviction against X?",
+          "question": "A cache uses LFU with no aging. After running for 1 year, item X has 1 billion accesses. New item Y is accessed 10 times/second. X is still being accessed occasionally. How long until Y has enough count to avoid eviction against X?",
           "options": ["~1 day", "~1 month", "~3 years", "Never (without aging)"],
-          "correct": 2,
-          "explanation": "At 10/sec, Y accumulates ~315M accesses/year. To reach X's 1M takes about 100,000 seconds or ~28 hours. But X continues accumulating too. If X is still active, Y may never catch up."
+          "correct": 3,
+          "explanation": "At 10/sec, Y accumulates ~315M accesses/year. To reach X's 1B would take ~3.2 years even if X stopped entirely. But X continues accumulating too. Without aging, Y may never catch up — historically popular items are practically permanent."
         },
         {
           "question": "What if X is now completely inactive (zero accesses) and Y sustains 10/sec?",
-          "options": ["~28 hours", "~1 day", "~1 year", "Still never"],
-          "correct": 0,
-          "explanation": "If X stops being accessed, Y catches up at 10/sec. 1M / (10 × 3600) = 27.8 hours. This shows why LFU without aging keeps stale popular items—inactive items with historical counts aren't evicted."
+          "options": ["~28 hours", "~3 years", "~10 years", "Still never"],
+          "correct": 1,
+          "explanation": "If X stops being accessed, Y catches up at 10/sec. 1B / (10 × 3600 × 24 × 365) ≈ 3.2 years. Even with X completely inactive, it takes years for Y to overtake. This shows why LFU without aging keeps stale popular items practically forever."
         }
       ]
     },
@@ -1174,10 +1174,10 @@
         "Track hit rate over time",
         "Monitor eviction rate and churn",
         "Compare against OPT using trace replay",
-        "Measure latency percentiles"
+        "Count total items ever cached"
       ],
-      "correctIndices": [0, 1, 2, 3],
-      "explanation": "All are useful: Hit rate shows overall effectiveness. Eviction rate/churn indicates pressure and thrashing. OPT comparison shows room for improvement. Latency percentiles reveal when misses impact users."
+      "correctIndices": [0, 1, 2],
+      "explanation": "Useful metrics: Hit rate shows overall effectiveness. Eviction rate/churn indicates pressure and thrashing. OPT comparison shows room for improvement. Total items ever cached is a cumulative counter that doesn't reveal whether the current policy is working — it grows monotonically regardless of policy quality."
     },
     {
       "id": "evict-094",
