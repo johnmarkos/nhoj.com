@@ -27,6 +27,7 @@
 - Chapter 6 review/fix pass completed: corrected multi-select distractor quality, fixed Kafka consumer timeout semantics (`max.poll.interval.ms`), and resolved wording/consistency issues in stream scaling and compaction explanations.
 - Chapter 7 completed and validated with config/content tests: added 95 new problems and marked the chapter as ready in `config.js`.
 - Chapter 8 completed and validated with config/content tests: added 95 mixed-type scenario problems and marked the chapter as ready in `config.js`.
+- Chapter 8 review/fix pass completed: corrected strong answer-position bias by rebalancing option order and answer indices across multiple-choice, two-stage, and multi-select items.
 
 ## Unit 5: Caching (800 problems)
 

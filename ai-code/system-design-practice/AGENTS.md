@@ -28,6 +28,8 @@ When generating large content files (e.g., 100+ problem JSON files), break them 
 
 For multi-chapter or multi-unit tasks, always process ONE chapter at a time: write, review, fix, commit, then move to the next. Never try to load or process an entire unit at once. See "Content Creation Workflow" below for the full per-chapter loop.
 
+Default autonomy rule: after writing chapter content and running validation tests, continue directly into the content review and fix loop without waiting for an explicit user prompt. If you must pause before review, state clearly that the next required task is the chapter content review step.
+
 ## Development
 
 No build system. Edit files directly and push to `main` for deployment. Fix forward if anything breaks.
@@ -158,6 +160,8 @@ The loop for each chapter:
 6. **Run tests again** — Verify fixes didn't break anything.
 7. **Commit and push** — One commit per chapter.
 8. **Move to next chapter** — Repeat from step 1.
+
+Do not stop after step 3 unless the user explicitly asks to pause. The default behavior is to continue through steps 4-7 in the same work session.
 
 When starting a **new unit**, plan it in detail before writing any content:
 - Define all 8 chapter topics with scope descriptions
