@@ -92,6 +92,20 @@ export const CONFIG = {
         { num: 7, title: 'Technology Selection', ready: true },
         { num: 8, title: 'Messaging Scenarios', ready: true }
       ]
+    },
+    {
+      id: 7,
+      title: 'Scaling Compute',
+      chapters: [
+        { num: 1, title: 'Load Balancing Fundamentals', ready: true },
+        { num: 2, title: 'Statelessness & Session Strategy', ready: false },
+        { num: 3, title: 'Horizontal vs Vertical Scaling Decisions', ready: false },
+        { num: 4, title: 'Autoscaling Signals & Policies', ready: false },
+        { num: 5, title: 'Hotspots, Sharding & Work Distribution', ready: false },
+        { num: 6, title: 'Multi-Region Compute Strategy', ready: false },
+        { num: 7, title: 'Compute Selection & Platform Trade-offs', ready: false },
+        { num: 8, title: 'Scaling Compute Scenarios', ready: false }
+      ]
     }
   ]
 };

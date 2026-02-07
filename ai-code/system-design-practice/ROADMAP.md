@@ -12,9 +12,9 @@
 ## Now (In Progress)
 
 - [ ] **Unit 7: Scaling Compute** — planned, chapter-by-chapter content creation next
-  - [ ] Chapter 1: Load Balancing Fundamentals
-    Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
-    Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
+  - [x] Chapter 1: Load Balancing Fundamentals — 100 problems (L4/L7 routing, health checks, drain/failover behavior, stickiness, weighted policies, canary controls)
+  Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
+  Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
   - [ ] Chapter 2: Statelessness & Session Strategy
     Scope: Designing services for horizontal scale by externalizing state and handling user/session context safely.
     Key concepts: stateless app tiers, session stores, token-based auth, idempotent handlers, cache/session consistency.

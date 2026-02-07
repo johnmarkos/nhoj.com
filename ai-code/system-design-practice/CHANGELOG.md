@@ -1,5 +1,12 @@
 # Changelog
 
+## Unit 7: Scaling Compute (in progress — 100 problems so far)
+
+1. Load Balancing Fundamentals (100 problems) — L4 vs L7 routing decisions, health-check strategy, connection draining, stickiness trade-offs, weighted balancing, fail-open/fail-closed behavior, and canary traffic controls
+
+- Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems and marked the chapter as ready in `config.js`.
+- Chapter 1 review/fix pass completed: removed exact/near-duplicate scenario prompts and diversified two-stage operational contexts to reduce thematic saturation.
+
 ## Unit 5 quality fixes (2026-02-07)
 
 - Applied review fixes across `content/unit-5-chapter-1.json` through `content/unit-5-chapter-8.json`.
