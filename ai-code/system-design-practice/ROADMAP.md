@@ -14,7 +14,7 @@
   - [x] Chapter 1: Queue Fundamentals — 100 problems
   - [x] Chapter 2: Pub/Sub & Topics — 100 problems
   - [x] Chapter 3: Delivery Guarantees — 95 problems
-  - [ ] Chapter 4: Patterns & Reliability — DLQs, retry strategies, backpressure, priority queues, poison messages, circuit breakers
+  - [x] Chapter 4: Patterns & Reliability — 95 problems
   - [ ] Chapter 5: Event-Driven Architecture — Event sourcing, CQRS, choreography vs orchestration, sagas, domain events
   - [ ] Chapter 6: Stream Processing — Partitions, consumer groups, offsets, windowing, Kafka model
   - [ ] Chapter 7: Technology Selection — RabbitMQ vs Kafka vs SQS vs Pub/Sub vs Redis Streams, decision frameworks
