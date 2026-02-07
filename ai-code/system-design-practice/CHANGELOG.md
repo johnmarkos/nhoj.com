@@ -1,11 +1,12 @@
 # Changelog
 
-## Unit 6: Messaging & Async (in progress — 390 problems so far)
+## Unit 6: Messaging & Async (in progress — 485 problems so far)
 
 1. Queue Fundamentals (100 problems) — Producers/consumers, sync vs async, point-to-point, message lifecycle, visibility timeouts, backpressure, DLQs, FIFO ordering
 2. Pub/Sub & Topics (100 problems) — Fan-out/fan-in, durable/ephemeral subscriptions, push vs pull, filtering, topic granularity, consumer groups, schema evolution
 3. Delivery Guarantees (95 problems) — At-most/at-least/exactly-once, idempotency keys, deduplication, transactional outbox, CDC, sagas, compensating transactions
 4. Patterns & Reliability (95 problems) — DLQs, retry strategies, exponential backoff with jitter, backpressure, priority queues, poison messages, circuit breakers, claim check pattern, competing consumers, graceful shutdown
+5. Event-Driven Architecture (95 problems) — Event sourcing, CQRS, choreography vs orchestration, sagas, domain events, schema evolution, projection rebuilds, temporal queries, aggregate boundaries, migration strategies
 
 ## Unit 5: Caching (800 problems)
 
