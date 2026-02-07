@@ -88,7 +88,7 @@ export const CONFIG = {
         { num: 3, title: 'Delivery Guarantees', ready: true },
         { num: 4, title: 'Patterns & Reliability', ready: true },
         { num: 5, title: 'Event-Driven Architecture', ready: true },
-        { num: 6, title: 'Stream Processing', ready: false },
+        { num: 6, title: 'Stream Processing', ready: true },
         { num: 7, title: 'Technology Selection', ready: false },
         { num: 8, title: 'Messaging Scenarios', ready: false }
       ]
