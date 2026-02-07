@@ -1,0 +1,1595 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 5,
+  "chapterTitle": "Event-Driven Architecture",
+  "chapterDescription": "Designing systems around events: event sourcing, CQRS, choreography vs orchestration, sagas, domain events, and event-driven integration patterns.",
+  "problems": [
+    {
+      "id": "msg-eda-001",
+      "type": "multiple-choice",
+      "question": "An auditor asks an e-commerce team: 'What was the exact state of order #4821 at 3pm yesterday — including which items were in the cart, the applied discount, and the shipping address before the customer changed it?' The team's current CRUD database only stores the latest state. Which persistence approach would let them answer this question for any order at any past point in time?",
+      "options": [
+        "Event sourcing — store every state change as an immutable event and replay to any point in time",
+        "CRUD with updated_at timestamps on each column to track when fields last changed",
+        "Nightly database backups restored to a separate instance for historical queries",
+        "An audit log table that records which fields changed, queried alongside the main table"
+      ],
+      "correct": 0,
+      "explanation": "Event sourcing stores every state transition as an immutable event (OrderPlaced, ItemAdded, AddressChanged, DiscountApplied). To answer 'what was the state at 3pm?', replay events up to that timestamp. CRUD timestamps only show when a field last changed, not the full history. Database backups give point-in-time snapshots but only at backup intervals (not arbitrary times). Audit log tables record changes but reconstructing full state from a partial change log is fragile and error-prone compared to event replay."
+    },
+    {
+      "id": "msg-eda-002",
+      "type": "multiple-choice",
+      "question": "An event-sourced system has orders with 10,000+ events each. Replaying all events to reconstruct current state takes 3 seconds per order. What optimization reduces this latency?",
+      "options": [
+        "Batch all events into a single compound event",
+        "Switch to eventual consistency to hide the latency",
+        "Store periodic snapshots of the aggregate state and replay only events after the snapshot",
+        "Delete older events to keep the log short"
+      ],
+      "correct": 2,
+      "explanation": "Snapshots checkpoint the aggregate state at a point in time. To reconstruct, load the latest snapshot and replay only subsequent events. If you snapshot every 100 events and there are 10,000 total, you replay at most 100 events instead of 10,000. Snapshots are an optimization — they don't replace the event log, which remains the source of truth. Deleting events would destroy the audit trail and the ability to rebuild projections."
+    },
+    {
+      "id": "msg-eda-003",
+      "type": "multiple-choice",
+      "question": "A team's product catalog has 100x more reads than writes. Reads need complex full-text search, faceted filtering, and aggregations. Writes need strong validation of business rules (pricing constraints, category hierarchies, inventory thresholds). A single normalized data model can't serve both well — search queries are slow, and denormalizing for reads complicates write validation. Which architecture addresses these differing read/write requirements?",
+      "options": [
+        "CQRS — separate write model for validation and read model optimized for queries",
+        "Database sharding to split read and write traffic across separate shards",
+        "Read replicas with the same schema, scaling read capacity horizontally",
+        "Caching the most frequent queries in Redis to offload the primary database"
+      ],
+      "correct": 0,
+      "explanation": "CQRS separates the write path (commands that validate business rules and emit events) from the read path (projections optimized for specific queries). The write model can use a normalized relational schema for strong validation; the read model can use Elasticsearch for search and aggregations — completely different data stores with different schemas. Read replicas scale capacity but don't solve the schema mismatch (same normalized model, still slow for complex queries). Caching helps latency but doesn't address the structural problem of needing different models for reads and writes."
+    },
+    {
+      "id": "msg-eda-004",
+      "type": "multiple-choice",
+      "question": "A team wants to add a new Analytics consumer to their order flow. The requirement: Analytics should react to OrderPlaced events without modifying the Order service or any of the 3 existing consumers (Inventory, Payment, Notification). Which coordination approach supports this zero-change extensibility?",
+      "options": [
+        "Choreography — new consumers subscribe to existing events independently",
+        "Orchestration — the central coordinator routes events to the new consumer",
+        "Request-response — the Order service calls Analytics directly after placement",
+        "Shared database — Analytics polls the orders table for new rows"
+      ],
+      "correct": 0,
+      "explanation": "Choreography's key strength is extensibility: the Order service publishes OrderPlaced events without knowing who consumes them. Adding Analytics means subscribing to the existing event — zero changes to the producer or existing consumers. In orchestration, the central coordinator would need updating to include the new Analytics step. Request-response couples the Order service to every consumer. Shared database creates tight coupling to the schema. The tradeoff: choreography makes the overall workflow implicit and harder to trace end-to-end."
+    },
+    {
+      "id": "msg-eda-005",
+      "type": "multiple-choice",
+      "question": "A complex 8-step fulfillment workflow needs centralized error handling (different compensation paths depending on which step fails), step-by-step progress visibility for customer support, and conditional branching (VIP orders skip fraud check, international orders add customs clearance). Which coordination approach provides these capabilities?",
+      "options": [
+        "Choreography — each service reacts to events and decides its own branching logic",
+        "Pub/sub fan-out with filtering rules on the message broker",
+        "Orchestration — a central coordinator that directs the workflow explicitly",
+        "Saga pattern with each service managing its own compensations independently"
+      ],
+      "correct": 2,
+      "explanation": "Orchestration centralizes workflow control: the orchestrator encodes the full 8-step sequence, handles conditional branching (VIP vs. international), provides step-by-step visibility (customer support can query the orchestrator for order status), and manages error handling in one place. Choreography scatters branching logic across services, making visibility and centralized error handling nearly impossible at this complexity. Pub/sub can filter events but doesn't provide workflow state or conditional routing. Sagas handle compensation but need a coordinator for complex branching."
+    },
+    {
+      "id": "msg-eda-006",
+      "type": "multiple-choice",
+      "question": "An e-commerce order workflow spans 4 services: Order, Payment, Inventory, Shipping. Payment succeeds, but Inventory reports out-of-stock. The team needs to handle this partial failure without distributed locks (2PC is too slow and not all services support it). Which approach lets each service commit independently while still handling cross-service rollback?",
+      "options": [
+        "A saga — each step commits locally, with compensating transactions to undo completed steps on failure",
+        "Retry the Inventory service until stock becomes available, leaving the payment hold indefinitely",
+        "Queue all service calls and execute them atomically once all resources are confirmed available",
+        "Use optimistic locking across all 4 services' databases with a shared version counter"
+      ],
+      "correct": 0,
+      "explanation": "A saga breaks a distributed transaction into local commits with compensating actions. When Inventory fails, the saga runs a compensating transaction to refund the Payment (a new 'refund' transaction, not a rollback). Each service commits independently — no distributed locks held. The tradeoff: you lose atomicity (there's a window where payment is charged but inventory isn't reserved), and you must design idempotent compensation logic for every step. Retrying indefinitely risks holding customer funds. Queuing for atomicity reintroduces the coordination problem sagas are designed to avoid."
+    },
+    {
+      "id": "msg-eda-007",
+      "type": "multiple-choice",
+      "question": "A saga for order placement has three steps: (1) Reserve inventory, (2) Charge payment, (3) Create shipment. Step 2 fails. What must the saga do?",
+      "options": [
+        "Execute compensating transactions in reverse: release the inventory reserved in step 1",
+        "Retry step 2 indefinitely until it succeeds",
+        "Abort all three steps atomically using a distributed lock",
+        "Proceed to step 3 and handle the payment failure later"
+      ],
+      "correct": 0,
+      "explanation": "When a saga step fails, the saga executes compensating transactions for all previously completed steps, in reverse order. Step 1 reserved inventory, so its compensation is 'release inventory.' Step 2 failed, so no compensation needed for it. Step 3 never ran. Compensations must be idempotent (safe to retry) because the compensation itself could fail and need retrying."
+    },
+    {
+      "id": "msg-eda-008",
+      "type": "multiple-choice",
+      "question": "A domain event is named 'OrderStatusUpdated' with a payload containing the new status. A colleague argues this is a poor event name. Why?",
+      "options": [
+        "Event names must start with a verb",
+        "The name describes a generic state change, not what actually happened — 'OrderShipped' or 'OrderCancelled' carries more business meaning and enables targeted consumers",
+        "Events should be named in future tense",
+        "The payload should contain the old status too"
+      ],
+      "correct": 1,
+      "explanation": "Good domain events describe specific business occurrences: OrderShipped, PaymentDeclined, InventoryReserved. Generic events like 'OrderStatusUpdated' force consumers to inspect the payload to determine what happened, coupling them to internal field names. Specific events allow consumers to subscribe to exactly the events they care about — the Shipping service subscribes to PaymentConfirmed, not to all status updates."
+    },
+    {
+      "id": "msg-eda-009",
+      "type": "multiple-choice",
+      "question": "A team publishes a 'UserRegistered' event containing: userId, email, passwordHash, fullName, address, phone, and creditCardLast4. A security reviewer flags this design. What is the concern?",
+      "options": [
+        "The event payload is too large for the message broker",
+        "Events should be in XML format, not JSON",
+        "The event carries sensitive data (passwordHash, creditCardLast4) that will be stored in every subscriber's log and any event store — oversharing PII across service boundaries",
+        "Events should only contain IDs, never any user data"
+      ],
+      "correct": 2,
+      "explanation": "Events persist in logs, stores, and subscriber systems — often indefinitely. Including sensitive data (password hashes, partial card numbers) in events spreads that data across every system that consumes the event. Minimally, include only what consumers need: userId, email, fullName. Consumers that need sensitive data should query the User service directly with proper authorization. This follows the principle of minimal event payloads."
+    },
+    {
+      "id": "msg-eda-010",
+      "type": "multiple-choice",
+      "question": "A team debates between choreography and orchestration for their payment processing workflow. The workflow has strict ordering requirements, complex error handling with multiple compensation paths, and regulatory audit requirements. Which approach fits better?",
+      "options": [
+        "Orchestration — the workflow visibility, centralized error handling, and explicit flow control match the requirements",
+        "Choreography — the loose coupling outweighs the complexity",
+        "Use choreography initially and switch to orchestration if it becomes complex",
+        "Neither — use synchronous HTTP calls instead"
+      ],
+      "correct": 0,
+      "explanation": "Orchestration excels when workflows are complex, have strict ordering, and require auditability. A central orchestrator makes the workflow explicit: you can see the full sequence, handle branching error scenarios in one place, and produce audit logs showing exactly what happened. Choreography would scatter this logic across services, making it hard to trace the payment flow and prove compliance to auditors."
+    },
+    {
+      "id": "msg-eda-011",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A microservice team adopts event sourcing for their Order aggregate. After 6 months, they need a new read model: 'orders by customer with total spend.' What do they do?",
+          "options": [
+            "Query the write database directly with a JOIN",
+            "Ask each customer for their order history",
+            "Export a CSV and import it into the new read store",
+            "Replay all historical events to build the new projection from scratch"
+          ],
+          "correct": 3,
+          "explanation": "One of event sourcing's superpowers: you can create entirely new read models by replaying the event log. Since every state change is stored as an event, you can project those events into any shape. The new 'orders by customer' projection processes every OrderPlaced, PaymentReceived, etc. event to build its materialized view — no data migration required."
+        },
+        {
+          "question": "The replay of 50 million events takes 4 hours. During replay, the new projection is incomplete. How should the team handle queries against the new read model during this window?",
+          "options": [
+            "Block all queries until replay completes",
+            "Return a 'projection building' status so callers know data is incomplete, and optionally fall back to a slower query path",
+            "Speed up by skipping older events",
+            "Return stale data from the incomplete projection"
+          ],
+          "correct": 1,
+          "explanation": "Transparency about projection state prevents callers from acting on incomplete data. A status indicator (e.g., 'building: 60% complete') lets UI clients show a loading state. A fallback query path (e.g., slower but complete query against the event store) serves requests that can't wait. Returning incomplete data without warning causes incorrect business decisions; blocking all queries reduces availability unnecessarily."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-012",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An event-sourced system uses CQRS with a separate read database. A user creates an order and immediately navigates to the order detail page. The read model hasn't received the event yet. The user sees 'Order not found.' What is this problem called?",
+          "options": [
+            "A database replication bug",
+            "A browser caching issue",
+            "A missing foreign key constraint",
+            "Read-your-writes inconsistency — the user's own write isn't visible yet in the eventually consistent read model"
+          ],
+          "correct": 3,
+          "explanation": "In CQRS, the write model and read model are eventually consistent. There's a lag between writing an event and the read projection processing it. When a user writes and immediately reads, they may not see their own change — violating the 'read your own writes' expectation that users have."
+        },
+        {
+          "question": "Which technique specifically solves this read-your-writes problem for the user who just created the order?",
+          "options": [
+            "Route the creating user's subsequent reads to the write model (or a session-sticky read replica) until the projection catches up",
+            "Cache the order in the browser and merge with server data",
+            "Make all reads synchronous with the write store",
+            "Add a 5-second delay before redirecting to the detail page"
+          ],
+          "correct": 0,
+          "explanation": "Session-sticky reads: after a write, route that specific user's reads to the write model (or a replica known to be up-to-date) for a brief window. Other users can still read from the eventually consistent projection. This gives the writing user read-your-writes consistency without requiring all reads to hit the write store. The window can be time-based (e.g., 5 seconds) or event-based (until the projection confirms processing the event)."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-013",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A choreographed order workflow spans 5 services. An order is stuck — inventory was reserved but payment was never charged. With choreography, where does the team look to debug this?",
+          "options": [
+            "Query the order table's status column",
+            "Check the orchestrator's state machine for the stuck step",
+            "Check the message broker's DLQ for the failed event",
+            "Search through each service's logs and event streams independently to reconstruct the workflow — there's no central place that shows the full order lifecycle"
+          ],
+          "correct": 3,
+          "explanation": "Choreography's biggest operational pain point: no single view of the workflow. The order lifecycle is spread across 5 services' logs and event streams. Debugging requires correlating events across services using a correlation ID. Many teams that start with choreography add distributed tracing (Jaeger, Zipkin) or a workflow monitoring layer to regain visibility."
+        },
+        {
+          "question": "To improve observability of the choreographed workflow, the team adds correlation IDs to every event. What additional tool would give them a single timeline view of each order's journey across all 5 services?",
+          "options": [
+            "Distributed tracing (e.g., Jaeger or Zipkin) that visualizes the full cross-service flow as a trace",
+            "A database that stores all events in one table",
+            "A monitoring dashboard showing per-service error rates",
+            "A centralized logging system that can filter and sort events by correlation ID"
+          ],
+          "correct": 0,
+          "explanation": "Distributed tracing tools aggregate spans from all services into a single trace view, showing timing, dependencies, and failures across the entire request flow. With correlation IDs propagated through events, a trace for one order shows: OrderPlaced (Order service) → InventoryReserved (Inventory) → PaymentCharged (Payment) → ShipmentCreated (Shipping). This reconstructs the choreographed workflow visually, making it almost as debuggable as an orchestrated one."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-014",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team's CQRS system uses parallel projection workers to speed up Elasticsearch indexing. A product's price is updated twice in quick succession: first to $20 (event sequence #101), then to $30 (event sequence #102). Due to parallel processing, worker B processes event #102 ($30) before worker A processes event #101 ($20). The Elasticsearch read model now shows $20 — the stale value. What caused this?",
+          "options": [
+            "Elasticsearch rejected the $30 update due to a schema mismatch",
+            "The write model emitted the events in the wrong order",
+            "Projection event ordering violation — parallel workers processed events out of sequence, and the last-write-wins overwrote the correct value",
+            "The $30 event was lost due to a message broker delivery failure"
+          ],
+          "correct": 2,
+          "explanation": "Parallel projection workers sacrifice ordering guarantees for throughput. Event #101 ($20) arrived after #102 ($30) and overwrote the newer value. The write model emitted events in the correct order — the issue is in the projection layer. Solutions: (1) use a single worker per aggregate/partition to preserve ordering, (2) include a sequence number in each event and have the projection reject out-of-order updates, or (3) use optimistic concurrency in the read model (only apply if sequence > current)."
+        },
+        {
+          "question": "The team decides to fix the ordering issue by partitioning events by product ID so each product's events are processed by the same worker in order. This restores correctness. What tradeoff does this introduce compared to fully parallel processing?",
+          "options": [
+            "Hot-partition risk — popular products generate many events that bottleneck a single worker, while other workers sit idle",
+            "Events are now delivered out of order across different products",
+            "The projection handler requires more memory to buffer partitioned events",
+            "Elasticsearch rejects partitioned writes due to index locking"
+          ],
+          "correct": 0,
+          "explanation": "Partitioning by product ID ensures ordering within a product but creates potential hot partitions. A viral product generating thousands of events per second overloads its assigned worker while other workers are underutilized. This is the classic ordering-vs-parallelism tradeoff: full parallelism maximizes throughput but loses ordering; partitioning preserves ordering but limits parallelism to one worker per partition key. Mitigations: sub-partitioning hot keys, or using sequence-number-based conflict resolution instead of strict partitioning."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-015",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A saga orchestrator managing a hotel booking workflow calls three services in sequence: (1) Reserve room, (2) Charge payment, (3) Send confirmation email. The payment service is down. Which saga execution strategy retries the payment step before giving up?",
+          "options": [
+            "Skip the payment step and continue to step 3",
+            "Restart the entire saga from step 1",
+            "Backward recovery — immediately compensate all completed steps and abort",
+            "Forward recovery — retry the failing step (with backoff) in hopes the service recovers, before resorting to compensations"
+          ],
+          "correct": 3,
+          "explanation": "Forward recovery attempts to complete the saga by retrying the failing step. If the payment service is experiencing a transient outage, retrying after a delay may succeed. This is preferred when the business impact of aborting is higher than waiting (e.g., losing a hotel booking vs. waiting 30 seconds for payment to recover). A max retry count ensures the saga doesn't wait forever."
+        },
+        {
+          "question": "After 5 retry attempts over 2 minutes, the payment service is still down. The saga switches to backward recovery. What compensating transactions must it execute?",
+          "options": [
+            "Release the room reservation from step 1 only — payment never succeeded, so no payment compensation is needed",
+            "No compensations needed — just abort",
+            "Refund the payment (step 2) and release the room (step 1)",
+            "Resend the confirmation email"
+          ],
+          "correct": 0,
+          "explanation": "Compensation is only needed for steps that completed successfully. Step 1 (reserve room) succeeded → compensate by releasing the reservation. Step 2 (payment) never succeeded → no compensation needed. Step 3 (email) never ran → no compensation needed. A common mistake is trying to 'refund' a payment that was never charged. The saga tracks which steps completed to determine which compensations to run."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-016",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team debates event granularity. Option A: one event per field change (PriceChanged, DescriptionChanged, ImageUpdated). Option B: one event per aggregate update (ProductUpdated with a diff of all changed fields). Which produces fewer events but less precision?",
+          "options": [
+            "Option B — one event per aggregate update",
+            "Option A — one event per field",
+            "Both produce the same number of events",
+            "Neither — events should be time-based, not change-based"
+          ],
+          "correct": 0,
+          "explanation": "Coarse-grained events (Option B) batch multiple field changes into one event, reducing event volume. But consumers must inspect the diff to determine what changed. Fine-grained events (Option A) produce more events but allow consumers to subscribe to exactly the changes they care about (e.g., the pricing service only needs PriceChanged, not all product updates)."
+        },
+        {
+          "question": "The team chooses fine-grained events (Option A). A product update changes price, description, and 3 images simultaneously. A downstream analytics service needs to track 'product update sessions' (all changes made in one save action). How does it correlate the 5 individual events into one update session?",
+          "options": [
+            "It can't — fine-grained events lose this correlation",
+            "Use a shared correlation ID or causation ID attached to all events from the same user action",
+            "Combine events within a 1-second window and assume they belong together",
+            "Switch back to coarse-grained events"
+          ],
+          "correct": 1,
+          "explanation": "A correlation ID (or causation ID) links events that originated from the same user action. When the user clicks 'Save,' all resulting events share a correlationId. The analytics service groups events by this ID to reconstruct the update session. This preserves fine-grained event precision while enabling aggregate views. Time-window correlation is fragile — concurrent updates from different users could be incorrectly grouped."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-017",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team stores domain events in an event store and also needs to publish them to a message broker for external consumers. They write to the event store first, then publish to the broker. What failure mode does this introduce?",
+          "options": [
+            "Events are published before they're stored",
+            "The broker duplicates the event",
+            "The event store rejects the write",
+            "If the publish fails after the store write succeeds, the event is stored but never published — consumers miss it. The dual-write problem"
+          ],
+          "correct": 3,
+          "explanation": "Dual writes (writing to two systems non-atomically) risk inconsistency. If the event store write succeeds but the broker publish fails (network error, broker down), the event exists in storage but external consumers never see it. The reverse is also problematic: if you publish first and the store write fails, consumers receive an event that was never persisted."
+        },
+        {
+          "question": "Which pattern solves this dual-write problem by making the event store the single source and using a separate process to publish events to the broker?",
+          "options": [
+            "Use distributed locks to synchronize both writes",
+            "Two-phase commit between the event store and broker",
+            "The transactional outbox pattern — write events to an outbox table in the same transaction as the event store, then a separate relay process reads the outbox and publishes to the broker",
+            "Write to the broker first, then store on success"
+          ],
+          "correct": 2,
+          "explanation": "The transactional outbox pattern makes the event store write and outbox write atomic (same database transaction). A separate relay process (or CDC pipeline) reads unpublished events from the outbox and publishes them to the broker. If the relay fails, it retries from the outbox — events are never lost. Consumers must be idempotent since the relay may publish duplicates during retries."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-018",
+      "type": "multi-select",
+      "question": "Which are valid reasons to choose CQRS over a traditional CRUD model? (Select all that apply)",
+      "options": [
+        "Complex queries require denormalized views that don't match the write model's structure",
+        "The application needs a single simple data model for all operations",
+        "Read and write workloads have vastly different scaling requirements",
+        "The write model needs strong consistency while reads can tolerate eventual consistency"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "CQRS shines when reads and writes have different needs: different scale (100x more reads than writes), different models (normalized writes, denormalized reads), or different consistency guarantees. A single simple CRUD model is a reason NOT to use CQRS — the added complexity isn't justified when one model serves both reads and writes well."
+    },
+    {
+      "id": "msg-eda-019",
+      "type": "multi-select",
+      "question": "Which are trade-offs of event sourcing compared to traditional state-based persistence? (Select all that apply)",
+      "options": [
+        "Increased storage requirements since every event is stored, not just current state",
+        "Simpler query model — current state is always immediately available without replay",
+        "Ability to rebuild any past state by replaying events to a point in time",
+        "Complete audit trail of every state change"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Event sourcing provides a full audit trail and temporal query capability (benefits) but requires more storage and makes current-state queries harder (trade-offs). Current state isn't 'immediately available' — it must be derived by replaying events or reading a snapshot/projection. This is why event sourcing is often paired with CQRS: the event store handles writes, and projections handle reads."
+    },
+    {
+      "id": "msg-eda-020",
+      "type": "multi-select",
+      "question": "A team is designing compensating transactions for a saga. Which properties must compensating transactions have? (Select all that apply)",
+      "options": [
+        "They must semantically undo the original transaction's business effect",
+        "They may leave the system in a different state than before the original transaction (e.g., a refund vs. no charge)",
+        "They must be instant — complete in under 100ms",
+        "They must be idempotent — safe to execute multiple times with the same result"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Compensating transactions must be idempotent (the compensation itself might fail and need retrying) and must undo the business effect of the original step. However, they create a 'semantic undo,' not a literal rollback — a refund is a new transaction, not a deletion of the charge. They don't need to be instant; they just need to eventually complete. The system state after compensation may differ from the pre-transaction state (audit records remain, notification emails can't be unsent)."
+    },
+    {
+      "id": "msg-eda-021",
+      "type": "multi-select",
+      "question": "Which scenarios favor choreography over orchestration? (Select all that apply)",
+      "options": [
+        "Complex workflows with 10+ steps, conditional branching, and strict ordering",
+        "Loose coupling between teams who deploy independently and don't want shared workflow logic",
+        "Event-driven systems where new consumers can subscribe without changing existing services",
+        "Simple workflows with 2-3 services and minimal error handling"
+      ],
+      "correctIndices": [
+        1,
+        2,
+        3
+      ],
+      "explanation": "Choreography works best for simple, loosely coupled workflows. With 2-3 services and straightforward flows, choreography avoids the overhead of a central orchestrator. Independent team deployment is a strong driver — no shared orchestrator to coordinate on. New subscribers can join without producer changes. Complex workflows with 10+ steps and conditional branching favor orchestration — choreographed complexity becomes nearly impossible to debug and reason about."
+    },
+    {
+      "id": "msg-eda-022",
+      "type": "numeric-input",
+      "question": "An event-sourced aggregate takes snapshots every 500 events (at event 500, 1000, 1500, etc.). The aggregate currently has 12,347 events. How many events must be replayed after loading the latest snapshot to reconstruct the current state?",
+      "answer": 347,
+      "unit": "events",
+      "tolerance": "exact",
+      "explanation": "The latest snapshot is at event 12,000 (= 24 × 500). To reconstruct current state: load snapshot at event 12,000, then replay events 12,001 through 12,347 = 347 events. Without snapshots, all 12,347 events would need replaying. The worst case for this snapshot interval is 499 events (when the aggregate has N×500 + 499 events)."
+    },
+    {
+      "id": "msg-eda-023",
+      "type": "numeric-input",
+      "question": "An event store receives 5,000 events/second. Each event averages 2 KB. How much storage does the event store consume per day in GB? Round to the nearest whole number.",
+      "answer": 864,
+      "unit": "GB",
+      "tolerance": 0.05,
+      "explanation": "5,000 events/s × 2 KB/event = 10,000 KB/s = 10 MB/s. Per day: 10 MB/s × 86,400 s = 864,000 MB = 864 GB/day. At this rate, a year of events is ~315 TB. This highlights why event sourcing's storage cost is significant — you're storing every state transition, not just current state. Compression and tiered storage (hot/warm/cold) help manage costs."
+    },
+    {
+      "id": "msg-eda-024",
+      "type": "ordering",
+      "question": "Rank these event-driven patterns from simplest to implement to most complex:",
+      "items": [
+        "Simple pub/sub notifications (fire-and-forget domain events)",
+        "Event-carried state transfer (events include full entity state for consumer autonomy)",
+        "CQRS with separate read/write models and projection handlers",
+        "Full event sourcing with snapshots, projections, and temporal queries"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Simple pub/sub just publishes events — no consumer coordination needed. Event-carried state transfer adds richer payloads but is still stateless on the producer side. CQRS adds separate read models that must be kept in sync via projection handlers. Full event sourcing is the most complex: an append-only store, snapshot management, replay logic, projection rebuilding, and temporal query support."
+    },
+    {
+      "id": "msg-eda-025",
+      "type": "ordering",
+      "question": "Rank these saga failure handling strategies from least to most aggressive in preserving forward progress:",
+      "items": [
+        "Immediate backward recovery — compensate all completed steps and abort",
+        "Retry the failing step once, then compensate if it fails again",
+        "Retry with exponential backoff up to a max count, then compensate",
+        "Forward recovery with human escalation — retry indefinitely, alert an operator after N failures"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Immediate compensation gives up at the first failure — no attempt to recover. Single retry adds one chance. Exponential backoff with max retries gives the failing service time to recover. Forward recovery with human escalation is the most aggressive: it never gives up automatically, preferring to wait for an operator to resolve the issue rather than compensating a high-value transaction."
+    },
+    {
+      "id": "msg-eda-026",
+      "type": "multiple-choice",
+      "question": "A team's event-sourced system needs to enforce a business rule: 'a customer can have at most 5 active orders.' Where should this validation happen?",
+      "options": [
+        "In the event store, using a database constraint",
+        "In the aggregate's command handler, before emitting the OrderPlaced event",
+        "In the UI, disabling the 'place order' button after 5 orders",
+        "In the read model projection, rejecting events that violate the rule"
+      ],
+      "correct": 1,
+      "explanation": "Business invariants are enforced in the aggregate's command handler — the write side. When a PlaceOrder command arrives, the handler loads the aggregate (replaying events or from snapshot), checks the active order count, and rejects the command if the limit is reached. The read model is eventually consistent and can't reliably enforce invariants. UI validation improves UX but isn't a security boundary."
+    },
+    {
+      "id": "msg-eda-027",
+      "type": "multiple-choice",
+      "question": "Two teams publish events to the same event bus. Team A publishes OrderPlaced with fields {orderId, customerId, total}. Team B's consumer breaks when Team A adds a new field {orderId, customerId, total, currency}. What schema evolution rule was violated?",
+      "options": [
+        "Backward compatibility — new fields must be optional and additive",
+        "Forward compatibility — old consumers must handle future schemas",
+        "Both teams must coordinate deployments for any schema change",
+        "Schema immutability — published event schemas must never evolve"
+      ],
+      "correct": 0,
+      "explanation": "Adding an optional field should be backward compatible — existing consumers should ignore fields they don't recognize. If Team B's consumer breaks on an unknown field, their deserialization is too strict (failing on unknown properties). The fix is on Team B's side: configure deserialization to ignore unknown fields. Event producers should follow additive-only schema evolution: add optional fields, never remove or rename existing ones. Forward compatibility is about new consumers reading old events — not the issue here."
+    },
+    {
+      "id": "msg-eda-028",
+      "type": "multiple-choice",
+      "question": "A system publishes 'thin' domain events containing only entity IDs (e.g., OrderPlaced {orderId}). Consumers must call back to the Order service API to get order details. During a traffic spike, the Order service is overwhelmed by callback requests from 15 consumers all fetching order details. What alternative event design reduces this load?",
+      "options": [
+        "Event-carried state transfer — include the full or partial entity state in the event payload so consumers don't need to call back",
+        "Cache order details in the message broker",
+        "Rate-limit the consumers' callback requests",
+        "Have consumers poll the Order service on a schedule instead"
+      ],
+      "correct": 0,
+      "explanation": "Event-carried state transfer includes the data consumers need directly in the event payload. Instead of {orderId}, publish {orderId, customerId, items, total, status}. Consumers process the event self-sufficiently without callbacks. Tradeoff: larger events, and consumers may receive stale data if the entity changes after the event was published. But it eliminates the N-consumers × M-events callback amplification problem."
+    },
+    {
+      "id": "msg-eda-029",
+      "type": "multiple-choice",
+      "question": "A team runs an event-sourced system where every aggregate is loaded by replaying its entire event history. They notice a performance cliff: aggregates with >10,000 events take seconds to load, while most have <100 events. The slow aggregates are long-lived customer accounts. What is the underlying design issue?",
+      "options": [
+        "The event store needs indexing",
+        "The aggregate boundary is too broad — a customer account accumulating unbounded events over years suggests the aggregate should be split into smaller, bounded aggregates",
+        "Events should be compressed",
+        "The replay logic needs parallel execution"
+      ],
+      "correct": 1,
+      "explanation": "An aggregate that grows without bound indicates a boundary problem. A 'CustomerAccount' aggregate that stores every order, payment, and interaction event will grow indefinitely. Better: separate aggregates for each Order, each Payment, etc. The 'Customer' aggregate manages only customer-level data (profile, preferences). Each order is its own aggregate with a bounded lifecycle. This keeps replay times short and aggregates focused."
+    },
+    {
+      "id": "msg-eda-030",
+      "type": "multiple-choice",
+      "question": "A choreographed workflow has a circular dependency: Service A publishes EventX, which triggers Service B, which publishes EventY, which triggers Service A, which publishes EventX again. What is this called and what's the risk?",
+      "options": [
+        "An optimization that reduces latency",
+        "A feedback loop that self-corrects over time",
+        "Normal pub/sub behavior — events naturally flow in cycles",
+        "An event loop — events cycle infinitely between services, consuming resources and potentially causing an outage"
+      ],
+      "correct": 3,
+      "explanation": "Event loops (or event cycles) are a dangerous anti-pattern in choreography. Without detection, the cycle runs indefinitely: A → B → A → B → ... consuming processing capacity and potentially overwhelming both services. Prevention: design events to be distinct at each stage (EventX and EventY should carry state that prevents re-triggering), use deduplication, or add a 'hop count' / TTL to events that kills them after N cycles."
+    },
+    {
+      "id": "msg-eda-031",
+      "type": "multiple-choice",
+      "question": "A team uses CQRS with 5 different read models (search, analytics, reporting, dashboard, mobile API). The event schema changes from v1 to v2 (a field is renamed). All 5 read model projections need updating. What does this reveal about CQRS at this scale?",
+      "options": [
+        "Each additional projection is a consumer that must handle schema evolution — the maintenance cost scales with the number of projections",
+        "CQRS should never have more than 2 read models",
+        "The team should consolidate into a single read model",
+        "Schema changes should be forbidden once events are published"
+      ],
+      "correct": 0,
+      "explanation": "Each CQRS projection is an independent consumer of the event stream. Schema changes propagate to every projection. With 5 projections, a field rename requires 5 code changes, 5 deployments, and potentially 5 replay/rebuild operations. This is the maintenance tax of CQRS: powerful but each projection adds ongoing cost. Teams should carefully evaluate whether each projection provides enough value to justify its maintenance burden."
+    },
+    {
+      "id": "msg-eda-032",
+      "type": "multiple-choice",
+      "question": "A team stores events with this structure: {type: 'ORDER_UPDATED', data: {status: 'shipped'}}. A year later, they realize they can't answer 'what was the order total when it was placed?' because the OrderPlaced event didn't include the total — only the status. What principle did they violate?",
+      "options": [
+        "Events should be stored in a relational database",
+        "Events should be encrypted for security",
+        "Events should include all relevant business data at the time of occurrence — you can't go back and add data to immutable events",
+        "Events should always include every field in the entity"
+      ],
+      "correct": 2,
+      "explanation": "Immutable events can't be retroactively enriched. If OrderPlaced doesn't include the total, that data is lost forever in the event stream. When designing events, include all data that any current or future consumer might need. Err on the side of including more data — storage is cheap, but missing data in immutable events is irrecoverable. This is sometimes called 'capture intent at the boundary.'"
+    },
+    {
+      "id": "msg-eda-033",
+      "type": "multiple-choice",
+      "question": "A team is choosing between choreography and orchestration. Their workflow crosses organizational boundaries: an internal order system needs to coordinate with an external payment provider and an external shipping partner. Neither partner will subscribe to the team's internal event bus. Which approach fits?",
+      "options": [
+        "Choreography — publish events and let partners subscribe",
+        "Two-phase commit across all three organizations",
+        "Orchestration — the orchestrator explicitly calls each partner's API in sequence, handling their responses and failures centrally",
+        "Event sourcing to share the event log with partners"
+      ],
+      "correct": 2,
+      "explanation": "Cross-organizational workflows strongly favor orchestration. External partners expose APIs, not event subscriptions — they won't join your internal event bus. An orchestrator calls each partner's API, handles timeouts and errors, and manages the workflow state. This also provides a single audit point for the cross-organizational transaction. Choreography requires all participants to share an event infrastructure, which is impractical across company boundaries."
+    },
+    {
+      "id": "msg-eda-034",
+      "type": "multiple-choice",
+      "question": "An event-sourced system using CQRS has a read model that fell behind by 1 million events due to a bug in the projection handler. After fixing the bug, what's the fastest way to catch up?",
+      "options": [
+        "Wait for new events to gradually correct the read model",
+        "Delete the read model and replay all events from the beginning",
+        "Manually update the read model from the write database",
+        "Resume processing from where the projection stopped, applying only the 1 million missed events to the existing read model state"
+      ],
+      "correct": 3,
+      "explanation": "If the projection handler had a bug but the read model's state before the bug was correct, resume from the last successfully processed event. Processing only the 1 million missed events (with the fixed handler) is faster than replaying the entire history. However, if the bug corrupted existing read model state (not just stopped processing), you may need to rebuild from scratch. Check whether the bug affected events before or after the stop point."
+    },
+    {
+      "id": "msg-eda-035",
+      "type": "multiple-choice",
+      "question": "A team implements event sourcing and discovers they need to fix a business logic error retroactively: 100 orders were placed with incorrect tax calculations 3 months ago. The events are immutable. How do they correct this?",
+      "options": [
+        "Emit new compensating events (TaxRecalculated) for each affected order, then rebuild the projection to reflect the corrections",
+        "Modify the historical events to fix the tax amounts",
+        "Delete the event store and start fresh",
+        "Ignore the error — immutable events can't be corrected"
+      ],
+      "correct": 0,
+      "explanation": "Immutable events are never modified. Instead, emit new events that represent the correction: TaxRecalculated {orderId, oldTax, newTax, reason}. When the projection replays, it applies the original OrderPlaced event and then the TaxRecalculated event, producing the correct current state. This preserves the full audit trail: the original (incorrect) calculation and the subsequent correction are both visible in the event history."
+    },
+    {
+      "id": "msg-eda-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A saga orchestrator needs to persist its state (which steps have completed, which are pending). If the orchestrator crashes and restarts, it must resume the saga from where it left off. Where should the orchestrator store its state?",
+          "options": [
+            "In a log file on the orchestrator's local disk",
+            "In the message broker's queue",
+            "In memory only — restart sagas from the beginning on crash",
+            "In a durable database — each step transition is persisted so the saga can resume after crash recovery"
+          ],
+          "correct": 3,
+          "explanation": "Saga state must survive process restarts. A durable database (relational, document store, or dedicated saga store) persists the current step, completed steps, and any context needed for compensation. On crash recovery, the orchestrator queries for in-progress sagas and resumes them. In-memory-only state means any crash loses all in-flight sagas, requiring manual intervention or data reconciliation."
+        },
+        {
+          "question": "The orchestrator's database has saga records showing step 2 (payment) as 'in progress' when the orchestrator crashed. On restart, the orchestrator doesn't know if the payment call succeeded or not. What pattern resolves this ambiguity?",
+          "options": [
+            "Restart the entire saga from step 1",
+            "Query the payment service to check the transaction status using an idempotency key, then decide whether to retry or proceed",
+            "Assume the payment failed and compensate",
+            "Assume the payment succeeded and continue to step 3"
+          ],
+          "correct": 1,
+          "explanation": "After a crash, the orchestrator is in an ambiguous state for the in-progress step. Querying the payment service with the idempotency key reveals whether the payment was processed. If yes → proceed to step 3. If no → retry the payment (the idempotency key ensures no double-charge). This is why idempotency keys are critical in saga implementations — they enable safe recovery from ambiguous states."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team deploys v2 of their order projection handler that changes how discounts are calculated. Before fully switching over, they want BOTH the old (v1) and new (v2) projections available simultaneously so they can compare outputs and validate correctness. What strategy supports running both projection versions from the same event stream?",
+          "options": [
+            "Run v1 and v2 projection handlers side-by-side, each writing to its own read database from the same event stream",
+            "Pause v1, rebuild v2, then compare snapshots after both are stopped",
+            "Fork the event stream into two copies, one per projection version",
+            "Deploy v2 to a staging environment with a copy of production events"
+          ],
+          "correct": 0,
+          "explanation": "Side-by-side projections: both v1 and v2 handlers consume the same event stream independently, each maintaining its own read model. The team can compare outputs for the same events — e.g., verify that v2's discount calculations match expectations against v1's known-good results. Once validated, traffic switches to v2 and v1 is decommissioned. This avoids the risk of deploying an untested projection directly. Forking the event stream is unnecessary — multiple consumers can read the same stream independently."
+        },
+        {
+          "question": "The v2 projection is validated and serving traffic. The team wants to keep the ability to roll back to v1 quickly if issues are found in production. What deployment strategy supports instant rollback?",
+          "options": [
+            "Stop all traffic, rebuild v1 from scratch, then resume serving from v1",
+            "Blue-green deployment — keep v1's read database intact (blue) while v2 serves traffic (green), enabling instant swap back to v1 if issues arise",
+            "Run both projections permanently and load-balance between them",
+            "Take a database backup of v2 and restore v1 from the backup if needed"
+          ],
+          "correct": 1,
+          "explanation": "Blue-green projection deployment: keep the v1 projection's database running (blue) while v2 serves production traffic (green). If v2 has issues, swap the read endpoint back to v1 instantly — no rebuild needed. The cost: temporarily running two read databases, but the safety of instant rollback justifies it. Once the team is confident in v2, decommission v1. Rebuilding v1 from scratch on rollback takes hours, which is unacceptable for production incidents."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce platform has a 'Checkout' saga that orchestrates: (1) validate cart, (2) reserve inventory, (3) process payment, (4) create shipment, (5) send confirmation. Step 3 and 4 are independent of each other (neither needs the other's result). The orchestrator currently runs all 5 steps sequentially. How can it reduce end-to-end latency?",
+          "options": [
+            "Combine all 5 steps into a single API call",
+            "Skip steps 3 and 4 for small orders",
+            "Run steps 3 (payment) and 4 (shipment) in parallel since they're independent, reducing the saga duration by the time of one of those steps",
+            "Pre-process steps 3 and 4 before the user clicks checkout"
+          ],
+          "correct": 2,
+          "explanation": "When saga steps are independent (no data dependency between them), they can run in parallel. Sequential: steps 1→2→3→4→5 = sum of all latencies. Parallel: steps 1→2→(3∥4)→5 = sum minus the shorter of steps 3 and 4. Many saga frameworks support parallel step execution. The orchestrator waits for both to complete before proceeding to step 5."
+        },
+        {
+          "question": "Steps 3 and 4 ran in parallel. Step 3 (payment) succeeded but step 4 (shipment creation) failed. What complication does parallel execution add to compensation?",
+          "options": [
+            "The orchestrator must compensate step 3 (refund payment) and step 2 (release inventory), but must handle the fact that step 3 completed independently and may have triggered its own downstream effects (receipt email, accounting entry) that also need compensating",
+            "Both parallel steps are automatically rolled back by the broker",
+            "No complication — compensate as normal",
+            "Retry step 4 but also roll back step 3"
+          ],
+          "correct": 0,
+          "explanation": "Parallel execution complicates compensation because both steps may have partially or fully completed. Step 3 (payment) succeeded and may have triggered side effects (receipt email sent, accounting ledger updated). Compensating step 3 means not just refunding the charge, but potentially sending a 'charge reversed' notification and updating the ledger. The orchestrator must track which parallel steps completed and run the appropriate compensations for each."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A financial services firm uses event sourcing for regulatory compliance. Auditors need to answer: 'What was the state of account X at exactly 2:30 PM on March 15?' How does the event-sourced system answer this?",
+          "options": [
+            "Query the current database and subtract recent changes",
+            "Replay all events for account X up to the March 15 2:30 PM timestamp, stopping at that point to reconstruct the exact state",
+            "Ask the account holder to confirm their balance",
+            "Check the backup from that date"
+          ],
+          "correct": 1,
+          "explanation": "Temporal queries are a natural capability of event sourcing. Replay events for the aggregate up to the specified timestamp. The resulting state is exactly what the account looked like at that moment. This is extremely valuable for auditing, debugging, and regulatory compliance. With state-based persistence, this information is lost after each update — you only have the current state."
+        },
+        {
+          "question": "The firm replays 5 years of events for one account, which takes 45 seconds — too slow for the auditor's interactive tool. They already use snapshots every 1,000 events. What additional optimization helps for temporal queries specifically?",
+          "options": [
+            "Pre-compute all possible temporal states",
+            "Store timestamped snapshots at regular calendar intervals (e.g., daily or monthly) so temporal queries can start from the nearest snapshot before the target date",
+            "Take snapshots more frequently (every 100 events)",
+            "Store only the last 6 months of events"
+          ],
+          "correct": 1,
+          "explanation": "Calendar-aligned snapshots optimize temporal queries specifically. Instead of count-based snapshots (every 1,000 events), also snapshot at business-meaningful intervals: end of day, end of month, end of quarter. A query for 'state at March 15 2:30 PM' loads the March 15 end-of-day snapshot (or March 14 if querying mid-day) and replays a few hours of events — much faster than 5 years. Count-based and calendar-based snapshots can coexist."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team uses choreography for their order workflow. A new business requirement arrives: 'If the customer is a VIP, skip the fraud check step.' In a choreographed system, which service must implement this conditional logic?",
+          "options": [
+            "The fraud check service itself — it receives the event, checks if the customer is VIP, and either processes or skips",
+            "A central workflow controller (which doesn't exist in choreography)",
+            "The message broker, using content-based routing rules",
+            "The order service, by not publishing the event for VIP customers"
+          ],
+          "correct": 0,
+          "explanation": "In choreography, there's no central place for conditional logic. The fraud check service must implement the 'skip for VIP' rule itself. This distributes business logic across services — each service must understand the conditions under which it should or shouldn't act. As conditional rules multiply, this scattered logic becomes increasingly hard to maintain and reason about. This is a common trigger for migrating from choreography to orchestration."
+        },
+        {
+          "question": "The team decides to migrate from choreography to orchestration. Their 5 services currently react to events independently. What is the biggest risk during the migration?",
+          "options": [
+            "Permanent loss of all event history stored in the message broker",
+            "Need to run both choreography and orchestration simultaneously during the transition period, handling events in both patterns without duplicating work",
+            "All existing service API contracts must be rewritten from scratch",
+            "The message broker must be replaced with a different technology"
+          ],
+          "correct": 1,
+          "explanation": "The biggest migration risk is the transition period. You can't switch 5 services from choreography to orchestration atomically — some will still be reacting to events while the orchestrator starts sending commands. During this overlap, you must prevent duplicate processing (a service reacting to an event AND receiving an orchestrator command for the same work). Common approach: migrate one workflow at a time, using feature flags to disable choreographed reactions as orchestrated paths go live. Event history isn't lost, and service APIs don't change — only the coordination mechanism does."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-041",
+      "type": "multi-select",
+      "question": "Which problems can event sourcing introduce that traditional CRUD doesn't have? (Select all that apply)",
+      "options": [
+        "Event replay time growing proportionally with the aggregate's lifetime",
+        "Eventually consistent read models requiring careful UI/UX design",
+        "Event schema evolution across years of immutable events",
+        "Simpler debugging because you can see every state transition"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Event sourcing's unique challenges: (1) Schema evolution — events written 3 years ago must still be readable by today's code, even as the domain model evolves. (2) Eventual consistency — read projections lag behind the write model by design. (3) Replay performance — long-lived aggregates accumulate events, making reconstruction slower. Simpler debugging is an advantage, not a problem — the full event history makes reproducing issues easier."
+    },
+    {
+      "id": "msg-eda-042",
+      "type": "multi-select",
+      "question": "Which are advantages of event-carried state transfer over thin ID-only events? (Select all that apply)",
+      "options": [
+        "Consumers are autonomous — they don't need to call back to the producer service for details",
+        "Reduced coupling — if the producer service is down, consumers can still process events from the broker",
+        "Smaller event payload size",
+        "Consumers always have the latest version of the entity data"
+      ],
+      "correctIndices": [
+        0,
+        1
+      ],
+      "explanation": "Event-carried state transfer (fat events) lets consumers process events self-sufficiently. If the Order service is down, the Shipping service can still process the OrderPlaced event because it contains all the order details. Payload size is larger, not smaller (a disadvantage). Consumers don't always have the latest data — they have the data as of when the event was published. If the entity changes between event publication and consumption, the consumer has stale data."
+    },
+    {
+      "id": "msg-eda-043",
+      "type": "multi-select",
+      "question": "A team is evaluating whether to use event sourcing for a new service. Which characteristics of their domain make event sourcing a good fit? (Select all that apply)",
+      "options": [
+        "Business rules that benefit from replaying past events through new logic to generate new insights",
+        "Regulatory requirement for a complete audit trail of every state change",
+        "Simple CRUD operations with no need for historical state queries",
+        "Need to support temporal queries ('what was the state at time T?')"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Event sourcing excels when you need: audit trails (financial, healthcare, legal domains), temporal queries (compliance, debugging), and the ability to reprocess history with new logic (analytics, ML feature extraction). Simple CRUD with no history requirements doesn't justify event sourcing's complexity — a traditional database with an audit log table is simpler and sufficient."
+    },
+    {
+      "id": "msg-eda-044",
+      "type": "multi-select",
+      "question": "Which are characteristics of a well-designed domain event? (Select all that apply)",
+      "options": [
+        "Represents a single business fact, not a technical artifact (e.g., OrderShipped, not DatabaseRowUpdated)",
+        "Includes implementation details like database IDs and table names for consumer convenience",
+        "Contains all data needed by known consumers at the time of design",
+        "Named in past tense to describe something that already happened (e.g., OrderPlaced, not PlaceOrder)"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Good domain events: (1) Past tense names — they describe facts that occurred, not commands to execute. (2) Sufficient data — include what consumers need without requiring callbacks. (3) Business semantics — they represent domain concepts, not technical operations. Database IDs and table names are implementation details that couple consumers to the producer's internal schema. Use business identifiers (orderId, customerId) instead."
+    },
+    {
+      "id": "msg-eda-045",
+      "type": "multi-select",
+      "question": "A team runs an orchestrated saga for a travel booking: (1) book flight, (2) book hotel, (3) book car rental. Which of these are valid saga design decisions? (Select all that apply)",
+      "options": [
+        "Use idempotency keys for each step so retries after crashes are safe",
+        "Persist the saga state in a durable store so it survives orchestrator restarts",
+        "Run all three steps inside a single distributed transaction with 2PC",
+        "Define compensating transactions for each step (cancel flight, cancel hotel, cancel car)"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Sagas explicitly avoid distributed transactions (2PC) — that's their entire purpose. Each step commits locally, with compensating transactions for rollback. Idempotency keys ensure safe retries (critical for crash recovery). Durable saga state enables the orchestrator to resume after failure. 2PC across three external booking providers (flight, hotel, car) is impractical: they're independent companies with their own databases and don't support distributed transactions."
+    },
+    {
+      "id": "msg-eda-046",
+      "type": "numeric-input",
+      "question": "A CQRS system has one write database producing 1,000 events/second and 4 read projections. Projections A, B, and C each process at 1,200 events/s. Projection D processes at only 800 events/s. After one hour, how many events is Projection D behind?",
+      "answer": 720000,
+      "unit": "events",
+      "tolerance": 0.05,
+      "explanation": "Projection D falls behind at a rate of 1,000 - 800 = 200 events/second. After one hour (3,600 seconds): 200 × 3,600 = 720,000 events behind. Projections A, B, and C keep up fine (200 events/s surplus each). This is the 'projection fan-out' risk of CQRS — each projection must independently sustain the full event rate. One slow projection doesn't affect others, but its read model becomes increasingly stale. The team must either optimize D's processing speed, scale it horizontally, or accept growing staleness."
+    },
+    {
+      "id": "msg-eda-047",
+      "type": "numeric-input",
+      "question": "An event-sourced aggregate takes snapshots every 200 events. The aggregate currently has 15,420 events. Each snapshot is 50 KB. The team stores all historical snapshots (not just the latest). How much total snapshot storage does this single aggregate consume in KB?",
+      "answer": 3850,
+      "unit": "KB",
+      "tolerance": "exact",
+      "explanation": "Snapshots are taken at event 200, 400, 600, ..., 15,400. That's 15,400 / 200 = 77 snapshots. Total storage: 77 × 50 KB = 3,850 KB (about 3.8 MB). Across 100,000 aggregates, that's ~380 GB of snapshots alone. This is why most systems only keep the latest N snapshots per aggregate and delete older ones — they exist to speed up replay, not as an archival format. The events themselves are the source of truth."
+    },
+    {
+      "id": "msg-eda-048",
+      "type": "numeric-input",
+      "question": "A choreographed workflow has 6 services, each publishing events consumed by the next in the chain. Average event processing latency per service is 50ms, and average message broker delivery latency is 10ms per hop. What is the minimum end-to-end latency from the first service publishing its event to the last service completing processing?",
+      "answer": 300,
+      "unit": "ms",
+      "tolerance": 0.05,
+      "explanation": "From the first service's publication: broker delivery (10ms) → service 2 processes (50ms) → broker (10ms) → service 3 (50ms) → ... → service 6 (50ms). That's 5 broker hops × 10ms = 50ms, plus 5 services processing × 50ms = 250ms. Total: 50 + 250 = 300ms. Each additional service in the chain adds 60ms (10ms delivery + 50ms processing). This cumulative latency is why long choreography chains can have high end-to-end latency."
+    },
+    {
+      "id": "msg-eda-049",
+      "type": "numeric-input",
+      "question": "A saga has 5 steps. Step 4 fails. Compensating transactions must run for steps 3, 2, and 1 (in reverse order). Each compensation takes 200ms. Including the original 3 successful steps (each 500ms) and the failed step 4 (100ms before failure), what is the total saga duration?",
+      "answer": 2200,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "Forward: step 1 (500ms) + step 2 (500ms) + step 3 (500ms) + step 4 fails (100ms) = 1,600ms. Backward: compensate step 3 (200ms) + compensate step 2 (200ms) + compensate step 1 (200ms) = 600ms. Total: 1,600 + 600 = 2,200ms. Failed sagas take longer than successful ones because they incur both forward and backward costs."
+    },
+    {
+      "id": "msg-eda-050",
+      "type": "ordering",
+      "question": "Rank these CQRS implementation approaches from least to most complex:",
+      "items": [
+        "Single database with separate read and write query paths (thin CQRS)",
+        "Separate read and write databases synchronized via application-level events",
+        "Event-sourced write model with multiple materialized read projections",
+        "Event-sourced write model with CQRS, snapshotting, projection rebuild, and temporal queries"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Thin CQRS just separates query interfaces — same database, minimal overhead. Separate databases add synchronization complexity (eventual consistency, failure handling). Event sourcing for writes adds the event store, replay logic, and schema evolution. Full event sourcing with all features (snapshots, projection rebuilds, temporal queries) is the most complex, requiring the most infrastructure and operational tooling."
+    },
+    {
+      "id": "msg-eda-051",
+      "type": "ordering",
+      "question": "Rank these steps in the correct order for handling a saga step failure with backward recovery:",
+      "items": [
+        "Detect the step failure (timeout, error, or rejection)",
+        "Mark the saga as 'compensating' in the saga store",
+        "Execute compensating transactions for completed steps in reverse order",
+        "Mark the saga as 'failed/compensated' and emit a SagaFailed event"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Saga backward recovery sequence: (1) Detect the failure (the step returned an error or timed out). (2) Persist the 'compensating' state (so crash recovery knows to continue compensating, not retrying). (3) Run compensations in reverse order (most recent step first, since later steps may depend on earlier ones). (4) Mark the saga as terminal and notify interested parties. Persisting state before compensating is crucial — a crash during compensation must be recoverable."
+    },
+    {
+      "id": "msg-eda-052",
+      "type": "ordering",
+      "question": "Rank these event store operations from most frequent to least frequent in a typical event-sourced system under normal load:",
+      "items": [
+        "Append new events (writes from commands)",
+        "Read events for aggregate replay (triggered by commands and projections)",
+        "Take aggregate snapshots",
+        "Full event stream replay for projection rebuild"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Event appends happen with every successful command (highest frequency). Event reads happen for aggregate loading (every command) plus projection processing (continuous). Snapshots are periodic (every N events per aggregate — orders of magnitude less frequent than appends). Full replays are rare operational events (projection schema changes, new read models, bug fixes) — typically days or weeks apart."
+    },
+    {
+      "id": "msg-eda-053",
+      "type": "ordering",
+      "question": "Rank these approaches for adding a new consumer to a choreographed event-driven system, from least to most disruptive to existing services:",
+      "items": [
+        "Subscribe the new consumer to existing events — no changes to producers or other consumers",
+        "Add a new event type that the new consumer needs, requiring producer changes but no other consumer changes",
+        "Modify an existing event's schema (add required fields) that affects all existing consumers",
+        "Redesign the event flow to route events differently, requiring changes to multiple services"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Choreography's strength is extensibility: adding a new subscriber to existing events requires zero changes elsewhere (least disruptive). Adding a new event type requires producer changes but doesn't affect existing consumers. Modifying existing event schemas forces all current consumers to adapt. Redesigning the event flow is a systemic change affecting multiple services — the most disruptive option."
+    },
+    {
+      "id": "msg-eda-054",
+      "type": "ordering",
+      "question": "In a CQRS system, rank the typical sequence of operations when a command is processed:",
+      "items": [
+        "Validate the command against business rules in the write model",
+        "Emit domain events representing the state change",
+        "Persist events to the event store",
+        "Projection handlers consume events and update read models"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "The CQRS command processing pipeline: (1) Validate — load the aggregate, check invariants, reject invalid commands. (2) Emit — if valid, produce events describing what happened. (3) Persist — write events to the event store (the write is committed at this point). (4) Project — asynchronously, projection handlers consume the new events and update read models. Steps 1-3 are synchronous (within the command handler). Step 4 is asynchronous (eventual consistency)."
+    },
+    {
+      "id": "msg-eda-055",
+      "type": "ordering",
+      "question": "Rank these domain event anti-patterns from most commonly seen to least commonly seen in practice:",
+      "items": [
+        "Generic CRUD events (EntityUpdated) instead of domain-specific events (OrderShipped)",
+        "Missing events — not capturing all meaningful state transitions",
+        "Events containing sensitive PII that gets replicated across all consumers",
+        "Circular event dependencies between services causing infinite loops"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Generic CRUD events are the most common anti-pattern — teams default to their database layer's vocabulary instead of domain language. Missing events is the next most common — teams realize too late they didn't capture a transition they need. PII in events is moderately common and often caught during security reviews. Circular dependencies are the rarest — they tend to cause immediate, visible failures that force quick resolution."
+    },
+    {
+      "id": "msg-eda-056",
+      "type": "multiple-choice",
+      "question": "A team uses event sourcing with a versioned event schema. They need to change the 'OrderPlaced' event from v1 {total: number} to v2 {total: number, currency: string}. Old v1 events are already in the store. How should they handle this?",
+      "options": [
+        "Delete v1 events and re-emit them as v2",
+        "Write an event upcaster that transforms v1 events to v2 format at read time, adding a default currency value",
+        "Migrate all v1 events in the store to v2 format",
+        "Maintain two separate event stores for v1 and v2"
+      ],
+      "correct": 1,
+      "explanation": "Event upcasters transform old event formats to new ones during deserialization. When the system reads a v1 OrderPlaced, the upcaster adds {currency: 'USD'} to produce a v2 event in memory. The stored event is unchanged (immutable). Upcasters compose: v1→v2, v2→v3, etc. This avoids expensive data migrations and preserves the original event history. It's analogous to database migration scripts but applied at read time rather than write time."
+    },
+    {
+      "id": "msg-eda-057",
+      "type": "multiple-choice",
+      "question": "A team uses CQRS where the write model is a PostgreSQL database and the read model is a Redis cache for fast lookups. The Redis instance crashes and loses all data. What is the recovery procedure?",
+      "options": [
+        "Copy the PostgreSQL data directly into Redis",
+        "Restore Redis from the last backup",
+        "Rebuild the Redis read model by replaying events from the event store (or re-projecting from the write database)",
+        "The data is permanently lost — switch to a different cache"
+      ],
+      "correct": 2,
+      "explanation": "In CQRS, read models are derived and disposable. They can always be rebuilt from the source of truth (event store or write database). Replay all events through the Redis projection handler to reconstruct the cache. This is a key CQRS benefit: read models are regenerable, so data loss in a read store isn't catastrophic. Restoring from backup would work but may have stale data; replaying events produces a fully current read model."
+    },
+    {
+      "id": "msg-eda-058",
+      "type": "multiple-choice",
+      "question": "A domain event 'OrderCancelled' is consumed by 4 services: Inventory (release reserved items), Payment (issue refund), Notification (email customer), and Analytics (track cancellation metrics). One service's handler fails. Should the event be retried for all 4 services?",
+      "options": [
+        "Remove the event entirely and re-publish it",
+        "Pause all consumers until the failed one recovers",
+        "No — each consumer tracks its own offset independently, so only the failed consumer retries. Other consumers have already processed the event and moved on",
+        "Yes — retry the event globally, all 4 services re-process it"
+      ],
+      "correct": 2,
+      "explanation": "Independent consumer offsets: each service maintains its own position in the event stream. If Analytics fails on OrderCancelled but Inventory, Payment, and Notification succeed, only Analytics retries. The others have committed their offset past this event. This is the standard model in Kafka (consumer group offsets), SQS (per-subscription), and most event-driven architectures. Global retry would cause duplicate processing in the three healthy consumers."
+    },
+    {
+      "id": "msg-eda-059",
+      "type": "multiple-choice",
+      "question": "A team's event sourcing implementation stores 200 event types across 50 aggregates. A new developer asks: 'How do I know which events can follow which other events for the Order aggregate?' What documentation or enforcement is missing?",
+      "options": [
+        "A list of all event handlers",
+        "A database schema diagram",
+        "A README listing all event types",
+        "An aggregate state machine that defines valid event transitions — e.g., OrderPlaced can be followed by PaymentReceived or OrderCancelled, but not by OrderShipped (you can't ship before paying)"
+      ],
+      "correct": 3,
+      "explanation": "Each aggregate has an implicit state machine: certain events are only valid in certain states. OrderShipped is only valid after PaymentConfirmed. Making this state machine explicit (in documentation and ideally enforced in code) prevents invalid event sequences. Without it, developers can accidentally emit events in wrong order, creating inconsistent aggregate state. Many event sourcing frameworks support declarative state machines for this reason."
+    },
+    {
+      "id": "msg-eda-060",
+      "type": "multiple-choice",
+      "question": "A team runs a choreographed workflow across 8 microservices. They want to add end-to-end monitoring that answers: 'For order X, which services have processed their events and which are pending?' Without modifying any service, what infrastructure can provide this?",
+      "options": [
+        "Reading the message broker's internal state",
+        "A single database query",
+        "A correlation ID search across centralized logs, filtering all events for order X across all 8 services' log streams",
+        "Checking each service's API individually"
+      ],
+      "correct": 2,
+      "explanation": "Centralized log aggregation (ELK, Datadog, Splunk) with correlation IDs enables cross-service workflow visibility without modifying services. Each service already logs its event processing with the order's correlation ID. Searching logs for that ID across all services shows which processed the event and when. For richer monitoring, tools like Zipkin/Jaeger provide trace visualization, but they require instrumentation in each service."
+    },
+    {
+      "id": "msg-eda-061",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS platform uses event sourcing for customer accounts. A customer invokes their GDPR 'right to be forgotten.' The team must delete all personal data for this customer. But events are immutable. How do they reconcile this?",
+          "options": [
+            "Mark events as 'deleted' but keep them physically",
+            "Use crypto-shredding: encrypt PII in events with a per-customer key, then delete the key — the PII becomes unrecoverable while event structure is preserved",
+            "GDPR doesn't apply to event stores",
+            "Delete the customer's events entirely from the store"
+          ],
+          "correct": 1,
+          "explanation": "Crypto-shredding: encrypt sensitive fields (name, email, address) in each event with a per-customer encryption key. When the customer requests deletion, delete the key. The events remain in the store (maintaining referential integrity and aggregate structure) but the PII is cryptographically irrecoverable. Non-sensitive fields (orderId, timestamps, amounts) remain readable for business continuity."
+        },
+        {
+          "question": "After crypto-shredding, the team's projection handlers encounter events with encrypted (now undecryptable) PII fields. The read model needs to be rebuilt. What happens to the deleted customer's data in the projection?",
+          "options": [
+            "The old projection retains the PII from before deletion",
+            "The projection automatically decrypts using a backup key",
+            "The projection handler detects undecryptable fields and substitutes placeholder values (e.g., '[REDACTED]') or skips the customer's records entirely, producing a read model without the deleted customer's PII",
+            "The projection crashes on undecryptable fields"
+          ],
+          "correct": 2,
+          "explanation": "Projection handlers must be crypto-shredding-aware. When they encounter undecryptable fields (key was deleted), they substitute placeholders or exclude the record. The old projection may still contain the PII in its materialized data — which is why a projection rebuild is part of the GDPR deletion process. After rebuild, no read model contains the customer's PII. This is operationally complex but legally required."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-062",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team wants to test their saga orchestrator. The saga coordinates payment, inventory, and shipping services. In a test environment, they don't have access to real payment or shipping providers. What testing strategy lets them verify the saga's orchestration logic?",
+          "options": [
+            "Use a shared staging environment with real providers",
+            "Skip testing the saga — test each service individually",
+            "Use service stubs or mocks that simulate success and failure responses for each saga step, allowing the test to verify the orchestrator's control flow without real dependencies",
+            "Test only in production with real services"
+          ],
+          "correct": 2,
+          "explanation": "Saga orchestrator testing with stubs: replace each participant service with a mock that returns configurable responses (success, failure, timeout). Test scenarios: all succeed (happy path), step 2 fails (verify compensation for step 1), step 3 times out (verify retry logic), multiple steps fail (verify compensation ordering). This tests the orchestrator's state machine independently from the services it coordinates."
+        },
+        {
+          "question": "The team's saga tests pass with mocks, but in production, the payment service occasionally returns a response after the saga's timeout has expired. The saga compensates (refunds), but then the late success response arrives. What does this cause?",
+          "options": [
+            "Nothing — the late response is ignored",
+            "The saga automatically reverses the compensation",
+            "A semantic conflict: the customer was charged (late success) AND refunded (compensation), potentially resulting in a net-zero charge or a double-charge depending on timing",
+            "The payment service handles this internally"
+          ],
+          "correct": 2,
+          "explanation": "Late responses after timeout are a classic saga hazard. The saga timed out and compensated (refund issued). Then the payment actually succeeds — the customer is charged and refunded. If the saga is truly done, nobody processes the late success. Depending on timing: the customer might see both a charge and a refund (net zero, confusing), or only the charge (if refund processing is delayed). Solutions: longer timeouts, check-before-compensate, or reconciliation processes that detect and resolve mismatches."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An event-driven system has a 'Product' aggregate and a 'PricingHistory' projection. The projection stores every price change with timestamps. A bug in the projection handler double-counted some price changes for the last 2 weeks. The event store is correct. What's the fix?",
+          "options": [
+            "Drop the PricingHistory projection and rebuild it by replaying events from the event store through the fixed handler",
+            "Manually edit the PricingHistory database to remove duplicates",
+            "Switch to a different database for the projection",
+            "Fix the handler and wait for new events to correct the data"
+          ],
+          "correct": 0,
+          "explanation": "Since the event store is the source of truth and is correct, the fix is straightforward: fix the bug in the projection handler, drop the corrupted read model, and rebuild from events. The rebuilt projection will have the correct price history because the events are correct — only the projection logic was wrong. This is one of event sourcing's strongest recovery guarantees: a corrupted read model is always rebuildable."
+        },
+        {
+          "question": "The PricingHistory projection has 3 years of data from 50 million events. Rebuilding takes 6 hours. During the rebuild, the pricing dashboard is unavailable. How can the team reduce the impact of future projection rebuilds?",
+          "options": [
+            "Maintain periodic snapshots of the projection state. On rebuild, start from the nearest correct snapshot and replay only events after that point, reducing rebuild time proportionally",
+            "Run the projection on faster hardware",
+            "Never change the projection handler to avoid rebuilds",
+            "Accept 6-hour downtime as a normal cost"
+          ],
+          "correct": 0,
+          "explanation": "Projection snapshots checkpoint the read model state at known-good points. If the bug was introduced 2 weeks ago, load the snapshot from 3 weeks ago (known correct) and replay only 3 weeks of events instead of 3 years. Combined with blue-green deployment (old projection serves traffic during rebuild), this limits both rebuild time and downtime. Faster hardware helps but doesn't scale as well as snapshotting for reducing rebuild scope."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-064",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team uses choreography with domain events. Service A publishes 'PaymentConfirmed'. Service B consumes it and publishes 'InventoryReserved'. Service C consumes that and publishes 'ShipmentCreated'. A new requirement arrives: add a fraud check between payment and inventory. Where does the new step go?",
+          "options": [
+            "Add a shared database flag that services check",
+            "Service A publishes PaymentConfirmed → NEW: Fraud service consumes it, runs the check, and publishes 'FraudCheckPassed' → Service B now subscribes to FraudCheckPassed instead of PaymentConfirmed",
+            "Add the fraud check inside Service A",
+            "Service C handles the fraud check before creating the shipment"
+          ],
+          "correct": 1,
+          "explanation": "Inserting a step in a choreographed workflow: the new Fraud service subscribes to PaymentConfirmed, performs its check, and publishes FraudCheckPassed. Service B changes its subscription from PaymentConfirmed to FraudCheckPassed. This inserts the fraud check without modifying Services A or C. However, Service B must be updated — choreography isn't truly zero-change when inserting steps."
+        },
+        {
+          "question": "After adding the fraud check step, the team realizes the fraud service sometimes takes 30 seconds (ML model inference). During this delay, the customer sees no progress. With an orchestrator, this would be easy to monitor. In choreography, how does the team detect stuck fraud checks?",
+          "options": [
+            "Implement a timer-based monitor: if FraudCheckPassed isn't published within N seconds of PaymentConfirmed, alert on the gap using event timestamps and correlation IDs",
+            "Add a health check endpoint to the fraud service",
+            "Rely on the customer to report slow orders",
+            "Check the fraud service's logs manually"
+          ],
+          "correct": 0,
+          "explanation": "Choreography monitoring gap: no orchestrator tracks step durations. A separate monitoring process must correlate events: for each PaymentConfirmed, check that a FraudCheckPassed (or FraudCheckFailed) appears within the SLA window. Missing or delayed events trigger alerts. This is effectively building a lightweight process monitor — which is why teams with complex workflows often migrate to orchestration, where step timing monitoring is built in."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-065",
+      "type": "multi-select",
+      "question": "Which are valid strategies for handling event schema evolution in an event-sourced system? (Select all that apply)",
+      "options": [
+        "Weak schema — use flexible formats (JSON with optional fields) so consumers ignore unknown fields",
+        "Copy-and-replace — migrate old events to new format in place, replacing the original events",
+        "Upcasting — transform old event versions to new format at read time",
+        "Versioned event types — publish OrderPlaced_v1 and OrderPlaced_v2 as separate types"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Upcasting transforms old events transparently at read time. Versioned types allow consumers to handle different versions explicitly. Weak/flexible schemas accommodate additive changes (new optional fields) without breaking consumers. Copy-and-replace violates event immutability — rewriting historical events destroys the original record and can break event log integrity, consumer offsets, and audit trails."
+    },
+    {
+      "id": "msg-eda-066",
+      "type": "multi-select",
+      "question": "A team is deciding whether to use orchestration or choreography. Which questions help them choose? (Select all that apply)",
+      "options": [
+        "Do all participating services belong to the same team, or are they owned by different teams with independent release cycles?",
+        "How many steps are in the workflow and how much conditional branching exists?",
+        "How important is end-to-end workflow visibility for debugging and monitoring?",
+        "Is the message broker Kafka or RabbitMQ?"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "The orchestration/choreography decision depends on: (1) Complexity — complex, branching workflows favor orchestration's explicit control. (2) Organizational structure — cross-team ownership favors choreography's loose coupling (each team manages their own reactions). (3) Observability requirements — strict monitoring/audit needs favor orchestration's central visibility. The specific broker technology doesn't determine the coordination pattern — both patterns work with any broker."
+    },
+    {
+      "id": "msg-eda-067",
+      "type": "multi-select",
+      "question": "Which are risks of implementing event sourcing for a simple CRUD application with no audit, temporal, or replay requirements? (Select all that apply)",
+      "options": [
+        "Higher storage costs from storing every state transition instead of current state only",
+        "Slower reads due to event replay overhead that isn't offset by any query optimization",
+        "Improved developer productivity from the simpler mental model",
+        "Unnecessary complexity — event store, projections, snapshotting for no business benefit"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Event sourcing without a compelling business reason is over-engineering. The costs (complexity, slower reads, more storage) exist regardless, but the benefits (audit trail, temporal queries, replay) provide no value to a simple CRUD app. Developer productivity actually decreases — the mental model is more complex than CRUD, with eventual consistency, projection management, and schema evolution to handle. Use event sourcing when the domain demands it, not as a default architecture."
+    },
+    {
+      "id": "msg-eda-068",
+      "type": "multi-select",
+      "question": "Which event-driven architecture concerns become more critical as the number of event types grows from 10 to 500? (Select all that apply)",
+      "options": [
+        "Event discovery — finding which events exist and what data they carry",
+        "Consumer testing — verifying that consumers handle the events they subscribe to correctly",
+        "Event coupling — producers must know about all 500 event types",
+        "Schema governance — ensuring consistent naming, versioning, and evolution rules across all event types"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "At scale: (1) Event discovery becomes critical — developers need an event catalog/registry to find relevant events. (2) Schema governance ensures consistency — without it, 500 events developed by different teams will have inconsistent naming, formats, and versioning. (3) Consumer testing scales linearly — each new event type needs consumer contract tests. Event coupling is wrong: producers don't need to know about all events, only the ones they publish. Producers and consumers are decoupled by design."
+    },
+    {
+      "id": "msg-eda-069",
+      "type": "numeric-input",
+      "question": "A CQRS projection fell 500,000 events behind after a deployment outage. The projection processes events at 12,000 events/second, while new events continue arriving at 10,000 events/second. How many seconds does it take the projection to drain the backlog completely?",
+      "answer": 250,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "The projection's net drain rate is its processing speed minus the incoming event rate: 12,000 - 10,000 = 2,000 events/second of surplus capacity. To drain a 500,000-event backlog: 500,000 / 2,000 = 250 seconds (about 4.2 minutes). If the projection processed at exactly 10,000/s (matching the incoming rate), the backlog would never drain. This is why projection processing capacity must exceed the incoming event rate — even a small surplus eventually catches up, but the time depends on the surplus margin."
+    },
+    {
+      "id": "msg-eda-070",
+      "type": "numeric-input",
+      "question": "An event store retains events for 7 years (regulatory requirement). Average event size is 500 bytes. The system writes 10,000 events/second. How much total storage is needed for 7 years in TB? Round to the nearest whole number.",
+      "answer": 1104,
+      "unit": "TB",
+      "tolerance": 0.05,
+      "explanation": "Events per year: 10,000/s × 86,400 s/day × 365 days = 315.36 billion events/year. Storage per year: 315.36 × 10^9 × 500 bytes = 157.68 × 10^12 bytes ≈ 157.68 TB/year. Over 7 years: 157.68 × 7 ≈ 1,103.76 TB ≈ 1,104 TB (about 1.1 PB). This is why event sourcing at scale requires tiered storage: hot storage for recent events, cold storage (S3 Glacier) for older events that are rarely replayed."
+    },
+    {
+      "id": "msg-eda-071",
+      "type": "numeric-input",
+      "question": "A CQRS system needs to rebuild a projection from 100 million events. The projection handler processes 50,000 events per second. How many minutes does the rebuild take? Round to the nearest minute.",
+      "answer": 33,
+      "unit": "minutes",
+      "tolerance": 0.1,
+      "explanation": "Rebuild time: 100,000,000 events / 50,000 events/second = 2,000 seconds = 33.33 minutes ≈ 33 minutes. During this time, the projection is stale or unavailable. This is why blue-green projection deployment is valuable: the old projection continues serving traffic while the new one rebuilds. For faster rebuilds, parallelize event processing across multiple workers (if the projection supports concurrent writes)."
+    },
+    {
+      "id": "msg-eda-072",
+      "type": "numeric-input",
+      "question": "An orchestrated saga has 5 steps. Step 1 takes 100ms, step 2 takes 200ms, step 3 takes 300ms, step 4 takes 200ms, and step 5 takes 100ms. Steps 2 and 3 are independent and can run in parallel. What is the minimum end-to-end saga duration?",
+      "answer": 700,
+      "unit": "ms",
+      "tolerance": "exact",
+      "explanation": "Sequential: 100 + 200 + 300 + 200 + 100 = 900ms. With steps 2 and 3 in parallel: step 1 (100ms) → max(step 2, step 3) = max(200, 300) = 300ms → step 4 (200ms) → step 5 (100ms). Total: 100 + 300 + 200 + 100 = 700ms. Parallelizing independent steps saves 200ms (the duration of the shorter parallel step). The saga is bounded by the longest parallel branch."
+    },
+    {
+      "id": "msg-eda-073",
+      "type": "ordering",
+      "question": "Rank these event-driven architecture maturity levels from beginner to advanced:",
+      "items": [
+        "Fire-and-forget events for notifications and logging",
+        "Event-driven integration between services with defined contracts",
+        "CQRS with separate read/write models and event-driven projections",
+        "Full event sourcing with temporal queries, projection rebuilds, and event schema evolution"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Maturity progression: (1) Events for non-critical side effects (logging, notifications) — lowest risk. (2) Events as the primary integration mechanism between services — requires event contracts and delivery guarantees. (3) CQRS adds separate read models, eventual consistency, and projection management. (4) Full event sourcing adds the event store as source of truth, temporal capabilities, and complex schema evolution — the most sophisticated and operationally demanding level."
+    },
+    {
+      "id": "msg-eda-074",
+      "type": "ordering",
+      "question": "Rank these event payload strategies from smallest to largest event size:",
+      "items": [
+        "Notification event — contains only event type and entity ID (e.g., {type: 'OrderPlaced', orderId: '123'})",
+        "Delta event — contains only the changed fields (e.g., {orderId: '123', status: 'shipped'})",
+        "Event-carried state transfer — contains the full entity state at the time of the event",
+        "Event with full entity state plus related entity snapshots (e.g., order + customer + all line items)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Notification events are the smallest — just an ID and event type. Delta events add the changed fields. Event-carried state transfer includes the full entity. Full state plus related entities is the largest, essentially embedding a denormalized view in each event. Larger payloads increase consumer autonomy (no callbacks needed) but increase broker storage, network bandwidth, and schema coupling."
+    },
+    {
+      "id": "msg-eda-075",
+      "type": "multiple-choice",
+      "question": "A team publishes domain events from their microservice. They want external teams to consume these events but are concerned about exposing internal domain model changes. What pattern decouples the internal domain events from the externally published events?",
+      "options": [
+        "Publish internal events directly and require consumers to adapt to changes",
+        "Batch internal events into periodic snapshots shared with external consumers",
+        "Encrypt event payloads so external consumers can't depend on internal structure",
+        "An anti-corruption layer that translates internal events into a stable public contract"
+      ],
+      "correct": 3,
+      "explanation": "An anti-corruption layer (or event gateway) sits between internal and external event streams. Internal events (rich, frequently changing) are transformed into public events (stable contract, fewer fields, versioned). The internal model can evolve freely — the translation layer maps changes to the stable public format. This is critical when external teams or third-party partners consume your events and can't tolerate frequent breaking changes. Direct publishing couples consumers to internal changes. Encryption hides structure but doesn't provide a stable contract. Batching reduces frequency but doesn't solve schema coupling."
+    },
+    {
+      "id": "msg-eda-076",
+      "type": "multiple-choice",
+      "question": "A team uses CQRS with event sourcing. Their write model enforces that an order can only be cancelled if it hasn't shipped. Two requests arrive nearly simultaneously: 'Cancel order X' and 'Ship order X.' Both read the current state as 'paid' (not shipped, not cancelled). Both commands pass validation. What concurrency issue is this?",
+      "options": [
+        "No issue — both should succeed",
+        "A network partition causing split-brain",
+        "A deadlock between the two commands",
+        "A race condition — both commands read stale state and both try to emit conflicting events. Without concurrency control, both succeed and the order is both cancelled and shipped"
+      ],
+      "correct": 3,
+      "explanation": "Classic optimistic concurrency conflict: both commands read the aggregate at the same version, both pass validation against that version, and both try to append events. Without concurrency control, contradictory events (OrderCancelled and OrderShipped) both persist. The fix: optimistic concurrency on the event store — each append includes an expected version number. The second command's append fails because the version changed (the first command's event was appended), forcing it to reload, re-validate, and either succeed or reject."
+    },
+    {
+      "id": "msg-eda-077",
+      "type": "multiple-choice",
+      "question": "A team's CQRS projections are maintained by Lambda functions triggered by DynamoDB Streams. During a traffic spike, the Lambda concurrency limit is reached and events queue up. The read model falls 5 minutes behind. Once the spike passes, what determines how long it takes the projection to catch up?",
+      "options": [
+        "The Lambda cold start time",
+        "The DynamoDB Streams retention period",
+        "The network bandwidth between DynamoDB and Lambda",
+        "The difference between the projection's processing rate and the incoming event rate — the projection catches up only when it processes faster than new events arrive"
+      ],
+      "correct": 3,
+      "explanation": "Catch-up time depends on surplus capacity. If events arrive at 5,000/s during normal load, the Lambda must process faster than 5,000/s to drain the backlog. At 6,000/s processing rate, surplus = 1,000/s. A 5-minute backlog at 5,000/s = 1.5M events. Drain time: 1.5M / 1,000 = 1,500 seconds ≈ 25 minutes. Without surplus capacity (processing rate ≤ arrival rate), the backlog never drains."
+    },
+    {
+      "id": "msg-eda-078",
+      "type": "multiple-choice",
+      "question": "A team stores events in Apache Kafka (retained indefinitely) and uses it as their event store for event sourcing. A colleague argues Kafka is insufficient as a sole event store. Which limitation supports this argument?",
+      "options": [
+        "Kafka doesn't support event ordering",
+        "Kafka events are mutable",
+        "Kafka's log-structured storage makes loading all events for a specific aggregate inefficient — you must scan the entire partition rather than querying by aggregate ID",
+        "Kafka can't store events durably"
+      ],
+      "correct": 2,
+      "explanation": "Kafka organizes events by partition (usually by key), not by aggregate ID in a query-friendly way. Loading 'all events for order 12345' requires scanning the partition (which contains events for many orders) or maintaining a secondary index. Purpose-built event stores (EventStoreDB, Marten, Axon) offer per-aggregate streams with efficient sequential access. Kafka excels at event distribution (pub/sub) but has ergonomic gaps as a primary event store for aggregate-centric access patterns."
+    },
+    {
+      "id": "msg-eda-079",
+      "type": "multi-select",
+      "question": "Which are common mistakes when implementing sagas for the first time? (Select all that apply)",
+      "options": [
+        "Forgetting to make compensating transactions idempotent, causing issues when compensations are retried after partial failure",
+        "Using event-driven asynchronous messaging between saga steps instead of synchronous HTTP calls",
+        "Making all saga steps synchronous HTTP calls instead of asynchronous messages, creating tight coupling and timeout fragility",
+        "Not persisting saga state, so orchestrator crashes lose in-progress sagas"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Three common saga pitfalls: (1) Non-idempotent compensations cause double-refunds or inconsistent state on retry. (2) Synchronous HTTP sagas are fragile: each step's timeout compounds, and a slow service blocks the entire saga thread. (3) In-memory saga state means any crash orphans in-flight transactions. Using async messaging between saga steps is actually the recommended approach — it decouples services and avoids timeout fragility. It sounds like a mistake because async adds complexity, but it's the correct pattern for saga communication."
+    },
+    {
+      "id": "msg-eda-080",
+      "type": "multi-select",
+      "question": "A team implements CQRS and discovers that some commands need data from the read model to make decisions (e.g., 'reject order if customer's total lifetime spend exceeds $100K'). Which approaches handle this cross-model dependency? (Select all that apply)",
+      "options": [
+        "Combine the read and write models back into a single model for this aggregate",
+        "Query the read model during command validation, accepting eventual consistency for this check",
+        "Include the lifetime spend as part of the Customer write aggregate, updated by consuming Order events",
+        "Pass the current lifetime spend as part of the command payload, with the client reading it from the read model"
+      ],
+      "correctIndices": [
+        1,
+        2,
+        3
+      ],
+      "explanation": "Three valid approaches: (1) Maintain the data in the write model — the Customer aggregate listens to Order events and tracks lifetime spend, enabling consistent validation. (2) Query the read model during validation — simpler but introduces eventual consistency (the spend might be slightly stale). (3) Client-submitted data — the command includes the current spend from the read model, and the write model validates it. Merging models back is possible but abandons CQRS benefits."
+    },
+    {
+      "id": "msg-eda-081",
+      "type": "numeric-input",
+      "question": "An event-sourced system processes 3,000 commands per second. Each command produces an average of 2.5 events. Snapshots are taken when an aggregate reaches 500 events. If there are 100,000 active aggregates receiving events uniformly, how many snapshots are taken per second on average?",
+      "answer": 15,
+      "unit": "snapshots/s",
+      "tolerance": 0.1,
+      "explanation": "Total events/second: 3,000 × 2.5 = 7,500. Events per aggregate per second: 7,500 / 100,000 = 0.075 events/s per aggregate. Time for one aggregate to reach 500 events: 500 / 0.075 = 6,667 seconds ≈ 1.85 hours. Snapshots per second: 100,000 aggregates / 6,667 seconds = 15 snapshots/second. Each snapshot adds a write operation to the event store, so snapshot frequency affects write throughput planning."
+    },
+    {
+      "id": "msg-eda-082",
+      "type": "numeric-input",
+      "question": "A team runs 3 CQRS projections. Projection A processes events at 20,000/s, Projection B at 8,000/s, Projection C at 15,000/s. The write model produces 10,000 events/s. Which projection(s) will fall behind, and by how many events per second?",
+      "answer": 2000,
+      "unit": "events/s",
+      "tolerance": "exact",
+      "explanation": "Projection A: 20,000/s capacity vs 10,000/s incoming → handles it easily (10,000/s surplus). Projection B: 8,000/s capacity vs 10,000/s incoming → falls behind at 2,000 events/s. Every minute, it accumulates 120,000 unprocessed events. Projection C: 15,000/s vs 10,000/s → fine. Only Projection B falls behind, at a deficit of 2,000 events/s. It needs capacity scaling or query optimization to keep up."
+    },
+    {
+      "id": "msg-eda-083",
+      "type": "ordering",
+      "question": "Rank these steps in the correct order for implementing event sourcing in a legacy system that currently uses CRUD:",
+      "items": [
+        "Introduce domain events alongside the existing CRUD operations (dual-write events and state)",
+        "Build read projections from events and verify they match the CRUD database",
+        "Migrate the write model to use the event store as the primary source of truth",
+        "Deprecate direct CRUD reads in favor of event-driven projections"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Strangler fig migration: (1) Start publishing events alongside existing CRUD (low risk, additive). (2) Build projections from events and compare with CRUD data to verify correctness. (3) Once verified, switch the write model to event store (the big switch). (4) Move reads to projections and decommission CRUD read paths. Each step is independently verifiable and reversible. Skipping verification (step 2) risks discovering event/CRUD mismatches in production."
+    },
+    {
+      "id": "msg-eda-084",
+      "type": "ordering",
+      "question": "Rank these scenarios from best fit for choreography to best fit for orchestration:",
+      "items": [
+        "Simple notification fan-out: user registers → email welcome, update analytics, create audit log",
+        "Loose integration between independently deployed microservices owned by different teams",
+        "Multi-step order fulfillment with conditional branching and strict SLA monitoring",
+        "Cross-organization workflow requiring explicit API calls to external partners"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Simple fan-out is choreography's sweet spot — independent reactions to a single event, no coordination needed. Cross-team integration benefits from choreography's loose coupling. Multi-step workflows with branching and monitoring need orchestration's centralized control. Cross-organizational workflows require explicit API coordination (partners won't join your event bus), making orchestration essential."
+    },
+    {
+      "id": "msg-eda-085",
+      "type": "multiple-choice",
+      "question": "An event-sourced banking system has an account with a $500 balance. Two 'Withdraw $400' commands arrive concurrently. Both load the aggregate at the same version, both see $500, and both pass validation (500 >= 400). Without concurrency control, both succeed — overdrawing the account to -$300. How does optimistic concurrency prevent this?",
+      "options": [
+        "Both commands are serialized into a FIFO queue",
+        "Each append includes an expected version number. The first write succeeds; the second detects a version conflict, reloads the aggregate (now $100), and re-validates — rejecting the $400 withdrawal for insufficient funds",
+        "The database locks the account during each withdrawal",
+        "The event store deduplicates identical withdrawal amounts"
+      ],
+      "correct": 1,
+      "explanation": "Optimistic concurrency: both commands load at version N. The first to append (Withdraw $400, balance → $100) increments to version N+1. The second tries to append at version N, gets a version conflict, reloads at N+1 (balance = $100), re-validates: $100 < $400, insufficient funds → rejected. No locks needed — the version check prevents conflicting writes. This is the standard pattern in event-sourced systems and is why each event append must include the expected aggregate version."
+    },
+    {
+      "id": "msg-eda-086",
+      "type": "multiple-choice",
+      "question": "A microservices team adopts event-driven architecture. Service A publishes events, and services B, C, and D consume them. Over time, Service A's team makes frequent changes to event payloads, breaking consumers. What governance practice prevents this?",
+      "options": [
+        "Give Service A's team full authority over schema changes without consumer input",
+        "Freeze all event schemas permanently after their initial publication date",
+        "Have consumers pin to a specific schema version and refuse all updates",
+        "Consumer-driven contract testing that catches breaking changes in CI before deployment"
+      ],
+      "correct": 3,
+      "explanation": "Consumer-driven contract testing: each consumer publishes a 'contract' specifying which event fields and formats they rely on. The producer's CI pipeline runs these contracts against proposed schema changes. If a change violates any consumer contract, the build fails before deployment. This shifts breaking-change detection to build time instead of production. Libraries like Pact support this pattern for both synchronous APIs and asynchronous events. Freezing schemas prevents evolution entirely. Pinning versions creates consumer drift. Full producer authority ignores consumer dependencies."
+    },
+    {
+      "id": "msg-eda-087",
+      "type": "multiple-choice",
+      "question": "An event-sourced system has 200 event types. A new developer wants to understand which events the 'Fulfillment' projection depends on. Currently this information is scattered across the projection handler's code. What tooling or practice makes event dependencies explicit?",
+      "options": [
+        "A code search for event type names across all projection handler source files",
+        "An event catalog or schema registry documenting producers, consumers, and schemas",
+        "A README in the repository root listing every event type alphabetically",
+        "Database-level dependency tracking through foreign key relationships"
+      ],
+      "correct": 1,
+      "explanation": "An event catalog (or schema registry like Confluent Schema Registry, or tools like EventCatalog.dev) provides a searchable directory of all event types with their schemas, producer services, consumer services, and version history. Developers can look up 'who produces OrderPlaced?' and 'who consumes it?' without reading code. As event type count grows, this becomes essential for discoverability, impact analysis of schema changes, and onboarding new developers. Code search works but doesn't show the full dependency graph. A README becomes stale quickly at 200+ event types."
+    },
+    {
+      "id": "msg-eda-088",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team's event-sourced system has grown to handle 50,000 events/second. A single event store database is becoming a bottleneck. How can they scale the event store horizontally?",
+          "options": [
+            "Batch events into hourly writes",
+            "Compress events to reduce write volume",
+            "Add read replicas of the event store",
+            "Shard the event store by aggregate ID — each shard handles events for a subset of aggregates, distributing load across multiple database instances"
+          ],
+          "correct": 3,
+          "explanation": "Sharding by aggregate ID ensures all events for one aggregate are on the same shard (required for consistent aggregate loading) while distributing total load across shards. With consistent hashing, each shard handles ~50,000/N events/s for N shards. Read replicas help read load but not write throughput. Compression and batching are orthogonal optimizations that don't address write throughput bottlenecks."
+        },
+        {
+          "question": "After sharding the event store by aggregate ID, the team needs to build a projection that requires events from ALL aggregates (e.g., a global analytics dashboard). How does this projection consume events across shards?",
+          "options": [
+            "The projection is impossible with sharded stores",
+            "Publish events from all shards to a centralized event bus (e.g., Kafka), and the projection consumes from the bus — decoupling the projection from the sharding topology",
+            "Query each shard individually and merge results",
+            "Store a copy of every event in a non-sharded database"
+          ],
+          "correct": 1,
+          "explanation": "Sharding optimizes per-aggregate access but complicates cross-aggregate projections. Publishing all events to a centralized stream (Kafka, Kinesis) gives projections a single ordered stream to consume, regardless of how the event store is sharded. The event bus becomes the projection's source while the sharded store remains the aggregate's source of truth. This is a common hybrid pattern: shard for writes, stream for reads."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-089",
+      "type": "multi-select",
+      "question": "Which are signs that a team should consider migrating from choreography to orchestration? (Select all that apply)",
+      "options": [
+        "Stakeholders need an audit trail showing the exact sequence and timing of each workflow step",
+        "The workflow has 2 steps with no error handling requirements",
+        "New business rules keep adding conditional logic scattered across multiple services",
+        "Debugging workflow failures requires correlating logs across 8+ services"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Migration signals: (1) Debugging difficulty across many services indicates the workflow is too complex for choreography's implicit coordination. (2) Scattered conditional logic means the workflow is increasingly complex — a central orchestrator makes conditions explicit and manageable. (3) Audit trail requirements favor orchestration's centralized step tracking. A simple 2-step workflow with no error handling is choreography's sweet spot — no reason to migrate."
+    },
+    {
+      "id": "msg-eda-090",
+      "type": "ordering",
+      "question": "Rank these event sourcing optimization strategies by when they should be applied — from first optimization to try to last resort:",
+      "items": [
+        "Add aggregate snapshots to reduce replay time",
+        "Optimize the projection handler's event processing logic (reduce per-event processing time)",
+        "Shard the event store by aggregate ID for write throughput",
+        "Archive old events to cold storage and load from snapshots only"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Optimization order: (1) Snapshots are the simplest and highest-impact — they dramatically reduce aggregate load time with minimal complexity. (2) Projection optimization reduces processing time per event, improving throughput without infrastructure changes. (3) Sharding is a significant infrastructure change — only needed when a single node can't handle write throughput. (4) Archiving to cold storage is a last resort that limits the ability to replay old events and adds operational complexity."
+    },
+    {
+      "id": "msg-eda-091",
+      "type": "numeric-input",
+      "question": "A team has 5 CQRS projections. Each rebuild takes 45 minutes, and each projection is rebuilt 4 times/year. The team's SLA allows a maximum of 40 hours/year of total projection rebuild time across all projections. How many additional projections can they add before exceeding the SLA?",
+      "answer": 8,
+      "unit": "projections",
+      "tolerance": "exact",
+      "explanation": "Current rebuild time: 5 projections × 4 rebuilds × 45 min = 900 min = 15 hours/year. Budget remaining: 40 - 15 = 25 hours = 1,500 minutes. Each new projection costs: 4 rebuilds × 45 min = 180 min/year. Additional projections: floor(1,500 / 180) = floor(8.33) = 8 additional projections. Total capacity: 13 projections at 39 hours/year. This is the operational tax of CQRS — each projection adds maintenance burden. Without blue-green deployment, rebuild time equals downtime for that read model."
+    },
+    {
+      "id": "msg-eda-092",
+      "type": "ordering",
+      "question": "Rank these event-driven architecture decisions from 'easiest to change later' to 'hardest to change later':",
+      "items": [
+        "Adding a new consumer to an existing event (subscribe and process)",
+        "Adding a new field to an existing event (backward-compatible schema change)",
+        "Splitting one event type into multiple specific types (e.g., OrderUpdated → OrderShipped, OrderCancelled)",
+        "Changing from choreography to orchestration (fundamental coordination model change)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Adding a consumer is trivial in event-driven systems — no producer changes needed. Adding an optional field is a minor, backward-compatible schema change. Splitting event types requires coordinating producer changes with all existing consumers (they must subscribe to the new types). Changing the coordination model (choreography → orchestration) is an architectural shift affecting every service in the workflow — the hardest to reverse."
+    },
+    {
+      "id": "msg-eda-093",
+      "type": "multiple-choice",
+      "question": "A team's saga orchestrator uses a database table to track saga state. The table has columns: saga_id, current_step, status, created_at, updated_at, and context (JSON blob with step results). After 2 years, the table has 50 million rows. Most sagas completed months ago. What maintenance is needed?",
+      "options": [
+        "Delete all completed sagas immediately",
+        "Nothing — keep all rows for audit purposes",
+        "Archive completed sagas older than a retention period to cold storage, keeping only active/recent sagas in the hot table for query performance",
+        "Move to a NoSQL database"
+      ],
+      "correct": 2,
+      "explanation": "Saga state tables accumulate rapidly. Completed sagas are only needed for auditing and debugging — they don't need to be in the hot operational table. Archiving to cold storage (S3, data warehouse) preserves the audit trail while keeping the hot table small for fast queries on active sagas. Define a retention policy (e.g., 90 days in hot storage, then archive). Without archiving, query performance degrades as the table grows."
+    },
+    {
+      "id": "msg-eda-094",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce team wants to introduce event sourcing for their Order aggregate. Currently, orders are stored in a PostgreSQL table with columns: id, status, total, items (JSONB), created_at, updated_at. What is the first step in migration?",
+          "options": [
+            "Delete the PostgreSQL table and start with a clean event store",
+            "Rewrite the entire application to use event sourcing",
+            "Begin publishing domain events (OrderPlaced, OrderPaid, OrderShipped) alongside existing CRUD writes — dual-write to build confidence",
+            "Import all existing PostgreSQL rows as 'initial state' events"
+          ],
+          "correct": 2,
+          "explanation": "The strangler fig approach: keep the existing CRUD system working while introducing events alongside it. The CRUD write continues as the source of truth while events are published for new consumers and projections. This allows the team to validate event generation, build projections, and compare results against the existing database — all without disrupting the production system."
+        },
+        {
+          "question": "After 3 months of dual-writing, the team has verified that events and CRUD produce identical state. They want to cut over to the event store as the primary source of truth. What is the biggest risk during cutover?",
+          "options": [
+            "During the brief switchover window, some writes may go to the old system while reads start hitting the new event-sourced projections — a split-brain scenario where the two systems briefly diverge",
+            "Consumers stop receiving events",
+            "Data loss from the migration",
+            "The event store runs out of storage"
+          ],
+          "correct": 0,
+          "explanation": "The cutover window is the riskiest moment: switching the write path from CRUD to event store while ensuring no writes are lost during the transition. Strategies: use a feature flag with a maintenance window (brief unavailability), or route writes through the event path and keep the CRUD database as a shadow write (reverse dual-write) until fully decommissioned. Any writes to the old system after cutover create divergence that's hard to reconcile."
+        }
+      ]
+    },
+    {
+      "id": "msg-eda-095",
+      "type": "multiple-choice",
+      "question": "A team has 3 microservices in a choreographed workflow. They want to ensure that if any service is deployed with a breaking event schema change, it's caught before reaching production. Which CI/CD practice catches this?",
+      "options": [
+        "Canary deployments that route 1% of traffic to the new version",
+        "Schema compatibility checks in the CI pipeline — the schema registry validates that new event versions are backward/forward compatible with registered schemas before allowing deployment",
+        "Manual code review of every event schema change",
+        "End-to-end integration tests that run all 3 services together"
+      ],
+      "correct": 1,
+      "explanation": "Schema registry compatibility checks run in CI before deployment: the new schema is validated against the existing registered schema using compatibility rules (backward, forward, or full compatibility). Incompatible changes fail the build. This catches breaking changes at build time — far cheaper than finding them in integration tests or production. Confluent Schema Registry and AWS Glue Schema Registry both support automated compatibility checks."
+    }
+  ]
+}
