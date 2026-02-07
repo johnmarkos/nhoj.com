@@ -175,6 +175,14 @@ When building new apps or features, always validate:
 2. No syntax errors in config files
 3. Run tests (`node --test config.test.js`) and verify they pass before committing
 
+## Commit Attribution
+
+Commit messages from coding agents should include a line in this format:
+
+`Co-authored by <model> in <tool>`
+
+If not all attribution details are available, include the best available information (for example, `Co-authored by Cascade in Windsurf` or `Co-authored by Cascade`).
+
 ## Process
 
 John is alpha testing. Agile: ship minimal, try it, iterate. Don't over-invest in polish before validation.
