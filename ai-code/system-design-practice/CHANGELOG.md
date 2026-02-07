@@ -1,5 +1,11 @@
 # Changelog
 
+## Agent instruction migration (2026-02-07)
+
+- Added `AGENTS.md` as the canonical instruction file by porting existing `CLAUDE.md` guidance.
+- Generalized Claude-specific wording to agent-neutral language while preserving project conventions and workflows.
+- Replaced `CLAUDE.md` contents with a compatibility pointer directing Claude-based agents to `AGENTS.md`.
+
 ## Unit 6: Messaging & Async (in progress — 485 problems so far)
 
 1. Queue Fundamentals (100 problems) — Producers/consumers, sync vs async, point-to-point, message lifecycle, visibility timeouts, backpressure, DLQs, FIFO ordering
