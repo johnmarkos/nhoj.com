@@ -1,0 +1,1663 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 8,
+  "chapterTitle": "Messaging Scenarios",
+  "chapterDescription": "Integrated real-world messaging design scenarios spanning queues, pub/sub, retries, ordering, delivery guarantees, replay, and operational trade-offs.",
+  "problems": [
+    {
+      "id": "msg-scn-001",
+      "type": "multiple-choice",
+      "question": "Your checkout service must charge cards and publish an OrderPaid event. If event publish fails after payment commit, downstream fulfillment never starts. Which pattern should you adopt first?",
+      "options": [
+        "Two-phase commit across payment DB and broker",
+        "Transactional outbox from payment DB to broker relay",
+        "Best-effort retry in API handler only",
+        "Synchronous polling by fulfillment every 5 minutes"
+      ],
+      "correct": 1,
+      "explanation": "Transactional outbox avoids dual-write inconsistency by writing business state and outbound event in one DB transaction, then reliably relaying to the broker."
+    },
+    {
+      "id": "msg-scn-002",
+      "type": "multiple-choice",
+      "question": "A notifications pipeline occasionally sends duplicate emails after worker restarts. Product says duplicates are worse than delayed sends. What is the highest-leverage fix?",
+      "options": [
+        "Increase queue visibility timeout only",
+        "Use idempotency keys at email provider integration",
+        "Move to in-memory queue for speed",
+        "Disable retries"
+      ],
+      "correct": 1,
+      "explanation": "Idempotency at side-effect boundary prevents duplicate sends across retries and crashes; timeout tuning alone cannot guarantee this."
+    },
+    {
+      "id": "msg-scn-003",
+      "type": "multiple-choice",
+      "question": "A ride dispatch stream must preserve per-driver event order while scaling throughput. Which partition key is best?",
+      "options": [
+        "event_type",
+        "city_id",
+        "driver_id",
+        "random UUID per message"
+      ],
+      "correct": 2,
+      "explanation": "Partitioning by driver_id keeps each driver stream ordered while still parallelizing across drivers."
+    },
+    {
+      "id": "msg-scn-004",
+      "type": "multiple-choice",
+      "question": "You run worker queues where messages often take 30-90 seconds. Visibility timeout is 20 seconds, causing duplicate processing. What should change first?",
+      "options": [
+        "Lower retry backoff",
+        "Increase visibility timeout or heartbeat/extend per long task",
+        "Switch to pub/sub immediately",
+        "Commit message before processing"
+      ],
+      "correct": 1,
+      "explanation": "Visibility must exceed expected processing time (or be extended) to prevent redelivery during active processing."
+    },
+    {
+      "id": "msg-scn-005",
+      "type": "multiple-choice",
+      "question": "An analytics consumer was down for 2 days and needs replay from original events. Which architecture best supports this without impacting OLTP services?",
+      "options": [
+        "RabbitMQ auto-delete queue",
+        "Kafka topic with retention and independent consumer offsets",
+        "SQS queue with low retention",
+        "Redis Pub/Sub channel"
+      ],
+      "correct": 1,
+      "explanation": "Kafka log retention plus independent offsets enables backfill and replay for recovering consumers."
+    },
+    {
+      "id": "msg-scn-006",
+      "type": "multiple-choice",
+      "question": "Order workflow has steps: reserve inventory, charge card, create shipment. If shipment creation fails permanently, what is the usual recovery model?",
+      "options": [
+        "Block forever until shipment succeeds",
+        "Saga compensation for prior steps",
+        "Drop message and continue",
+        "Manual SQL patch as default"
+      ],
+      "correct": 1,
+      "explanation": "Saga compensation explicitly undoes prior side effects when downstream steps fail irrecoverably."
+    },
+    {
+      "id": "msg-scn-007",
+      "type": "multiple-choice",
+      "question": "A hot partition is causing consumer lag in one tenant while others are healthy. Which is the most direct design fix?",
+      "options": [
+        "Add more consumers without repartitioning",
+        "Repartition using a higher-cardinality tenant+entity key",
+        "Lower broker retention",
+        "Disable ordering requirements globally"
+      ],
+      "correct": 1,
+      "explanation": "Throughput ceiling is per partition; better key distribution reduces skew and lag hotspots."
+    },
+    {
+      "id": "msg-scn-008",
+      "type": "multiple-choice",
+      "question": "A dead-letter queue is growing with validation errors caused by old schema producers. What should happen before blindly re-driving DLQ messages?",
+      "options": [
+        "Delete DLQ daily",
+        "Fix producer/schema compatibility and add transform before replay",
+        "Increase consumer threads only",
+        "Disable schema checks"
+      ],
+      "correct": 1,
+      "explanation": "Replay without fixing root compatibility issue just re-poisons the queue."
+    },
+    {
+      "id": "msg-scn-009",
+      "type": "multiple-choice",
+      "question": "You need fan-out of user events to fraud, analytics, recommendations, and email preferences with independent failure domains. Best topology?",
+      "options": [
+        "Single shared work queue",
+        "Pub/sub topic with separate subscriptions or consumer groups per domain",
+        "One HTTP webhook chain",
+        "Cron batch export once per day"
+      ],
+      "correct": 1,
+      "explanation": "Pub/sub fan-out gives independent consumption, retries, and deployment cadence per downstream system."
+    },
+    {
+      "id": "msg-scn-010",
+      "type": "multiple-choice",
+      "question": "A team wants exactly-once across Kafka and an external REST API side effect. Which statement is correct?",
+      "options": [
+        "Kafka transactions alone make external REST calls exactly-once",
+        "Exactly-once with external systems needs idempotent side effects and dedupe strategy",
+        "At-most-once is equivalent and simpler",
+        "Disable retries to get exactly-once"
+      ],
+      "correct": 1,
+      "explanation": "Kafka EOS does not cover external side effects; idempotency and dedupe are required at integration boundaries."
+    },
+    {
+      "id": "msg-scn-011",
+      "type": "multiple-choice",
+      "question": "Consumers frequently rebalance during deployments and stall processing. What deployment change usually reduces disruption most?",
+      "options": [
+        "Kill all consumers simultaneously for clean restart",
+        "Use rolling deploy with cooperative rebalancing and graceful shutdown",
+        "Lower replication factor",
+        "Use shorter message retention"
+      ],
+      "correct": 1,
+      "explanation": "Graceful rolling changes reduce group churn and rebalance pauses."
+    },
+    {
+      "id": "msg-scn-012",
+      "type": "multiple-choice",
+      "question": "An outbox table is growing unbounded and slowing writes. What is the right operational strategy?",
+      "options": [
+        "Never delete outbox rows",
+        "Archive/TTL processed outbox records after safe retention window",
+        "Move outbox into application memory",
+        "Run relay less often"
+      ],
+      "correct": 1,
+      "explanation": "Outbox requires lifecycle management; processed rows should be compacted/archived safely."
+    },
+    {
+      "id": "msg-scn-013",
+      "type": "multiple-choice",
+      "question": "Product asks for \"real-time\" dashboard but allows 60-second freshness. Best cost/perf compromise?",
+      "options": [
+        "Synchronous writes from OLTP to dashboard DB",
+        "Stream updates with micro-batching/windowed aggregation",
+        "Nightly batch only",
+        "Websocket polling to OLTP"
+      ],
+      "correct": 1,
+      "explanation": "Micro-batched stream aggregation meets freshness SLO with lower compute overhead than strict per-event updates."
+    },
+    {
+      "id": "msg-scn-014",
+      "type": "multiple-choice",
+      "question": "A queue consumer performs a DB write then ACKs. Crash between write and ACK causes duplicate write on redelivery. Best consumer contract?",
+      "options": [
+        "ACK before DB write",
+        "Idempotent write keyed by message/event ID before ACK",
+        "No retries on crash",
+        "Use random sleep before ACK"
+      ],
+      "correct": 1,
+      "explanation": "Idempotent sink semantics make redelivery safe while preserving at-least-once reliability."
+    },
+    {
+      "id": "msg-scn-015",
+      "type": "multiple-choice",
+      "question": "Your retry policy causes synchronized retry storms during regional outage. What adjustment helps most?",
+      "options": [
+        "Fixed 1-second retry interval",
+        "Exponential backoff with jitter and capped retries to DLQ",
+        "Immediate infinite retries",
+        "Disable retries entirely"
+      ],
+      "correct": 1,
+      "explanation": "Jitter spreads retries over time and prevents thundering herd behavior."
+    },
+    {
+      "id": "msg-scn-016",
+      "type": "multiple-choice",
+      "question": "A service emits events where consumers depend on schema evolution over months. Which governance control is most important?",
+      "options": [
+        "No versioning; rely on docs",
+        "Schema registry with compatibility checks in CI/CD",
+        "Manual Slack approval only",
+        "Hard delete old fields without deprecation"
+      ],
+      "correct": 1,
+      "explanation": "Automated compatibility enforcement prevents producer changes from breaking downstream consumers."
+    },
+    {
+      "id": "msg-scn-017",
+      "type": "multiple-choice",
+      "question": "A payment queue must avoid starvation between high-priority fraud checks and normal tasks. Which approach is best?",
+      "options": [
+        "Single FIFO queue only",
+        "Priority queues with fairness controls or weighted scheduling",
+        "Process low priority first always",
+        "Duplicate all messages into both queues"
+      ],
+      "correct": 1,
+      "explanation": "Priority with fairness balances urgency and prevents lower classes from permanent starvation."
+    },
+    {
+      "id": "msg-scn-018",
+      "type": "multiple-choice",
+      "question": "A team uses event sourcing and needs to rebuild a projection after bug fix. Which capability is essential?",
+      "options": [
+        "Delete historical events after first consume",
+        "Replay immutable event log from offset 0",
+        "Store only latest snapshot with no events",
+        "Disable consumer offsets"
+      ],
+      "correct": 1,
+      "explanation": "Projection rebuild relies on retained immutable event history with replay."
+    },
+    {
+      "id": "msg-scn-019",
+      "type": "multiple-choice",
+      "question": "You need to process file uploads asynchronously and avoid placing 50MB payloads directly in the broker. Best pattern?",
+      "options": [
+        "Embed full binary in each message",
+        "Claim-check pattern: store blob in object storage and send pointer",
+        "Use larger broker replicas only",
+        "Split file into queue message per KB"
+      ],
+      "correct": 1,
+      "explanation": "Claim-check keeps messages lightweight and shifts large payload handling to blob storage."
+    },
+    {
+      "id": "msg-scn-020",
+      "type": "multiple-choice",
+      "question": "A team wants strict global order across all users and also very high throughput. What is the core trade-off?",
+      "options": [
+        "No trade-off; both are free",
+        "Global order usually constrains parallelism and throughput",
+        "Higher throughput improves global order",
+        "Only consumer code determines this"
+      ],
+      "correct": 1,
+      "explanation": "Global ordering often forces serialization, which caps scalability."
+    },
+    {
+      "id": "msg-scn-021",
+      "type": "multiple-choice",
+      "question": "During incident response, engineers need to trace one business event through producer, broker, and three consumers. What instrumentation is mandatory?",
+      "options": [
+        "Only host-level CPU metrics",
+        "End-to-end correlation IDs propagated in message headers",
+        "Bigger log retention only",
+        "Turn off sampling for all logs forever"
+      ],
+      "correct": 1,
+      "explanation": "Correlation IDs enable cross-service traceability for asynchronous hops."
+    },
+    {
+      "id": "msg-scn-022",
+      "type": "multiple-choice",
+      "question": "A team uses SQS Standard for worker jobs and observes occasional duplicates and out-of-order delivery. What should they conclude?",
+      "options": [
+        "Service is broken and unusable",
+        "Behavior matches at-least-once, best-effort ordering semantics",
+        "They configured FIFO already",
+        "Duplicates imply producer bug only"
+      ],
+      "correct": 1,
+      "explanation": "SQS Standard intentionally prioritizes scale with at-least-once and non-strict ordering characteristics."
+    },
+    {
+      "id": "msg-scn-023",
+      "type": "multiple-choice",
+      "question": "Consumers of an event stream need to read past 14 days for audits, but current retention is 24 hours. What should be changed first?",
+      "options": [
+        "Increase retention to meet replay/audit requirement",
+        "Add more partitions only",
+        "Reduce batch size",
+        "Move all consumers to sync HTTP"
+      ],
+      "correct": 0,
+      "explanation": "Retention policy must align with replay and audit windows; otherwise required history disappears."
+    },
+    {
+      "id": "msg-scn-024",
+      "type": "multiple-choice",
+      "question": "A stream join requires user-profile updates and click events keyed by user_id. Which mistake most likely breaks join correctness?",
+      "options": [
+        "Using same key and partitioning for both streams",
+        "Different partitioning keys causing cross-partition join mismatch",
+        "Adding watermark handling",
+        "Using changelog state stores"
+      ],
+      "correct": 1,
+      "explanation": "Co-partitioned keys are required for efficient and correct distributed stream joins."
+    },
+    {
+      "id": "msg-scn-025",
+      "type": "multiple-choice",
+      "question": "Queue depth has grown 10x but consumer CPU is low because each task waits on slow third-party API. Best scaling change?",
+      "options": [
+        "Increase broker disk only",
+        "Raise consumer concurrency with bounded in-flight calls and backpressure",
+        "Disable retries",
+        "Shorten visibility timeout"
+      ],
+      "correct": 1,
+      "explanation": "I/O-bound consumers need concurrency tuning and bounded parallelism to raise throughput safely."
+    },
+    {
+      "id": "msg-scn-026",
+      "type": "multiple-choice",
+      "question": "A team wants to migrate from monolith DB polling to events with minimum risk. First incremental step?",
+      "options": [
+        "Rebuild all services around Kafka Streams immediately",
+        "Publish domain events from one bounded context and onboard one consumer",
+        "Delete polling jobs and hope",
+        "Adopt two brokers at once"
+      ],
+      "correct": 1,
+      "explanation": "Incremental adoption with one flow limits blast radius and validates contracts early."
+    },
+    {
+      "id": "msg-scn-027",
+      "type": "multiple-choice",
+      "question": "Message processing latency SLO is P95 < 2s, but occasional poison messages retry for hours. What policy prevents SLO sabotage?",
+      "options": [
+        "Infinite retries in main queue",
+        "Bounded retries then DLQ with triage workflow",
+        "Disable all retries",
+        "Process poison first at highest priority"
+      ],
+      "correct": 1,
+      "explanation": "Bounded retries protect healthy traffic and isolate pathological messages for investigation."
+    },
+    {
+      "id": "msg-scn-028",
+      "type": "multiple-choice",
+      "question": "A multi-tenant event platform needs noisy-neighbor isolation. Which architecture helps most?",
+      "options": [
+        "Single shared partition for all tenants",
+        "Per-tenant quotas/partitions or dedicated topics for top tenants",
+        "No admission controls",
+        "Global FIFO queue only"
+      ],
+      "correct": 1,
+      "explanation": "Capacity isolation and quota enforcement prevent one tenant from overwhelming others."
+    },
+    {
+      "id": "msg-scn-029",
+      "type": "multiple-choice",
+      "question": "Exactly-once business outcome is required for coupon redemption. Which design is strongest?",
+      "options": [
+        "At-most-once consume with possible drop",
+        "At-least-once plus idempotent redemption keyed by coupon+user",
+        "Disable retries on failures",
+        "Randomized duplicate suppression"
+      ],
+      "correct": 1,
+      "explanation": "Business exactly-once typically comes from idempotent state transitions over at-least-once transport."
+    },
+    {
+      "id": "msg-scn-030",
+      "type": "multiple-choice",
+      "question": "An event payload now includes optional field `device_type`; old consumers ignore unknown fields. Which compatibility mode supports this?",
+      "options": [
+        "Backward/forward compatible schema evolution",
+        "Breaking change requiring immediate global cutover",
+        "No schema versioning needed",
+        "Binary payload with no contract"
+      ],
+      "correct": 0,
+      "explanation": "Adding optional fields is a standard compatible evolution when consumers tolerate unknown fields."
+    },
+    {
+      "id": "msg-scn-031",
+      "type": "multiple-choice",
+      "question": "A data team wants to consume production events in a separate account without affecting primary workers. Best setup?",
+      "options": [
+        "Share same consumer group as primary workers",
+        "Use separate subscription/consumer group with independent offsets",
+        "Read directly from worker DB tables",
+        "Mirror logs manually from app logs"
+      ],
+      "correct": 1,
+      "explanation": "Independent groups preserve isolation and do not steal work from operational consumers."
+    },
+    {
+      "id": "msg-scn-032",
+      "type": "multiple-choice",
+      "question": "During failover, producer retries can reorder related events if they are keyed inconsistently. What fixes this?",
+      "options": [
+        "Use random partition keys for load",
+        "Use stable domain key per ordering boundary and idempotent producer config",
+        "Lower topic retention",
+        "Use one consumer only"
+      ],
+      "correct": 1,
+      "explanation": "Stable keys preserve partition order; idempotent producer settings reduce duplicate/reorder effects on retry."
+    },
+    {
+      "id": "msg-scn-033",
+      "type": "multiple-choice",
+      "question": "A team asks whether to store PII directly in long-retention event logs. What is best practice?",
+      "options": [
+        "Store full PII forever for convenience",
+        "Minimize payload PII and use tokenization/reference where possible",
+        "Encrypt nothing if private network exists",
+        "Rely solely on broker ACL names"
+      ],
+      "correct": 1,
+      "explanation": "Data minimization and tokenization reduce compliance and breach exposure in replayable logs."
+    },
+    {
+      "id": "msg-scn-034",
+      "type": "multiple-choice",
+      "question": "A CDC pipeline floods downstream with change events from noisy update statements that do not change values. Best mitigation?",
+      "options": [
+        "Drop CDC entirely",
+        "Filter no-op changes or enforce update-if-changed semantics upstream",
+        "Double broker partitions only",
+        "Disable consumer lag metrics"
+      ],
+      "correct": 1,
+      "explanation": "Reducing no-op event volume lowers cost and lag without sacrificing meaningful change propagation."
+    },
+    {
+      "id": "msg-scn-035",
+      "type": "multiple-choice",
+      "question": "A queue consumer sometimes takes 15 minutes for batch image processing. Which anti-pattern most likely causes duplicate storms?",
+      "options": [
+        "Heartbeat extensions during processing",
+        "Visibility timeout shorter than processing time with no extension",
+        "Using idempotent output keys",
+        "Bounded worker concurrency"
+      ],
+      "correct": 1,
+      "explanation": "If visibility expires mid-task, broker redelivers in-flight work, creating duplicate processing."
+    },
+    {
+      "id": "msg-scn-036",
+      "type": "multiple-choice",
+      "question": "A domain emits both command events and audit events. Audit consumers need complete history, while command workers should treat messages as tasks. What is a pragmatic architecture?",
+      "options": [
+        "One shared task queue for everything",
+        "Separate log-oriented stream for audit and queue-oriented channel for command execution",
+        "Synchronous RPC only",
+        "Randomly duplicate messages to all systems"
+      ],
+      "correct": 1,
+      "explanation": "Different workloads often need different semantics: replayable logs for audit and queue semantics for work distribution."
+    },
+    {
+      "id": "msg-scn-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Flash-sale checkout pipeline: Traffic spikes 20x and order-created events accumulate. What is the first protection to keep API responsive?",
+          "options": [
+            "Process synchronously in request thread",
+            "Queue writes and apply backpressure/load shedding at ingress",
+            "Disable inventory checks",
+            "Retry client calls immediately on 429"
+          ],
+          "correct": 1,
+          "explanation": "Queue buffering plus explicit backpressure keeps upstream stable during spikes."
+        },
+        {
+          "question": "After buffering, backlog recovery is too slow. Which scaling move improves catch-up while preserving per-order-key ordering?",
+          "options": [
+            "Increase partitions and consumers keyed by order/customer boundary",
+            "Add consumers only with same partition count",
+            "Use global FIFO single partition",
+            "Lower retention to speed reads"
+          ],
+          "correct": 0,
+          "explanation": "Partition parallelism controls throughput; preserving key choice keeps local ordering guarantees."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Payment + fulfillment integration: Payment commit succeeds but fulfillment event publish fails. What consistency bug is this?",
+          "options": [
+            "Read skew",
+            "Dual-write inconsistency",
+            "Deadlock",
+            "Clock skew"
+          ],
+          "correct": 1,
+          "explanation": "State change and event emission are not atomic, so systems diverge."
+        },
+        {
+          "question": "Which concrete fix is standard?",
+          "options": [
+            "Outbox table in same DB transaction as payment state",
+            "Sleep and retry in web thread only",
+            "Disable payment retries",
+            "Use smaller messages"
+          ],
+          "correct": 0,
+          "explanation": "Outbox pattern atomically records both business state and pending event."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Notification fan-out: Email consumer outage should not block push notifications. Which topology best isolates failures?",
+          "options": [
+            "Single work queue for all channels",
+            "Pub/sub with separate subscriptions per channel",
+            "Synchronous chain: email then push",
+            "One topic but shared consumer group"
+          ],
+          "correct": 1,
+          "explanation": "Separate subscriptions allow each channel to fail/recover independently."
+        },
+        {
+          "question": "Email provider times out and retries cause duplicates. Which boundary should enforce dedupe?",
+          "options": [
+            "Broker dedupe across all topics globally",
+            "Idempotency key at email send operation",
+            "Producer instance ID only",
+            "CPU throttling"
+          ],
+          "correct": 1,
+          "explanation": "Side-effect idempotency at the provider call prevents duplicate customer-visible sends."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Driver dispatch: Assignments for one driver must stay ordered. Which partition key?",
+          "options": [
+            "zone_id",
+            "driver_id",
+            "rider_id",
+            "event_type"
+          ],
+          "correct": 1,
+          "explanation": "Driver-scoped ordering requires stable key per driver."
+        },
+        {
+          "question": "A few drivers are extremely hot and cause lag. Which redesign helps without breaking order per driver?",
+          "options": [
+            "Randomize key each event",
+            "Introduce sub-entities for independent streams where business-safe",
+            "Force global single partition",
+            "Disable retries"
+          ],
+          "correct": 1,
+          "explanation": "Only split order boundaries where domain permits; keep each boundary stable."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Fraud pipeline replay: Fraud model bug fixed; need reprocess last 7 days quickly. What storage/transport capability is required?",
+          "options": [
+            "Ephemeral queue deletion on ack",
+            "Retained immutable event log with replay offsets",
+            "In-memory channel only",
+            "Webhook retry cache"
+          ],
+          "correct": 1,
+          "explanation": "Replay demands retained history and independent cursors."
+        },
+        {
+          "question": "Reprocessing must not trigger customer notifications again. What guard is necessary?",
+          "options": [
+            "Disable replay",
+            "Separate side-effect path or replay mode with idempotent suppression",
+            "Shorter retention",
+            "Lower partition count"
+          ],
+          "correct": 1,
+          "explanation": "Replay should be isolated from external side effects unless explicitly intended."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "DLQ growth incident: DLQ contains schema-deserialization failures after producer deploy. First triage action?",
+          "options": [
+            "Replay DLQ immediately",
+            "Pinpoint schema compatibility break and stop bad producer",
+            "Increase consumer replicas",
+            "Delete oldest DLQ first"
+          ],
+          "correct": 1,
+          "explanation": "Root-cause containment comes before replay."
+        },
+        {
+          "question": "After fix, safest replay method?",
+          "options": [
+            "Bulk replay all at max rate",
+            "Replay in controlled batches with monitoring and idempotent consumers",
+            "Replay directly into primary queue without limits",
+            "Manually edit broker logs"
+          ],
+          "correct": 1,
+          "explanation": "Controlled replay prevents second incident and exposes latent issues early."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Inventory reservation saga: Reserve inventory succeeds, payment fails permanently. What next?",
+          "options": [
+            "Keep reservation forever",
+            "Compensate by releasing reservation",
+            "Ship anyway",
+            "Retry infinitely"
+          ],
+          "correct": 1,
+          "explanation": "Compensation restores consistency when saga path aborts."
+        },
+        {
+          "question": "What metadata best supports safe compensation?",
+          "options": [
+            "Only human-readable logs",
+            "Saga ID + step status with idempotent handlers",
+            "Random retry counter",
+            "Broker partition only"
+          ],
+          "correct": 1,
+          "explanation": "Explicit saga state and idempotent step execution make retries and rollback safe."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Multi-region order events: Producer failover causes occasional duplicates. Which producer setting helps in Kafka?",
+          "options": [
+            "Disable acknowledgments",
+            "Idempotent producer with proper acks and retries",
+            "Single replica topics",
+            "No batching"
+          ],
+          "correct": 1,
+          "explanation": "Idempotent producer reduces duplicates from retry/failover scenarios."
+        },
+        {
+          "question": "Business still needs exactly-once order fulfillment. What completes the design?",
+          "options": [
+            "Trust broker only",
+            "Idempotent consumer side effects keyed by order event ID",
+            "Disable consumer restarts",
+            "At-most-once consume"
+          ],
+          "correct": 1,
+          "explanation": "Outcome correctness requires idempotency at the state-change boundary too."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Customer activity stream: Need \"active session\" windows ending after 30 minutes inactivity. Which windowing model?",
+          "options": [
+            "Tumbling windows",
+            "Session windows",
+            "Global window",
+            "Count window only"
+          ],
+          "correct": 1,
+          "explanation": "Session windows are activity-gap based."
+        },
+        {
+          "question": "Events can arrive 5 minutes late. What stream-time control is needed?",
+          "options": [
+            "Disable watermarks",
+            "Watermarks + allowed lateness policy",
+            "Commit offsets faster only",
+            "More partitions"
+          ],
+          "correct": 1,
+          "explanation": "Watermarks and lateness policy define when windows finalize and how late events are handled."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Bulk import pipeline: Import workers hit third-party API rate limits and queue backlog explodes. First control?",
+          "options": [
+            "Increase retries without bounds",
+            "Consumer-side rate limiting and bounded concurrency",
+            "Disable DLQ",
+            "Lower message size"
+          ],
+          "correct": 1,
+          "explanation": "Throughput must match external dependency limits."
+        },
+        {
+          "question": "Some tasks exceed max attempts repeatedly. Where should they go?",
+          "options": [
+            "Back to main queue forever",
+            "DLQ with reason codes and remediation workflow",
+            "Dropped silently",
+            "To producer memory"
+          ],
+          "correct": 1,
+          "explanation": "DLQ isolates pathological tasks and preserves main flow health."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Search indexing events: Indexer service down 6 hours; must catch up without data loss. Needed characteristic?",
+          "options": [
+            "At-most-once delivery",
+            "Durable retention and consumer offsets",
+            "Ephemeral pub/sub only",
+            "Synchronous writes only"
+          ],
+          "correct": 1,
+          "explanation": "Durable logs plus offsets support downtime recovery."
+        },
+        {
+          "question": "Indexer updates same document repeatedly during replay. Best write semantics?",
+          "options": [
+            "Insert-only with random IDs",
+            "Idempotent upsert by document ID and version",
+            "Disable replay",
+            "Drop duplicates by timestamp only"
+          ],
+          "correct": 1,
+          "explanation": "Upsert by deterministic key prevents duplicate state growth during replay."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "IoT telemetry: Millions of sensors send updates; one manufacturer floods malformed messages. System-wide impact must be contained. Which control?",
+          "options": [
+            "Global shared quota only",
+            "Per-tenant/producer quotas and schema validation at ingress",
+            "Bigger message payloads",
+            "Single consumer group"
+          ],
+          "correct": 1,
+          "explanation": "Ingress quotas and validation isolate bad actors."
+        },
+        {
+          "question": "Malformed messages should be retained for diagnostics. Where?",
+          "options": [
+            "Dropped permanently",
+            "DLQ/invalid-topic with metadata for forensic analysis",
+            "Main topic unchanged",
+            "App server logs only"
+          ],
+          "correct": 1,
+          "explanation": "Quarantine streams enable debugging without polluting primary pipelines."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Order state projection: Read model rebuilt from events is slow after code fix. What accelerates rebuild while preserving correctness?",
+          "options": [
+            "Delete old events",
+            "Use snapshots plus replay from latest snapshot point",
+            "Switch to synchronous APIs",
+            "Lower durability"
+          ],
+          "correct": 1,
+          "explanation": "Snapshots reduce replay length while retaining event-sourced correctness."
+        },
+        {
+          "question": "How do you validate projection correctness after rebuild?",
+          "options": [
+            "Assume success",
+            "Deterministic checksums/invariants against source of truth",
+            "Manual spot check one order",
+            "Increase partition count"
+          ],
+          "correct": 1,
+          "explanation": "Automated invariants catch subtle drift and replay bugs."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Cross-service tracing: Incident team cannot correlate a failed order across async hops. Missing practice?",
+          "options": [
+            "Verbose logs only",
+            "Propagate correlation/trace IDs in message headers",
+            "Smaller partitions",
+            "Disable retries"
+          ],
+          "correct": 1,
+          "explanation": "Header-level correlation is required for end-to-end tracing."
+        },
+        {
+          "question": "Which metric best detects hidden queueing delay?",
+          "options": [
+            "Producer CPU only",
+            "End-to-end event age (now - event_time) percentiles",
+            "Broker disk free",
+            "Number of topics"
+          ],
+          "correct": 1,
+          "explanation": "Event age exposes user-visible freshness lag better than queue depth alone."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Subscription billing: Monthly charge events occasionally processed twice. Which billing logic is safest?",
+          "options": [
+            "Increment balance blindly",
+            "Idempotent charge ledger keyed by invoice_id",
+            "Disable retries",
+            "Use at-most-once transport"
+          ],
+          "correct": 1,
+          "explanation": "Invoice-keyed idempotency ensures duplicate events do not double-charge."
+        },
+        {
+          "question": "Dispute team needs full replayable history for audits. Where should source-of-truth state come from?",
+          "options": [
+            "Only mutable current balance table",
+            "Immutable ledger/events plus derived projections",
+            "Application logs only",
+            "Cache snapshots only"
+          ],
+          "correct": 1,
+          "explanation": "Immutable ledgers support auditability and deterministic recomputation."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Feature flag event bus: Clients must get latest flag within seconds, but missing one update should self-heal quickly. Best model?",
+          "options": [
+            "Ephemeral fire-and-forget only",
+            "Event stream plus periodic snapshot sync",
+            "Synchronous per-request DB read only",
+            "No versioning"
+          ],
+          "correct": 1,
+          "explanation": "Event plus periodic state sync balances low latency with eventual repair."
+        },
+        {
+          "question": "How should conflicts between stale event and newer snapshot be resolved?",
+          "options": [
+            "Random winner",
+            "Version/timestamp monotonic merge rule",
+            "Always trust event arrival order",
+            "Manual intervention always"
+          ],
+          "correct": 1,
+          "explanation": "Deterministic version ordering prevents stale overwrite anomalies."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "On-call paging pipeline: Pager events are bursty; some can be delayed, P1 cannot. What queue strategy?",
+          "options": [
+            "Single FIFO for all severities",
+            "Priority channels with bounded starvation controls",
+            "Drop low priority randomly",
+            "Disable retries"
+          ],
+          "correct": 1,
+          "explanation": "Priority routing meets urgent SLOs while fairness prevents starvation."
+        },
+        {
+          "question": "Provider outage persists. Which fallback keeps durability?",
+          "options": [
+            "Block producers and lose events",
+            "Buffer to durable queue with circuit breaker around provider",
+            "Write only to memory",
+            "Turn off alerting"
+          ],
+          "correct": 1,
+          "explanation": "Circuit breaker + durable buffering protects both provider and message durability."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "ETL to warehouse: Warehouse loads require exactly-once row semantics from at-least-once events. What sink strategy?",
+          "options": [
+            "Append-only with no keys",
+            "Merge/upsert using deterministic business key + load id",
+            "Disable retries",
+            "Sample 10% events"
+          ],
+          "correct": 1,
+          "explanation": "Deterministic merge keys enforce idempotent ingestion."
+        },
+        {
+          "question": "Late arriving corrections should adjust prior aggregates. Which model supports this cleanly?",
+          "options": [
+            "Processing-time-only windows with no correction",
+            "Event-time processing with retractions/upserts",
+            "Drop late events always",
+            "Manual backfill only"
+          ],
+          "correct": 1,
+          "explanation": "Event-time with update semantics handles late corrections systematically."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Device command queue: Commands to same device must execute in order; different devices can run parallel. Best keying?",
+          "options": [
+            "Global single partition",
+            "device_id",
+            "command_type",
+            "random UUID"
+          ],
+          "correct": 1,
+          "explanation": "device_id key preserves per-device order and parallelizes across devices."
+        },
+        {
+          "question": "Offline devices cause long retries and backlog. Which mitigation?",
+          "options": [
+            "Infinite immediate retry",
+            "Per-device retry backoff + TTL + dead-letter for expired commands",
+            "Disable ordering",
+            "Drop all failed commands instantly"
+          ],
+          "correct": 1,
+          "explanation": "Device-specific backoff and expiry avoid queue pollution by unreachable devices."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Marketplace payouts: Payout events require strict audit trail and replay years later. Which storage trait is essential?",
+          "options": [
+            "Short-lived ephemeral retention",
+            "Long-term immutable retention with access controls",
+            "In-memory queue only",
+            "Best-effort logs"
+          ],
+          "correct": 1,
+          "explanation": "Financial workflows need durable auditability and controlled replay."
+        },
+        {
+          "question": "Regulatory request asks to erase personal data while retaining accounting events. Practical approach?",
+          "options": [
+            "Delete all events",
+            "Tokenize PII and store removable reference outside immutable financial facts",
+            "Ignore request",
+            "Encrypt with shared static key only"
+          ],
+          "correct": 1,
+          "explanation": "Separating PII from immutable business facts balances compliance and audit needs."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Video processing jobs: Workers pull 500MB payloads from queue messages, causing broker pressure. Better design?",
+          "options": [
+            "Increase broker heap only",
+            "Claim-check with object storage URIs in messages",
+            "Split binary across many messages",
+            "Disable compression everywhere"
+          ],
+          "correct": 1,
+          "explanation": "Claim-check prevents brokers from carrying huge payload bytes."
+        },
+        {
+          "question": "Some object URIs expire before processing. Which reliability fix?",
+          "options": [
+            "No retries",
+            "Generate long-enough signed URL at consume time or refresh token flow",
+            "Store payload in message body",
+            "Use at-most-once"
+          ],
+          "correct": 1,
+          "explanation": "Access token lifecycle must align with queue latency and retries."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Partner webhook ingestion: Partners retry webhooks aggressively causing duplicates. Ingestion endpoint should do what first?",
+          "options": [
+            "Reject duplicates with idempotency key store",
+            "Trust partner ordering",
+            "Sleep before 200 response",
+            "Process synchronously only"
+          ],
+          "correct": 0,
+          "explanation": "Idempotency at ingress neutralizes partner retry behavior."
+        },
+        {
+          "question": "Some partners send out-of-order updates. Which event handling strategy is robust?",
+          "options": [
+            "Apply blindly in arrival order",
+            "Use versioned events and monotonic conflict resolution",
+            "Drop old partners",
+            "Disable buffering"
+          ],
+          "correct": 1,
+          "explanation": "Version-aware processing handles reordering safely."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Internal audit stream: Security wants tamper evidence for audit events. Which design strengthens this?",
+          "options": [
+            "Mutable rows overwritten in place",
+            "Append-only log with immutable storage controls and checksums",
+            "Disable replication",
+            "Keep only 24h retention"
+          ],
+          "correct": 1,
+          "explanation": "Append-only immutable controls improve tamper resistance."
+        },
+        {
+          "question": "Auditors query by case_id frequently; full scan replay is expensive. What read model helps?",
+          "options": [
+            "No index needed",
+            "Derived indexed projection keyed by case_id",
+            "Only raw topic browsing",
+            "Use smaller messages"
+          ],
+          "correct": 1,
+          "explanation": "Purpose-built projections enable efficient audit retrieval while preserving canonical log."
+        }
+      ]
+    },
+    {
+      "id": "msg-scn-060",
+      "type": "multi-select",
+      "question": "You are designing idempotent consumers for at-least-once delivery. Which techniques are valid? (Select all that apply)",
+      "options": [
+        "Store processed event IDs with TTL",
+        "Use deterministic upsert keys in sink DB",
+        "ACK before side effects to avoid duplicates",
+        "Design side effects to be commutative when possible"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Event ID tracking, deterministic upserts, and commutative/idempotent operations reduce duplicate harm. ACK-before-side-effect risks loss."
+    },
+    {
+      "id": "msg-scn-061",
+      "type": "multi-select",
+      "question": "A resilient retry strategy for transient failures usually includes which elements? (Select all that apply)",
+      "options": [
+        "Exponential backoff",
+        "Random jitter",
+        "Bounded max attempts",
+        "Immediate infinite tight-loop retries"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Backoff, jitter, and bounded attempts prevent retry storms and allow DLQ escape for persistent failures."
+    },
+    {
+      "id": "msg-scn-062",
+      "type": "multi-select",
+      "question": "What are strong reasons to adopt an outbox pattern? (Select all that apply)",
+      "options": [
+        "Prevent dual-write inconsistency",
+        "Atomically persist state change and outbound event intent",
+        "Eliminate need for any retries in relay",
+        "Improve auditability of emitted events"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Outbox provides atomic intent recording and traceability; relay retries are still required for delivery."
+    },
+    {
+      "id": "msg-scn-063",
+      "type": "multi-select",
+      "question": "Signals that a partitioning key is poor in production include which? (Select all that apply)",
+      "options": [
+        "One partition has sustained lag while others are idle",
+        "Frequent hot keys dominating throughput",
+        "Uniform distribution and low lag",
+        "Needless cross-partition joins due to wrong key"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Skew symptoms include hot partitions and expensive cross-partition operations."
+    },
+    {
+      "id": "msg-scn-064",
+      "type": "multi-select",
+      "question": "To make DLQs operationally useful, include which metadata? (Select all that apply)",
+      "options": [
+        "Original topic/queue and offset/message ID",
+        "Failure reason or exception class",
+        "Raw payload or pointer to it",
+        "Delete everything but a counter"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Rich metadata enables targeted remediation and safe replay."
+    },
+    {
+      "id": "msg-scn-065",
+      "type": "multi-select",
+      "question": "For schema evolution in event systems, which practices reduce breakages? (Select all that apply)",
+      "options": [
+        "Compatibility checks in CI",
+        "Versioned schemas with clear deprecation windows",
+        "Removing required fields without migration",
+        "Consumer tolerance for unknown optional fields"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Compatibility enforcement and tolerant readers help safe evolution; abrupt breaking removals do not."
+    },
+    {
+      "id": "msg-scn-066",
+      "type": "multi-select",
+      "question": "Useful async observability metrics include which? (Select all that apply)",
+      "options": [
+        "Queue depth/lag",
+        "End-to-end event age",
+        "DLQ rate",
+        "Only host disk usage"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Lag, age, and DLQ trends directly represent message health and freshness."
+    },
+    {
+      "id": "msg-scn-067",
+      "type": "multi-select",
+      "question": "When evaluating broker technology, which dimensions are typically first-class? (Select all that apply)",
+      "options": [
+        "Ordering guarantees needed",
+        "Replay retention needs",
+        "Operational ownership constraints",
+        "Team coffee preference"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Ordering, replay, and ops model drive platform fit; irrelevant factors should not."
+    },
+    {
+      "id": "msg-scn-068",
+      "type": "multi-select",
+      "question": "For safe replay of historical events, what controls are commonly needed? (Select all that apply)",
+      "options": [
+        "Isolate replay consumers from live side effects",
+        "Rate limit replay traffic",
+        "Idempotent sink handling",
+        "Disable monitoring during replay"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Replay should be controlled, observable, and side-effect safe."
+    },
+    {
+      "id": "msg-scn-069",
+      "type": "multi-select",
+      "question": "Backpressure can be applied at which layers? (Select all that apply)",
+      "options": [
+        "Ingress request throttling",
+        "Consumer concurrency limits",
+        "Broker-side quotas",
+        "Ignoring lag alerts"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Backpressure is multi-layered; ignoring signals is the opposite of control."
+    },
+    {
+      "id": "msg-scn-070",
+      "type": "multi-select",
+      "question": "Common causes of duplicate message effects include which? (Select all that apply)",
+      "options": [
+        "Consumer crash after side effect before ACK/offset commit",
+        "Producer retry after uncertain ack",
+        "Idempotent sink writes",
+        "Visibility timeout expiry during long processing"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Failures around acknowledgement boundaries and timeouts cause redelivery duplicates."
+    },
+    {
+      "id": "msg-scn-071",
+      "type": "multi-select",
+      "question": "A robust saga orchestration implementation should include which? (Select all that apply)",
+      "options": [
+        "Step timeouts",
+        "Compensation handlers",
+        "Persistent saga state",
+        "Best-effort memory-only state"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Durable state, timeouts, and compensation are core saga controls."
+    },
+    {
+      "id": "msg-scn-072",
+      "type": "multi-select",
+      "question": "Which practices improve multi-tenant fairness on shared messaging infrastructure? (Select all that apply)",
+      "options": [
+        "Per-tenant quotas",
+        "Isolation for top noisy tenants",
+        "Global unlimited burst for all tenants",
+        "Admission controls at ingress"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Quota and isolation mechanisms prevent noisy-neighbor incidents."
+    },
+    {
+      "id": "msg-scn-073",
+      "type": "multi-select",
+      "question": "Which are valid reasons to choose queue semantics over log semantics? (Select all that apply)",
+      "options": [
+        "Competing workers consume tasks once",
+        "Need simple work distribution without long replay history",
+        "Independent long-term replay for many consumers",
+        "Per-message delay/priority features"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Queue semantics fit work distribution and workflow controls; long replay is usually log-centric."
+    },
+    {
+      "id": "msg-scn-074",
+      "type": "multi-select",
+      "question": "To satisfy compliance in event-driven systems, which are strong controls? (Select all that apply)",
+      "options": [
+        "Data minimization in payloads",
+        "Encryption in transit and at rest",
+        "Access controls and audit logs",
+        "Store all secrets in cleartext for debugging"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Security/compliance requires minimization, encryption, and auditable access governance."
+    },
+    {
+      "id": "msg-scn-075",
+      "type": "multi-select",
+      "question": "For graceful consumer shutdown during deploy, what steps are recommended? (Select all that apply)",
+      "options": [
+        "Stop pulling new work",
+        "Finish or checkpoint in-flight work",
+        "Commit offsets/ACK appropriately before exit",
+        "Hard kill immediately for speed"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Graceful drain reduces duplicate processing and rebalance churn."
+    },
+    {
+      "id": "msg-scn-076",
+      "type": "numeric-input",
+      "question": "A queue receives 1,200 messages/second for 10 minutes while consumers are down. Roughly how many messages accumulate?",
+      "answer": 720000,
+      "unit": "messages",
+      "tolerance": 0.02,
+      "explanation": "Backlog = rate * duration = 1,200 * 600 = 720,000 messages."
+    },
+    {
+      "id": "msg-scn-077",
+      "type": "numeric-input",
+      "question": "Each message averages 4 KB. If 720,000 messages are retained, what is approximate raw payload storage?",
+      "answer": 2949120000,
+      "unit": "bytes",
+      "tolerance": 0.05,
+      "explanation": "720,000 * 4,096 bytes = 2,949,120,000 bytes (~2.75 GiB), excluding replication/overhead."
+    },
+    {
+      "id": "msg-scn-078",
+      "type": "numeric-input",
+      "question": "A consumer handles 250 msg/s. Backlog is 3,000,000 messages and no new traffic arrives. How many seconds to drain?",
+      "answer": 12000,
+      "unit": "seconds",
+      "tolerance": 0.01,
+      "explanation": "Drain time = 3,000,000 / 250 = 12,000 seconds (~3.33 hours)."
+    },
+    {
+      "id": "msg-scn-079",
+      "type": "numeric-input",
+      "question": "Ingress is 10,000 msg/s and one consumer group can process 8,000 msg/s. What backlog growth rate occurs?",
+      "answer": 2000,
+      "unit": "msg/s",
+      "tolerance": 0,
+      "explanation": "Growth rate is net difference: 10,000 - 8,000 = 2,000 msg/s."
+    },
+    {
+      "id": "msg-scn-080",
+      "type": "numeric-input",
+      "question": "If backlog grows at 2,000 msg/s, how many messages are added in 15 minutes?",
+      "answer": 1800000,
+      "unit": "messages",
+      "tolerance": 0,
+      "explanation": "2,000 * 900 seconds = 1,800,000 added messages."
+    },
+    {
+      "id": "msg-scn-081",
+      "type": "numeric-input",
+      "question": "An SLO allows max queue age of 120 seconds. Ingress is 5,000 msg/s. Approximate max safe queue depth before violating SLO?",
+      "answer": 600000,
+      "unit": "messages",
+      "tolerance": 0.01,
+      "explanation": "Depth bound ≈ rate * allowed age = 5,000 * 120 = 600,000."
+    },
+    {
+      "id": "msg-scn-082",
+      "type": "numeric-input",
+      "question": "A topic has 12 partitions and each partition sustains 1,500 msg/s. What is total topic throughput capacity?",
+      "answer": 18000,
+      "unit": "msg/s",
+      "tolerance": 0,
+      "explanation": "Total capacity approximates sum across partitions: 12 * 1,500 = 18,000 msg/s."
+    },
+    {
+      "id": "msg-scn-083",
+      "type": "numeric-input",
+      "question": "Retry policy: initial delay 2s, exponential factor 2, 4 retries total. What is delay before 4th retry attempt (just that interval)?",
+      "answer": 16,
+      "unit": "seconds",
+      "tolerance": 0,
+      "explanation": "Delays are 2, 4, 8, 16 seconds for retries 1..4."
+    },
+    {
+      "id": "msg-scn-084",
+      "type": "numeric-input",
+      "question": "Consumer processes 40 messages/batch and takes 200 ms per batch. Approximate throughput?",
+      "answer": 200,
+      "unit": "msg/s",
+      "tolerance": 0.05,
+      "explanation": "5 batches/sec * 40 messages = ~200 msg/s."
+    },
+    {
+      "id": "msg-scn-085",
+      "type": "numeric-input",
+      "question": "An outage pauses consumers for 25 minutes at 3,600 msg/s ingress. How many messages must replay after recovery?",
+      "answer": 5400000,
+      "unit": "messages",
+      "tolerance": 0.01,
+      "explanation": "3,600 * (25 * 60) = 5,400,000 messages."
+    },
+    {
+      "id": "msg-scn-086",
+      "type": "ordering",
+      "question": "Order the reliability pipeline for a worker task from earliest to latest.",
+      "items": [
+        "Consume message",
+        "Perform idempotent side effect",
+        "ACK/commit offset",
+        "Delete dedupe marker after retention window"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "ACK follows successful side effect; dedupe cleanup happens later to preserve replay safety."
+    },
+    {
+      "id": "msg-scn-087",
+      "type": "ordering",
+      "question": "Order these retries by increasing wait time under exponential backoff (base 1s).",
+      "items": [
+        "Retry #3",
+        "Retry #1",
+        "Retry #4",
+        "Retry #2"
+      ],
+      "correctOrder": [
+        1,
+        3,
+        0,
+        2
+      ],
+      "explanation": "Backoff intervals progress as 1s, 2s, 4s, 8s."
+    },
+    {
+      "id": "msg-scn-088",
+      "type": "ordering",
+      "question": "Order incident response steps for DLQ spike handling.",
+      "items": [
+        "Contain bad producer/consumer deploy",
+        "Classify failure reasons",
+        "Patch/fix root cause",
+        "Controlled replay with monitoring"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Contain first, then diagnose, fix, and replay safely."
+    },
+    {
+      "id": "msg-scn-089",
+      "type": "ordering",
+      "question": "Order event-time window lifecycle for late-data-aware processing.",
+      "items": [
+        "Assign event to window by event_time",
+        "Advance watermark",
+        "Emit window result when watermark passes end",
+        "Handle very late events per policy"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Window assignment precedes watermark-driven closure and late-event handling."
+    },
+    {
+      "id": "msg-scn-090",
+      "type": "ordering",
+      "question": "Order architecture evolution from simplest to most complex for async adoption.",
+      "items": [
+        "Single managed queue for background jobs",
+        "Add DLQ + retries + idempotency",
+        "Fan-out pub/sub domains",
+        "Introduce stream processing and replay-driven analytics"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Maturity grows from simple queues to resilient patterns to broader event platforms."
+    },
+    {
+      "id": "msg-scn-091",
+      "type": "ordering",
+      "question": "Order by strongest delivery guarantee (weakest to strongest typical semantics).",
+      "items": [
+        "Exactly-once outcome with idempotent sink design",
+        "At-most-once",
+        "At-least-once",
+        "Effectively-once within constrained boundary"
+      ],
+      "correctOrder": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "explanation": "At-most-once drops possible; at-least-once duplicates possible; effectively/exactly-once require stronger controls."
+    },
+    {
+      "id": "msg-scn-092",
+      "type": "ordering",
+      "question": "Order backlog metrics from most immediate to most user-impact-oriented.",
+      "items": [
+        "Queue depth",
+        "Consumer lag in offsets",
+        "Event age (now - event_time)",
+        "Business freshness SLA breach rate"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Raw queue signals are early indicators; freshness/SLA metrics reflect user impact directly."
+    },
+    {
+      "id": "msg-scn-093",
+      "type": "ordering",
+      "question": "Order these components in an outbox relay flow.",
+      "items": [
+        "Business transaction writes domain row + outbox row",
+        "Relay reads pending outbox rows",
+        "Relay publishes to broker",
+        "Relay marks outbox row sent"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Transactional write first, then relay publish, then sent marker update."
+    },
+    {
+      "id": "msg-scn-094",
+      "type": "ordering",
+      "question": "Order processing stages in a claim-check workflow.",
+      "items": [
+        "Upload large payload to object storage",
+        "Publish message with pointer/metadata",
+        "Consumer fetches payload by pointer",
+        "Consumer processes and records result"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Large payload lives in object storage; message carries reference for downstream fetch."
+    },
+    {
+      "id": "msg-scn-095",
+      "type": "ordering",
+      "question": "Order scalability actions when partition throughput is saturated.",
+      "items": [
+        "Detect hotspot via lag/throughput metrics",
+        "Redesign partition key / increase partition count",
+        "Scale consumers to match new partitions",
+        "Verify ordering and correctness invariants"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Measure first, then repartition, then scale consumers, then validate correctness assumptions."
+    }
+  ]
+}

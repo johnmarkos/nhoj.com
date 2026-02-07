@@ -10,7 +10,7 @@
 
 ## Now (In Progress)
 
-- [ ] **Unit 6: Messaging & Async**
+- [x] **Unit 6: Messaging & Async** — 8 chapters, 770 problems
   - [x] Chapter 1: Queue Fundamentals — 100 problems
   - [x] Chapter 2: Pub/Sub & Topics — 100 problems
   - [x] Chapter 3: Delivery Guarantees — 95 problems
@@ -18,7 +18,7 @@
   - [x] Chapter 5: Event-Driven Architecture — 95 problems
   - [x] Chapter 6: Stream Processing — 95 problems (partitions, consumer groups, offsets, windowing, Kafka model)
   - [x] Chapter 7: Technology Selection — 95 problems (RabbitMQ vs Kafka vs SQS vs Pub/Sub vs Redis Streams, decision frameworks)
-  - [ ] Chapter 8: Messaging Scenarios — Real-world design problems combining all chapter topics
+  - [x] Chapter 8: Messaging Scenarios — 95 problems (integrated real-world scenarios spanning queues, pub/sub, retries, ordering, replay, and ops trade-offs)
 
 ## Next (Units 7-10)
 

@@ -13,7 +13,7 @@
 - Generalized Claude-specific wording to agent-neutral language while preserving project conventions and workflows.
 - Replaced `CLAUDE.md` contents with a compatibility pointer directing Claude-based agents to `AGENTS.md`.
 
-## Unit 6: Messaging & Async (in progress — 675 problems so far)
+## Unit 6: Messaging & Async (770 problems)
 
 1. Queue Fundamentals (100 problems) — Producers/consumers, sync vs async, point-to-point, message lifecycle, visibility timeouts, backpressure, DLQs, FIFO ordering
 2. Pub/Sub & Topics (100 problems) — Fan-out/fan-in, durable/ephemeral subscriptions, push vs pull, filtering, topic granularity, consumer groups, schema evolution
@@ -22,9 +22,11 @@
 5. Event-Driven Architecture (95 problems) — Event sourcing, CQRS, choreography vs orchestration, sagas, domain events, schema evolution, projection rebuilds, temporal queries, aggregate boundaries, migration strategies
 6. Stream Processing (95 problems) — Partitions and consumer groups, offset management, event-time vs processing-time windows, watermarks/late data, state stores, joins, checkpointing, compaction, and recovery trade-offs
 7. Technology Selection (95 problems) — Requirement-driven broker selection across Kafka, RabbitMQ, SQS, Pub/Sub, and Redis Streams; delivery guarantees, ordering, replay, cost/ops trade-offs, lock-in, and hybrid architectures
+8. Messaging Scenarios (95 problems) — Integrated scenario-based practice across outbox/sagas, ordering keys, retries/DLQs, replay safety, observability, and broker trade-off decisions
 
 - Chapter 6 review/fix pass completed: corrected multi-select distractor quality, fixed Kafka consumer timeout semantics (`max.poll.interval.ms`), and resolved wording/consistency issues in stream scaling and compaction explanations.
 - Chapter 7 completed and validated with config/content tests: added 95 new problems and marked the chapter as ready in `config.js`.
+- Chapter 8 completed and validated with config/content tests: added 95 mixed-type scenario problems and marked the chapter as ready in `config.js`.
 
 ## Unit 5: Caching (800 problems)
 
