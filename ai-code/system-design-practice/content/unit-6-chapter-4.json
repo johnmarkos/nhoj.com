@@ -1,0 +1,1616 @@
+{
+  "unit": 6,
+  "unitTitle": "Messaging & Async",
+  "chapter": 4,
+  "chapterTitle": "Patterns & Reliability",
+  "chapterDescription": "Practical patterns for reliable messaging: retry strategies, dead letter queues, backpressure, poison message handling, circuit breakers, and priority queues.",
+  "problems": [
+    {
+      "id": "msg-pat-001",
+      "type": "multiple-choice",
+      "question": "A consumer fails to process a message after 5 retry attempts. The message is moved to a separate queue for investigation. What is this separate queue called?",
+      "options": [
+        "A dead letter queue (DLQ)",
+        "A backup queue for producer failover",
+        "A retry queue with exponential delays",
+        "A priority escalation queue"
+      ],
+      "correct": 0,
+      "explanation": "Dead letter queues capture messages that fail repeatedly. Instead of losing the message or blocking the queue, the DLQ preserves it for investigation. Engineers can inspect DLQ messages to find bugs, fix the consumer, and replay the messages. Without a DLQ, failed messages are either lost or block subsequent messages."
+    },
+    {
+      "id": "msg-pat-002",
+      "type": "multiple-choice",
+      "question": "A consumer retries a failed message immediately, 10 times per second. The failure is caused by a downstream database being temporarily overloaded. What happens?",
+      "options": [
+        "The message succeeds on the 10th attempt as the database clears its backlog",
+        "The database recovers faster because retry pressure forces garbage collection",
+        "The broker detects the failure pattern and throttles retries automatically",
+        "The retries amplify load on the struggling database, extending the outage"
+      ],
+      "correct": 3,
+      "explanation": "Immediate retries without delay create a retry storm: the consumer re-submits requests as fast as possible to an already-struggling dependency. This amplifies load, extends the outage, and can cascade to other services. Exponential backoff with jitter is the standard solution — space out retries with increasing delays."
+    },
+    {
+      "id": "msg-pat-003",
+      "type": "multiple-choice",
+      "question": "A team implements exponential backoff for message retries: 1s, 2s, 4s, 8s, 16s. All 500 consumers retry at the same backoff intervals. What problem emerges?",
+      "options": [
+        "The broker runs out of storage from buffering retried messages",
+        "Synchronized retry bursts (thundering herd) at each backoff interval",
+        "Retries are too slow and messages become stale before processing",
+        "Messages expire before the backoff delays complete"
+      ],
+      "correct": 1,
+      "explanation": "Without jitter, all 500 consumers start at roughly the same time, back off to 1s simultaneously, then 2s simultaneously, etc. Each backoff interval produces a burst of simultaneous retries that overloads the downstream service. Adding random jitter (e.g., backoff x random(0.5, 1.5)) desynchronizes the retries, spreading load evenly and giving the downstream service a chance to recover."
+    },
+    {
+      "id": "msg-pat-004",
+      "type": "multiple-choice",
+      "question": "A consumer encounters a message with a malformed JSON payload that will never parse successfully, no matter how many times it's retried. What is this type of message called?",
+      "options": [
+        "A stale message that has expired its TTL",
+        "A poison message (or poison pill)",
+        "A priority message awaiting escalation",
+        "A dead letter ready for archival"
+      ],
+      "correct": 1,
+      "explanation": "Poison messages fail deterministically — the problem is in the message itself, not in the environment. Retrying them wastes resources because the outcome is always the same: failure. Detecting poison messages early (e.g., after 2-3 identical failures) and routing them to a DLQ prevents them from blocking the queue."
+    },
+    {
+      "id": "msg-pat-005",
+      "type": "multiple-choice",
+      "question": "A queue has strict FIFO ordering. A poison message at the head of the queue fails and is redelivered repeatedly. No other messages can be processed. What is this problem called?",
+      "options": [
+        "Consumer starvation from resource exhaustion",
+        "Message starvation from low priority",
+        "Queue overflow from unbounded growth",
+        "Head-of-line blocking from the stuck message"
+      ],
+      "correct": 3,
+      "explanation": "In strict FIFO queues, messages must be processed in order. A poison message at the head blocks the entire queue — no subsequent message can be delivered until the head message succeeds or is removed. Solutions: set a max retry count and route to DLQ, or use a non-FIFO queue where failed messages don't block others."
+    },
+    {
+      "id": "msg-pat-006",
+      "type": "multiple-choice",
+      "question": "A system uses a circuit breaker between a message consumer and its downstream API. The circuit is currently OPEN (tripped). A new message arrives. What does the consumer do?",
+      "options": [
+        "Retries the downstream API with exponential backoff",
+        "Fails fast without calling the downstream API",
+        "Drops the message permanently and logs the failure",
+        "Calls the downstream API normally, ignoring the circuit state"
+      ],
+      "correct": 1,
+      "explanation": "An open circuit breaker short-circuits the call: instead of sending a request to a failing dependency and waiting for it to timeout, it returns immediately with a failure. This protects both the consumer (no wasted timeout waits) and the downstream service (no additional load). The consumer can nack the message for later retry when the circuit closes."
+    },
+    {
+      "id": "msg-pat-007",
+      "type": "multiple-choice",
+      "question": "A circuit breaker has been OPEN for 30 seconds (its configured timeout). It transitions to HALF-OPEN. What happens next?",
+      "options": [
+        "A limited number of probe requests test recovery before fully closing the circuit",
+        "All pending requests are sent immediately to catch up on the backlog",
+        "The circuit remains open permanently until manually reset by an operator",
+        "The consumer restarts its connection pool and resumes normal traffic"
+      ],
+      "correct": 0,
+      "explanation": "HALF-OPEN is the recovery probe state. The circuit breaker lets a small number of requests through to test if the downstream service has recovered. Success → CLOSED (resume normal traffic). Failure → OPEN (back to waiting). This prevents premature recovery: sending full traffic to a barely-recovered service would likely overwhelm it again."
+    },
+    {
+      "id": "msg-pat-008",
+      "type": "multiple-choice",
+      "question": "A producer generates messages at 10,000/s. The consumer can only process 2,000/s. The queue depth grows continuously. What pattern should the system implement?",
+      "options": [
+        "Delete old messages automatically to keep the queue small",
+        "Increase the consumer's visibility timeout to allow longer processing",
+        "Wait for the queue to drain naturally during off-peak hours",
+        "Backpressure to signal the producer to slow down or buffer"
+      ],
+      "correct": 3,
+      "explanation": "Without backpressure, the queue grows indefinitely: (10,000 - 2,000) × 60 = 480,000 messages/minute added to the backlog. Eventually the queue hits storage limits or latency becomes unacceptable. Backpressure propagates the 'slow down' signal upstream — the producer must either reduce its rate, shed load, or buffer locally."
+    },
+    {
+      "id": "msg-pat-009",
+      "type": "multiple-choice",
+      "question": "A team wants to process urgent order cancellations before regular order updates. Both message types share the same queue. What pattern supports this?",
+      "options": [
+        "Use a larger consumer pool dedicated to cancellations",
+        "Process messages in strict FIFO order as they arrive",
+        "Priority queuing so cancellations are dequeued before updates",
+        "Duplicate cancellation messages across multiple queues"
+      ],
+      "correct": 2,
+      "explanation": "Priority queues break FIFO ordering to serve higher-priority messages first. Cancellations (time-sensitive, financial impact) get priority over routine updates. Implementation varies: some brokers support priority natively, others require separate queues per priority level with weighted consumption."
+    },
+    {
+      "id": "msg-pat-010",
+      "type": "multiple-choice",
+      "question": "A priority queue processes high-priority messages exclusively during a traffic spike. Low-priority messages wait indefinitely. What is this problem called?",
+      "options": [
+        "Starvation of low-priority messages",
+        "Silent message loss from timeout expiration",
+        "Priority inversion between consumer threads",
+        "Queue overflow from unbounded accumulation"
+      ],
+      "correct": 0,
+      "explanation": "Starvation occurs when low-priority messages never get their turn. If high-priority traffic is constant, low-priority messages age indefinitely. Solutions: weighted fair queuing (e.g., process 3 high for every 1 low), priority aging (boost priority over time), or separate queues with dedicated consumer capacity for each priority level."
+    },
+    {
+      "id": "msg-pat-011",
+      "type": "multiple-choice",
+      "question": "A consumer processes messages that trigger HTTP calls to an external partner API. The partner experiences a 10-minute outage. The consumer has exponential backoff with max retry of 5. After 5 failures, all messages during the outage go to the DLQ. When the partner recovers, what must the team do?",
+      "options": [
+        "Recreate the messages from scratch using database records",
+        "Replay the DLQ messages back into the main queue (DLQ redrive)",
+        "Contact the partner to resend the original data",
+        "Accept the data loss and move on to new messages"
+      ],
+      "correct": 1,
+      "explanation": "DLQ messages aren't permanently failed — they're messages that failed under specific conditions. Once those conditions are resolved (partner recovered, bug fixed, capacity restored), DLQ messages can be replayed. AWS SQS calls this 'DLQ redrive.' The consumer must be idempotent since some messages may have partially processed before failing."
+    },
+    {
+      "id": "msg-pat-012",
+      "type": "multiple-choice",
+      "question": "AWS's architecture blog analyzed four jitter strategies for exponential backoff under high contention (thousands of competing clients). The strategies tested were: no jitter, full jitter (random between 0 and backoff ceiling), equal jitter (half the backoff plus random half), and decorrelated jitter (random between base and 3× previous delay). Which strategy minimized total completion time?",
+      "options": [
+        "No jitter",
+        "Equal jitter",
+        "Full jitter",
+        "Decorrelated jitter"
+      ],
+      "correct": 3,
+      "explanation": "AWS's analysis found decorrelated jitter achieves the lowest total completion time under high contention. Unlike full jitter (which can generate very small delays near 0, wasting retry slots) or equal jitter (which always includes a fixed component that re-synchronizes clients), decorrelated jitter uses the previous delay as input: sleep = min(cap, random(base, prev_delay × 3)). This creates a self-adjusting spread where clients that have waited longer back off more aggressively, while clients with shorter waits retry sooner — naturally distributing load across time."
+    },
+    {
+      "id": "msg-pat-013",
+      "type": "multiple-choice",
+      "question": "A consumer receives a message, begins processing, and the processing takes 90 seconds. The visibility timeout is 60 seconds. Rather than increasing the timeout globally, the team wants the consumer to extend its lease dynamically. What pattern is this?",
+      "options": [
+        "Prefetch buffering to read messages ahead of time",
+        "Parallel processing across multiple consumer threads",
+        "Heartbeat-based visibility extension during processing",
+        "Message batching to amortize ack overhead"
+      ],
+      "correct": 2,
+      "explanation": "Heartbeat extension: the consumer sends a 'still working' signal every N seconds (e.g., every 30s) to reset the visibility timeout. The base timeout stays short (60s for quick crash detection), but long-running messages get extended as needed. If the consumer crashes, it stops sending heartbeats, and the message becomes visible after the base timeout."
+    },
+    {
+      "id": "msg-pat-014",
+      "type": "multiple-choice",
+      "question": "A message payload is 15 MB, but the broker's maximum message size is 1 MB. What pattern allows the producer to send this message?",
+      "options": [
+        "Compress the message payload to fit within the 1 MB limit",
+        "Increase the broker's maximum message size to 15 MB",
+        "Split the message into 15 separately-sequenced chunk messages",
+        "Use the claim check pattern: store in S3, send a reference"
+      ],
+      "correct": 3,
+      "explanation": "The claim check pattern offloads large payloads to blob storage. The message becomes a lightweight pointer (the 'claim check'). Benefits: stays within broker size limits, reduces broker storage costs, and avoids copying large payloads through the messaging system. The consumer uses the claim check to retrieve the full payload on demand."
+    },
+    {
+      "id": "msg-pat-015",
+      "type": "multiple-choice",
+      "question": "A team notices their DLQ has 50,000 messages from the last week. Most are from a single consumer bug that was fixed on Tuesday. What should they check before replaying all 50,000 messages?",
+      "options": [
+        "Whether the producer is still publishing new messages normally",
+        "Whether the broker has enough disk space for the replay traffic",
+        "Whether messages are still relevant, the consumer is idempotent, and the system can handle the replay burst",
+        "Nothing specific — replay them all immediately since the bug is fixed"
+      ],
+      "correct": 2,
+      "explanation": "DLQ replay requires caution: (1) Relevance — a 'reserve inventory' message from 5 days ago may now conflict with actual inventory state. (2) Idempotency — partial processing before failure means some side effects already happened. (3) Capacity — replaying 50K messages at once is a traffic spike. Replay in controlled batches with monitoring."
+    },
+    {
+      "id": "msg-pat-016",
+      "type": "multiple-choice",
+      "question": "A consumer uses a circuit breaker to protect against a failing downstream service. The circuit opens after 5 consecutive failures. While the circuit is open, the consumer receives messages it can't process. What should the consumer do with these messages?",
+      "options": [
+        "Ack them and log the failure for later investigation",
+        "Drop them since the downstream service is unavailable anyway",
+        "Store them in the consumer's local memory for later processing",
+        "Nack them with a delay matching the circuit breaker's recovery timeout"
+      ],
+      "correct": 3,
+      "explanation": "Nacking with a delay preserves the message in the queue while respecting the circuit breaker's recovery period. When the circuit transitions to half-open and eventually closes, the redelivered messages will be processed normally. Dropping would lose data; acking would silently discard; local storage doesn't survive crashes."
+    },
+    {
+      "id": "msg-pat-017",
+      "type": "multiple-choice",
+      "question": "A system processes financial transactions. Each message must be processed in order within the same account, but messages for different accounts can be processed in parallel. What pattern achieves this?",
+      "options": [
+        "Partition by account ID for per-account ordering with cross-account parallelism",
+        "Single consumer with a FIFO queue processing all accounts sequentially",
+        "Process all messages in parallel and reconcile ordering afterward",
+        "Round-robin across consumers for even load distribution"
+      ],
+      "correct": 0,
+      "explanation": "Partitioning by account ID gives per-key ordering with cross-key parallelism. Account #123's messages always go to partition 7 (processed in order by one consumer). Account #456's messages go to partition 3 (processed independently). This is the standard pattern for 'ordered within entity, parallel across entities.'"
+    },
+    {
+      "id": "msg-pat-018",
+      "type": "multiple-choice",
+      "question": "A consumer group has 6 consumers reading from a topic with 6 partitions. One consumer crashes. What happens to its partition?",
+      "options": [
+        "The broker creates a replacement consumer instance automatically",
+        "The consumer group rebalances, reassigning the orphaned partition to a surviving consumer",
+        "Messages on that partition are lost until the crashed consumer restarts",
+        "The partition stops receiving new messages until the consumer recovers"
+      ],
+      "correct": 1,
+      "explanation": "Consumer group rebalancing redistributes partitions when a consumer joins or leaves. The remaining 5 consumers split 6 partitions (one consumer gets 2). This provides fault tolerance — no partition goes unprocessed. The tradeoff: the double-loaded consumer has higher latency, and rebalancing itself causes a brief processing pause."
+    },
+    {
+      "id": "msg-pat-019",
+      "type": "multiple-choice",
+      "question": "A team sets max retries to 3 with exponential backoff (1s, 2s, 4s). A message fails all 3 attempts and goes to the DLQ. The team realizes the failure was a transient network blip that resolved after 10 seconds. What should they change?",
+      "options": [
+        "Remove the retry limit entirely so messages retry indefinitely",
+        "Increase max retries so the retry window exceeds typical outage durations",
+        "Increase the DLQ size to hold more failed messages during outages",
+        "Decrease the backoff base delay to retry more frequently"
+      ],
+      "correct": 1,
+      "explanation": "The retry strategy must outlast typical transient failures. Total retry time: 1+2+4=7s, but the outage was 10s. Adding retries (e.g., 5 retries: 1+2+4+8+16=31s) or using a longer base delay covers longer transients. The max retry count and backoff ceiling should be tuned based on observed failure durations — not guessed."
+    },
+    {
+      "id": "msg-pat-020",
+      "type": "multiple-choice",
+      "question": "A consumer detects that a message has been delivered 3 times (via a delivery count header). The first 2 failures were transient network errors, but the consumer can't tell if this 3rd attempt will also be transient. What's the best approach?",
+      "options": [
+        "Drop the message since 3 failures indicates it's poison",
+        "Retry indefinitely since transient network errors always resolve",
+        "Route to DLQ immediately on the 3rd delivery attempt",
+        "Process normally and classify the error type to decide next steps"
+      ],
+      "correct": 3,
+      "explanation": "Delivery count alone doesn't distinguish poison from transient. The consumer should process normally and observe the failure. Poison messages fail identically every time (same error, same point). Transient failures vary (timeouts, connection refused, different errors). Sophisticated consumers classify failures: deterministic → DLQ sooner, transient → more retries with backoff."
+    },
+    {
+      "id": "msg-pat-021",
+      "type": "multiple-choice",
+      "question": "A system implements a delayed retry queue: failed messages are published to a separate queue with a TTL (e.g., 30 seconds). When the TTL expires, the message is automatically moved back to the main queue for reprocessing. What advantage does this have over broker-native retry delays?",
+      "options": [
+        "It reduces the total number of retries needed for recovery",
+        "It guarantees faster recovery than broker-native mechanisms",
+        "It works on any broker with TTL support, not just those with native delay features",
+        "It prevents message loss during the retry delay window"
+      ],
+      "correct": 2,
+      "explanation": "The delayed retry queue pattern: main queue → consumer fails → publish to delay queue (TTL=30s) → TTL expires → message moves to main queue (via dead-letter routing). This works on brokers without native retry delays (like basic RabbitMQ or SQS). The TTL acts as the backoff delay, and multiple delay queues with different TTLs implement exponential backoff."
+    },
+    {
+      "id": "msg-pat-022",
+      "type": "multiple-choice",
+      "question": "A consumer processes messages and writes results to a database. During a deployment, the consumer is stopped gracefully. It has 10 messages in-flight (received but not yet acked). What should the graceful shutdown do?",
+      "options": [
+        "Ack all in-flight messages without processing them to avoid redelivery",
+        "Finish in-flight messages within a timeout, then nack any remaining",
+        "Drop all in-flight messages immediately so the restart is faster",
+        "Kill the process immediately and let visibility timeouts handle redelivery"
+      ],
+      "correct": 1,
+      "explanation": "Graceful shutdown: (1) stop polling for new messages, (2) complete in-flight processing within a timeout window, (3) ack completed messages, (4) nack messages that couldn't finish. This minimizes reprocessing (finished messages are acked) while ensuring no messages are lost (unfinished messages are redelivered to other consumers)."
+    },
+    {
+      "id": "msg-pat-023",
+      "type": "multiple-choice",
+      "question": "A monitoring dashboard shows the DLQ depth increasing by 100 messages per hour, consistently for the last 3 days. The main processing queue has no backlog. What does this indicate?",
+      "options": [
+        "A deterministic bug affecting a specific subset of message types or data patterns",
+        "Normal behavior since DLQs always accumulate messages over time",
+        "The consumer is too slow and messages are timing out into the DLQ",
+        "The broker is losing messages and misrouting them to the DLQ"
+      ],
+      "correct": 0,
+      "explanation": "Steady DLQ growth with no main queue backlog = a bug that affects some messages but not others. If it were a transient outage, you'd see a burst followed by recovery. The steady rate points to a deterministic failure for a subset of messages. Investigation: sample DLQ messages, look for commonalities (same event type, schema version, data pattern)."
+    },
+    {
+      "id": "msg-pat-024",
+      "type": "multiple-choice",
+      "question": "A consumer uses a thread pool of 10 threads to process messages in parallel. Each thread calls a downstream API. The API starts responding slowly (2s instead of 100ms). What happens to the consumer?",
+      "options": [
+        "All 10 threads block waiting for slow responses, dropping throughput to ~5 msg/s",
+        "The broker detects the slow API and reroutes messages to faster consumers",
+        "The consumer's parallelism absorbs the latency with no throughput impact",
+        "The consumer automatically adds threads to compensate for the slowdown"
+      ],
+      "correct": 0,
+      "explanation": "Slow downstream = thread exhaustion. Each thread waits 2s instead of 100ms, so thread pool capacity drops 20×. With 10 threads at 2s/message: 10/2 = 5 msg/s (down from 10/0.1 = 100 msg/s). This cascading slowdown is why circuit breakers are important — they fail fast instead of blocking threads on a known-slow dependency."
+    },
+    {
+      "id": "msg-pat-025",
+      "type": "multiple-choice",
+      "question": "A team uses separate queues for retry delays: retry-1s, retry-5s, retry-30s, retry-5m. After a failure, the message is published to the appropriate retry queue based on the attempt number. What advantage does this have over a single retry queue?",
+      "options": [
+        "It reduces the total number of retries needed to recover from failures",
+        "It eliminates the need for a DLQ since all retries eventually succeed",
+        "Per-queue TTL defines the delay, working on brokers without per-message delay support",
+        "It uses less storage by spreading messages across multiple smaller queues"
+      ],
+      "correct": 2,
+      "explanation": "Per-queue TTL tiers implement stepped backoff using broker-native features. Attempt 1 → retry-1s queue (TTL=1s). Attempt 2 → retry-5s queue (TTL=5s). Each queue's dead-letter target is the main queue, so messages automatically flow back after the delay. This pattern is widely used with RabbitMQ and works without per-message delay plugins."
+    },
+    {
+      "id": "msg-pat-026",
+      "type": "multiple-choice",
+      "question": "A consumer processes a batch of 100 messages. Message #37 is poison (malformed data). The consumer crashes, and all 100 messages are redelivered. On the next attempt, it crashes again on #37. This repeats indefinitely. What's the fix?",
+      "options": [
+        "Disable batching entirely and process messages one at a time",
+        "Increase processing speed to complete #37 before it can crash the consumer",
+        "Increase the batch size to dilute the impact of the poison message",
+        "Track per-message delivery count and DLQ #37 individually after max retries"
+      ],
+      "correct": 3,
+      "explanation": "Per-message retry tracking prevents one poison message from blocking an entire batch. After N failures of the same message, isolate it to the DLQ and continue. Without this, the poison message causes an infinite crash loop that also blocks the other 99 healthy messages — a batch-level head-of-line blocking problem."
+    },
+    {
+      "id": "msg-pat-027",
+      "type": "multiple-choice",
+      "question": "A producer sends 5,000 msg/s into a queue. The consumer group processes 5,000 msg/s normally, but a dependency outage reduces throughput to 1,000 msg/s for 10 minutes. After recovery, the queue has a large backlog. What strategy helps drain the backlog safely?",
+      "options": [
+        "Delete the backlog since it's too large to process in time",
+        "Increase message TTL to prevent expiration during the drain",
+        "Ask the producer to pause and resend messages after the drain completes",
+        "Temporarily scale up the consumer group to drain the backlog, then scale down"
+      ],
+      "correct": 3,
+      "explanation": "The backlog is (5,000 - 1,000) × 600s = 2.4 million messages. Scaling up consumers temporarily (e.g., 3× capacity) drains the backlog while also keeping up with incoming traffic. After the backlog is cleared, scale back to normal capacity. Autoscaling based on queue depth automates this: scale up when depth exceeds a threshold, scale down when it returns to normal."
+    },
+    {
+      "id": "msg-pat-028",
+      "type": "multiple-choice",
+      "question": "A consumer sends a request message and expects a reply on a separate response queue. How does the consumer match a reply to the original request?",
+      "options": [
+        "The response queue is exclusive to this consumer, so there's only one message at a time",
+        "The broker automatically tracks and matches request-reply pairs internally",
+        "A correlation ID attached to both the request and reply links them together",
+        "The consumer reads all reply messages and filters by content to find the match"
+      ],
+      "correct": 2,
+      "explanation": "The correlation ID links a request to its reply across two separate queues. The producer generates a unique ID (e.g., UUID), sets it as the correlation_id header on the request, and waits for a reply with the same correlation_id on the response queue. This enables multiplexed request-reply over asynchronous messaging."
+    },
+    {
+      "id": "msg-pat-029",
+      "type": "multiple-choice",
+      "question": "A consumer sends a request and waits for a reply with a 5-second timeout. The downstream service processes the request in 3 seconds but the reply is lost in transit. What happens?",
+      "options": [
+        "The consumer times out, unaware the request was actually processed successfully",
+        "The broker detects the lost reply and retransmits it automatically",
+        "The consumer receives the reply at 3 seconds since the processing completed",
+        "The downstream service detects the missing ack and resends the reply"
+      ],
+      "correct": 0,
+      "explanation": "Request-reply over messaging has the same 'ack lost' ambiguity as any at-least-once system. The consumer doesn't know if the timeout means 'service failed' or 'reply lost.' Retrying may cause the downstream to process again. The downstream service should be idempotent, and the correlation ID can serve as an idempotency key."
+    },
+    {
+      "id": "msg-pat-030",
+      "type": "multiple-choice",
+      "question": "A system has three priority levels: HIGH, MEDIUM, LOW. The team implements them as three separate queues. Each consumer polls HIGH first, then MEDIUM, then LOW. During sustained high-traffic periods, MEDIUM and LOW messages starve. What's a better approach?",
+      "options": [
+        "Reclassify all messages as HIGH to eliminate the starvation problem",
+        "Weighted fair queuing with a ratio like 5 HIGH : 3 MEDIUM : 1 LOW",
+        "Process LOW first during spikes to prevent starvation from accumulating",
+        "Merge into a single queue and process in arrival order"
+      ],
+      "correct": 1,
+      "explanation": "Weighted fair queuing allocates processing capacity proportionally. A 5:3:1 ratio ensures LOW messages get at least ~11% of capacity even under full load. Without weighting, strict priority polling starves lower levels indefinitely. The weights should reflect business requirements: how much latency is acceptable for each priority level?"
+    },
+    {
+      "id": "msg-pat-031",
+      "type": "multiple-choice",
+      "question": "A message consumer has a circuit breaker configured with: failure threshold = 5, success threshold = 3, timeout = 30s. The downstream service has recovered, and the circuit is in HALF-OPEN. The consumer sends a probe request that succeeds. Is the circuit CLOSED?",
+      "options": [
+        "Yes — one successful probe confirms the service is healthy again",
+        "No — the circuit stays HALF-OPEN permanently until manually reset",
+        "Not yet — the success threshold of 3 requires more consecutive successful probes",
+        "No — the circuit returns to OPEN after any response, successful or not"
+      ],
+      "correct": 2,
+      "explanation": "The success threshold prevents flapping: a service that returns one success and then fails again would cause rapid open-close-open cycling. Requiring 3 consecutive successes provides confidence that the recovery is stable. If any probe fails during HALF-OPEN, the circuit returns to OPEN for another timeout period."
+    },
+    {
+      "id": "msg-pat-032",
+      "type": "multiple-choice",
+      "question": "A team is deciding between implementing backpressure at the broker level (rejecting new messages when the queue is full) vs. at the producer level (the producer checks queue depth before sending). What's the tradeoff?",
+      "options": [
+        "Broker-level is always better because it enforces limits automatically",
+        "Broker-level is simpler but abrupt; producer-level is more graceful but adds coupling",
+        "Producer-level backpressure eliminates the need for a queue entirely",
+        "No meaningful difference since both achieve the same outcome"
+      ],
+      "correct": 1,
+      "explanation": "Broker-level: the queue rejects messages when full. Simple to configure, but the producer gets unexpected errors it must handle (retry? buffer? drop?). Producer-level: the producer monitors queue depth and adjusts its rate proactively. More graceful degradation, but the producer is coupled to the queue's internals. Many systems use both: producer-side rate limiting as the first defense, broker-side rejection as the safety net."
+    },
+    {
+      "id": "msg-pat-033",
+      "type": "multiple-choice",
+      "question": "A consumer processes messages that require calling two downstream services (A and B). Service A responds in 50ms, but Service B is slow (2 seconds). A circuit breaker protects calls to Service B. When B's circuit opens, what should happen to messages that need both A and B?",
+      "options": [
+        "Call Service A and skip Service B permanently for this message",
+        "Process only the Service A portion and log the skipped B portion",
+        "Nack the entire message for retry when B's circuit closes",
+        "Split the message into two separate messages for independent processing"
+      ],
+      "correct": 2,
+      "explanation": "If both services must succeed for the message to be fully processed, nacking is the safest option. Processing A but not B leaves the system in an inconsistent state (A did its part, B didn't). Nacking preserves the message for retry when B recovers. If A's operation is idempotent, replaying the full message after B recovers is safe."
+    },
+    {
+      "id": "msg-pat-034",
+      "type": "multiple-choice",
+      "question": "A team discovers that 30% of their DLQ messages are from a single malformed event type. Rather than replaying them (they'll fail again), the team wants to prevent this event type from entering the system. What should they add?",
+      "options": [
+        "A larger DLQ to accommodate the additional malformed messages",
+        "More retries for this event type in case it occasionally succeeds",
+        "Schema validation at the entry point to reject malformed messages immediately",
+        "A separate queue for this event type with its own consumer logic"
+      ],
+      "correct": 2,
+      "explanation": "Shift-left: validate early, fail fast. Schema validation at the entry point (producer-side before publishing, or consumer-side before processing) catches malformed messages immediately. This is cheaper than discovering the defect after retries and DLQ routing. Common validations: required fields, data types, enum values, string length limits."
+    },
+    {
+      "id": "msg-pat-035",
+      "type": "multiple-choice",
+      "question": "A consumer has a prefetch of 100 messages. It processes them concurrently using a thread pool of 10. If one thread hangs (e.g., stuck on a slow external call), what happens to the messages assigned to that thread?",
+      "options": [
+        "They stay in-flight until visibility timeout expires, then get redelivered as duplicates",
+        "Other threads in the pool pick up the messages from the hung thread",
+        "The consumer's thread watchdog automatically terminates the hung thread",
+        "The broker detects the stall and cancels those messages for reassignment"
+      ],
+      "correct": 0,
+      "explanation": "A hung thread holds messages hostage. The messages are received but not acked. Eventually the visibility timeout expires and the broker redelivers them to another consumer (or the same consumer's other threads). When the hung thread unsticks, it may also finish processing — creating duplicates. Solutions: per-thread timeouts, circuit breakers on slow dependencies, and idempotent processing."
+    },
+    {
+      "id": "msg-pat-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer retries failed messages with no backoff delay (immediate retry). The failure rate is 10% due to a flaky downstream API. At 1,000 msg/s, how many retry messages per second does the system generate?",
+          "options": [
+            "0 — retries don't add to message volume",
+            "100 — 10% of 1,000 fail and retry immediately",
+            "10 — only 1% of messages generate retries",
+            "1,000 — every message triggers one retry"
+          ],
+          "correct": 1,
+          "explanation": "At 10% failure rate: 1,000 × 0.10 = 100 failures/s. Each immediate retry adds another message to process. These retries also have a 10% failure rate, generating 10 more retries, then 1 more, etc. Total extra load converges to about 111 msg/s (~11% overhead). With higher failure rates, this amplification effect is much worse."
+        },
+        {
+          "question": "The team adds exponential backoff (1s, 2s, 4s). Now the 100 failed messages don't retry immediately — they wait 1 second. How does this change the consumer's immediate workload?",
+          "options": [
+            "Immediate workload drops to 1,000 msg/s since retries are deferred to later",
+            "The consumer processes fewer total messages due to the added delays",
+            "No change — the same number of retries still occur each second",
+            "The retries are canceled because the backoff exceeds the message TTL"
+          ],
+          "correct": 0,
+          "explanation": "Backoff time-shifts retries into the future. Instead of 1,100 msg/s (1,000 new + 100 retries) hitting the consumer simultaneously, the retries arrive later when the consumer may have more capacity. This prevents retry amplification from compounding during failures. The downstream API also gets breathing room instead of being hammered."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes messages and calls a downstream service. The circuit breaker opens after 5 failures. 200 messages arrive while the circuit is open. The consumer nacks all 200 with a delay. The circuit's timeout is 30 seconds. What happens when the circuit transitions to HALF-OPEN?",
+          "options": [
+            "All 200 messages are redelivered simultaneously in a burst",
+            "Probes test recovery first, then nacked messages are gradually redelivered",
+            "The circuit stays open until all 200 messages are drained from the queue",
+            "The 200 nacked messages are permanently lost after the timeout expires"
+          ],
+          "correct": 1,
+          "explanation": "The nack delay staggers redelivery. Messages nacked at different times have different delay expiration times, so they don't all arrive simultaneously. The circuit's half-open state tests with a few requests first. Gradual redelivery prevents a thundering herd of 200 messages from immediately overwhelming the just-recovered service."
+        },
+        {
+          "question": "The probes in HALF-OPEN succeed. The circuit closes. But the downstream service can only handle 50 msg/s (reduced capacity after recovery). The 200 nacked messages start arriving. What additional protection is needed?",
+          "options": [
+            "Increase the circuit breaker timeout to allow more recovery time",
+            "Drop the nacked messages to avoid overwhelming the recovered service",
+            "Consumer-side rate limiting to match the downstream's reduced capacity",
+            "No additional protection needed since the circuit confirmed recovery"
+          ],
+          "correct": 2,
+          "explanation": "A just-recovered service often has reduced capacity. A burst of queued messages can immediately re-trigger the circuit breaker (open-close-open flapping). Consumer-side rate limiting, combined with the circuit breaker, provides layered protection: the rate limiter prevents overload, and the circuit breaker catches it if overload occurs anyway."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A poison message detection algorithm checks: if a message fails with the same error 3 times, it's classified as poison. A message fails twice with 'connection timeout' (transient), then once with 'invalid JSON' (permanent). Is this message poison?",
+          "options": [
+            "No — keep retrying since the first two errors were transient",
+            "No — the errors differ, so the same-error-3-times rule doesn't apply",
+            "Yes — the 'invalid JSON' error is permanent, but the detection algorithm missed it",
+            "Yes — three total failures always indicates a poison message"
+          ],
+          "correct": 2,
+          "explanation": "Error classification matters more than retry count. 'Connection timeout' is transient (may resolve). 'Invalid JSON' is permanent (retrying won't change the payload). Sophisticated consumers classify errors: transient → retry with backoff, permanent → DLQ immediately. Counting total failures without classifying them wastes retries on unrecoverable messages."
+        },
+        {
+          "question": "The team improves their poison detection: permanent errors → DLQ immediately, transient errors → retry with backoff. A new error appears: 'HTTP 429 Too Many Requests.' How should this be classified?",
+          "options": [
+            "Transient — the server is rate-limiting and will accept retries after the cooldown",
+            "Permanent — the server explicitly rejected the request with a 4xx code",
+            "Neither — the message should be dropped since the server is overloaded",
+            "Permanent — 4xx errors are always client errors that retrying won't fix"
+          ],
+          "correct": 0,
+          "explanation": "HTTP 429 is explicitly transient: the server says 'too many requests, try again later.' Many 429 responses include a Retry-After header specifying the wait time. The consumer should honor this (or use backoff) rather than treating it as permanent. Error classification: 4xx (client error) is usually permanent, but 429 and 408 (timeout) are transient exceptions."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer group has 3 consumers processing from 6 partitions (2 partitions each). Consumer C crashes. Its 2 partitions are reassigned to A and B (now 3 each). What happens to the messages C was processing but hadn't acked?",
+          "options": [
+            "Redelivered to A or B starting from C's last committed offset",
+            "Lost permanently since C never acked them before crashing",
+            "Discarded by the broker as part of the cleanup after rebalancing",
+            "Held in limbo and assigned back to C when it eventually recovers"
+          ],
+          "correct": 0,
+          "explanation": "Partition reassignment restarts processing from the last committed offset. Messages C processed but didn't commit are replayed. This is at-least-once semantics at the partition level. The new consumer may reprocess messages C already handled — idempotency is required."
+        },
+        {
+          "question": "After rebalancing, consumers A and B each handle 3 partitions instead of 2. Processing latency increases. What metric should the team monitor to decide if they need to add a replacement consumer?",
+          "options": [
+            "The number of messages accumulating in the DLQ",
+            "Consumer lag — the gap between latest produced and latest consumed offsets",
+            "CPU utilization on the broker nodes handling those partitions",
+            "Network bandwidth between the consumers and the broker cluster"
+          ],
+          "correct": 1,
+          "explanation": "Consumer lag is the primary indicator of consumer capacity. If lag grows, consumers are falling behind — production rate exceeds processing rate. After losing a consumer, lag likely increases because the remaining consumers handle more partitions. When lag exceeds an acceptable threshold (e.g., >10 seconds behind), add a consumer to restore capacity."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system processes order events. The team needs to ensure that all events for the same order are processed in sequence (create → update → cancel), but events for different orders can be parallel. They have 12 partitions and 12 consumers. What's the partition key?",
+          "options": [
+            "The event type (create, update, cancel) for grouped processing",
+            "The order_id so all events for one order go to the same partition",
+            "The timestamp for chronological ordering across all orders",
+            "A random key for even distribution across all partitions"
+          ],
+          "correct": 1,
+          "explanation": "Partitioning by order_id guarantees per-order ordering: create, update, and cancel for the same order always go to the same partition, processed by the same consumer in FIFO order. Different orders land on different partitions (12-way parallelism). Partitioning by event type would mix different orders together, breaking per-order ordering."
+        },
+        {
+          "question": "One customer places 100,000 orders per day (a large enterprise). Most other customers place 10-100 orders. All of the enterprise customer's orders hash to partition 7. What problem does this create?",
+          "options": [
+            "No problem — a single partition can handle 100K messages per day easily",
+            "Orders for the enterprise customer are delivered out of order",
+            "Hot partition — partition 7 is overloaded while other consumers sit idle",
+            "The enterprise customer's orders are silently dropped by the overloaded partition"
+          ],
+          "correct": 2,
+          "explanation": "Hash-based partitioning distributes evenly only if keys are uniformly distributed. A single key (enterprise customer) that generates 100K messages/day creates a hot partition. Solutions: sub-partition (e.g., order_id mod N), compound keys (customer_id + region), or route known-hot keys to dedicated partitions with extra consumer capacity."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system uses the claim check pattern: large payloads are stored in S3, and the message contains only the S3 key. The consumer reads the message, downloads the payload from S3, and processes it. What happens if S3 is temporarily unavailable?",
+          "options": [
+            "The consumer nacks for retry, treating the S3 outage as transient",
+            "The broker retrieves the payload from S3 on the consumer's behalf",
+            "The message is processed without the payload using cached data",
+            "The message is automatically deleted since the payload is unreachable"
+          ],
+          "correct": 0,
+          "explanation": "The claim check pattern introduces a dependency on external storage. If storage is unavailable, messages can't be processed even though they've been delivered. This is a transient failure — nack with backoff. The tradeoff: claim check reduces broker load but adds a storage dependency. The consumer should have a circuit breaker on S3 calls to fail fast during outages."
+        },
+        {
+          "question": "The team adds a retention policy: S3 objects are deleted after 30 days. A DLQ message from 35 days ago needs to be replayed. What happens?",
+          "options": [
+            "The claim check message still contains the full payload inline",
+            "The S3 object is gone — the payload was deleted before the DLQ replay",
+            "S3 versioning recovers the deleted object automatically",
+            "The message replays successfully since DLQ preserves the full payload"
+          ],
+          "correct": 1,
+          "explanation": "Claim check + time-limited retention = a data loss risk for DLQ messages. The DLQ preserves the reference, but not the payload. If the payload's TTL expires before the DLQ message is replayed, the data is lost. Solution: the storage retention must exceed the maximum DLQ residence time, or the DLQ reprocessing SLA must be shorter than the storage TTL."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes messages and writes to a database. Under normal load (1,000 msg/s), P99 latency is 50ms. A sudden traffic spike hits 10,000 msg/s. The database connection pool (50 connections) is exhausted. What happens?",
+          "options": [
+            "Threads block waiting for DB connections, throughput drops, and lag grows",
+            "The database auto-scales its connection pool to handle the spike",
+            "The consumer creates additional connections beyond the pool limit",
+            "The extra messages are dropped by the broker when the consumer slows down"
+          ],
+          "correct": 0,
+          "explanation": "Connection pool exhaustion is a common bottleneck under traffic spikes. With 50 connections and messages needing 50ms each, max throughput is 50 × (1000/50) = 1,000 msg/s — exactly the normal load. At 10,000 msg/s, the pool is a hard ceiling. Threads queue for connections, latency spikes, and the consumer falls behind."
+        },
+        {
+          "question": "The team implements backpressure: the consumer stops polling for new messages when the thread pool utilization exceeds 80%. What does this achieve?",
+          "options": [
+            "The producer detects the backpressure signal and stops sending messages",
+            "The broker detects consumer saturation and deletes excess messages",
+            "The consumer self-regulates, keeping messages safely buffered in the queue",
+            "Nothing changes since the queue still accepts messages from the producer"
+          ],
+          "correct": 2,
+          "explanation": "Consumer-side backpressure prevents resource exhaustion: stop accepting work when you can't handle more. Messages stay safely in the broker (designed for buffering) rather than overwhelming consumer memory, thread pools, or database connections. The queue acts as a shock absorber. This is better than failing fast because the consumer stays healthy and processes at its maximum sustainable rate."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer publishes events that need responses. It uses a temporary reply queue: the producer creates a queue, sets the reply-to header, and waits for a response. What happens if the producer crashes before consuming the reply?",
+          "options": [
+            "The reply is delivered to another producer that shares the queue",
+            "The reply is automatically forwarded to a DLQ for investigation",
+            "The broker resends the reply to the downstream service for reprocessing",
+            "The reply is orphaned in the temporary queue with no one to read it"
+          ],
+          "correct": 3,
+          "explanation": "Temporary reply queues can become orphaned: the producer creates them, crashes, and the reply has nowhere to go. Solutions: use exclusive queues (auto-deleted when the connection closes), set TTL on reply queues, or use a shared reply queue with correlation IDs instead of per-request temporary queues."
+        },
+        {
+          "question": "The team switches to a shared reply queue with correlation IDs. All responses go to one queue, and each producer filters by its correlation ID. What new challenge does this introduce?",
+          "options": [
+            "The shared queue becomes a throughput bottleneck for all producers",
+            "Replies are lost more often due to queue contention between producers",
+            "No challenges — shared reply queues are strictly better than temporary ones",
+            "Every producer sees every reply and must discard non-matching ones, wasting CPU"
+          ],
+          "correct": 3,
+          "explanation": "A shared reply queue means every consumer sees every reply. At 10,000 replies/s with 100 producers, each producer processes 10,000 messages but only cares about ~100. The 99% discard rate wastes CPU and network. Optimization: use a reply queue per producer (not per request), combining the benefits of dedicated queues with reusable resources."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes high-priority payment messages and low-priority analytics messages from the same topic. During peak traffic, the team wants to ensure payments are always processed within 100ms, even if analytics messages are delayed. What pattern helps?",
+          "options": [
+            "Process all messages in FIFO order with a larger consumer pool",
+            "Process analytics messages first to clear the backlog quickly",
+            "Separate into dedicated payment and analytics queues with isolated consumer pools",
+            "Increase the shared consumer pool size to handle peak traffic"
+          ],
+          "correct": 2,
+          "explanation": "Separate queues with dedicated consumers provide resource isolation. Payment consumers are never blocked by analytics backlog. Each queue can be scaled independently based on its SLA. A single shared queue with priorities can still cause interference — a burst of analytics messages could delay payment message dequeuing."
+        },
+        {
+          "question": "The team splits into two queues but uses the same consumer code. A deployment bug breaks analytics processing. The analytics DLQ grows. Does this affect payment processing?",
+          "options": [
+            "Yes — DLQ growth consumes broker resources, slowing all queues",
+            "It depends on whether payments and analytics share a database",
+            "Yes — the shared consumer code means the bug affects both streams",
+            "No — the queue and consumer pool isolation keeps the payment path unaffected"
+          ],
+          "correct": 3,
+          "explanation": "Queue separation provides blast radius isolation. The analytics bug affects analytics consumers and the analytics DLQ, but payment consumers (different pool, different queue) are unaffected. This is a key benefit of separating by priority/SLA: failures in one stream don't cascade to others. However, if the bug is in shared infrastructure (database, network), both could be affected."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team uses a circuit breaker with a 60-second timeout. The downstream service experiences a 5-minute outage. The circuit opens after 5 failures. For the next 5 minutes, the circuit alternates: OPEN (60s) → HALF-OPEN (probe fails) → OPEN (60s) → HALF-OPEN (probe fails). How many times does this cycle repeat during the 5-minute outage?",
+          "options": [
+            "About 60 times — the circuit probes once per second during the outage",
+            "About 5 times — one cycle per 60-second timeout period",
+            "Once — the circuit opens and stays open until the outage resolves",
+            "Zero — the circuit stays open the entire time without probing"
+          ],
+          "correct": 1,
+          "explanation": "Each cycle: 60s OPEN + 1 probe in HALF-OPEN (fails) = 60s total. Over 300 seconds: ~5 cycles. Each cycle sends 1 probe request to the failing service. This is dramatically better than no circuit breaker, which would send thousands of requests during the outage. The 5 probes are low-cost health checks."
+        },
+        {
+          "question": "After the outage ends, the service recovers. The circuit is in OPEN state with 45 seconds remaining. What's the maximum additional delay before the consumer resumes normal processing?",
+          "options": [
+            "Up to 45 seconds — the remaining OPEN timeout must expire before probing",
+            "Exactly 60 seconds — a full new OPEN cycle starts when the service recovers",
+            "Up to 5 minutes — the circuit retries the entire outage detection cycle",
+            "0 seconds — the circuit detects recovery immediately and resumes"
+          ],
+          "correct": 0,
+          "explanation": "The circuit breaker doesn't detect recovery instantly. It waits for the OPEN timeout to expire, then probes. In the worst case (service recovers right after the circuit enters OPEN), there's a full timeout period of wasted availability. Shorter timeouts detect recovery faster but probe the failing service more frequently during outages. This is the timeout-sensitivity tradeoff."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team implements a DLQ with no monitoring or alerting. Messages accumulate silently. After 3 months, they discover 500,000 failed messages in the DLQ. Many represent lost revenue. What monitoring should have been in place?",
+          "options": [
+            "Monitor only the main queue depth since it captures overall system health",
+            "No monitoring is needed for DLQs since they're just storage for old failures",
+            "Check the DLQ monthly during routine operational reviews",
+            "Alert when any message enters the DLQ — each DLQ message is an investigation signal"
+          ],
+          "correct": 3,
+          "explanation": "A DLQ without alerting is a silent data graveyard. Best practice: alert on any DLQ message (depth > 0), because DLQ messages are exceptional — they represent failures that exhausted all retries. Additional metrics: DLQ growth rate (sustained growth = systematic issue), age of oldest message (how long has this been ignored?), and message type distribution (which failures are most common?)."
+        },
+        {
+          "question": "The team adds alerts. The DLQ now gets 5-10 messages per hour during normal operations (transient failures that exhaust retries). The alert fires constantly. How should they tune the alerting?",
+          "options": [
+            "Disable the alert entirely since it's too noisy to be useful",
+            "Set a rate-based threshold that alerts only when DLQ growth exceeds the normal baseline",
+            "Increase retry counts so no messages ever reach the DLQ",
+            "Auto-replay DLQ messages back to the main queue to keep the DLQ empty"
+          ],
+          "correct": 1,
+          "explanation": "Some DLQ traffic is normal in large systems (edge cases, rare data shapes). Alert on anomalies, not existence. A rate-based alert (>20/hour vs. normal 5-10) catches systematic issues while ignoring background noise. Complement with a depth-based alert (>100 accumulated) to catch gradual accumulation that rate alerts might miss."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A producer generates 800 KB JSON messages. The broker's max message size is 1 MB. The team debates two options: (A) compress the payloads with gzip (typical 5:1 ratio for JSON, reducing to ~160 KB) or (B) use the claim check pattern (store in S3, send a reference). Which approach is better here?",
+          "options": [
+            "Claim check — always use external storage for payloads above 500 KB",
+            "Compression — 5:1 ratio keeps it well under the limit with no S3 dependency",
+            "Neither — increase the broker's max size to 2 MB for headroom",
+            "Split the message into smaller ordered chunks for reassembly"
+          ],
+          "correct": 1,
+          "explanation": "When compression reduces the payload below the broker limit with room to spare, it is simpler than claim check. Compression avoids adding S3 as a runtime dependency, eliminates the download latency on the consumer side, and requires no changes to the consumer's message-reading logic. Claim check adds operational complexity (S3 bucket management, IAM permissions, retention policies) that isn't justified when compression alone solves the size problem."
+        },
+        {
+          "question": "The team discovers that 10% of their messages contain embedded binary data (images) that compresses poorly — gzip only achieves 1.2:1 ratio, leaving payloads at ~670 KB. These occasionally exceed 1 MB when the image is large. Now what?",
+          "options": [
+            "Use claim check for all messages to handle the worst case uniformly",
+            "Increase the broker max size to 2 MB to accommodate binary payloads",
+            "Hybrid: compress text-heavy messages, use claim check for oversized binary ones",
+            "Drop messages with large binary data since they're edge cases"
+          ],
+          "correct": 2,
+          "explanation": "A hybrid strategy applies the right tool to each case. Text-heavy JSON compresses well and stays under the limit — no need for claim check overhead. Binary-heavy messages that exceed limits after compression use claim check. The producer checks post-compression size: under limit → send directly, over limit → store in S3. This avoids unnecessary S3 dependency for the 90% of messages that compress well."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer experiences intermittent failures. The team suspects a poison message but isn't sure — the error is 'NullPointerException' which could be transient (race condition) or permanent (bad data). How can they distinguish?",
+          "options": [
+            "Retry indefinitely since transient errors always resolve eventually",
+            "It's impossible to distinguish between transient and permanent failures",
+            "Assume it's poison and route to the DLQ after the first failure",
+            "Track per-message failure patterns: deterministic failures = poison, intermittent = transient"
+          ],
+          "correct": 3,
+          "explanation": "Per-message failure tracking is the key diagnostic. If message #ABC fails with NullPointerException on attempts 1, 2, and 3 — but message #DEF with a similar payload succeeds — then #ABC is likely poison (bad data triggering the NPE). If many different messages intermittently fail with NPE, it's likely a race condition in the consumer code."
+        },
+        {
+          "question": "The investigation reveals it IS a poison message: the event has a null 'customer_name' field that the consumer doesn't handle. The fix requires a code change. What should the team do with the poison message while the fix is developed?",
+          "options": [
+            "Manually edit the message in the DLQ to add a customer_name value",
+            "Leave it in the DLQ, deploy the null-handling fix, then replay it",
+            "Delete the message since it contains invalid data that can't be fixed",
+            "Move it back to the main queue immediately to retry with the current code"
+          ],
+          "correct": 1,
+          "explanation": "The DLQ's core value: preserve failed messages until the failure is resolved. The workflow: message fails → DLQ → team investigates → identifies the null handling bug → deploys fix → replays DLQ message → success. Without the DLQ, the message would have been lost, and the customer's data would never be processed."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system uses competing consumers: 8 consumers read from the same queue. Message ordering is not guaranteed across consumers. A message sequence 'create user → update user → delete user' for the same user could be processed out of order. What's the risk?",
+          "options": [
+            "The queue automatically reorders messages to maintain per-user sequence",
+            "No risk since all three operations are idempotent by default",
+            "Out-of-order processing causes errors or inconsistent state for the user",
+            "Competing consumers preserve order within the same entity automatically"
+          ],
+          "correct": 2,
+          "explanation": "Competing consumers trade ordering for throughput. With 8 consumers, messages for the same user can be processed in any order. 'Delete' before 'create' = error or no-op. 'Create' after 'delete' = resurrected user. For operations that require per-entity ordering, use partitioning by entity key instead of competing consumers."
+        },
+        {
+          "question": "The team needs both parallelism (8 consumers) and per-user ordering. They can't switch to a partitioned topic. What application-level pattern can enforce ordering?",
+          "options": [
+            "Route all messages for a user through a single designated consumer",
+            "Tag delete messages with a lower priority so they're always processed last",
+            "Use version numbers in messages and skip stale updates (optimistic concurrency)",
+            "Sort messages in the queue by timestamp before consumers read them"
+          ],
+          "correct": 2,
+          "explanation": "Optimistic concurrency with version numbers: each message carries a version (e.g., user v3 → v4 → v5). The consumer checks the stored version before applying. If stored version is 4 and message says 'update to v3,' it's stale — skip. This handles out-of-order delivery at the application level, though it requires messages to carry version metadata."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team is debugging an issue where some messages are processed twice. They check: retries are configured correctly, the consumer is idempotent, and the DLQ is empty. Where else could duplicates come from?",
+          "options": [
+            "The producer is publishing duplicates when it retries after a publish timeout",
+            "The broker has a replication bug that copies messages across partitions",
+            "The DLQ replay process is reinserting already-processed messages",
+            "The consumer is accidentally subscribed to a second queue with overlapping data"
+          ],
+          "correct": 0,
+          "explanation": "Duplicates can enter at any hop: producer retries (most common), broker failover (rare), consumer redelivery (ack lost). The team checked consumer-side but not producer-side. If the producer retries on timeout without idempotent-producer support, the broker stores the same message twice. End-to-end dedup requires idempotency at every boundary."
+        },
+        {
+          "question": "The team enables idempotent producers (sequence numbers). Duplicates from producer retries stop. But they still see occasional duplicates — about 0.01%. What's the remaining source?",
+          "options": [
+            "The broker is duplicating messages during inter-node replication",
+            "The idempotent producer feature has a bug allowing occasional duplicates",
+            "Network retransmissions at the TCP layer are creating duplicate deliveries",
+            "Consumer crashes between processing and offset commit cause redelivery edge cases"
+          ],
+          "correct": 3,
+          "explanation": "Even with idempotent producers, the consumer-side 'process then commit' gap allows rare duplicates. The consumer processes, crashes before committing, and reprocesses on restart. If the crash happened between the side effect and the idempotency record, the idempotency check doesn't catch it. This is the fundamental at-least-once gap — reducible but not eliminable."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer processes messages with a 30-second visibility timeout. During a deployment rolling restart, each consumer instance takes 15 seconds to start up. With 4 consumers, what's the maximum period of reduced processing capacity?",
+          "options": [
+            "60 seconds — 4 sequential restarts at 15 seconds each",
+            "120 seconds — the full cluster restart takes twice the sequential time",
+            "15 seconds — only the single longest restart matters",
+            "0 seconds — rolling restarts overlap so there's no capacity gap"
+          ],
+          "correct": 0,
+          "explanation": "In a sequential rolling restart: 4 × 15s = 60s of reduced capacity. But the impact is softened: only 1 of 4 consumers is down at a time (25% capacity reduction per restart). Messages assigned to the restarting consumer become visible after the 30s visibility timeout, so the actual processing gap for those messages is up to 30s per restart."
+        },
+        {
+          "question": "To minimize the deployment impact, the team enables graceful shutdown: each consumer finishes in-flight messages before stopping. The shutdown timeout is 10 seconds. How does this help?",
+          "options": [
+            "The broker detects the shutdown and reassigns partitions immediately",
+            "In-flight messages are completed and acked during the grace period, reducing redelivery",
+            "The consumer restarts faster because it has less state to initialize",
+            "It doesn't help — the consumer still needs 15 seconds to restart regardless"
+          ],
+          "correct": 1,
+          "explanation": "Without graceful shutdown: in-flight messages are abandoned, wait for visibility timeout (30s), then redelivered (possibly duplicated). With graceful shutdown: in-flight messages are completed and acked within the grace period. Result: fewer redeliveries, fewer duplicates, and faster effective recovery. This is why graceful shutdown is essential for rolling deployments."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A system processes events through a chain of 3 services: A → B → C. Each service reads from a queue, processes, and publishes to the next queue. Service B has a circuit breaker on its call to Service C. When C fails, B's circuit opens. What happens to messages in B's input queue?",
+          "options": [
+            "A detects C's failure through B and stops publishing automatically",
+            "B nacks them, so they accumulate in B's queue while A keeps publishing",
+            "B processes them normally and forwards to C despite the circuit being open",
+            "B processes them partially and drops the portion that requires C"
+          ],
+          "correct": 1,
+          "explanation": "The failure propagates upstream via queue depth: C fails → B can't forward → B's queue grows → A isn't affected directly (it still publishes to B's queue). The queues absorb the pressure: B's queue buffers messages during C's outage. When C recovers, B drains its backlog. Without queues between services, C's failure would cascade immediately to A."
+        },
+        {
+          "question": "The outage is extended (1 hour). B's input queue grows to 5 million messages. When C recovers, B starts draining the backlog. What risk does the sudden burst of traffic to C create?",
+          "options": [
+            "No risk since C is recovered and ready for normal traffic",
+            "B should delete the backlog to avoid overwhelming the recovered service",
+            "The 5M message burst could overwhelm just-recovered C — B should rate-limit the drain",
+            "C auto-scales to handle the burst of backlogged messages from B"
+          ],
+          "correct": 2,
+          "explanation": "A backlog drain is a self-inflicted traffic spike. C recovered at normal capacity, not 10× capacity. Dumping 5 million messages at B's max throughput may re-crash C. B should drain at or below C's steady-state capacity, using consumer-side rate limiting. This is the 'thundering herd on recovery' problem — recovery must be gradual, not instantaneous."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A consumer's DLQ contains messages from multiple failure modes: 40% schema validation errors, 35% downstream timeout, 25% unknown. The team wants to replay the timeout messages (the downstream service recovered) but not the validation errors (they need a code fix). How should the DLQ be structured to support this?",
+          "options": [
+            "Don't use a DLQ — fix issues in real time as they occur",
+            "A single DLQ with no metadata is sufficient — replay everything together",
+            "Enrich DLQ messages with error metadata to enable selective replay by failure type",
+            "Create separate DLQs per error type for automatic categorization"
+          ],
+          "correct": 2,
+          "explanation": "Enriched DLQ messages enable selective replay. When routing to the DLQ, attach metadata: error_type, error_message, original_queue, failure_timestamp, retry_count. This turns the DLQ from a black box into a queryable failure database. Separate DLQs per error type is an alternative but adds operational complexity (more queues to monitor)."
+        },
+        {
+          "question": "The team replays the 35% timeout messages. Some of them fail again (the data is now stale — the referenced resources were deleted during the outage). These messages go back to the DLQ. Is this a problem?",
+          "options": [
+            "Yes — this creates an infinite DLQ replay loop that must be stopped",
+            "The DLQ should be configured to reject re-entries from replayed messages",
+            "Expected — DLQ replay isn't guaranteed, so re-failures need separate investigation",
+            "No — all DLQ replays succeed once the original root cause is resolved"
+          ],
+          "correct": 2,
+          "explanation": "DLQ replay is not always successful. Messages may fail for new reasons (stale data, changed schema, expired TTLs). The team should monitor DLQ replay results, handle re-failures, and accept that some messages may be permanently unprocessable. A 'max DLQ retries' counter prevents infinite loops: after N DLQ replays, route to a 'dead dead letter queue' or discard with logging."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team monitors their messaging system with these metrics: queue depth, consumer lag, processing latency, and error rate. They notice queue depth spiking but consumer lag is stable. What does this indicate?",
+          "options": [
+            "The consumers are failing and messages are accumulating unprocessed",
+            "Production rate increased but consumers are keeping up — a traffic burst, not a capacity issue",
+            "The DLQ is full and messages are being routed back to the main queue",
+            "The broker is broken and producing phantom depth readings"
+          ],
+          "correct": 1,
+          "explanation": "Queue depth = buffer level. Consumer lag = how far behind consumers are. If depth spikes but lag is stable, consumers are processing at the production rate — the queue is just buffering a burst. If lag were growing, consumers would be falling behind. Monitoring both together prevents false alarms: a temporary depth spike during a traffic burst is normal if lag stays flat."
+        },
+        {
+          "question": "Later, queue depth starts growing AND consumer lag is increasing. Processing latency has jumped from 50ms to 500ms. The production rate hasn't changed. What's happening?",
+          "options": [
+            "A downstream dependency slowed down, reducing consumer throughput by 10×",
+            "The broker is throttling consumers to protect itself from overload",
+            "The producer reduced its send rate, causing lag to appear artificially",
+            "The queue reached its maximum depth and is rejecting new messages"
+          ],
+          "correct": 0,
+          "explanation": "The 10× latency increase (50ms to 500ms) reduces per-consumer throughput by 10×. With the same production rate, consumers can no longer keep up — queue depth grows (more messages arriving than leaving) and consumer lag grows (the gap between latest published offset and latest consumed offset widens). This is the early warning for a circuit breaker event: the downstream dependency is degraded, and the consumer is absorbing the impact."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team deploys a new consumer version with a bug: it acks every message but doesn't actually process them. Queue depth drops to zero. All metrics look healthy. What's wrong?",
+          "options": [
+            "The new consumer version is processing messages significantly faster",
+            "The producer stopped sending messages shortly after the deployment",
+            "Silent data loss — messages are acked but never actually processed",
+            "Nothing is wrong since all queue metrics indicate normal operation"
+          ],
+          "correct": 2,
+          "explanation": "This is the worst kind of bug: silent, metric-invisible data loss. Queue metrics (depth, lag, throughput) all look normal. The failure is only visible in business metrics (no new orders processed, no emails sent, missing DB records). This is why end-to-end monitoring matters: track business outcomes, not just queue metrics."
+        },
+        {
+          "question": "How should the team detect this class of bug in the future?",
+          "options": [
+            "Monitor the consumer's CPU usage for anomalous drops after deployments",
+            "Track business-level side effects (DB writes, API calls) and alert on divergence from consumption rate",
+            "Queue depth monitoring is sufficient since it captures all failure modes",
+            "Check application logs for error messages after each deployment"
+          ],
+          "correct": 1,
+          "explanation": "End-to-end monitoring: compare input rate (messages consumed) with output rate (side effects produced). A healthy consumer converts messages into side effects at a consistent ratio. If consumption continues but side effects stop, the consumer is broken — even if it reports no errors. This 'consumption vs. effect' ratio is the most reliable health signal for message consumers."
+        }
+      ]
+    },
+    {
+      "id": "msg-pat-056",
+      "type": "multi-select",
+      "question": "Which are valid strategies for handling poison messages? (Select all that apply)",
+      "options": [
+        "Track per-message delivery count and route to DLQ after exceeding a threshold",
+        "Retry poison messages indefinitely — they will eventually succeed",
+        "Validate message schema before processing to catch malformed messages early",
+        "Classify errors as transient vs. permanent — DLQ permanent errors immediately"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Delivery count tracking catches messages that fail repeatedly. Error classification distinguishes poison (permanent) from transient. Schema validation catches malformed messages before they enter the retry pipeline. Retrying poison messages indefinitely is the definition of insanity — the message is inherently broken and will never succeed."
+    },
+    {
+      "id": "msg-pat-057",
+      "type": "multi-select",
+      "question": "A team's DLQ grows from 0 to 500 messages in one hour. The on-call engineer is paged. Which are appropriate first investigation steps? (Select all that apply)",
+      "options": [
+        "Replay all 500 messages immediately to clear the DLQ",
+        "Check error logs and consumer health metrics to identify whether it's a code bug or downstream failure",
+        "Sample DLQ messages to look for commonalities (same event type, error code, or data pattern)",
+        "Increase the consumer count to process messages faster"
+      ],
+      "correctIndices": [
+        1,
+        2
+      ],
+      "explanation": "The first priority is diagnosis, not action. Checking error logs reveals whether the failures are from a code bug (deploy regression), a downstream outage (dependency unhealthy), or bad data (specific event type). Sampling DLQ messages identifies patterns — if all 500 share the same error or event type, the root cause is narrow. Replaying blindly wastes time if the root cause persists (messages re-fail). Scaling consumers doesn't help if the failures aren't throughput-related."
+    },
+    {
+      "id": "msg-pat-058",
+      "type": "multi-select",
+      "question": "Which are components of a well-configured retry strategy? (Select all that apply)",
+      "options": [
+        "Maximum retry count — stop retrying after N attempts",
+        "Random jitter — desynchronize retries across consumers",
+        "Exponential backoff — increasing delays between retries",
+        "Immediate retry for all failures — retry as fast as possible"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Exponential backoff prevents retry storms by spacing retries. Jitter prevents synchronized bursts from multiple consumers. Max retries prevent infinite loops (failed messages go to DLQ). Immediate retry without delay amplifies load on failing dependencies — the opposite of what you want during an outage."
+    },
+    {
+      "id": "msg-pat-059",
+      "type": "multi-select",
+      "question": "Which are signals that a consumer needs backpressure mechanisms? (Select all that apply)",
+      "options": [
+        "Consumer thread pool utilization is consistently above 90%",
+        "The producer is publishing messages at a steady rate",
+        "Queue depth is growing continuously with no sign of stabilization",
+        "Consumer memory usage is steadily increasing"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Growing queue depth means production outpaces consumption. Rising memory suggests the consumer is buffering too much work. Thread pool saturation means the consumer has no spare capacity. A steady production rate alone isn't a problem — it's only concerning when consumers can't keep up. Backpressure signals are about consumer overload, not producer behavior."
+    },
+    {
+      "id": "msg-pat-060",
+      "type": "multi-select",
+      "question": "Which are valid backpressure strategies? (Select all that apply)",
+      "options": [
+        "Producer monitors queue depth and reduces send rate when depth is high",
+        "Consumer stops polling when its internal buffer is full",
+        "Broker rejects new messages when queue depth exceeds a limit",
+        "Delete old messages to make room for new ones"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Consumer-side (stop polling), broker-side (reject at capacity), and producer-side (rate self-limiting) are all valid backpressure strategies. They work at different layers and can be combined. Deleting messages is load shedding, not backpressure — it sacrifices data rather than slowing the pipeline. Load shedding is sometimes necessary but is a last resort."
+    },
+    {
+      "id": "msg-pat-061",
+      "type": "multi-select",
+      "question": "Which are states in a circuit breaker? (Select all that apply)",
+      "options": [
+        "CLOSED — requests flow normally, failures are counted",
+        "HALF-OPEN — a limited number of probe requests test if the downstream has recovered",
+        "LOCKED — the breaker permanently blocks all requests",
+        "OPEN — requests are blocked, the breaker waits for a timeout before probing"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "The three standard circuit breaker states: CLOSED (normal operation, tracking failures), OPEN (blocking requests, waiting to probe), HALF-OPEN (testing recovery with limited probes). There is no LOCKED state in the standard circuit breaker pattern — the breaker always cycles through these three states. A permanent block would prevent any recovery."
+    },
+    {
+      "id": "msg-pat-062",
+      "type": "multi-select",
+      "question": "Which metrics should trigger a circuit breaker to OPEN? (Select all that apply)",
+      "options": [
+        "Error rate exceeding a percentage threshold (e.g., >50% of requests fail)",
+        "Consecutive failure count exceeding a threshold",
+        "The number of messages in the queue",
+        "Response latency exceeding an acceptable threshold (slow responses treated as failures)"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Circuit breakers can trip on: consecutive failures (N failures in a row), error rate (>50% failure rate in a window), or latency (responses >2s count as failures). Queue depth is a backpressure signal, not a circuit breaker trigger — the circuit breaker protects against downstream failure, not upstream overload."
+    },
+    {
+      "id": "msg-pat-063",
+      "type": "multi-select",
+      "question": "A video processing pipeline receives 50 MB video files that need to be queued for transcoding. The broker's max message size is 1 MB. The team considers three approaches: embed in message, split into 50 ordered chunks, or use claim check (upload to S3, send reference). Which approaches are viable? (Select all that apply)",
+      "options": [
+        "Embed the 50 MB video directly in the message",
+        "Split into 50 ordered 1 MB chunks with sequence numbers",
+        "Use claim check — upload to S3 and send a lightweight reference message",
+        "Compress the video to fit in 1 MB"
+      ],
+      "correctIndices": [
+        2
+      ],
+      "explanation": "Claim check is the only practical approach. Embedding exceeds the 1 MB broker limit by 50x. Splitting into 50 ordered chunks is technically possible but introduces severe complexity: chunk reassembly, ordering guarantees, partial-failure handling (what if chunk 37 is lost?), and atomicity (all 50 must arrive). Video is already compressed, so further compression won't achieve 50:1 reduction. Claim check makes the message a simple S3 reference — the transcoding worker downloads the video directly from S3, which is designed for large object storage."
+    },
+    {
+      "id": "msg-pat-064",
+      "type": "multi-select",
+      "question": "Which are important considerations when replaying messages from a DLQ? (Select all that apply)",
+      "options": [
+        "DLQ replay always succeeds if the original bug is fixed",
+        "The system must be able to handle the replay traffic burst (rate-limit the replay)",
+        "Some messages may be stale and no longer relevant",
+        "Consumers must be idempotent — some DLQ messages may have been partially processed before failing"
+      ],
+      "correctIndices": [
+        1,
+        2,
+        3
+      ],
+      "explanation": "Idempotency is critical (partial processing before failure). Rate-limiting prevents replay from overwhelming the system. Staleness is real (resources may have been deleted, data may have changed). Replay does NOT always succeed — messages may fail for new reasons: stale references, schema changes, or new bugs in the fix itself."
+    },
+    {
+      "id": "msg-pat-065",
+      "type": "multi-select",
+      "question": "Which are benefits of graceful shutdown for message consumers? (Select all that apply)",
+      "options": [
+        "In-flight messages are completed and acked, reducing redeliveries",
+        "Database connections and resources are cleanly released",
+        "Graceful shutdown eliminates all duplicate processing",
+        "Rolling deployments have minimal impact on processing"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Graceful shutdown: completes in-flight work (fewer redeliveries), releases resources (no orphaned connections), and enables zero-downtime deployments (each instance finishes before stopping). It reduces but doesn't eliminate duplicates — messages received after the shutdown signal begins are nacked and may be redelivered to other consumers."
+    },
+    {
+      "id": "msg-pat-066",
+      "type": "multi-select",
+      "question": "Which DLQ metrics should be monitored? (Select all that apply)",
+      "options": [
+        "DLQ message size — the average payload size of failed messages",
+        "DLQ depth — total number of unprocessed failed messages",
+        "Age of the oldest DLQ message — how long has the oldest failure been waiting?",
+        "DLQ growth rate — how fast new messages are arriving"
+      ],
+      "correctIndices": [
+        1,
+        2,
+        3
+      ],
+      "explanation": "DLQ depth shows total failure volume. Growth rate distinguishes burst failures (spike then flat) from systematic issues (steady growth). Oldest message age shows how long failures have been ignored. Message size is operationally interesting but not a reliability signal — it doesn't indicate processing health."
+    },
+    {
+      "id": "msg-pat-067",
+      "type": "multi-select",
+      "question": "Which approaches help prevent priority starvation in a multi-priority queue system? (Select all that apply)",
+      "options": [
+        "Separate consumer pools per priority level with guaranteed minimum capacity",
+        "Always process high-priority messages first with no exceptions",
+        "Weighted fair queuing — allocate processing capacity proportionally across priority levels",
+        "Priority aging — boost a message's priority as it ages to ensure it eventually gets processed"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Weighted queuing ensures each level gets some capacity. Priority aging prevents indefinite waiting. Separate pools guarantee minimum throughput per level. Always processing high first is the definition of starvation — it's the problem, not the solution."
+    },
+    {
+      "id": "msg-pat-068",
+      "type": "multi-select",
+      "question": "Which are indicators that a message is likely poison (not transient)? (Select all that apply)",
+      "options": [
+        "The error is a data validation failure (e.g., 'field X is null')",
+        "The same message fails with the identical error on every retry attempt",
+        "The error is 'connection timeout' to a downstream service",
+        "Other messages with similar payloads process successfully"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Deterministic failure (same error every time), isolation (similar messages succeed), and data-related errors (validation failures) all point to poison — the problem is in the message, not the environment. Connection timeouts are transient — they resolve when the network or service recovers. Error classification is the key to efficient retry strategies."
+    },
+    {
+      "id": "msg-pat-069",
+      "type": "multi-select",
+      "question": "Which are benefits of using delayed retry queues (separate queues with TTLs) instead of consumer-side sleep for retry delays? (Select all that apply)",
+      "options": [
+        "Different retry tiers can have different delay durations",
+        "The consumer's threads aren't blocked during the delay — they can process other messages",
+        "Delayed retry queues always prevent all failures",
+        "The delay survives consumer crashes (the message is in the broker, not in consumer memory)"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Broker-side delays free consumer threads (no Thread.sleep blocking workers). Delays survive crashes (broker holds the message, not consumer memory). Multiple queue tiers implement stepped backoff (1s, 5s, 30s queues). Delayed retries don't prevent failures — they give the system time to recover before retrying."
+    },
+    {
+      "id": "msg-pat-070",
+      "type": "multi-select",
+      "question": "Which are true about consumer groups and partition rebalancing? (Select all that apply)",
+      "options": [
+        "When a consumer crashes, its partitions are reassigned to remaining consumers",
+        "Rebalancing causes a brief processing pause while partitions are redistributed",
+        "Rebalancing is instantaneous with zero processing impact",
+        "Messages processed but not committed by the crashed consumer are reprocessed by the new owner"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        3
+      ],
+      "explanation": "Rebalancing redistributes partitions (crashed consumer's partitions reassigned), causes a pause (all consumers in the group briefly stop while partitions are redistributed), and uncommitted messages are replayed (at-least-once). Rebalancing is NOT instant — it involves coordination, and the stop-the-world pause can last seconds depending on group size."
+    },
+    {
+      "id": "msg-pat-071",
+      "type": "multi-select",
+      "question": "Which are important elements of end-to-end monitoring for a message processing pipeline? (Select all that apply)",
+      "options": [
+        "Business-level metrics (e.g., orders processed per minute)",
+        "End-to-end latency from message publish to side-effect completion",
+        "Queue depth and consumer lag metrics",
+        "Monitoring only the broker's CPU and disk usage"
+      ],
+      "correctIndices": [
+        0,
+        1,
+        2
+      ],
+      "explanation": "Queue metrics (depth, lag) show pipeline health. Business metrics catch silent failures (consuming but not processing). End-to-end latency measures user-visible impact. Broker hardware metrics alone are insufficient — a broker can be healthy while consumers silently drop messages. Effective monitoring spans infrastructure, application, and business layers."
+    },
+    {
+      "id": "msg-pat-072",
+      "type": "multi-select",
+      "question": "Which scenarios benefit from the request-reply pattern over messaging (vs. synchronous HTTP calls)? (Select all that apply)",
+      "options": [
+        "The requester can continue other work while waiting for the reply",
+        "The operation needs sub-millisecond response time",
+        "Replies may take minutes or hours (long-running operations)",
+        "The system needs temporal decoupling — the responder doesn't need to be online when the request is sent"
+      ],
+      "correctIndices": [
+        0,
+        2,
+        3
+      ],
+      "explanation": "Async request-reply suits: non-blocking callers (do other work while waiting), long operations (minutes/hours), and temporal decoupling (responder processes later). Sub-millisecond response time requires synchronous calls — the messaging overhead (serialization, broker hop, deserialization) adds latency that makes sub-ms impossible."
+    },
+    {
+      "id": "msg-pat-073",
+      "type": "numeric-input",
+      "question": "A consumer retries with exponential backoff: delays are 1s, 2s, 4s, 8s, 16s (5 retries). What is the total elapsed time from the first failure to the final retry attempt?",
+      "answer": 31,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Total time = sum of all delays: 1 + 2 + 4 + 8 + 16 = 31 seconds. This means a transient outage shorter than 31 seconds will likely be survived by the retry strategy. An outage longer than 31 seconds will exhaust retries and route to DLQ. Tune the retry count and base delay to cover your system's typical transient failure duration."
+    },
+    {
+      "id": "msg-pat-074",
+      "type": "numeric-input",
+      "question": "A circuit breaker trips after 3 consecutive failures. The downstream service has a 10% error rate (random, independent failures). What is the probability of 3 consecutive failures triggering a false circuit break? Express as a percentage.",
+      "answer": 0.1,
+      "unit": "%",
+      "tolerance": 0.1,
+      "explanation": "P(3 consecutive failures) = 0.10^3 = 0.001 = 0.1%. With a 10% error rate, three consecutive failures happen roughly once per 1,000 request sequences — unlikely but not impossible. Compare with a 50% error rate: 0.5^3 = 12.5%, which would cause frequent false trips. This is why the failure threshold and error rate together determine circuit breaker sensitivity."
+    },
+    {
+      "id": "msg-pat-075",
+      "type": "numeric-input",
+      "question": "A producer sends 5,000 msg/s. Consumers process 5,000 msg/s normally, but a 10-minute outage reduces consumer throughput to 0. How many messages accumulate in the queue during the outage?",
+      "answer": 3000000,
+      "unit": "messages",
+      "tolerance": 0.05,
+      "explanation": "Backlog = production rate × outage duration = 5,000 msg/s × 600 s = 3,000,000 messages. After recovery, if consumers process at 6,000 msg/s (1,000 above production rate), draining the backlog takes 3,000,000 / 1,000 = 3,000 seconds = 50 minutes. This is why autoscaling on queue depth is valuable — temporarily add consumers to drain faster."
+    },
+    {
+      "id": "msg-pat-076",
+      "type": "numeric-input",
+      "question": "A consumer group has 8 consumers, each processing 1,000 msg/s. One consumer crashes. The remaining 7 consumers absorb the extra partition. Assuming the load is redistributed evenly, what is each consumer's new throughput requirement in msg/s? Round to the nearest whole number.",
+      "answer": 1143,
+      "unit": "msg/s",
+      "tolerance": 0.05,
+      "explanation": "Total throughput = 8 × 1,000 = 8,000 msg/s. After crash: 8,000 / 7 ≈ 1,143 msg/s per consumer. Each consumer's load increases by ~14%. If consumers were already near capacity, this increase may cause them to fall behind — growing consumer lag. This is why capacity planning should include headroom for N-1 operation."
+    },
+    {
+      "id": "msg-pat-077",
+      "type": "numeric-input",
+      "question": "A system has 3 priority levels with weighted fair queuing: HIGH gets 60%, MEDIUM gets 30%, LOW gets 10% of consumer capacity. Total capacity is 10,000 msg/s. How many LOW-priority messages can be processed per second even when all queues are full?",
+      "answer": 1000,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "LOW gets 10% of 10,000 = 1,000 msg/s guaranteed capacity. Even when HIGH and MEDIUM queues are full, LOW still gets its 10% share. Without weighted queuing (strict priority), LOW would get 0 msg/s whenever HIGH or MEDIUM have messages. Weighted queuing prevents starvation by reserving minimum capacity per level."
+    },
+    {
+      "id": "msg-pat-078",
+      "type": "numeric-input",
+      "question": "A circuit breaker has a 60-second OPEN timeout. During a 15-minute outage, how many probe requests does it send to the failing service? (Assume each probe fails instantly.)",
+      "answer": 15,
+      "unit": "probes",
+      "tolerance": "exact",
+      "explanation": "Each cycle: 60s OPEN → 1 probe (fails) → back to OPEN. Probes per cycle: 1. Cycles in 15 minutes: 900s / 60s = 15 cycles = 15 probes. Compare to no circuit breaker: at 1,000 msg/s, the consumer would send 900,000 requests to the failing service. The circuit breaker reduces this to 15 — a 60,000× reduction in useless traffic."
+    },
+    {
+      "id": "msg-pat-079",
+      "type": "numeric-input",
+      "question": "A consumer processes 2,000 msg/s with a thread pool of 50 threads. Each message takes 25ms to process. A downstream slowdown increases processing time to 200ms. What is the consumer's new maximum throughput in msg/s?",
+      "answer": 250,
+      "unit": "msg/s",
+      "tolerance": "exact",
+      "explanation": "Max throughput = threads / processing_time = 50 / 0.200s = 250 msg/s. Down from 50 / 0.025s = 2,000 msg/s — an 8× throughput reduction from an 8× latency increase. The thread pool is the bottleneck: all 50 threads are busy waiting for the slow dependency. This is why circuit breakers exist — fail fast instead of blocking threads."
+    },
+    {
+      "id": "msg-pat-080",
+      "type": "numeric-input",
+      "question": "A DLQ receives 50 messages per hour. Each message represents a $25 order that wasn't processed. What is the daily revenue at risk from DLQ messages?",
+      "answer": 30000,
+      "unit": "dollars",
+      "tolerance": "exact",
+      "explanation": "Daily DLQ volume: 50/hour × 24 hours = 1,200 messages. Revenue at risk: 1,200 × $25 = $30,000/day. This quantifies the business cost of unprocessed messages and justifies investment in DLQ monitoring, alerting, and rapid resolution. Without monitoring, this $30K/day loss would accumulate silently."
+    },
+    {
+      "id": "msg-pat-081",
+      "type": "numeric-input",
+      "question": "A rolling deployment restarts 6 consumer instances sequentially. Each restart takes 20 seconds (10s graceful shutdown + 10s startup). During each restart, the instance processes 0 messages. Normally each instance handles 500 msg/s. What is the total number of messages delayed (not lost, just delayed) during the entire deployment?",
+      "answer": 60000,
+      "unit": "messages",
+      "tolerance": 0.05,
+      "explanation": "Per instance: 20s downtime × 500 msg/s = 10,000 messages delayed. Total: 6 × 10,000 = 60,000 messages. These messages aren't lost — they're buffered in the queue and processed by other instances or by the restarted instance. But they experience additional latency. With graceful shutdown, in-flight messages are completed before the 10s shutdown, minimizing reprocessing."
+    },
+    {
+      "id": "msg-pat-082",
+      "type": "numeric-input",
+      "question": "Exponential backoff with full jitter: delay = random(0, min(cap, base × 2^attempt)). With base=1s and cap=60s, what is the maximum possible delay on the 8th retry attempt? (2^8 = 256)",
+      "answer": 60,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "Without cap: base × 2^8 = 1 × 256 = 256s. With cap = 60s: min(60, 256) = 60s. The cap prevents delays from growing beyond 60 seconds. With full jitter: random(0, 60) — the actual delay is between 0 and 60 seconds. The cap is essential to prevent absurdly long delays at high retry counts."
+    },
+    {
+      "id": "msg-pat-083",
+      "type": "numeric-input",
+      "question": "A consumer has a prefetch of 200 messages and a visibility timeout of 30 seconds. If the consumer crashes immediately after receiving a prefetch batch, what is the maximum time before all 200 messages are available for other consumers to process?",
+      "answer": 30,
+      "unit": "seconds",
+      "tolerance": "exact",
+      "explanation": "All 200 messages were received but not acked. The broker's visibility timeout is 30 seconds. After 30 seconds with no ack, all 200 messages become visible simultaneously. The visibility timeout is the recovery time — larger prefetch means more messages are delayed by up to this duration after a crash."
+    },
+    {
+      "id": "msg-pat-084",
+      "type": "numeric-input",
+      "question": "A system sends 1 MB messages using the claim check pattern. The message broker charges $0.50 per GB of message data. If the system sends 100,000 messages per day and each claim check reference message is 100 bytes, how much does the claim check pattern save on broker data costs per day in dollars?",
+      "answer": 50,
+      "unit": "dollars",
+      "tolerance": 0.1,
+      "explanation": "Without claim check: 100,000 × 1 MB = 100 GB/day × $0.50/GB = $50/day in broker costs. With claim check: 100,000 × 100 bytes = 10 MB/day ≈ 0.01 GB × $0.50/GB ≈ $0.005/day. Broker savings: $50 - $0.005 ≈ $50/day. S3 adds some cost (storage + GET requests), but broker data costs drop by ~99.99%. The claim check pattern is most valuable when messages are large and broker charges are per-GB."
+    },
+    {
+      "id": "msg-pat-085",
+      "type": "ordering",
+      "question": "Rank these retry strategies from simplest to most sophisticated:",
+      "items": [
+        "No retry (fail immediately)",
+        "Immediate retry (fixed count, no delay)",
+        "Fixed-delay retry (e.g., retry every 5 seconds)",
+        "Exponential backoff with jitter and max retries"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "No retry: simplest (and weakest). Immediate retry: adds retry logic but no delay (risks retry storms). Fixed delay: adds spacing but retries are still synchronized. Exponential backoff with jitter: desynchronized, gradually increasing delays, prevents thundering herds — the gold standard for retry strategies."
+    },
+    {
+      "id": "msg-pat-086",
+      "type": "ordering",
+      "question": "Rank these circuit breaker states in the order they transition during a downstream failure and recovery:",
+      "items": [
+        "CLOSED (normal operation, failures accumulate)",
+        "OPEN (requests blocked, waiting for timeout)",
+        "HALF-OPEN (probe requests test recovery)",
+        "CLOSED (recovery confirmed, normal operation resumes)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Normal flow: CLOSED (healthy, counting failures) → failure threshold exceeded → OPEN (blocking requests) → timeout expires → HALF-OPEN (probing) → probes succeed → CLOSED (recovered). If probes fail in HALF-OPEN, the circuit returns to OPEN for another timeout cycle."
+    },
+    {
+      "id": "msg-pat-087",
+      "type": "ordering",
+      "question": "Rank these backpressure responses from least to most aggressive:",
+      "items": [
+        "Log a warning that the queue is growing",
+        "Consumer slows its polling rate",
+        "Broker rejects new messages from the producer",
+        "Producer drops low-priority messages before sending (load shedding)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Logging: passive observation (no action). Slow polling: consumer self-regulates (moderate). Broker rejection: forces producers to handle backpressure (aggressive). Load shedding: actively discards data to protect the system (most aggressive, last resort). Each escalation level has increasing impact on data completeness but better protection of system health."
+    },
+    {
+      "id": "msg-pat-088",
+      "type": "ordering",
+      "question": "Rank these message failure handling approaches from fastest recovery to slowest recovery:",
+      "items": [
+        "Immediate retry (retry within milliseconds)",
+        "Exponential backoff (retry after 1s, 2s, 4s, 8s)",
+        "Delayed retry queue (message sits in a TTL queue for 30 seconds)",
+        "DLQ with manual replay (human investigates and replays days later)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Immediate retry: fastest recovery for transient blips (ms). Exponential backoff: seconds to minutes, covers longer transients. Delayed retry queue: fixed delay (30s+), decouples retry from consumer. DLQ with manual replay: slowest (hours/days), but handles permanent failures that need human investigation. Use the fastest strategy that matches the failure type."
+    },
+    {
+      "id": "msg-pat-089",
+      "type": "ordering",
+      "question": "A message consumer calls a downstream API that returns different HTTP status codes. Rank these from 'retry immediately' to 'don't retry':",
+      "items": [
+        "503 Service Unavailable (service is temporarily down)",
+        "429 Too Many Requests (rate limited — retry after backoff)",
+        "500 Internal Server Error (server bug — may or may not be transient)",
+        "400 Bad Request (client error — request is malformed)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "503: explicitly temporary, retry immediately or with short backoff. 429: rate limited, retry after the Retry-After period. 500: ambiguous — could be transient (deploy in progress) or permanent (code bug). Retry with backoff, DLQ after max retries. 400: permanent client error — the request is wrong and retrying won't fix it. Route to DLQ for investigation."
+    },
+    {
+      "id": "msg-pat-090",
+      "type": "ordering",
+      "question": "Rank these from smallest to largest 'blast radius' when a consumer crashes:",
+      "items": [
+        "Per-message ack (1 message in flight per consumer)",
+        "Small batch commit (10 messages per commit)",
+        "Large batch commit (1,000 messages per commit)",
+        "Auto-ack on receive with large prefetch (5,000 messages)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Per-message ack: crash affects at most 1 message (redelivered). Small batch: up to 10 reprocessed. Large batch: up to 1,000 reprocessed. Auto-ack with prefetch: all 5,000 are lost (acked before processing). Smaller commit/ack granularity = smaller blast radius, but higher overhead per message."
+    },
+    {
+      "id": "msg-pat-091",
+      "type": "ordering",
+      "question": "Rank these monitoring layers from most domain-specific (only meaningful for this particular application) to most generic (applicable to any workload):",
+      "items": [
+        "Business metrics (orders processed, revenue captured)",
+        "Application metrics (processing latency, error rate, consumer lag)",
+        "Infrastructure metrics (CPU, memory, disk I/O, network)",
+        "Queue metrics (depth, throughput, age of oldest message)"
+      ],
+      "correctOrder": [
+        0,
+        3,
+        1,
+        2
+      ],
+      "explanation": "Business metrics: most specific — directly measure if the system is achieving its purpose. Queue metrics: messaging-specific operational health. Application metrics: general application performance. Infrastructure metrics: broadest — hardware/VM level, relevant to any workload. Effective monitoring covers all layers: business metrics catch silent failures, infrastructure metrics catch resource exhaustion."
+    },
+    {
+      "id": "msg-pat-092",
+      "type": "ordering",
+      "question": "A system uses the claim check pattern: producers upload payloads to S3, consumers download them after processing. Rank these lifecycle events in the correct order for safe garbage collection of S3 objects:",
+      "items": [
+        "Producer uploads payload to S3",
+        "Consumer downloads payload from S3 and processes it",
+        "Consumer acks the message on the broker",
+        "A cleanup job deletes the S3 object after a retention grace period"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "The S3 object must not be deleted before the consumer finishes processing. The safe order: upload → download and process → ack (confirms processing complete) → delete after a grace period. The grace period accounts for DLQ messages that may need replay, reprocessing after consumer crashes, and multiple consumers reading the same payload. Deleting too early (before ack or before DLQ replay window) causes permanent data loss."
+    },
+    {
+      "id": "msg-pat-093",
+      "type": "ordering",
+      "question": "Rank these error types from most retryable to least retryable:",
+      "items": [
+        "Network timeout (connection to downstream service timed out)",
+        "HTTP 429 Too Many Requests with Retry-After header",
+        "Database connection pool exhausted (all connections in use)",
+        "JSON parse error on the message payload"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Network timeout: highly transient, usually resolves quickly. 429 with Retry-After: explicitly transient, the server tells you when to retry. Connection pool exhausted: transient but indicates capacity issues (may need scaling, not just retry). JSON parse error: permanent — the payload is malformed, retrying won't change it. This is a classic poison message."
+    },
+    {
+      "id": "msg-pat-094",
+      "type": "ordering",
+      "question": "Rank these from least to most important for a production DLQ setup:",
+      "items": [
+        "The DLQ exists (messages aren't simply dropped)",
+        "Alerting is configured (team is notified of DLQ messages)",
+        "Error metadata is attached to DLQ messages (error type, timestamp, retry count)",
+        "A replay mechanism is in place (messages can be moved back to the main queue)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "DLQ existence: baseline — without it, failed messages are lost. Alerting: critical — a DLQ without alerts is a silent data graveyard. Error metadata: enables investigation and selective replay. Replay mechanism: enables recovery — fixing the bug and reprocessing the failures. Each level builds on the previous, progressing from 'don't lose data' to 'recover from failures.'"
+    },
+    {
+      "id": "msg-pat-095",
+      "type": "ordering",
+      "question": "Rank these consumer scaling strategies from most reactive to most proactive:",
+      "items": [
+        "Manual scaling (engineer adds consumers after noticing lag)",
+        "Autoscale on queue depth threshold (add consumers when depth > N)",
+        "Autoscale on consumer lag (add consumers when lag exceeds SLA)",
+        "Predictive scaling (scale up before expected traffic peaks based on historical patterns)"
+      ],
+      "correctOrder": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "explanation": "Manual: most reactive (human must notice and act). Queue depth autoscale: reacts to buffer growth (lag is already happening). Lag-based autoscale: reacts to processing delay (more SLA-aware). Predictive: most proactive — scales before the load arrives, preventing lag entirely. Each level reduces the gap between load increase and capacity increase."
+    }
+  ]
+}

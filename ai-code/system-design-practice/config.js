@@ -86,7 +86,7 @@ export const CONFIG = {
         { num: 1, title: 'Queue Fundamentals', ready: true },
         { num: 2, title: 'Pub/Sub & Topics', ready: true },
         { num: 3, title: 'Delivery Guarantees', ready: true },
-        { num: 4, title: 'Patterns & Reliability', ready: false },
+        { num: 4, title: 'Patterns & Reliability', ready: true },
         { num: 5, title: 'Event-Driven Architecture', ready: false },
         { num: 6, title: 'Stream Processing', ready: false },
         { num: 7, title: 'Technology Selection', ready: false },
