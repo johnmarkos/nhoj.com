@@ -109,7 +109,7 @@ export const CONFIG = {
         {
           num: 5,
           title: "Hotspots, Sharding & Work Distribution",
-          ready: false,
+          ready: true,
         },
         { num: 6, title: "Multi-Region Compute Strategy", ready: false },
         {

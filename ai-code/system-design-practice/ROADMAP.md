@@ -22,7 +22,7 @@
   - [x] Chapter 4: Autoscaling Signals & Policies — 100 problems (target tracking, queue-age signals, predictive vs reactive scaling, hysteresis, cooldowns, guardrails, dependency-aware scaling, thrash prevention)
         Scope: Building stable autoscaling behavior using demand signals, cooldowns, and safety limits.
         Key concepts: target tracking, queue-depth scaling, predictive vs reactive scaling, hysteresis, thrash prevention.
-  - [ ] Chapter 5: Hotspots, Sharding & Work Distribution
+  - [x] Chapter 5: Hotspots, Sharding & Work Distribution — 100 problems (partition-key quality, skew diagnosis, consistent hashing with virtual nodes, fairness controls, work stealing, ordered vs unordered processing trade-offs)
         Scope: Removing compute hotspots and balancing work across partitions/workers while preserving correctness boundaries.
         Key concepts: partition-key quality, skew mitigation, consistent hashing, work stealing, ordered vs unordered processing.
   - [ ] Chapter 6: Multi-Region Compute Strategy
