@@ -19,7 +19,7 @@
   - [x] Chapter 3: Horizontal vs Vertical Scaling Decisions — 100 problems (bottleneck decomposition, CPU/memory/network saturation, coordination overhead, cost curves, blast-radius trade-offs)
         Scope: Capacity planning and architectural trade-offs between bigger nodes and more nodes across workloads.
         Key concepts: bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, cost curves.
-  - [ ] Chapter 4: Autoscaling Signals & Policies
+  - [x] Chapter 4: Autoscaling Signals & Policies — 100 problems (target tracking, queue-age signals, predictive vs reactive scaling, hysteresis, cooldowns, guardrails, dependency-aware scaling, thrash prevention)
         Scope: Building stable autoscaling behavior using demand signals, cooldowns, and safety limits.
         Key concepts: target tracking, queue-depth scaling, predictive vs reactive scaling, hysteresis, thrash prevention.
   - [ ] Chapter 5: Hotspots, Sharding & Work Distribution

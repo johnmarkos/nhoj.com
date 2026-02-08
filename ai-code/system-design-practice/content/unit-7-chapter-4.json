@@ -1,0 +1,1636 @@
+{
+  "unit": 7,
+  "unitTitle": "Scaling Compute",
+  "chapter": 4,
+  "chapterTitle": "Autoscaling Signals & Policies",
+  "chapterDescription": "Designing stable autoscaling loops using bottleneck-aligned signals, hysteresis, guardrails, and workload-aware rollout strategies.",
+  "problems": [
+    {
+      "id": "sc-as-001",
+      "type": "multiple-choice",
+      "question": "A worker fleet drains an SQS-like queue. CPU is 35% but queue age climbs from 10s to 180s during spikes. Which autoscaling signal should drive scale-out first?",
+      "options": [
+        "CPU average only",
+        "Queue depth and oldest message age",
+        "Memory free percentage only",
+        "Deployment frequency"
+      ],
+      "correct": 1,
+      "explanation": "Queue age and depth track backlog directly; CPU can stay low while work waits."
+    },
+    {
+      "id": "sc-as-002",
+      "type": "multiple-choice",
+      "question": "Your API scales on 1-minute CPU average and oscillates every 3 minutes after traffic bursts. What policy change most directly reduces thrash?",
+      "options": [
+        "Use separate scale-out/scale-in thresholds with cooldowns",
+        "Disable scale-in entirely",
+        "Trigger scale actions on every sample",
+        "Lower min instances to zero"
+      ],
+      "correct": 0,
+      "explanation": "Hysteresis plus cooldown reduces rapid add/remove cycles from noisy metrics."
+    },
+    {
+      "id": "sc-as-003",
+      "type": "multiple-choice",
+      "question": "A batch service has 4-minute instance warmup. Reactive CPU scaling causes sustained backlog. Which improvement is strongest?",
+      "options": [
+        "Randomly add nodes",
+        "Scale only on disk usage",
+        "Predictive pre-scaling from known schedules",
+        "Shorter log retention"
+      ],
+      "correct": 2,
+      "explanation": "When warmup is slow and demand is predictable, pre-scaling avoids lag."
+    },
+    {
+      "id": "sc-as-004",
+      "type": "multiple-choice",
+      "question": "A request/response API target is p95 < 250ms. CPU is moderate, but p95 jumps to 500ms under burst. Best scaling signal?",
+      "options": [
+        "Code coverage trend",
+        "Instance uptime",
+        "Tail latency with concurrency guardrails",
+        "Average latency only"
+      ],
+      "correct": 2,
+      "explanation": "Tail latency captures user impact; combine with concurrency/load context for safer scaling decisions."
+    },
+    {
+      "id": "sc-as-005",
+      "type": "multiple-choice",
+      "question": "Scale-in frequently removes nodes that still handle long-running jobs, causing retries. Best immediate mitigation?",
+      "options": [
+        "Add connection draining / in-flight protection before termination",
+        "Reduce logging",
+        "Increase retry count",
+        "Switch to manual scaling only"
+      ],
+      "correct": 0,
+      "explanation": "Scale-in must respect in-flight work via draining or lifecycle hooks to avoid dropped work."
+    },
+    {
+      "id": "sc-as-006",
+      "type": "multiple-choice",
+      "question": "A service scales on RPS only. After cache miss storms, RPS is flat but CPU doubles and errors spike. Why is RPS-only weak?",
+      "options": [
+        "RPS ignores request cost variability",
+        "RPS cannot be measured",
+        "RPS prevents horizontal scaling",
+        "RPS is always noisy"
+      ],
+      "correct": 0,
+      "explanation": "Equal request counts can hide very different compute cost; policy needs saturation signals too."
+    },
+    {
+      "id": "sc-as-007",
+      "type": "multiple-choice",
+      "question": "Your team wants one metric for all services. Which statement is most accurate?",
+      "options": [
+        "Only memory should scale compute",
+        "Only host count should be tracked",
+        "A universal metric is always best",
+        "Signal should match bottleneck physics per workload"
+      ],
+      "correct": 3,
+      "explanation": "Autoscaling works when trigger metrics represent the true bottleneck for that workload."
+    },
+    {
+      "id": "sc-as-008",
+      "type": "multiple-choice",
+      "question": "A stream processor scales on lag. A downstream DB incident causes lag surge. What guardrail prevents harmful over-scale?",
+      "options": [
+        "Ignore lag during incidents",
+        "No max replicas",
+        "Max replica cap with downstream protection",
+        "Scale-in disabled forever"
+      ],
+      "correct": 2,
+      "explanation": "A hard cap prevents runaway producer pressure when downstream cannot absorb extra throughput."
+    },
+    {
+      "id": "sc-as-009",
+      "type": "multiple-choice",
+      "question": "A service with JVM cold starts experiences 2x p99 for first 90s after scale-out. Strong mitigation?",
+      "options": [
+        "Increase GC logs",
+        "Warm pools / pre-initialized instances before routing full traffic",
+        "Scale only at midnight",
+        "Use fewer metrics"
+      ],
+      "correct": 1,
+      "explanation": "Warm capacity reduces cold-start latency penalties during sudden scale events."
+    },
+    {
+      "id": "sc-as-010",
+      "type": "multiple-choice",
+      "question": "Scale policy uses average CPU across 200 pods; one shard is overloaded while others idle. What is the issue?",
+      "options": [
+        "CPU cannot indicate load",
+        "Need fewer shards",
+        "Need longer DNS TTL",
+        "Average hides skew; use partition-aware signals"
+      ],
+      "correct": 3,
+      "explanation": "Fleet averages mask hotspots; shard-aware metrics or max/percentile signals expose imbalance."
+    },
+    {
+      "id": "sc-as-011",
+      "type": "multiple-choice",
+      "question": "An async thumbnail service sees daily predictable peak at 09:00 local time. Best policy shape?",
+      "options": [
+        "Scale to zero at 08:55",
+        "Disable queue metrics",
+        "Purely reactive only",
+        "Scheduled baseline + reactive buffer"
+      ],
+      "correct": 3,
+      "explanation": "Scheduled floor handles known peak; reactive policy covers variance."
+    },
+    {
+      "id": "sc-as-012",
+      "type": "multiple-choice",
+      "question": "CPU target tracking is set at 30%, causing excessive cost with no latency gain. First adjustment?",
+      "options": [
+        "Scale on weekday only",
+        "Raise target utilization to a validated safe value",
+        "Reduce max replicas to 1",
+        "Remove alarms"
+      ],
+      "correct": 1,
+      "explanation": "Too-low targets overprovision. Increase target based on SLO and saturation tests."
+    },
+    {
+      "id": "sc-as-013",
+      "type": "multiple-choice",
+      "question": "Scale-in cooldown is 0s. Demand drops briefly and returns, causing churn. Most direct fix?",
+      "options": [
+        "Longer scale-out cooldown",
+        "Introduce meaningful scale-in stabilization window",
+        "Lower min replicas to zero",
+        "Switch to random scaling"
+      ],
+      "correct": 1,
+      "explanation": "Stabilization on scale-in avoids removing capacity during short dips."
+    },
+    {
+      "id": "sc-as-014",
+      "type": "multiple-choice",
+      "question": "A multi-tenant API has bursty premium tenants. Which policy improves fairness?",
+      "options": [
+        "Per-tenant or weighted queue signals with admission control",
+        "No autoscaling",
+        "Scale by deploy count",
+        "Single global CPU metric only"
+      ],
+      "correct": 0,
+      "explanation": "Tenant-aware signals plus admission guardrails prevent one tenant from consuming all elastic capacity."
+    },
+    {
+      "id": "sc-as-015",
+      "type": "multiple-choice",
+      "question": "Scale-out adds 50 pods at once, overloading dependency auth service. Best correction?",
+      "options": [
+        "Disable dependency metrics",
+        "Always keep max replicas",
+        "Batched/rate-limited scale-out steps",
+        "Bigger single step"
+      ],
+      "correct": 2,
+      "explanation": "Rate-limited scale-out avoids shock-loading dependencies and control plane."
+    },
+    {
+      "id": "sc-as-016",
+      "type": "multiple-choice",
+      "question": "A latency-sensitive API has min replicas=0 overnight and p95 breaches at first morning traffic. Why?",
+      "options": [
+        "Need fewer AZs",
+        "DNS cache issue",
+        "Scale-to-zero cold start penalty exceeds SLO",
+        "Too many alarms"
+      ],
+      "correct": 2,
+      "explanation": "For strict latency SLOs, keeping a non-zero warm baseline is often required."
+    },
+    {
+      "id": "sc-as-017",
+      "type": "multiple-choice",
+      "question": "You need an autoscaling metric least vulnerable to retry storms. Strong option?",
+      "options": [
+        "Incoming request count only",
+        "Queue age plus successful completion rate",
+        "Client-side timeout value",
+        "Pod restart count only"
+      ],
+      "correct": 1,
+      "explanation": "Combining backlog and completion avoids blindly scaling from amplified retries alone."
+    },
+    {
+      "id": "sc-as-018",
+      "type": "multiple-choice",
+      "question": "A service scales out well but never scales in, keeping peak cost all day. What policy element is likely missing?",
+      "options": [
+        "Scale-in threshold + cooldown + floor",
+        "Max replicas",
+        "Health checks",
+        "Scale-out threshold"
+      ],
+      "correct": 0,
+      "explanation": "Elasticity requires explicit scale-in logic with safe stabilization."
+    },
+    {
+      "id": "sc-as-019",
+      "type": "multiple-choice",
+      "question": "Metric delay is 2 minutes; demand changes in 20 seconds. Which improvement helps most?",
+      "options": [
+        "Increase cooldown to 1 hour",
+        "Scale by memory only",
+        "Use lower-cardinality labels",
+        "Use faster signal pipeline or local queue metrics"
+      ],
+      "correct": 3,
+      "explanation": "Control loops fail with stale telemetry; faster signals improve responsiveness and stability."
+    },
+    {
+      "id": "sc-as-020",
+      "type": "multiple-choice",
+      "question": "A policy keys only on CPU for IO-bound workers. Queue latency remains high with CPU < 40%. Best fix?",
+      "options": [
+        "Scale on disk bytes written",
+        "Switch to backlog/queue latency-driven scaling",
+        "Lower CPU target to 20%",
+        "Disable autoscaling"
+      ],
+      "correct": 1,
+      "explanation": "IO-bound workloads often need queue/latency signals rather than CPU."
+    },
+    {
+      "id": "sc-as-021",
+      "type": "multiple-choice",
+      "question": "Autoscaler removes capacity during low traffic despite a major event starting in 10 minutes. Best strategy?",
+      "options": [
+        "No change; reactive is enough",
+        "Scheduled floor increase ahead of known events",
+        "Set min replicas to zero",
+        "Turn off alerts"
+      ],
+      "correct": 1,
+      "explanation": "Known traffic events justify temporary pre-scale baselines."
+    },
+    {
+      "id": "sc-as-022",
+      "type": "multiple-choice",
+      "question": "A team proposes scaling on p50 latency because it is stable. Why is this risky?",
+      "options": [
+        "p50 is hard to compute",
+        "p50 cannot be charted",
+        "p50 causes higher accuracy",
+        "p50 ignores tail failures that violate user SLOs"
+      ],
+      "correct": 3,
+      "explanation": "Tail latency captures congestion and user pain earlier than median."
+    },
+    {
+      "id": "sc-as-023",
+      "type": "multiple-choice",
+      "question": "Horizontal Pod Autoscaler uses CPU and custom queue metric. They disagree during incident. First action?",
+      "options": [
+        "Disable both metrics",
+        "Scale manually forever",
+        "Trust whichever is lower",
+        "Examine bottleneck and prioritize metric tied to SLO impact"
+      ],
+      "correct": 3,
+      "explanation": "When signals diverge, use bottleneck diagnosis and SLO impact to choose policy weighting."
+    },
+    {
+      "id": "sc-as-024",
+      "type": "multiple-choice",
+      "question": "Work arrives in bursts every 30 seconds. Polling metrics every 60 seconds causes poor response. Most direct improvement?",
+      "options": [
+        "Scale only at fixed midnight windows",
+        "Longer polling interval",
+        "Higher-frequency sampling or event-driven scaling triggers",
+        "Remove burst workloads"
+      ],
+      "correct": 2,
+      "explanation": "Sampling must match workload timescale; otherwise bursts are missed."
+    },
+    {
+      "id": "sc-as-025",
+      "type": "multiple-choice",
+      "question": "A canary uses same autoscaling policy as stable, but canary traffic is only 5%. What issue appears?",
+      "options": [
+        "Canary overreacts to low-volume noise",
+        "Canary cannot scale at all",
+        "Stable policy becomes invalid",
+        "Traffic splitting fails automatically"
+      ],
+      "correct": 0,
+      "explanation": "Low-volume canaries need tuned thresholds/minimums to avoid noisy oscillation."
+    },
+    {
+      "id": "sc-as-026",
+      "type": "multiple-choice",
+      "question": "Which policy is safer for scale-in under uncertain demand?",
+      "options": [
+        "Conservative, stepwise scale-in with stabilization",
+        "Scale-in in large batches",
+        "Disable SLO alarms during scale-in",
+        "Immediate scale-in on first dip"
+      ],
+      "correct": 0,
+      "explanation": "Conservative scale-in limits availability risk from transient metric drops."
+    },
+    {
+      "id": "sc-as-027",
+      "type": "multiple-choice",
+      "question": "A workload has strict cost cap and strict latency SLO. What policy pattern best balances both?",
+      "options": [
+        "Fixed replicas forever",
+        "Scale only from manual tickets",
+        "No max, no min, pure target tracking",
+        "Min+max bounds with SLO-aligned target and alerting on cap pressure"
+      ],
+      "correct": 3,
+      "explanation": "Bounds control spend and availability; alerts reveal when cap conflicts with SLO."
+    },
+    {
+      "id": "sc-as-028",
+      "type": "multiple-choice",
+      "question": "Autoscaler scales on host CPU, but each pod has CPU limit throttling. Better signal?",
+      "options": [
+        "Image size",
+        "Cluster node count",
+        "Pod-level CPU throttling + request latency/queue",
+        "Disk inode usage"
+      ],
+      "correct": 2,
+      "explanation": "Pod throttling shows actual container saturation; host CPU can hide cgroup limits."
+    },
+    {
+      "id": "sc-as-029",
+      "type": "multiple-choice",
+      "question": "A queue consumer scales aggressively, but backlog still grows because each message now does 3 external calls. Best response?",
+      "options": [
+        "Increase max replicas and external dependency capacity planning together",
+        "Disable retries",
+        "Lower queue visibility timeout only",
+        "Scale on memory"
+      ],
+      "correct": 0,
+      "explanation": "Compute scaling alone fails if downstream dependencies are bottlenecked."
+    },
+    {
+      "id": "sc-as-030",
+      "type": "multiple-choice",
+      "question": "Which anti-pattern most commonly causes autoscaling instability?",
+      "options": [
+        "Multiple noisy metrics with no precedence or smoothing",
+        "Canary validation before policy rollout",
+        "Rate-limited scale actions",
+        "Separate thresholds for up/down"
+      ],
+      "correct": 0,
+      "explanation": "Uncoordinated noisy triggers produce conflicting decisions and oscillation."
+    },
+    {
+      "id": "sc-as-031",
+      "type": "multiple-choice",
+      "question": "A service has 20-minute daily analytics spikes. Team prefers predictive autoscaling. What prerequisite is most important?",
+      "options": [
+        "Random traffic by design",
+        "Zero warmup time",
+        "Stable recurring demand pattern and historical data quality",
+        "No observability data"
+      ],
+      "correct": 2,
+      "explanation": "Predictive policies depend on consistent seasonality and reliable history."
+    },
+    {
+      "id": "sc-as-032",
+      "type": "multiple-choice",
+      "question": "If scaling action API has rate limits, which autoscaling behavior is safest?",
+      "options": [
+        "Disable scale-in permanently",
+        "Many tiny adjustments every second",
+        "Larger but bounded steps with action pacing",
+        "Unlimited burst actions"
+      ],
+      "correct": 2,
+      "explanation": "Action pacing respects provider limits and avoids control-plane failures."
+    },
+    {
+      "id": "sc-as-033",
+      "type": "multiple-choice",
+      "question": "A Kubernetes deployment restarts pods during scale events due to failing readiness checks under load. What to do first?",
+      "options": [
+        "Increase maxSurge only",
+        "Fix readiness signal and startup behavior before policy tuning",
+        "Disable readiness checks",
+        "Raise desired replicas manually forever"
+      ],
+      "correct": 1,
+      "explanation": "Broken readiness distorts capacity and causes churn; fix health semantics first."
+    },
+    {
+      "id": "sc-as-034",
+      "type": "multiple-choice",
+      "question": "Which statement about cooldowns is correct?",
+      "options": [
+        "Scale-in cooldown usually needs to be longer than scale-out",
+        "Cooldowns are unnecessary with target tracking",
+        "Cooldowns should be zero for low latency",
+        "Same cooldown always fits all workloads"
+      ],
+      "correct": 0,
+      "explanation": "Longer scale-in cooldown avoids premature contraction after brief demand dips."
+    },
+    {
+      "id": "sc-as-035",
+      "type": "multiple-choice",
+      "question": "An autoscaler target is based on average queue depth per worker. Worker count increases, per-worker depth drops, and scaling stops while total backlog still grows. Best fix?",
+      "options": [
+        "Scale only on CPU",
+        "Decrease queue retention period",
+        "Use total backlog and backlog age constraints in policy",
+        "Remove max replicas"
+      ],
+      "correct": 2,
+      "explanation": "Per-worker averages can hide total load growth; include absolute backlog and age."
+    },
+    {
+      "id": "sc-as-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Checkout API currently uses cpu target 55% with zero scale-in stabilization. First observed symptom: Frequent scale-in/out oscillation after flash sales. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Checkout API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Add separate up/down thresholds and 10-minute scale-in stabilization"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Add separate up/down thresholds and 10-minute scale-in stabilization."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Image render workers currently uses scaling on request rate only. First observed symptom: Backlog rises when image complexity increases. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Image render workers: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Switch to queue age + backlog per worker",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Switch to queue age + backlog per worker."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Notification fanout currently uses predictive scaling enabled from sparse data. First observed symptom: Pre-scale misses campaign spikes. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "Notification fanout: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Blend scheduled floor with reactive queue policy",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Blend scheduled floor with reactive queue policy."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Fraud scoring currently uses scale-out step adds 40 pods instantly. First observed symptom: Dependency timeout spikes during scale events. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "Fraud scoring: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Cap step size and add action pacing",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Cap step size and add action pacing."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Video transcode currently uses scale-in terminates busy workers. First observed symptom: In-flight jobs retry and duplicate processing. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Video transcode: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Use lifecycle draining with lease handoff"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use lifecycle draining with lease handoff."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Search API currently uses policy uses p50 latency only. First observed symptom: p99 breaches while autoscaler stays idle. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Search API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Scale on p95/p99 with request concurrency checks",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Scale on p95/p99 with request concurrency checks."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Webhooks delivery currently uses 1-minute metrics window. First observed symptom: 30-second bursts are underdetected. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "Webhooks delivery: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Increase sampling frequency and smooth with EMA",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Increase sampling frequency and smooth with EMA."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Session API currently uses min replicas set to zero. First observed symptom: Morning cold starts violate login SLO. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "Session API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Set non-zero warm floor by timezone",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Set non-zero warm floor by timezone."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "ETL consumer currently uses queue depth target with no max. First observed symptom: Downstream warehouse throttles from over-scaling. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "ETL consumer: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Set max replicas and downstream-aware backpressure"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Set max replicas and downstream-aware backpressure."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Payments risk engine currently uses all tenants share one metric. First observed symptom: One tenant burst starves others. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Payments risk engine: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Use weighted tenant queues and admission quotas",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use weighted tenant queues and admission quotas."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Catalog indexer currently uses CPU signal from host nodes. First observed symptom: Pods throttle despite low host CPU. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "Catalog indexer: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Use pod throttling metric and queue lag",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use pod throttling metric and queue lag."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Ads bidder currently uses cooldown 0s for scale-in/out. First observed symptom: Pod churn and cache miss storms. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "Ads bidder: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Use fast scale-out + slower scale-in cooldown",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use fast scale-out + slower scale-in cooldown."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Realtime chat gateway currently uses autoscaling tied to connection count only. First observed symptom: Message latency rises without connection growth. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Realtime chat gateway: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Add send-queue lag and event-loop saturation signals"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Add send-queue lag and event-loop saturation signals."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Audit log pipeline currently uses scheduled floor absent before monthly close. First observed symptom: Backlog takes hours to recover. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Audit log pipeline: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Add calendar-based pre-scaling window",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Add calendar-based pre-scaling window."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "ML inference API currently uses model warmup 3 minutes. First observed symptom: Reactive scaling always late. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "ML inference API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Maintain warm pool and predictive bump",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Maintain warm pool and predictive bump."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "IoT ingest currently uses policy scales by average shard lag. First observed symptom: One partition hotspot explodes latency. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "IoT ingest: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Use max shard lag percentile and rebalance",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use max shard lag percentile and rebalance."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Recommendation API currently uses max replicas too low from old traffic. First observed symptom: SLO alerts during growth period. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Recommendation API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Raise cap with capacity test and alert on cap saturation"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Raise cap with capacity test and alert on cap saturation."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Billing worker currently uses scale trigger from retries included in input rate. First observed symptom: Retry storm causes runaway scale and DB overload. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Billing worker: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Scale on accepted work + queue age, not raw retries",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Scale on accepted work + queue age, not raw retries."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "OCR batch currently uses action API rate-limited. First observed symptom: Scale requests rejected during incident. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "OCR batch: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Batch scaling actions and backoff on control-plane errors",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Batch scaling actions and backoff on control-plane errors."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Map tile service currently uses startup probe too strict. First observed symptom: new pods killed before warm cache. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "Map tile service: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Tune startup/readiness before autoscaler tuning",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Tune startup/readiness before autoscaler tuning."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Email sender currently uses scale-in based on single low datapoint. First observed symptom: Transient dip removes too much capacity. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Email sender: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Require sustained low utilization window"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Require sustained low utilization window."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Compliance scanner currently uses single metric from delayed warehouse. First observed symptom: autoscaler reacts 5 minutes late. What is the primary diagnosis?",
+          "options": [
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior"
+          ],
+          "correct": 3,
+          "explanation": "Compliance scanner: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Use near-real-time queue telemetry",
+            "Lower observability retention and keep existing policy"
+          ],
+          "correct": 2,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Use near-real-time queue telemetry."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Order enrichment currently uses policy uses backlog per pod. First observed symptom: Added pods reduce metric while absolute backlog worsens. What is the primary diagnosis?",
+          "options": [
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently"
+          ],
+          "correct": 2,
+          "explanation": "Order enrichment: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Increase client retries and avoid policy updates",
+            "Include absolute backlog and oldest item age",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation"
+          ],
+          "correct": 1,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Include absolute backlog and oldest item age."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Feature extraction service currently uses no canary on new autoscaling policy. First observed symptom: Production oscillation after rollout. What is the primary diagnosis?",
+          "options": [
+            "Problem is unrelated to scaling and requires no policy change",
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity"
+          ],
+          "correct": 1,
+          "explanation": "Feature extraction service: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Canary policy on subset before full deployment",
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates"
+          ],
+          "correct": 0,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Canary policy on subset before full deployment."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Push notification API currently uses no distinction between scale causes. First observed symptom: Can’t explain thrash incidents. What is the primary diagnosis?",
+          "options": [
+            "Primary bottleneck signal and policy shape are mismatched for workload behavior",
+            "Autoscaling should be disabled permanently",
+            "The only issue is log verbosity",
+            "Problem is unrelated to scaling and requires no policy change"
+          ],
+          "correct": 0,
+          "explanation": "Push notification API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior."
+        },
+        {
+          "question": "After confirming diagnosis, which change is the strongest next step?",
+          "options": [
+            "Lower observability retention and keep existing policy",
+            "Force max replicas 24/7 without reevaluation",
+            "Increase client retries and avoid policy updates",
+            "Emit policy decision logs and reason codes for each action"
+          ],
+          "correct": 3,
+          "explanation": "Apply the change that directly addresses the measured failure mode: Emit policy decision logs and reason codes for each action."
+        }
+      ]
+    },
+    {
+      "id": "sc-as-061",
+      "type": "multi-select",
+      "question": "Which controls usually improve autoscaling stability? (Select all that apply)",
+      "options": [
+        "Separate thresholds for out/in (hysteresis)",
+        "Scale-in stabilization window",
+        "Trigger on every noisy sample with no smoothing",
+        "Bounded scale action size"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Hysteresis, stabilization, and bounded actions reduce oscillation."
+    },
+    {
+      "id": "sc-as-062",
+      "type": "multi-select",
+      "question": "Good scale-out signals for queue consumers include which? (Select all that apply)",
+      "options": [
+        "Oldest message age",
+        "Backlog depth",
+        "Queue throughput vs completion rate",
+        "Only deployment frequency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Backlog age/depth and completion dynamics capture true demand pressure."
+    },
+    {
+      "id": "sc-as-063",
+      "type": "multi-select",
+      "question": "When adding predictive autoscaling, what prerequisites matter? (Select all that apply)",
+      "options": [
+        "Recurring demand patterns",
+        "High-quality historical telemetry",
+        "Unknown random traffic with no seasonality",
+        "Fallback reactive policy"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Predictive control needs seasonality and reliable history, with reactive fallback."
+    },
+    {
+      "id": "sc-as-064",
+      "type": "multi-select",
+      "question": "Which are common causes of autoscaling thrash? (Select all that apply)",
+      "options": [
+        "No cooldowns",
+        "Noisy metrics without smoothing",
+        "Long-term stable baseline demand",
+        "Aggressive scale-in sensitivity"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Thrash usually comes from overreactive policies and noisy signals."
+    },
+    {
+      "id": "sc-as-065",
+      "type": "multi-select",
+      "question": "For safe scale-in, which practices are strong? (Select all that apply)",
+      "options": [
+        "Connection draining",
+        "In-flight work protection",
+        "Immediate hard termination of busy workers",
+        "Conservative step size"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Scale-in should preserve in-flight correctness and availability."
+    },
+    {
+      "id": "sc-as-066",
+      "type": "multi-select",
+      "question": "Autoscaling guardrails should typically include which? (Select all that apply)",
+      "options": [
+        "Minimum replica floor",
+        "Maximum replica cap",
+        "Decision reason logging",
+        "Unbounded action frequency"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Floors/caps and traceability are key guardrails."
+    },
+    {
+      "id": "sc-as-067",
+      "type": "multi-select",
+      "question": "Signals that CPU-only scaling is insufficient include which? (Select all that apply)",
+      "options": [
+        "Queue age rising while CPU is moderate",
+        "Tail latency spikes without CPU saturation",
+        "Uniform low latency under load",
+        "Dependency saturation despite added pods"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "These patterns show non-CPU bottlenecks or hidden contention."
+    },
+    {
+      "id": "sc-as-068",
+      "type": "multi-select",
+      "question": "Which are strong rollout practices for new autoscaling policies? (Select all that apply)",
+      "options": [
+        "Canary policy rollout",
+        "Predefined rollback triggers",
+        "Apply globally with no observation phase",
+        "Compare before/after SLO and cost"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Policy changes should be rolled out like code changes with guardrails."
+    },
+    {
+      "id": "sc-as-069",
+      "type": "multi-select",
+      "question": "For multi-tenant services, which scaling approaches help fairness? (Select all that apply)",
+      "options": [
+        "Tenant-aware backlog signals",
+        "Per-tenant admission limits",
+        "Single global mean metric only",
+        "Priority weights by business policy"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Tenant-aware control prevents noisy-neighbor starvation."
+    },
+    {
+      "id": "sc-as-070",
+      "type": "multi-select",
+      "question": "Which reasons justify scheduled pre-scaling? (Select all that apply)",
+      "options": [
+        "Known campaign launch time",
+        "Slow instance warmup",
+        "Completely random traffic",
+        "Strict morning latency SLO"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Known demand and warmup delay make proactive floor increases valuable."
+    },
+    {
+      "id": "sc-as-071",
+      "type": "multi-select",
+      "question": "Useful observability for autoscaling decisions includes which? (Select all that apply)",
+      "options": [
+        "Decision reason per scale event",
+        "Metric freshness/lag",
+        "Per-shard utilization distribution",
+        "Only aggregate daily averages"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "You need timely, granular telemetry and decision traceability."
+    },
+    {
+      "id": "sc-as-072",
+      "type": "multi-select",
+      "question": "Which factors should influence cooldown tuning? (Select all that apply)",
+      "options": [
+        "Metric noise level",
+        "Instance startup time",
+        "Workload burst duration",
+        "Team lunch schedule"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Cooldowns should align with control-loop dynamics and workload behavior."
+    },
+    {
+      "id": "sc-as-073",
+      "type": "multi-select",
+      "question": "Which outcomes indicate healthy autoscaling behavior? (Select all that apply)",
+      "options": [
+        "SLO maintained during spikes",
+        "Limited oscillation around steady demand",
+        "Frequent max-cap saturation with errors",
+        "Cost returns near baseline after peak"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Healthy loops protect SLO and recover cost after demand normalization."
+    },
+    {
+      "id": "sc-as-074",
+      "type": "multi-select",
+      "question": "When scaling queue workers, which anti-patterns should be avoided? (Select all that apply)",
+      "options": [
+        "Ignoring oldest message age",
+        "Scaling only on producer request rate",
+        "Accounting for completion throughput",
+        "Unlimited scale-out with fragile downstream"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Policies should follow real backlog pressure and downstream limits."
+    },
+    {
+      "id": "sc-as-075",
+      "type": "multi-select",
+      "question": "Which are valid reasons to keep a non-zero min replica count? (Select all that apply)",
+      "options": [
+        "Cold starts violate latency SLO",
+        "Frequent tiny traffic bursts",
+        "Guaranteed zero overnight traffic forever",
+        "Critical control-plane endpoints must stay warm"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Warm baseline avoids cold-start penalties on critical paths."
+    },
+    {
+      "id": "sc-as-076",
+      "type": "multi-select",
+      "question": "For dependency-aware autoscaling, which strategies are useful? (Select all that apply)",
+      "options": [
+        "Cap upstream scale based on downstream saturation",
+        "Incorporate dependency error rates as guardrails",
+        "Ignore downstream health completely",
+        "Throttle new work when downstream overloaded"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Upstream elasticity should respect downstream capacity to avoid cascading failures."
+    },
+    {
+      "id": "sc-as-077",
+      "type": "multi-select",
+      "question": "Which autoscaling policy errors often produce hidden cost waste? (Select all that apply)",
+      "options": [
+        "Too-low utilization target",
+        "Never scaling back in",
+        "No max cap ever",
+        "Post-peak right-sizing review"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Over-conservative targets and missing scale-in inflate spend."
+    },
+    {
+      "id": "sc-as-078",
+      "type": "numeric-input",
+      "question": "A queue receives 18,000 jobs/min. Each worker safely processes 150 jobs/min at target utilization. Minimum workers needed?",
+      "answer": 120,
+      "unit": "workers",
+      "tolerance": 0,
+      "explanation": "18,000 / 150 = 120 workers."
+    },
+    {
+      "id": "sc-as-079",
+      "type": "numeric-input",
+      "question": "A service runs 40 instances at 60% CPU. Traffic rises 50%, assuming linear CPU scaling. How many instances are needed to stay at 60% CPU?",
+      "answer": 60,
+      "unit": "instances",
+      "tolerance": 0.02,
+      "explanation": "Capacity must rise 1.5x, so 40 * 1.5 = 60 instances."
+    },
+    {
+      "id": "sc-as-080",
+      "type": "numeric-input",
+      "question": "Current backlog is 90,000 messages. Net drain rate after scale-out is 3,000 messages/min. Minutes to clear backlog?",
+      "answer": 30,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "90,000 / 3,000 = 30 minutes."
+    },
+    {
+      "id": "sc-as-081",
+      "type": "numeric-input",
+      "question": "Your autoscaler checks every 30s. A scale-in stabilization window is 8 minutes. How many evaluation periods must remain low before scale-in?",
+      "answer": 16,
+      "unit": "periods",
+      "tolerance": 0,
+      "explanation": "8 minutes is 480 seconds; 480 / 30 = 16 periods."
+    },
+    {
+      "id": "sc-as-082",
+      "type": "numeric-input",
+      "question": "Traffic baseline is 12k rps. Scheduled event adds 40% for 20 minutes. At safe 500 rps per instance, how many extra instances are needed during event?",
+      "answer": 10,
+      "unit": "instances",
+      "tolerance": 0.02,
+      "explanation": "Extra demand is 4,800 rps; 4,800 / 500 = 9.6, round to 10."
+    },
+    {
+      "id": "sc-as-083",
+      "type": "numeric-input",
+      "question": "Scale-out action adds 6 pods every minute. Starting from 24 pods, how many pods after 7 minutes if no scale-in?",
+      "answer": 66,
+      "unit": "pods",
+      "tolerance": 0,
+      "explanation": "24 + (6 * 7) = 66 pods."
+    },
+    {
+      "id": "sc-as-084",
+      "type": "numeric-input",
+      "question": "Max replicas is 80. Current replicas are 56. Policy requests +50%. How many replicas should be applied after cap?",
+      "answer": 80,
+      "unit": "replicas",
+      "tolerance": 0,
+      "explanation": "Requested 84 exceeds cap, so applied size is 80."
+    },
+    {
+      "id": "sc-as-085",
+      "type": "numeric-input",
+      "question": "Each new pod needs 90s warmup before full traffic. You pre-scale by 24 pods. Total warmup pod-seconds consumed?",
+      "answer": 2160,
+      "unit": "pod-seconds",
+      "tolerance": 0,
+      "explanation": "24 * 90 = 2,160 pod-seconds of warmup."
+    },
+    {
+      "id": "sc-as-086",
+      "type": "numeric-input",
+      "question": "At peak, queue age SLO is <= 120s. Observed age is 210s. By what percentage is age over SLO?",
+      "answer": 75,
+      "unit": "%",
+      "tolerance": 0.5,
+      "explanation": "(210-120)/120 = 0.75, so 75% over target."
+    },
+    {
+      "id": "sc-as-087",
+      "type": "numeric-input",
+      "question": "A policy keeps 30% headroom. Forecast peak is 52,000 rps. Required capacity target?",
+      "answer": 74285.71,
+      "unit": "rps",
+      "tolerance": 0.03,
+      "explanation": "Required capacity = 52,000 / 0.7 = 74,285.71 rps."
+    },
+    {
+      "id": "sc-as-088",
+      "type": "numeric-input",
+      "question": "Per-instance throughput is 900 rps at target. You need 18,000 rps and N+1 redundancy (one instance loss still meets target). Minimum instance count?",
+      "answer": 21,
+      "unit": "instances",
+      "tolerance": 0,
+      "explanation": "Need 20 active instances for 18,000 rps; with N+1, provision 21."
+    },
+    {
+      "id": "sc-as-089",
+      "type": "numeric-input",
+      "question": "Scale-to-zero saves $14/hour overnight for 10 hours, but causes morning incident costing $420. Net daily savings?",
+      "answer": -280,
+      "unit": "USD",
+      "tolerance": 0,
+      "explanation": "Savings 14*10 = 140; net = 140 - 420 = -280 (a loss)."
+    },
+    {
+      "id": "sc-as-090",
+      "type": "ordering",
+      "question": "Order a robust autoscaling implementation sequence.",
+      "items": [
+        "Identify bottleneck-aligned signals",
+        "Define guardrails (min/max, cooldowns)",
+        "Canary rollout policy",
+        "Evaluate SLO/cost and tune"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Start with correct signal, add safety, roll out safely, then iterate."
+    },
+    {
+      "id": "sc-as-091",
+      "type": "ordering",
+      "question": "Order scale-in safety steps for worker fleets.",
+      "items": [
+        "Mark worker draining",
+        "Stop assigning new jobs",
+        "Complete or checkpoint in-flight jobs",
+        "Terminate instance"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Drain before termination to preserve correctness."
+    },
+    {
+      "id": "sc-as-092",
+      "type": "ordering",
+      "question": "Order metrics from least to most direct for queue consumer saturation.",
+      "items": [
+        "Daily average request count",
+        "CPU utilization",
+        "Queue depth",
+        "Oldest message age"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Backlog age is the closest indicator of user-visible queue delay."
+    },
+    {
+      "id": "sc-as-093",
+      "type": "ordering",
+      "question": "Order autoscaling response speed from slowest to fastest.",
+      "items": [
+        "Manual ticket-based scaling",
+        "Scheduled scaling window",
+        "Reactive metric-based scaling",
+        "Event-driven trigger tied to queue spikes"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Automation and tighter triggers improve response speed."
+    },
+    {
+      "id": "sc-as-094",
+      "type": "ordering",
+      "question": "Order policy maturity from weakest to strongest.",
+      "items": [
+        "Single noisy metric with no cooldown",
+        "Single metric plus cooldown",
+        "Multi-signal with hysteresis",
+        "Multi-signal with guardrails, canary rollout, and audits"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity increases with better signals and operational safeguards."
+    },
+    {
+      "id": "sc-as-095",
+      "type": "ordering",
+      "question": "Order by increasing risk of cascading failure.",
+      "items": [
+        "Capped scale-out with dependency checks",
+        "Aggressive scale-out with no dependency cap",
+        "Unlimited retry storms plus unlimited scale-out",
+        "Force max replicas during downstream outage"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Unchecked amplification increases cascade risk."
+    },
+    {
+      "id": "sc-as-096",
+      "type": "ordering",
+      "question": "Order by best practice for handling predictable peaks.",
+      "items": [
+        "Do nothing until alerts fire",
+        "Reactive scaling only",
+        "Scheduled baseline plus reactive policy",
+        "Scheduled baseline plus warm pool plus reactive policy"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Add proactive controls as predictability and warmup costs increase."
+    },
+    {
+      "id": "sc-as-097",
+      "type": "ordering",
+      "question": "Order troubleshooting flow for autoscaling thrash.",
+      "items": [
+        "Confirm oscillation in replica history",
+        "Inspect trigger metric noise and delay",
+        "Adjust policy thresholds/cooldowns",
+        "Validate changes in canary then full rollout"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Diagnose first, then tune and validate safely."
+    },
+    {
+      "id": "sc-as-098",
+      "type": "ordering",
+      "question": "Order capacity controls from most cost-flexible to least.",
+      "items": [
+        "Target tracking with min/max bounds",
+        "Scheduled scaling bands",
+        "Manual periodic resizing",
+        "Fixed replica count"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Dynamic policy generally yields highest elasticity."
+    },
+    {
+      "id": "sc-as-099",
+      "type": "ordering",
+      "question": "Order from lowest to highest metric granularity for hotspot detection.",
+      "items": [
+        "Fleet-wide average CPU",
+        "AZ-level average CPU",
+        "Pod-level CPU percentile",
+        "Per-shard queue lag percentile"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Higher granularity reveals localized bottlenecks and skew."
+    },
+    {
+      "id": "sc-as-100",
+      "type": "ordering",
+      "question": "Order rollout steps for a new autoscaling metric.",
+      "items": [
+        "Shadow-measure metric without acting",
+        "Compare with current policy decisions",
+        "Enable action in limited canary scope",
+        "Promote to full fleet with rollback thresholds"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Observe first, then progressively enable control authority."
+    }
+  ]
+}

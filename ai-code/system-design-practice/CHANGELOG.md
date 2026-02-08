@@ -8,11 +8,12 @@
 - Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
 - Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
 
-## Unit 7: Scaling Compute (in progress — 300 problems so far)
+## Unit 7: Scaling Compute (in progress — 400 problems so far)
 
 1. Load Balancing Fundamentals (100 problems) — L4 vs L7 routing decisions, health-check strategy, connection draining, stickiness trade-offs, weighted balancing, fail-open/fail-closed behavior, and canary traffic controls
 2. Statelessness & Session Strategy (100 problems) — Session externalization, JWT vs opaque tokens, idempotency patterns, Redis session management, token refresh/revocation, CORS/cookie security, rate limiting state, saga patterns, connection pooling, graceful degradation
 3. Horizontal vs Vertical Scaling Decisions (100 problems) — Bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, scaling economics, blast-radius trade-offs, and phased scaling response strategy
+4. Autoscaling Signals & Policies (100 problems) — Target tracking, queue-depth and queue-age scaling, predictive vs reactive controls, hysteresis/cooldowns, dependency-aware guardrails, and thrash prevention under bursty demand
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed exact/near-duplicate scenario prompts and diversified two-stage operational contexts to reduce thematic saturation.
@@ -20,6 +21,8 @@
 - Chapter 2 review/fix pass completed: fixed arithmetic errors in 3 numeric problems, replaced 2 near-duplicate problems, clarified edge cases in refresh token calculations, added systems context to pure arithmetic problem.
 - Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`sc-hv-001` to `sc-hv-100`) and marked the chapter as ready in `config.js`.
 - Chapter 3 review/fix pass completed: replaced repetitive templated prompts with diversified bottleneck-driven scenarios, expanded unique multi-select/ordering/numeric trade-off coverage, and tightened two-stage diagnosis/action framing to reduce near-duplicate saturation.
+- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`sc-as-001` to `sc-as-100`) and marked the chapter as ready in `config.js`.
+- Chapter 4 review/fix pass completed: corrected strong answer-position bias in multiple-choice/two-stage items, diversified two-stage diagnosis-action framing, and tightened explanations to map directly to each scenario's failure mode.
 
 ## Unit 5 quality fixes (2026-02-07)
 

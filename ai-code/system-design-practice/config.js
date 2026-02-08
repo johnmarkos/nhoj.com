@@ -4,108 +4,121 @@
 // from the OpenQuizzer repo. This file and content/ are untouched.
 
 export const CONFIG = {
-  title: 'System Design Practice',
-  description: 'Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.',
-  backLink: { href: '../', text: '\u2190 Back to AI Code' },
+  title: "System Design Practice",
+  description:
+    "Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.",
+  backLink: { href: "../", text: "\u2190 Back to AI Code" },
   showProblemId: true,
   units: [
     {
       id: 1,
-      title: 'Estimation',
+      title: "Estimation",
       chapters: [
-        { num: 1, title: 'Reference Numbers', ready: true },
-        { num: 2, title: 'Time Math', ready: true },
-        { num: 3, title: 'Storage Math', ready: true },
-        { num: 4, title: 'Bandwidth Math', ready: true },
-        { num: 5, title: 'QPS & Load', ready: true },
-        { num: 6, title: 'Growth Projections', ready: true },
-        { num: 7, title: 'Reasonableness Checks', ready: true },
-        { num: 8, title: 'Compound Scenarios', ready: true }
-      ]
+        { num: 1, title: "Reference Numbers", ready: true },
+        { num: 2, title: "Time Math", ready: true },
+        { num: 3, title: "Storage Math", ready: true },
+        { num: 4, title: "Bandwidth Math", ready: true },
+        { num: 5, title: "QPS & Load", ready: true },
+        { num: 6, title: "Growth Projections", ready: true },
+        { num: 7, title: "Reasonableness Checks", ready: true },
+        { num: 8, title: "Compound Scenarios", ready: true },
+      ],
     },
     {
       id: 2,
-      title: 'Data Modeling',
+      title: "Data Modeling",
       chapters: [
-        { num: 1, title: 'Entity Identification', ready: true },
-        { num: 2, title: 'Relationships', ready: true },
-        { num: 3, title: 'Keys & Indexes', ready: true },
-        { num: 4, title: 'Normalization', ready: true },
-        { num: 5, title: 'Denormalization', ready: true },
-        { num: 6, title: 'Access Patterns', ready: true },
-        { num: 7, title: 'Schema Evolution', ready: true },
-        { num: 8, title: 'Modeling Scenarios', ready: true }
-      ]
+        { num: 1, title: "Entity Identification", ready: true },
+        { num: 2, title: "Relationships", ready: true },
+        { num: 3, title: "Keys & Indexes", ready: true },
+        { num: 4, title: "Normalization", ready: true },
+        { num: 5, title: "Denormalization", ready: true },
+        { num: 6, title: "Access Patterns", ready: true },
+        { num: 7, title: "Schema Evolution", ready: true },
+        { num: 8, title: "Modeling Scenarios", ready: true },
+      ],
     },
     {
       id: 3,
-      title: 'API Design',
+      title: "API Design",
       chapters: [
-        { num: 1, title: 'REST Fundamentals', ready: true },
-        { num: 2, title: 'API Modeling', ready: true },
-        { num: 3, title: 'Pagination & Filtering', ready: true },
-        { num: 4, title: 'Rate Limiting & Quotas', ready: true },
-        { num: 5, title: 'Versioning & Evolution', ready: true },
-        { num: 6, title: 'Error Handling', ready: true },
-        { num: 7, title: 'GraphQL & Alternatives', ready: true },
-        { num: 8, title: 'API Design Scenarios', ready: true }
-      ]
+        { num: 1, title: "REST Fundamentals", ready: true },
+        { num: 2, title: "API Modeling", ready: true },
+        { num: 3, title: "Pagination & Filtering", ready: true },
+        { num: 4, title: "Rate Limiting & Quotas", ready: true },
+        { num: 5, title: "Versioning & Evolution", ready: true },
+        { num: 6, title: "Error Handling", ready: true },
+        { num: 7, title: "GraphQL & Alternatives", ready: true },
+        { num: 8, title: "API Design Scenarios", ready: true },
+      ],
     },
     {
       id: 4,
-      title: 'Storage Selection',
+      title: "Storage Selection",
       chapters: [
-        { num: 1, title: 'Relational Databases', ready: true },
-        { num: 2, title: 'Document Stores', ready: true },
-        { num: 3, title: 'Key-Value Stores', ready: true },
-        { num: 4, title: 'Wide-Column & Time-Series', ready: true },
-        { num: 5, title: 'Graph & Search Engines', ready: true },
-        { num: 6, title: 'Object Storage', ready: true },
-        { num: 7, title: 'Hybrid Architectures', ready: true },
-        { num: 8, title: 'Storage Selection Scenarios', ready: true }
-      ]
+        { num: 1, title: "Relational Databases", ready: true },
+        { num: 2, title: "Document Stores", ready: true },
+        { num: 3, title: "Key-Value Stores", ready: true },
+        { num: 4, title: "Wide-Column & Time-Series", ready: true },
+        { num: 5, title: "Graph & Search Engines", ready: true },
+        { num: 6, title: "Object Storage", ready: true },
+        { num: 7, title: "Hybrid Architectures", ready: true },
+        { num: 8, title: "Storage Selection Scenarios", ready: true },
+      ],
     },
     {
       id: 5,
-      title: 'Caching',
+      title: "Caching",
       chapters: [
-        { num: 1, title: 'Cache Fundamentals', ready: true },
-        { num: 2, title: 'Cache Placement', ready: true },
-        { num: 3, title: 'Caching Strategies', ready: true },
-        { num: 4, title: 'TTLs & Expiration', ready: true },
-        { num: 5, title: 'Cache Invalidation', ready: true },
-        { num: 6, title: 'Eviction Policies', ready: true },
-        { num: 7, title: 'Distributed Caching', ready: true },
-        { num: 8, title: 'Caching Scenarios', ready: true }
-      ]
+        { num: 1, title: "Cache Fundamentals", ready: true },
+        { num: 2, title: "Cache Placement", ready: true },
+        { num: 3, title: "Caching Strategies", ready: true },
+        { num: 4, title: "TTLs & Expiration", ready: true },
+        { num: 5, title: "Cache Invalidation", ready: true },
+        { num: 6, title: "Eviction Policies", ready: true },
+        { num: 7, title: "Distributed Caching", ready: true },
+        { num: 8, title: "Caching Scenarios", ready: true },
+      ],
     },
     {
       id: 6,
-      title: 'Messaging & Async',
+      title: "Messaging & Async",
       chapters: [
-        { num: 1, title: 'Queue Fundamentals', ready: true },
-        { num: 2, title: 'Pub/Sub & Topics', ready: true },
-        { num: 3, title: 'Delivery Guarantees', ready: true },
-        { num: 4, title: 'Patterns & Reliability', ready: true },
-        { num: 5, title: 'Event-Driven Architecture', ready: true },
-        { num: 6, title: 'Stream Processing', ready: true },
-        { num: 7, title: 'Technology Selection', ready: true },
-        { num: 8, title: 'Messaging Scenarios', ready: true }
-      ]
+        { num: 1, title: "Queue Fundamentals", ready: true },
+        { num: 2, title: "Pub/Sub & Topics", ready: true },
+        { num: 3, title: "Delivery Guarantees", ready: true },
+        { num: 4, title: "Patterns & Reliability", ready: true },
+        { num: 5, title: "Event-Driven Architecture", ready: true },
+        { num: 6, title: "Stream Processing", ready: true },
+        { num: 7, title: "Technology Selection", ready: true },
+        { num: 8, title: "Messaging Scenarios", ready: true },
+      ],
     },
     {
       id: 7,
-      title: 'Scaling Compute',
+      title: "Scaling Compute",
       chapters: [
-        { num: 1, title: 'Load Balancing Fundamentals', ready: true },
-        { num: 2, title: 'Statelessness & Session Strategy', ready: true },
-        { num: 3, title: 'Horizontal vs Vertical Scaling Decisions', ready: true },
-        { num: 4, title: 'Autoscaling Signals & Policies', ready: false },
-        { num: 5, title: 'Hotspots, Sharding & Work Distribution', ready: false },
-        { num: 6, title: 'Multi-Region Compute Strategy', ready: false },
-        { num: 7, title: 'Compute Selection & Platform Trade-offs', ready: false },
-        { num: 8, title: 'Scaling Compute Scenarios', ready: false }
-      ]
-    }
-  ]
+        { num: 1, title: "Load Balancing Fundamentals", ready: true },
+        { num: 2, title: "Statelessness & Session Strategy", ready: true },
+        {
+          num: 3,
+          title: "Horizontal vs Vertical Scaling Decisions",
+          ready: true,
+        },
+        { num: 4, title: "Autoscaling Signals & Policies", ready: true },
+        {
+          num: 5,
+          title: "Hotspots, Sharding & Work Distribution",
+          ready: false,
+        },
+        { num: 6, title: "Multi-Region Compute Strategy", ready: false },
+        {
+          num: 7,
+          title: "Compute Selection & Platform Trade-offs",
+          ready: false,
+        },
+        { num: 8, title: "Scaling Compute Scenarios", ready: false },
+      ],
+    },
+  ],
 };
