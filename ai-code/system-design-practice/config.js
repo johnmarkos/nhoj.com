@@ -98,7 +98,7 @@ export const CONFIG = {
       title: 'Scaling Compute',
       chapters: [
         { num: 1, title: 'Load Balancing Fundamentals', ready: true },
-        { num: 2, title: 'Statelessness & Session Strategy', ready: false },
+        { num: 2, title: 'Statelessness & Session Strategy', ready: true },
         { num: 3, title: 'Horizontal vs Vertical Scaling Decisions', ready: false },
         { num: 4, title: 'Autoscaling Signals & Policies', ready: false },
         { num: 5, title: 'Hotspots, Sharding & Work Distribution', ready: false },

@@ -15,9 +15,7 @@
   - [x] Chapter 1: Load Balancing Fundamentals — 100 problems (L4/L7 routing, health checks, drain/failover behavior, stickiness, weighted policies, canary controls)
   Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
   Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
-  - [ ] Chapter 2: Statelessness & Session Strategy
-    Scope: Designing services for horizontal scale by externalizing state and handling user/session context safely.
-    Key concepts: stateless app tiers, session stores, token-based auth, idempotent handlers, cache/session consistency.
+  - [x] Chapter 2: Statelessness & Session Strategy — 100 problems (session externalization, JWT vs opaque tokens, idempotency, Redis management, token refresh/revocation, CORS/cookie security, rate limiting, saga patterns)
   - [ ] Chapter 3: Horizontal vs Vertical Scaling Decisions
     Scope: Capacity planning and architectural trade-offs between bigger nodes and more nodes across workloads.
     Key concepts: bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, cost curves.

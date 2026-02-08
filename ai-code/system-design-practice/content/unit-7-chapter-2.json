@@ -1,0 +1,1523 @@
+{
+  "unit": 7,
+  "unitTitle": "Scaling Compute",
+  "chapter": 2,
+  "chapterTitle": "Statelessness & Session Strategy",
+  "chapterDescription": "Designing services for horizontal scale by externalizing state and handling user/session context safely.",
+  "problems": [
+    {
+      "id": "sc-ss-001",
+      "type": "multiple-choice",
+      "question": "A payment processing service stores pending transaction state in-memory on each application server instance. During a deployment, users report seeing duplicate charges. What is the root cause?",
+      "options": [
+        "The database is not ACID-compliant and allows duplicate writes",
+        "Stateful servers lose in-memory transaction records during rolling restarts, causing clients to retry from scratch",
+        "The load balancer is not using consistent hashing to route retries",
+        "JWT tokens are being shared across multiple browser tabs"
+      ],
+      "correct": 1,
+      "explanation": "When transaction state lives only in memory on app servers, a rolling deployment kills those servers and loses that state. Clients timeout and retry the payment request, but the new server has no record of the in-progress transaction, so it processes it again. The fix is to externalize transaction state to a durable store (database, Redis) so retries can be detected via idempotency keys. Option A is incorrect—ACID compliance doesn't prevent application-level retries from creating duplicates. Option C is wrong because consistent hashing only helps route to the same server; it doesn't solve the problem when that server is killed. Option D is irrelevant to duplicate charges."
+    },
+    {
+      "id": "sc-ss-002",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your e-commerce API currently stores user shopping carts in server memory (HashMap). You need to scale from 4 to 40 servers. What is the primary problem with the current approach?",
+          "options": [
+            "Memory usage will increase 10x and cause out-of-memory errors",
+            "Each server holds different cart state, so users see different carts depending on which server they hit",
+            "HashMaps are not thread-safe and will cause race conditions",
+            "Shopping carts will be lost when servers restart, but this is acceptable for carts"
+          ],
+          "correct": 1,
+          "explanation": "With in-memory state and no sticky sessions, each user request can land on a different server via the load balancer. Server A has their cart with 3 items, but the next request goes to server B which has no record of that cart. The user experience breaks. Option A is wrong—memory per server doesn't change. Option C is a concern but not the primary scaling issue. Option D understates the severity—losing carts frustrates users and kills conversions."
+        },
+        {
+          "question": "The team decides to externalize cart state. Which storage choice provides the best balance of performance and operational simplicity for this use case?",
+          "options": [
+            "PostgreSQL with a carts table, using user_id as the primary key",
+            "Redis with TTL-based expiration for abandoned carts",
+            "S3 with one JSON file per cart, indexed by user_id",
+            "Signed cookies storing the full cart contents client-side"
+          ],
+          "correct": 1,
+          "explanation": "Redis is purpose-built for session/cache data: sub-millisecond latency, automatic TTL expiration for abandoned carts, simple key-value model (user_id → cart JSON). Option A works but adds unnecessary operational overhead (schema migrations, vacuuming, backup complexity) for ephemeral data. Option C has terrible performance (S3 is object storage, not a KV store; high latency, eventual consistency). Option D has size limits (cookies ~4KB), security issues (tampering), and sends cart data on every request (bandwidth waste)."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-003",
+      "type": "multiple-choice",
+      "question": "A video streaming service uses JWT tokens for authentication. After discovering a security breach, the team needs to immediately revoke all tokens issued before a certain timestamp. What is the fundamental limitation they will encounter?",
+      "options": [
+        "JWT libraries do not support timestamp-based validation, only expiration checks",
+        "JWTs are stateless and self-contained; the service cannot invalidate them without introducing a server-side revocation list",
+        "JWT signatures use asymmetric cryptography which cannot be rotated without re-issuing all tokens",
+        "The 'iat' (issued-at) claim is optional in JWT spec and may not be present in existing tokens"
+      ],
+      "correct": 1,
+      "explanation": "JWTs are designed to be stateless—any server can verify them using only the signing key, with no database lookup. This is both their strength (scale, performance) and weakness (no server-side revocation). To revoke tokens by timestamp, you must add a server-side check (Redis set of revoked token IDs, or database of min-valid-iat per user), which defeats the statelessness benefit. Option A is incorrect—libraries support custom claim validation. Option C is wrong—you can rotate signing keys (old tokens fail verification), but this doesn't help with selective revocation by timestamp. Option D is misleading—'iat' is standard and widely implemented, though even if present, you still need server-side state to enforce the cutoff."
+    },
+    {
+      "id": "sc-ss-004",
+      "type": "multi-select",
+      "question": "A ride-sharing app is migrating from server-side sessions (stored in PostgreSQL) to JWT tokens. Select all valid concerns the team should address:",
+      "options": [
+        "JWT tokens cannot be updated server-side; to change user roles or permissions, clients must fetch a new token",
+        "JWT tokens are larger than session IDs, increasing bandwidth on every request",
+        "JWT tokens can be decoded by clients, potentially exposing sensitive user data if not designed carefully",
+        "JWT tokens require HTTPS; session IDs work fine over HTTP"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Option A is correct—JWTs are immutable once issued. If a user's role changes (e.g., driver approved), the token still has the old role until it expires or the client refreshes it. This is a key tradeoff vs. opaque session IDs (server lookup always sees latest state). Option B is correct—a JWT might be 200–800 bytes vs. a 32-byte session ID, sent in every request header. Option C is correct—JWTs are base64-encoded (not encrypted) JSON. Anyone can decode them. Don't put SSNs, passwords, or PII in claims. Option D is wrong—BOTH require HTTPS in production. Sending session IDs over HTTP allows session hijacking just like JWTs."
+    },
+    {
+      "id": "sc-ss-005",
+      "type": "numeric-input",
+      "question": "Your API uses JWT tokens with a 1-hour expiration. During a security incident, you add a Redis-based revocation list that checks every request. The Redis cluster has 5ms p99 latency. Before the change, API p99 latency was 45ms. Assuming the Redis check is on the critical path and adds directly to latency, what is the new approximate p99 latency in milliseconds?",
+      "answer": 50,
+      "unit": "ms",
+      "tolerance": 0.1,
+      "explanation": "The Redis check is synchronous and on the critical path (must check revocation before proceeding). At p99, it adds 5ms to the existing 45ms baseline, yielding ~50ms. This illustrates the cost of adding server-side state to a stateless JWT system—you lose some of the performance benefits. In practice, you'd optimize this with local caching of the revocation list (check local cache first, fallback to Redis), accept slightly stale revocations (cache for 10 seconds), or use bloom filters."
+    },
+    {
+      "id": "sc-ss-006",
+      "type": "ordering",
+      "question": "A team is designing session management for a new web application. Rank these approaches from MOST stateless (easiest to horizontally scale) to LEAST stateless:",
+      "items": [
+        "Signed JWT tokens with all user context in claims, verified locally by each app server",
+        "Opaque session IDs stored in Redis, app servers fetch session data on each request",
+        "Opaque session IDs stored in PostgreSQL, app servers fetch session data on each request",
+        "Server-side sessions stored in application memory with sticky sessions (load balancer pins users to servers)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Most stateless (0): JWT tokens require zero coordination between servers—each verifies independently. Perfectly stateless. Next (1): Redis-backed sessions require a fast external lookup but any server can handle any request. Still horizontally scalable, just one dependency. Next (2): PostgreSQL sessions are similar to Redis but slower (disk-based, heavier protocol). Still stateless from app perspective but worse performance. Least stateless (3): Sticky sessions tie users to specific servers. If that server dies, session is lost. Scaling requires careful load balancer config. Server restarts disrupt users. Hardest to operate at scale."
+    },
+    {
+      "id": "sc-ss-007",
+      "type": "multiple-choice",
+      "question": "An API receives duplicate POST requests due to client retries. The current implementation generates a new order ID on each request, causing duplicate orders. What is the standard pattern to make this endpoint idempotent?",
+      "options": [
+        "Add a unique idempotency key (client-generated UUID) to the request; deduplicate by storing keys in a cache/database",
+        "Use HTTP 409 Conflict response to tell clients they already placed the order",
+        "Switch from POST to PUT and use the order ID as the URL path",
+        "Add a database constraint on user_id + timestamp to prevent duplicate orders within the same second"
+      ],
+      "correct": 0,
+      "explanation": "Idempotency keys are the industry-standard solution (used by Stripe, AWS, etc.). The client generates a unique key (UUID) and sends it with each request. The server stores this key and the result (order ID). If the same key arrives again (retry), return the original order ID instead of creating a new one. Option B is reactive—it doesn't prevent the duplicate, just reports it. Option C doesn't help—PUT requires the client to provide the order ID, but the problem is the client doesn't have it yet (it's generated server-side). Option D is fragile—two legitimate orders from the same user in the same second would fail, and retries delayed by >1 second would still create duplicates."
+    },
+    {
+      "id": "sc-ss-008",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A microservices system uses opaque session tokens stored in Redis (1 hour TTL). Users report being randomly logged out before the hour expires. Engineers discover Redis eviction policy is 'allkeys-lru'. What is the root cause?",
+          "options": [
+            "Redis is running out of memory and evicting session keys before their TTL expires to free space",
+            "The TTL is not being refreshed on each request, so sessions expire exactly 1 hour after creation even if actively used",
+            "The load balancer is not sending keep-alive requests to Redis, causing idle connections to drop sessions",
+            "Multiple app servers are overwriting each other's session data due to race conditions"
+          ],
+          "correct": 0,
+          "explanation": "'allkeys-lru' means Redis will evict ANY key (even those with TTL remaining) when memory is full, choosing the least-recently-used. If Redis is undersized, active sessions get evicted to make room for new data (other cache entries, new sessions). Users are logged out mid-session. Option B is a design issue but doesn't explain RANDOM logouts (would be consistent 1-hour expiry). Option C is nonsense—HTTP connections to Redis don't affect stored keys. Option D would cause session corruption, not logouts."
+        },
+        {
+          "question": "What is the best fix to prevent session eviction while maintaining memory safety?",
+          "options": [
+            "Switch Redis eviction policy to 'noeviction' so it never evicts keys, and scale Redis memory to handle peak load",
+            "Use 'volatile-lru' eviction policy so only keys with TTL set can be evicted, and store sessions without TTL",
+            "Use 'volatile-ttl' eviction policy so Redis evicts keys closest to expiration first, preserving newer sessions",
+            "Move sessions to a separate Redis instance with 'noeviction' policy, keep cache data in the original instance with 'allkeys-lru'"
+          ],
+          "correct": 3,
+          "explanation": "Separate Redis instances (or databases) for sessions vs. cache is the best practice. Sessions are critical and should NEVER be evicted before TTL (use 'noeviction' and scale memory to fit). Cache data is ephemeral and can tolerate LRU eviction. Option A is risky—'noeviction' on a shared instance means cache writes fail when full, potentially breaking features. Option B is backwards—sessions MUST have TTL for security (expired sessions should disappear). Storing sessions without TTL would leak memory and keep old sessions forever. Option C (volatile-ttl) still evicts sessions, just in a different order—doesn't solve the problem."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-009",
+      "type": "multi-select",
+      "question": "A team is implementing session management with Redis. Select all design decisions that improve fault tolerance:",
+      "options": [
+        "Use Redis Sentinel or Cluster mode with automatic failover to survive single-node failures",
+        "Store sessions in Redis with SETEX (atomic set + expiration) to avoid race conditions between SET and EXPIRE",
+        "Configure app servers to gracefully degrade by allowing limited functionality without sessions if Redis is unavailable",
+        "Use Redis pipelining to batch session reads/writes and reduce network round-trips"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Option A is correct—Sentinel (for master-replica setups) or Cluster mode provides automatic failover. If the master dies, a replica is promoted and service continues with minimal downtime. Option B is a correctness improvement (prevents race conditions) but not fault tolerance—if Redis fails, SETEX doesn't help. Option C is correct—graceful degradation means the app stays partially functional when Redis is down (e.g., allow read-only access, or allow anonymous browsing but block writes). Better than a total outage. Option D improves performance (throughput, latency) but not fault tolerance—pipelining doesn't help if Redis is unavailable."
+    },
+    {
+      "id": "sc-ss-010",
+      "type": "multiple-choice",
+      "question": "A stateless API uses JWTs for authentication. During a rolling deployment, some servers have new code that expects a new 'plan_tier' claim in the token, while old servers do not. Users who logged in before the deployment get tokens without this claim. What happens?",
+      "options": [
+        "Old servers accept the tokens; new servers reject them as invalid, causing intermittent 401 errors until users re-authenticate",
+        "Both old and new servers accept the tokens; new servers see the claim as missing and must handle it gracefully (default value or error)",
+        "The JWT signature becomes invalid because claims were added, causing all servers to reject the token",
+        "The load balancer automatically routes users with old tokens to old servers and new tokens to new servers"
+      ],
+      "correct": 1,
+      "explanation": "JWTs don't inherently reject tokens for missing claims—the signature is still valid. New servers will decode the token successfully but find 'plan_tier' is absent. The code must handle this gracefully (default to free tier, return an error, prompt re-login, etc.). This is a common deployment challenge with JWTs—you can't update existing tokens, so code must tolerate old token formats during migrations. Option A is wrong—missing claims don't invalidate signatures. Option C is wrong—signatures validate the claims that ARE present; adding/removing claims in the issuer doesn't break old tokens. Option D is fantasy—load balancers don't inspect JWT contents."
+    },
+    {
+      "id": "sc-ss-011",
+      "type": "numeric-input",
+      "question": "Your API issues JWT tokens with 24-hour expiration. You store a revocation list in Redis with TTL matching token expiration. If your system issues 500 tokens per second and each revocation entry is 100 bytes, what is the steady-state memory usage for the revocation list in gigabytes? (Assume all tokens are eventually revoked.)",
+      "answer": 4.32,
+      "unit": "GB",
+      "tolerance": 0.15,
+      "explanation": "Tokens are valid for 24 hours = 86,400 seconds. At 500 tokens/sec, you have 500 * 86,400 = 43,200,000 tokens alive at any moment. If all are revoked and stored, that's 43,200,000 * 100 bytes = 4,320,000,000 bytes = 4.32 GB. This illustrates the cost of adding revocation to stateless tokens—you need enough memory to hold the full set of active tokens. In practice, you'd only revoke a small subset (compromised accounts, logout events), making the actual footprint much smaller."
+    },
+    {
+      "id": "sc-ss-012",
+      "type": "multiple-choice",
+      "question": "A video conferencing platform stores active call state (participants, video streams) in memory on each server. The team wants to enable mid-call server migration so deployments don't drop calls. What is the most practical approach?",
+      "options": [
+        "Externalize call state to Redis so any server can pick up the call after migration",
+        "Use sticky sessions with connection draining: new calls go to new servers, existing calls finish on old servers before shutdown",
+        "Implement live VM migration to move the entire server instance to new hardware without restarting",
+        "Store call state in a distributed database like Cassandra for low-latency multi-datacenter access"
+      ],
+      "correct": 1,
+      "explanation": "For real-time media (WebRTC, video streams), externalizing state is often impractical—the overhead of serializing/deserializing media state and coordinating stream buffers would add unacceptable latency. Sticky sessions + connection draining is the industry standard: new calls route to updated servers, existing calls stay on old servers, and you wait (drain period) for calls to naturally end before killing old servers. This avoids mid-call disruption. Option A sounds clean but is complex for media state (stream buffers, codec state, peer connections). Option C (live migration) is rare and requires special infrastructure (e.g., VMware vMotion)—overkill for most deployments. Option D (Cassandra) has 10–100ms latency, far too high for real-time media (need <10ms)."
+    },
+    {
+      "id": "sc-ss-013",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "An e-commerce site uses signed cookies to store user shopping carts (items, quantities, prices). A security researcher discovers they can edit the cookie to change item prices before checkout. What is the root cause?",
+          "options": [
+            "The cookie signature algorithm (HMAC-SHA256) is weak and can be forged by attackers",
+            "The application is not validating the signature on incoming cookies, only generating it on outgoing cookies",
+            "Cookies are signed but not encrypted, so users can see the plaintext data, but tampering should still be detected by signature validation",
+            "The signing key is hardcoded in the application and was leaked in a GitHub commit"
+          ],
+          "correct": 1,
+          "explanation": "Signed cookies prove integrity (data wasn't tampered with) but only if the application actually checks the signature on every request. Many frameworks generate signatures by default but developers forget to validate them. If the researcher can modify prices, the app isn't validating. Option A is wrong—HMAC-SHA256 is cryptographically strong. Option C is misleading—yes, cookies are visible (base64-encoded), but the signature should prevent tampering IF validated. Option D could happen but the question states the researcher CAN change prices, meaning signature checks aren't happening (even with the correct key, validation is missing)."
+        },
+        {
+          "question": "The team fixes the signature validation bug. They also want to prevent users from seeing prices in the cookie (to avoid anchoring/confusion). What is the best approach?",
+          "options": [
+            "Encrypt the cookie with AES-256 using a server-side secret key, then sign the encrypted payload",
+            "Remove prices from the cookie; store only item IDs and quantities, and re-fetch current prices from the database at checkout",
+            "Use base64 encoding to obfuscate the JSON before signing, making it less human-readable",
+            "Store the cart in Redis instead of cookies, using a session ID cookie (signed but not encrypted)"
+          ],
+          "correct": 1,
+          "explanation": "Never store prices client-side, even encrypted—always re-fetch from the server at checkout. Prices can change (sales, inventory adjustments) and you don't want stale data. Option A (encrypt + sign) works technically but is overkill and still has the stale price problem. Option B is the correct pattern: cookies hold item IDs/quantities (user intent), server holds source-of-truth prices. Option C is security through obscurity (base64 is trivially decoded) and doesn't solve the stale price issue. Option D (Redis) is fine but doesn't address the specific concern about client-visible prices—it's changing the architecture rather than fixing the data model."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-014",
+      "type": "ordering",
+      "question": "A team is debugging intermittent session loss during deployments. Rank these debugging steps in the most logical order to isolate the root cause:",
+      "items": [
+        "Check if session store (Redis/database) is healthy and not evicting keys prematurely",
+        "Inspect application code to ensure session TTL is being refreshed on each request",
+        "Verify that the load balancer is correctly distributing traffic and not black-holing requests to terminated servers",
+        "Review deployment logs to confirm rolling deployment is waiting for connection draining before killing servers"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Start with the session store (0)—if Redis is evicting keys or the database is unavailable, sessions will be lost regardless of deployment strategy. Next (1), check if the app is refreshing TTLs—if sessions expire after 1 hour even during active use, that's a logic bug. Then (2), verify load balancer behavior—ensure it's not sending traffic to dead servers (would cause some requests to fail/timeout). Finally (3), review deployment process—connection draining issues would cause abrupt session loss only during deployments, not intermittent issues during normal operation. This order goes from most fundamental (data store health) to deployment-specific concerns."
+    },
+    {
+      "id": "sc-ss-015",
+      "type": "multi-select",
+      "question": "A financial services API uses opaque session tokens stored in PostgreSQL. During a traffic spike, database CPU hits 100% and session lookups start timing out, causing authentication failures. Select all viable short-term mitigations:",
+      "options": [
+        "Add a read replica and route session reads to it, keeping writes on the primary",
+        "Introduce a Redis cache layer in front of PostgreSQL (write-through or write-behind) to absorb read load",
+        "Switch to JWT tokens immediately to eliminate database lookups",
+        "Increase session TTL from 1 hour to 24 hours to reduce the rate of new session writes"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "Option A is correct—read replicas can handle session reads (assuming eventual consistency is acceptable, or use synchronous replication for strong consistency). This offloads the primary. Option B is correct—Redis in front of PostgreSQL is a classic caching pattern. Cache session data in Redis (TTL = session TTL), fall back to PostgreSQL on cache miss. Dramatically reduces database load. Option C is wrong as a short-term fix—migrating to JWTs requires re-architecting authentication, updating all clients, handling token refresh, etc. This is weeks of work, not a spike mitigation. Option D is counterproductive—longer TTLs mean MORE sessions active simultaneously (more data in the database), worsening memory/CPU pressure. It also degrades security (stale sessions live longer)."
+    },
+    {
+      "id": "sc-ss-016",
+      "type": "multiple-choice",
+      "question": "A real-time chat application stores user presence status (online/offline) in Redis with a 10-second TTL, refreshed by heartbeat requests from clients. During a Redis failover (master dies, replica promoted), all users appear offline for ~30 seconds. Why?",
+      "options": [
+        "The replica was asynchronously replicated and lost the last 30 seconds of heartbeat writes before the master died",
+        "Redis Sentinel took 30 seconds to detect the master failure and promote the replica",
+        "The application servers were still trying to connect to the old master IP and timed out before discovering the new master",
+        "TTL timers were reset during the failover, causing all keys to expire and require fresh heartbeats"
+      ],
+      "correct": 2,
+      "explanation": "The most common cause of 30-second outages during Redis failover is client-side reconnection logic. Sentinel typically detects failure and promotes a replica in <10 seconds, but app servers using old client libraries or manual connection management may not discover the new master immediately. They retry the old master IP, timeout after 10–30 seconds, then query Sentinel for the new master. During this window, heartbeat writes fail and TTLs expire, marking users offline. Option A is possible but wouldn't explain a uniform 30-second delay (async replication lag is usually <1 second). Option B is too slow—Sentinel failover is typically 5–15 seconds. Option D is incorrect—Redis doesn't reset TTLs during failover; keys age normally."
+    },
+    {
+      "id": "sc-ss-017",
+      "type": "numeric-input",
+      "question": "Your session store is Redis with 10ms p99 latency. Each API request validates a session (1 Redis GET) and updates activity timestamp (1 Redis SET). The rest of the API logic takes 30ms. What is the total p99 latency for an API request in milliseconds?",
+      "answer": 50,
+      "unit": "ms",
+      "tolerance": 0.1,
+      "explanation": "Two Redis operations (GET + SET), each 10ms at p99, plus 30ms application logic = 10 + 10 + 30 = 50ms total. This assumes the Redis operations are sequential (can't be parallelized because the GET must happen before the SET, and both are on the critical path). This illustrates why session store latency matters—each request pays this tax. To optimize, you could pipeline the GET and SET (2ms savings if they're independent), use local caching for session reads (skip GET if cached), or batch the SET (only update timestamp once per 10 seconds, not every request)."
+    },
+    {
+      "id": "sc-ss-018",
+      "type": "multiple-choice",
+      "question": "A microservices platform uses JWTs with a 1-hour expiration. A service needs to call another service on behalf of the user (service-to-service call). What is the recommended approach for passing authentication context?",
+      "options": [
+        "Forward the original user JWT to the downstream service; it can validate the token independently",
+        "Generate a new short-lived JWT (5 minutes) scoped to the downstream service using a service account, and include the original user ID as a claim",
+        "Use mutual TLS (mTLS) between services; authentication context is implicit in the certificate",
+        "Store the user's session in a shared Redis instance that both services can access"
+      ],
+      "correct": 1,
+      "explanation": "Forwarding user JWTs (option A) works but has risks: (1) downstream services gain full user privileges (over-privileged), (2) tokens have long TTL (1 hour), so a leaked token is dangerous, (3) harder to audit (which service made the call?). Option B is the best practice—generate a new short-lived token with minimal scope (principle of least privilege). Include user context (user ID) but don't grant full user permissions. Option C (mTLS) authenticates the calling SERVICE but doesn't carry user context—you'd need to pass user ID separately, and now you're reinventing tokens. Option D (shared Redis) couples services tightly (both must know session schema, Redis location) and doesn't scale across trust boundaries (multi-tenant, partner APIs)."
+    },
+    {
+      "id": "sc-ss-019",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS application stores user sessions in a PostgreSQL table with columns: session_id (PK), user_id, created_at, expires_at, data (JSONB). After 2 years, the table has 50 million rows (mostly expired sessions). Session lookups are slow. What is the root cause?",
+          "options": [
+            "PostgreSQL cannot efficiently index JSONB columns, so queries scan the entire table",
+            "The table is bloated with expired sessions; even though there's an index on session_id, the table scan to check expires_at is slow",
+            "The session_id index is not being used because PostgreSQL query planner chooses a sequential scan for large tables",
+            "JSONB data is stored out-of-line (TOAST) and requires extra disk I/O to fetch"
+          ],
+          "correct": 1,
+          "explanation": "The query is likely 'SELECT * FROM sessions WHERE session_id = ? AND expires_at > now()'. The index on session_id finds the row quickly, but the table bloat (50M rows, mostly dead) causes poor cache hit rates and bloated pages. Even though only a small fraction of sessions are active, the physical table is huge. PostgreSQL's MVCC keeps dead rows until VACUUM reclaims them. Option A is wrong—JSONB can be indexed (GIN indexes), and the query doesn't filter on JSONB. Option C is wrong—the index on session_id (primary key) will be used for point lookups. Option D is possible but secondary—TOAST overhead exists but isn't the main issue."
+        },
+        {
+          "question": "What is the best long-term solution to keep the sessions table performant?",
+          "options": [
+            "Add a VACUUM FULL job that runs weekly to reclaim space from expired sessions",
+            "Partition the table by created_at (monthly partitions) and drop old partitions instead of deleting rows",
+            "Run a nightly cron job to DELETE expired sessions and VACUUM the table",
+            "Migrate to Redis and only use PostgreSQL for long-term session archival"
+          ],
+          "correct": 1,
+          "explanation": "Partitioning by time (created_at) is the best approach for time-series data like sessions. Each month gets a partition; when a partition is fully expired (e.g., sessions from January, now March), you DROP the partition. This is instant (vs. DELETE which scans and creates bloat) and reclaims space immediately. Option A (VACUUM FULL) locks the table and rewrites it—too disruptive for a live production table. Option C (nightly DELETE) is okay but still creates bloat and requires VACUUM; it's a bandaid. Option D (Redis) is good for active sessions but doesn't address the historical data problem—if you need to keep expired sessions for audit/compliance, you'd still have the PostgreSQL problem."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-020",
+      "type": "multi-select",
+      "question": "A team is designing idempotent API handlers for payment processing. Select all correct statements about idempotency key design:",
+      "options": [
+        "Idempotency keys should be scoped per user to prevent one user from replaying another user's requests",
+        "The server should generate idempotency keys and return them to the client to use in retries",
+        "Idempotency keys should expire after a reasonable time window (e.g., 24 hours) to avoid unbounded storage growth",
+        "If two requests have the same idempotency key but different request payloads (e.g., different amounts), the server should reject the second request as invalid"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Option A is correct—scope keys per user (or account) so 'key=abc' for User 1 is different from 'key=abc' for User 2. Prevents cross-user replay. Option B is wrong—the CLIENT must generate idempotency keys (UUIDs) before making the request, so retries use the same key. If the server generates it, the client doesn't have it during the first request. Option C is correct—keys should expire (TTL) to avoid storing them forever. After 24 hours, it's safe to assume retries won't happen (client gave up or succeeded). Option D is correct—if the same key arrives with different payloads, it's either a client bug or malicious. Reject it to avoid silent data corruption (e.g., charging a different amount than intended)."
+    },
+    {
+      "id": "sc-ss-021",
+      "type": "multiple-choice",
+      "question": "A mobile app uses JWTs for authentication. The product team wants to add a feature: 'Log out from all devices'. What is the most practical implementation?",
+      "options": [
+        "Add a 'logout_at' timestamp to the user record in the database; each request validates that the token's 'iat' (issued-at) is after 'logout_at'",
+        "Rotate the JWT signing key when the user clicks 'log out'; all existing tokens become invalid",
+        "Store all issued JWTs in a database; when the user logs out, delete all their tokens",
+        "Reduce the JWT expiration to 5 minutes and rely on refresh tokens; revoke all refresh tokens on 'log out from all devices'"
+      ],
+      "correct": 0,
+      "explanation": "Option A is the standard pattern: store a 'logout_at' or 'min_valid_iat' timestamp per user. On each request, check token.iat > user.logout_at. This requires a database lookup (defeating some JWT statelessness) but is simple and scoped to the user. Option B is a nuclear option—rotating the global signing key invalidates ALL users' tokens, not just one user. Option C defeats the purpose of JWTs (you're storing them all anyway) and doesn't scale (if tokens are long-lived, the table grows unbounded). Option D is the best alternative if you're already using refresh tokens—short-lived access tokens (5 min) + long-lived refresh tokens (30 days). Revoke all refresh tokens for the user, and access tokens expire quickly on their own."
+    },
+    {
+      "id": "sc-ss-022",
+      "type": "ordering",
+      "question": "A team is migrating from sticky sessions (in-memory state) to shared Redis sessions. Rank these migration steps in the safest order to minimize user disruption:",
+      "items": [
+        "Deploy code that writes sessions to BOTH memory and Redis (dual-write) but still reads from memory",
+        "Monitor Redis performance (latency, error rate) and ensure it's stable under production load",
+        "Deploy code that writes to Redis and reads from Redis, with fallback to memory if Redis key is missing",
+        "Deploy code that writes and reads exclusively from Redis; remove in-memory session code"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Safest migration: (0) Start dual-writing to both memory and Redis (no behavioral change for users; sessions still in memory, but Redis is populated). (1) Monitor Redis to ensure it handles the write load without errors. (2) Switch reads to Redis with fallback to memory—this validates Redis is working, but if Redis fails, you fall back gracefully. (3) Finally, remove memory code entirely once you're confident Redis is stable. This is a classic 'expand-contract' migration: expand to both systems, validate, then contract to the new system. Reversing the order (reading from Redis first without dual-write) would cause session loss for existing users."
+    },
+    {
+      "id": "sc-ss-023",
+      "type": "numeric-input",
+      "question": "Your application uses Redis for session storage. Each session is 2 KB. You have 5 million concurrent users. What is the minimum Redis memory required to store all sessions in gigabytes? (Ignore overhead from data structures and metadata.)",
+      "answer": 9.77,
+      "unit": "GB",
+      "tolerance": 0.15,
+      "explanation": "5 million users x 2 KB/user = 10,000,000 KB = 10,000 MB. Converting to GiB: 10,000 / 1024 = ~9.77 GiB. This illustrates the memory footprint of session storage—at scale, you need substantial RAM. Options to reduce: compress session data (e.g., msgpack instead of JSON), use shorter TTLs (reduce concurrent users), or offload infrequently-accessed sessions to disk-backed storage."
+    },
+    {
+      "id": "sc-ss-024",
+      "type": "multiple-choice",
+      "question": "A GraphQL API uses opaque session tokens. A client makes a complex query that fans out to 20 microservices, each of which validates the session by calling the session service (Redis-backed). This adds 200ms of session validation latency. What is the best optimization?",
+      "options": [
+        "Switch from opaque tokens to JWTs so each microservice can validate locally without calling the session service",
+        "Implement a distributed cache (e.g., in-process cache with TTL) in each microservice to cache session validation results for 60 seconds",
+        "Use HTTP/2 connection pooling to reduce the latency of session service calls from 10ms to 5ms",
+        "Move the session validation to the API gateway so it's done once per request, not per microservice"
+      ],
+      "correct": 3,
+      "explanation": "Option D is the best fix—validate the session once at the API gateway (entry point) and pass validated user context (e.g., user ID, roles) to downstream services. Each microservice trusts the gateway (mutual TLS or signed internal tokens) and doesn't re-validate. This reduces 20 session calls to 1. Option A (JWTs) works but is a large migration—you'd need to change auth flow, handle token refresh, etc. Option B (local caching) is risky—60-second cache means logged-out users can still make requests for up to 60 seconds (stale cache). Option C (HTTP/2 pooling) helps but doesn't eliminate the 20 calls—you still pay 20 * 5ms = 100ms."
+    },
+    {
+      "id": "sc-ss-025",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team implements idempotent payment processing using idempotency keys stored in PostgreSQL (key, request_hash, result, created_at). They discover that under high concurrency, duplicate payments still occur. What is the likely cause?",
+          "options": [
+            "Two requests with the same idempotency key arrive simultaneously; both check for the key, find nothing, and both insert a new row (race condition)",
+            "PostgreSQL's MVCC isolation allows both transactions to see an empty table before either commits",
+            "The request_hash column is not indexed, so duplicate checks are slow and miss concurrent requests",
+            "The idempotency key TTL is too short, causing keys to expire before retries arrive"
+          ],
+          "correct": 0,
+          "explanation": "Classic race condition: Request A checks 'SELECT * WHERE key = X' (no result), starts processing. Request B checks simultaneously (no result), also starts processing. Both insert a row and process the payment. The fix is to use a UNIQUE constraint on the idempotency key column and handle the uniqueness violation error (INSERT ... ON CONFLICT DO NOTHING in PostgreSQL, or catch unique constraint error in MySQL). Option B is misleading—MVCC doesn't cause this; the issue is the lack of a uniqueness constraint. Option C would slow things down but not cause duplicates. Option D is unrelated—TTL doesn't affect concurrent requests."
+        },
+        {
+          "question": "The team adds a UNIQUE constraint on the idempotency_key column. Now, when duplicate requests arrive, one succeeds and the other gets a database constraint error. What should the application do when it catches this error?",
+          "options": [
+            "Return HTTP 409 Conflict to the client and log the duplicate attempt",
+            "Retry the database INSERT with exponential backoff until it succeeds",
+            "SELECT the existing row by idempotency_key and return the stored result to the client",
+            "Ignore the error and return HTTP 200 OK (the payment was already processed)"
+          ],
+          "correct": 2,
+          "explanation": "When the uniqueness constraint fires, it means another request with the same key is already processing or completed. The correct behavior: SELECT the row by idempotency_key, wait if it's still processing (or poll/retry), and return the stored result. This makes the endpoint truly idempotent—same key, same response. Option A (409 Conflict) is wrong—it tells the client there's a conflict, but the client intentionally sent the same key (retry). Option B is nonsense—the INSERT will never succeed (the key already exists). Option D is dangerous—returning 200 without the actual result could mislead the client (e.g., missing the order ID)."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-026",
+      "type": "multi-select",
+      "question": "A team is evaluating whether to use sticky sessions (load balancer pins users to servers) for their stateful WebSocket application. Select all valid drawbacks of sticky sessions:",
+      "options": [
+        "If a server crashes, all users pinned to that server lose their WebSocket connections and must reconnect",
+        "Auto-scaling is more complex: new servers receive no traffic until existing servers are fully loaded (uneven distribution)",
+        "Sticky sessions prevent horizontal scaling entirely; you cannot add more servers",
+        "Deployments require careful connection draining to avoid disrupting active WebSocket connections"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Option A is correct—sticky sessions tie user state to specific servers. If that server dies (crash, OOM, hardware failure), all its users are disconnected. With shared state (e.g., Redis-backed), any server can handle the reconnection. Option B is correct—load balancers with sticky sessions often use 'least connections' or similar algorithms, which means new servers stay idle until existing servers are saturated. This delays the benefit of scaling. Option C is WRONG—sticky sessions don't prevent horizontal scaling; they make it less efficient and more complex, but you can still add servers. Option D is correct—during deployments, you must drain connections (stop sending new connections, wait for existing to close) before killing servers, which slows down deployments."
+    },
+    {
+      "id": "sc-ss-027",
+      "type": "multiple-choice",
+      "question": "A distributed system uses JWT tokens with a 'permissions' claim (array of strings like ['read:posts', 'write:comments']). An admin revokes a user's 'write:comments' permission in the database. When does the user actually lose this permission?",
+      "options": [
+        "Immediately; the next API request will fetch fresh permissions from the database",
+        "When the JWT expires and the user fetches a new token with updated permissions",
+        "Within 5 minutes; JWTs have built-in permission synchronization every 5 minutes",
+        "Never; JWTs cannot represent permissions because they are stateless"
+      ],
+      "correct": 1,
+      "explanation": "JWTs are immutable and self-contained. The permissions are baked into the token at issuance. Until the token expires (e.g., 1 hour later) and the user refreshes it, the old permissions remain in effect. This is a fundamental tradeoff: stateless JWTs are fast and scalable but have delayed permission updates. Option A is how opaque session tokens work (server lookup sees latest data). Option C is fiction—JWTs don't auto-sync. Option D is wrong—you CAN put permissions in JWTs; the issue is they're stale until refresh. Mitigation: use short-lived access tokens (5–15 min) so permission changes propagate faster, or fall back to a server-side permission check for critical operations."
+    },
+    {
+      "id": "sc-ss-028",
+      "type": "numeric-input",
+      "question": "Your API uses idempotency keys stored in Redis with a 24-hour TTL. You receive 100 requests per second, and 30% of them are retries (same idempotency key as a previous request within 24 hours). What is the steady-state number of unique idempotency keys stored in Redis?",
+      "answer": 6048000,
+      "unit": "keys",
+      "tolerance": 0.1,
+      "explanation": "100 requests/sec, but 30% are retries (not new keys). So 70 new unique keys per second. Over 24 hours = 86,400 seconds, that's 70 * 86,400 = 6,048,000 keys. Each key lives for 24 hours (TTL), so at steady state, you have ~6 million keys in Redis. This illustrates the storage cost of idempotency: you must keep keys around for the retry window (24 hours is conservative; many APIs use 1 hour or even 10 minutes). Lower TTL = less storage but higher risk of missing late retries."
+    },
+    {
+      "id": "sc-ss-029",
+      "type": "ordering",
+      "question": "A session management system using Redis is experiencing occasional session loss. Rank these root causes from MOST likely to LEAST likely:",
+      "items": [
+        "Redis is evicting keys due to memory pressure (maxmemory-policy allows eviction)",
+        "Redis persistence (RDB snapshots) is failing, and a server restart loses recent sessions",
+        "Application servers are generating non-unique session IDs, causing session collisions",
+        "Network packets containing session writes are being dropped due to cosmic rays flipping bits in transit"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Most likely (0): Redis eviction due to memory pressure is a very common operational issue (wrong eviction policy, undersized instance). Next (1): RDB persistence failures can cause session loss on restart if you rely on persistence—less common because many deployments use Redis as ephemeral (no persistence) or use AOF (more durable). Next (2): Session ID collisions are rare if using proper UUIDs or crypto-random generators, but could happen with buggy custom implementations. Least likely (3): Cosmic rays causing bit flips in network transit is theoretically possible but extraordinarily rare (TCP checksums, ECC memory catch most), and would cause corruption, not silent session loss."
+    },
+    {
+      "id": "sc-ss-030",
+      "type": "multi-select",
+      "question": "A multi-tenant SaaS platform uses JWTs with a 'tenant_id' claim. A security audit reveals that some API endpoints are not validating the tenant_id, allowing users to access other tenants' data. Select all correct mitigations:",
+      "options": [
+        "Add middleware that automatically extracts tenant_id from the JWT and injects it into all database queries (row-level security)",
+        "Remove tenant_id from the JWT and instead look it up from the database on each request using the user_id",
+        "Implement a centralized authorization service that validates tenant_id against the requested resource before allowing access",
+        "Use separate JWT signing keys per tenant so tokens from one tenant cannot be used in another tenant's context"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "Option A is correct—middleware that enforces tenant_id in all queries (e.g., PostgreSQL row-level security policies, or ORM middleware) prevents developers from forgetting to filter by tenant. Defense in depth. Option B is counterproductive—removing tenant_id from the JWT and doing a database lookup defeats the performance benefit of JWTs, and doesn't fundamentally solve the authorization bug (developers could still forget to check the looked-up tenant_id). Option C is correct—a centralized authz service (like OPA, or custom) enforces 'can user X in tenant Y access resource Z?'—centralizes the logic and prevents ad-hoc bugs. Option D is creative but wrong—separate signing keys don't prevent a valid user in tenant A from accessing tenant B's data if the API doesn't check tenant_id. The token is valid; the issue is missing authorization logic."
+    },
+    {
+      "id": "sc-ss-031",
+      "type": "multiple-choice",
+      "question": "A mobile app backend uses short-lived access tokens (15 min TTL) and long-lived refresh tokens (30 days) stored in Redis. After 10 minutes, the access token is still valid, but the user's device calls /refresh anyway. The refresh endpoint validates the refresh token, issues a new access token, and—critically—rotates the refresh token (invalidates old, returns new). A network glitch causes the client to retry the /refresh call 200ms later with the SAME old refresh token. What is the most robust strategy to handle this safely?",
+      "options": [
+        "Reject the second request immediately with 401 Unauthorized, forcing the user to re-authenticate",
+        "Use a short grace period (e.g. 5 seconds) during which the old refresh token remains valid alongside the new one, accepting both",
+        "Return the same new access + refresh token pair for both requests by caching the refresh response keyed by old refresh token for 1 second",
+        "Accept the old refresh token indefinitely until the new one is used, tracking both in Redis"
+      ],
+      "correct": 2,
+      "explanation": "Refresh token rotation is critical for security (limits blast radius if stolen), but network retries are common. Option C uses idempotent token refresh: cache the newly-issued token pair keyed by the old refresh token for a short window (1-5 seconds). If the same old refresh token arrives again within that window, return the identical response—no new tokens generated, no rejection. This makes refresh idempotent and retry-safe. Option A (reject) degrades UX unnecessarily. Option B (grace period accepting both tokens) increases attack surface if the old token was stolen. Option D (accept old token indefinitely) defeats the purpose of rotation. Production systems (Auth0, Cognito) use short-window caching for idempotent refresh."
+    },
+    {
+      "id": "sc-ss-032",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A ride-sharing app stores active ride state (driver location, ETA, fare meter) in server memory for performance. During a rolling deploy, 20% of app servers restart every 2 minutes. Users report that rides occasionally \"reset\"—fare drops to zero, driver location jumps. What is the root cause?",
+          "options": [
+            "The load balancer uses round-robin instead of least-connections, sending users to overloaded servers",
+            "Ride state is not externalized; when a server restarts, in-memory state is lost and requests route to a new server with no ride data",
+            "Redis session store has high eviction rate due to memory pressure",
+            "Mobile app clients are caching stale ride state locally"
+          ],
+          "correct": 1,
+          "explanation": "The deploy is rolling, so servers restart in waves. If ride state lives in server RAM and the user's next request routes to a different (new) server, that server has no knowledge of the ride. The symptom—fare/location reset—matches lost state. Option A (load balancing algorithm) doesn't cause state loss. Option C (Redis eviction) would only apply if they were using Redis (they aren't, per the scenario). Option D (client caching) wouldn't cause server-side resets."
+        },
+        {
+          "question": "The team decides to externalize ride state. They must update location and fare meter every 2 seconds (high write rate) and retrieve the full ride object on every API call. Which storage strategy best balances consistency, performance, and cost?",
+          "options": [
+            "Write to PostgreSQL with SERIALIZABLE isolation and read from a read replica",
+            "Write to Redis with 30-minute TTL; use Redis transactions (MULTI/EXEC) for atomic fare + location updates",
+            "Write to S3 as JSON; use S3 Select to query ride state",
+            "Write to DynamoDB with strongly consistent reads; use conditional writes to prevent race conditions"
+          ],
+          "correct": 1,
+          "explanation": "Redis is purpose-built for session-like ephemeral state: sub-millisecond latency, high write throughput, TTL support. MULTI/EXEC ensures atomic updates (fare and location change together). Option A (Postgres) works but is overkill for ephemeral state and adds cost/latency. Option C (S3) has ~100ms latency and is not designed for high-frequency updates. Option D (DynamoDB) is viable but more expensive than Redis for pure cache/session use cases, and strongly consistent reads add latency. Redis is the industry-standard choice for active session/ride state."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-033",
+      "type": "multi-select",
+      "question": "A financial API must prevent duplicate wire transfers. Each transfer request includes a client-generated idempotency_key. Select ALL statements that are true about a correct implementation:",
+      "options": [
+        "The idempotency key must be stored in the database in the same transaction that creates the transfer record",
+        "If a request with a duplicate idempotency key arrives, the API should return the original response (status code, body) from the first request",
+        "Idempotency keys should expire after 24 hours to prevent unbounded database growth",
+        "The API should reject requests with duplicate idempotency keys with a 409 Conflict status"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "A, B, C are correct. A: The key must be stored atomically with the transfer (same transaction) to prevent race conditions—two concurrent requests with the same key must not both create transfers. B: Idempotency means returning the same result; store the original HTTP status and response body and replay it. C: Keys should expire (24-72 hours is common) to cap storage and allow key reuse for legitimate retries after that window. D is wrong: returning 409 Conflict is not idempotent—the client can't distinguish between 'already processed successfully' and 'conflict error.' Instead, return the original 200 (or 201) response."
+    },
+    {
+      "id": "sc-ss-034",
+      "type": "multiple-choice",
+      "question": "A SaaS app serves users globally. Session data (user preferences, cart, last-viewed items) is stored in a single-region Redis cluster in us-east-1. EU users experience 120ms latency on every page load due to cross-Atlantic session reads. The team considers active-active session replication: deploy Redis clusters in us-east-1 and eu-west-1, replicate session writes bidirectionally, and route users to the nearest region. What is the PRIMARY risk of this approach?",
+      "options": [
+        "Network partitions between regions can cause split-brain scenarios where the same session diverges in each region",
+        "Redis replication lag will cause EU users to see stale session data from us-east-1",
+        "Bidirectional replication will double Redis memory usage",
+        "Active-active replication requires Redis Enterprise, increasing cost by 10x"
+      ],
+      "correct": 0,
+      "explanation": "Active-active session replication introduces conflict resolution complexity. If a user's session is modified simultaneously in both regions (e.g., user adds item to cart in EU, a background job in US updates preferences), last-write-wins or custom merge logic is required. Worse, a network partition can cause split-brain: each region accepts writes, and when the partition heals, conflicts must be resolved—potentially losing data. Option B (lag) is real but manageable with fast replication (~ms). Option C (memory doubling) is expected and acceptable. Option D (cost) is incorrect; Redis OSS supports replication, and even Redis Enterprise is not 10x. The core tradeoff: active-active buys latency but adds consistency complexity."
+    },
+    {
+      "id": "sc-ss-035",
+      "type": "numeric-input",
+      "question": "A REST API uses JWTs for authentication. Access tokens have a 15-minute TTL. Refresh tokens have a 30-day TTL. On average, a user makes 8 API calls per hour during active use. Assuming a user is active for 3 hours per day (minute 0 through minute 180), how many times will the client need to call the /refresh endpoint per day to maintain a valid access token? (The initial login at minute 0 is not a refresh.)",
+      "answer": 11,
+      "unit": "refresh calls",
+      "tolerance": 0.15,
+      "explanation": "Each access token lasts 15 minutes. 3 hours = 180 minutes. Login at minute 0 issues the first token (covers 0-15). Refreshes happen at minutes 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165 — that's 11 refresh calls. The token issued at minute 165 covers 165-180, so no refresh is needed at minute 180 (session ends). The 8 API calls/hour figure is irrelevant to refresh count."
+    },
+    {
+      "id": "sc-ss-036",
+      "type": "ordering",
+      "question": "A team is migrating sessions from in-memory (sticky sessions) to Redis (shared state) and needs to backfill existing sessions. Rank the following steps in the correct order to achieve zero-downtime migration:",
+      "items": [
+        "Deploy code that writes session data to BOTH memory and Redis (dual-write), but still reads from memory",
+        "Run a backfill job to copy existing in-memory sessions to Redis",
+        "Deploy code that reads from Redis first, falls back to memory if not found, and writes to both",
+        "Deploy code that reads and writes ONLY to Redis; remove in-memory session logic"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: (0) Start dual-writing to Redis while still reading from memory—new sessions populate Redis, no behavior change. (1) Backfill existing sessions from memory to Redis (scrape from running servers or accept gradual migration). (2) Switch reads to Redis-first with memory fallback—validates Redis is working, no user impact if Redis has gaps. (3) Once confident (days/weeks), remove memory logic entirely and read/write only Redis. This is a rolling migration pattern (dual-write, dual-read, cutover). Skipping step 1 risks user logouts (sessions not in Redis). Doing step 3 before step 2 risks downtime if Redis has issues."
+    },
+    {
+      "id": "sc-ss-037",
+      "type": "multiple-choice",
+      "question": "A video streaming app allows users to upload large files (up to 5 GB). The backend is stateless: app servers are ephemeral containers that scale 0-100 based on traffic. Uploading a 5 GB file through an app server (client → app server → S3) would pin a container for 10+ minutes and waste memory buffering the file. What is the BEST architectural solution?",
+      "options": [
+        "Increase app server memory to 16 GB and use sticky sessions to ensure the upload completes on the same server",
+        "Generate a presigned S3 PUT URL on the backend, return it to the client, and let the client upload directly to S3",
+        "Use a dedicated upload service with 10 TB of local disk and batch-upload files to S3 every hour",
+        "Stream the file through the app server using chunked transfer encoding to avoid buffering the entire file in memory"
+      ],
+      "correct": 1,
+      "explanation": "Presigned URLs are the gold standard for stateless large file uploads. The app server generates a time-limited, cryptographically signed S3 PUT URL (valid for e.g. 15 minutes) and returns it to the client. The client uploads directly to S3, bypassing the app tier entirely. This keeps app servers stateless, avoids memory/network bottlenecks, and scales effortlessly. Option A (sticky + more memory) wastes resources and doesn't scale. Option C (dedicated upload service) is operationally complex and reintroduces statefulness. Option D (chunked encoding) reduces memory but still pins a container for 10 minutes and uses app server bandwidth."
+    },
+    {
+      "id": "sc-ss-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A chat application uses WebSockets to push messages to users in real time. Each WebSocket connection is held open by an app server. The app currently uses sticky sessions (users always route to the same server). The team wants to remove sticky sessions for easier ops. What is the MAIN challenge?",
+          "options": [
+            "WebSockets require TCP connection state; if sticky sessions are removed, the connection will break every time the load balancer routes to a different server",
+            "Without sticky sessions, each incoming message would need to be broadcasted to all app servers to find the one holding the user's WebSocket",
+            "WebSocket connections cannot be migrated between servers; removing sticky sessions will force all users to reconnect",
+            "The load balancer cannot distinguish WebSocket traffic from HTTP traffic"
+          ],
+          "correct": 1,
+          "explanation": "The WebSocket connection is tied to a specific app server's memory. When user A sends a message to user B, the backend must deliver it to the server holding B's WebSocket. Without sticky sessions, the load balancer may route the message to server X, but B's connection is on server Y. You need a pub/sub layer (Redis, RabbitMQ) to fan out messages to all servers, which then deliver to local connections. Option A is a misconception—sticky sessions aren't about TCP state (the load balancer handles that), they're about application-level routing. Option C is correct (connections can't migrate), but that's always true—sticky sessions don't prevent reconnections, they just make routing deterministic. Option D is wrong; modern load balancers handle WebSocket upgrades fine."
+        },
+        {
+          "question": "The team removes sticky sessions and introduces Redis pub/sub: when a message arrives, the backend publishes it to a Redis channel, and all app servers subscribe. Each server checks if the recipient is connected locally and delivers if so. What is a significant operational downside of this approach?",
+          "options": [
+            "Redis pub/sub does not persist messages; if an app server is offline during publish, connected users on that server will miss messages",
+            "Every app server receives every message, creating O(servers × messages) network traffic from Redis",
+            "Redis pub/sub requires Redis Cluster, which is significantly more expensive than standalone Redis",
+            "WebSocket clients must reconnect every time an app server restarts, causing user-visible disruptions"
+          ],
+          "correct": 1,
+          "explanation": "Pub/sub broadcasts every message to every subscriber (all app servers). If you have 100 servers and 1000 messages/sec, that's 100,000 deliveries/sec from Redis to app servers, even though only 1 server per message has the recipient. This is message amplification. It works at modest scale but becomes inefficient as servers grow. Option A is true but not the primary operational concern—messages are ephemeral by design (WebSocket is real-time). Option C is false; pub/sub works in standalone Redis. Option D is always true (WebSocket reconnects on server restart) and unrelated to pub/sub. At scale, systems use message routing (e.g., consistent hashing or server-to-server forwarding) instead of broadcast."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-039",
+      "type": "multi-select",
+      "question": "A web app stores session IDs in cookies. The session ID is a random UUID; actual session data lives in Redis. Select ALL security measures that should be applied to the session cookie:",
+      "options": [
+        "Set the HttpOnly flag to prevent JavaScript from reading the cookie",
+        "Set the Secure flag to ensure the cookie is only sent over HTTPS",
+        "Set the SameSite=Strict or SameSite=Lax attribute to mitigate CSRF attacks",
+        "Encrypt the session ID using AES-256 before storing it in the cookie"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "A, B, C are correct. A (HttpOnly): Prevents XSS attacks from stealing the session cookie via document.cookie. B (Secure): Ensures the cookie is never sent over unencrypted HTTP, preventing MITM interception. C (SameSite): Mitigates CSRF by restricting when the browser sends the cookie in cross-site requests. Strict blocks all cross-site; Lax allows top-level navigation (e.g., clicking a link). D is unnecessary: The session ID is already a cryptographically random UUID (unguessable). Encrypting it adds no security—if an attacker steals the cookie, they can use it regardless of encryption. You sign cookies to prevent tampering, but that's HMAC, not encryption."
+    },
+    {
+      "id": "sc-ss-040",
+      "type": "multiple-choice",
+      "question": "A REST API uses stateless rate limiting: each request includes a JWT, and the server must enforce \"100 requests per user per minute.\" The API is horizontally scaled (20 app servers). If rate limit state is stored in local memory on each server, what will happen?",
+      "options": [
+        "Rate limiting will work correctly; each server independently enforces 100 req/min per user",
+        "Users will effectively get 20x the limit (2000 req/min) because each server has its own counter",
+        "Rate limiting will fail because JWTs are stateless and cannot carry rate limit counters",
+        "The servers will need to synchronize rate limit state via a distributed consensus protocol like Raft"
+      ],
+      "correct": 1,
+      "explanation": "If each server tracks rate limits independently in local memory, a user can send 100 requests to server 1, 100 to server 2, ..., 100 to server 20—bypassing the limit. The load balancer distributes requests across servers, so the user hits the global limit x number of servers. This is a classic shared-state problem. The fix: externalize rate limit counters to Redis or Memcached (use INCR with TTL). Option A is wrong (per-server limits != global limit). Option C misunderstands JWTs—they identify users but don't store counters; counters live server-side. Option D (Raft) is overkill; Redis is sufficient (eventual consistency + approximate counting is acceptable for rate limits)."
+    },
+    {
+      "id": "sc-ss-041",
+      "type": "numeric-input",
+      "question": "A stateless API tracks rate limits in Redis using a sliding window counter. Each user is limited to 1000 requests per hour. Redis stores a sorted set per user, where each member is a timestamp of a request, scored by that timestamp. When a request arrives, the server (1) removes timestamps older than 1 hour, (2) counts remaining members, (3) if < 1000, adds the current timestamp and allows the request. Assume 10,000 active users, each making exactly 1000 requests/hour (uniformly distributed). What is the approximate steady-state number of timestamps stored in Redis across all users? (Answer in millions.)",
+      "answer": 10,
+      "unit": "million timestamps",
+      "tolerance": 0.2,
+      "explanation": "Each user has up to 1000 timestamps in their sorted set (representing the last hour of requests). 10,000 users x 1000 timestamps = 10,000,000 = 10 million. Old timestamps are removed (ZREMRANGEBYSCORE), so the set size stays ~1000 per user in steady state. This is why sliding window counters can be memory-intensive at scale—each request is an entry. Fixed window counters (one counter per hour) use far less memory but are less accurate."
+    },
+    {
+      "id": "sc-ss-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A background job processing system (e.g., cron jobs, queue workers) must remain stateless for horizontal scaling. Each job reads from a shared queue (SQS) and performs side effects (sending emails, charging credit cards). Jobs can be retried on failure. What is the PRIMARY challenge in keeping workers stateless?",
+          "options": [
+            "Workers cannot share queue state without a centralized coordinator like ZooKeeper",
+            "Side effects are not idempotent by default; retries can cause duplicate emails or double-charges",
+            "Workers need to persist job status in a database to prevent other workers from processing the same job",
+            "Queue visibility timeouts must be tuned perfectly, or jobs will be dropped"
+          ],
+          "correct": 1,
+          "explanation": "Statelessness means any worker can process any job (good for scaling), but retries are inevitable (network failures, crashes). If the job's side effect is not idempotent (sending an email, charging a card), retries cause duplicates. Option A is false—queues like SQS handle concurrency; workers poll independently. Option C describes a solution (idempotency table), not a challenge. Option D (visibility timeout) is important but not the primary statefulness challenge—it's a queue configuration issue."
+        },
+        {
+          "question": "To make the job system safe for retries, the team implements idempotency: each job has a unique job_id, and before performing the side effect, the worker checks if that job_id is in a DynamoDB table. If present, skip the side effect. If not, perform the side effect and write the job_id to DynamoDB. What is a critical implementation requirement to prevent race conditions?",
+          "options": [
+            "The DynamoDB table must use a partition key with high cardinality to distribute load evenly",
+            "The check (read) and write must happen in a single atomic transaction; use DynamoDB TransactWriteItems with a condition expression",
+            "The worker must acquire a distributed lock (e.g., Redis SETNX) before checking DynamoDB",
+            "The side effect must complete before writing to DynamoDB; otherwise, partial failures will corrupt state"
+          ],
+          "correct": 1,
+          "explanation": "Two workers might process the same job concurrently (due to visibility timeout expiry or duplicate delivery). Both read DynamoDB, see no entry, and both perform the side effect—duplicate! The fix: use a conditional write (e.g., DynamoDB PutItem with attribute_not_exists(job_id) or TransactWriteItems). Only one worker's write succeeds; the other gets a ConditionalCheckFailedException and aborts. Option A (partition key) is a performance concern, not correctness. Option C (distributed lock) works but adds latency/complexity—conditional writes are simpler. Option D is wrong—you must write the idempotency record BEFORE (or atomically with) the side effect, not after, to handle crashes mid-execution."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-043",
+      "type": "multiple-choice",
+      "question": "A stateless e-commerce API must handle chunked file uploads: a client uploads a 1 GB file in 100 MB chunks (10 chunks total). Each chunk is a separate POST request to /upload-chunk with a file_id and chunk_index. The server writes each chunk to S3 as a part of a multipart upload. Where should the server store the \"upload session\" metadata (file_id, total chunks, uploaded chunk indices, S3 upload ID)?",
+      "options": [
+        "In the JWT sent by the client; encode the metadata as a claim and update the JWT after each chunk",
+        "In server memory (in-process cache) on the app server that started the upload; use sticky sessions to route subsequent chunks to the same server",
+        "In Redis or DynamoDB with a TTL (e.g., 24 hours); key by file_id",
+        "On the client side; let the client track which chunks have been uploaded and resend missing chunks if needed"
+      ],
+      "correct": 2,
+      "explanation": "External state store with TTL is the stateless solution. Upload metadata is session-like: ephemeral, scoped to a single operation, and shared across requests. Storing in Redis/DynamoDB allows any server to handle any chunk (horizontal scaling) and survives server restarts. TTL prevents indefinite storage of abandoned uploads. Option A (JWT) is a misuse—JWTs are for authentication, not mutable session data; the client would need to update the JWT after every chunk, which is insecure and error-prone. Option B (memory + sticky sessions) reintroduces statefulness and breaks on server restarts. Option D (client-side tracking) is reasonable for resilience but doesn't help the server manage S3 multipart upload state."
+    },
+    {
+      "id": "sc-ss-044",
+      "type": "ordering",
+      "question": "An API must enforce exactly-once processing of webhook events from a third-party payment provider. Events can arrive out of order or be retried. Rank the following steps in the correct order to safely process events idempotently:",
+      "items": [
+        "Verify the webhook signature to ensure the event is authentic",
+        "Check if the event ID exists in an idempotency table (DynamoDB, Postgres)",
+        "Write the event ID to the idempotency table with a timestamp",
+        "Perform the business logic (update order status, send confirmation email)"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: (0) Verify signature first—reject malicious/replayed events before any state changes. (1) Check idempotency table—if the event was already processed, return 200 OK immediately (idempotent). (2) Write event ID to the table before performing business logic—this prevents race conditions (two concurrent handlers both pass the check and both process the event). Use a unique constraint or conditional write. (3) Perform business logic last—if it fails, the idempotency record ensures the event won't be re-processed when retried. Doing step 3 before step 2 risks duplicate processing on retry."
+    },
+    {
+      "id": "sc-ss-045",
+      "type": "multi-select",
+      "question": "A team is choosing between client-side state (storing user preferences in browser localStorage) vs. server-side state (storing in Redis, fetched on page load). Select ALL scenarios where client-side state is PREFERABLE:",
+      "options": [
+        "The state must be consistent across devices (e.g., user logs in on phone and desktop)",
+        "The state is large (100 KB) and rarely changes (e.g., UI theme, language preference)",
+        "The state must be encrypted and cannot be exposed to the browser",
+        "The application is offline-first (must work without network connectivity)"
+      ],
+      "correctIndices": [1, 3],
+      "explanation": "B and D are correct. B: Large, infrequently changing preferences (theme, language) are ideal for localStorage—reduces server load, eliminates network latency, and persists across browser restarts. D: Offline-first apps must store state client-side (localStorage, IndexedDB) because the server is unreachable. A is wrong: client-side state doesn't sync across devices; server-side state is required for multi-device consistency. C is wrong: sensitive/encrypted data must stay server-side—localStorage is readable by JavaScript (XSS risk) and by anyone with physical access to the device."
+    },
+    {
+      "id": "sc-ss-046",
+      "type": "multiple-choice",
+      "question": "A high-throughput event processing system receives millions of events per second from IoT devices. Each event must be processed exactly once. The system uses Kafka as the message queue and a fleet of stateless consumers (containers). Kafka guarantees at-least-once delivery. What is the MOST scalable way to achieve exactly-once processing semantics?",
+      "options": [
+        "Store processed event IDs in a Redis set; before processing, check if the ID exists (idempotency check)",
+        "Use Kafka's transactional producer/consumer APIs to achieve exactly-once semantics end-to-end",
+        "Enable Kafka's idempotent producer flag, which automatically deduplicates events",
+        "Configure Kafka consumers with enable.auto.commit=false and manually commit offsets after processing"
+      ],
+      "correct": 1,
+      "explanation": "Kafka's transactional APIs (introduced in 0.11+) provide exactly-once semantics end-to-end: the consumer reads a batch, processes it, writes results, and commits offsets—all atomically. If the consumer crashes, the transaction aborts and the batch is reprocessed, but downstream systems see no duplicates. This scales horizontally (Kafka handles partitioning) and avoids external deduplication stores. Option A (Redis idempotency check) works but doesn't scale well—millions of events/sec means millions of Redis reads, which becomes a bottleneck. Option C (idempotent producer) only prevents producer-side duplicates (retries due to network issues), not consumer-side. Option D (manual offset commit) achieves at-least-once but not exactly-once—duplicates still happen on consumer crash/rebalance."
+    },
+    {
+      "id": "sc-ss-047",
+      "type": "multiple-choice",
+      "question": "A mobile app allows users to save drafts of posts locally on the device. When the user has internet, the app syncs drafts to the server (POST /drafts). Drafts are identified by a client-generated UUID. The server is stateless and horizontally scaled. Two sync requests with the same draft UUID arrive at different servers 50ms apart (due to retry or race condition). How should the server handle this to prevent duplicate drafts?",
+      "options": [
+        "Use a database unique constraint on draft UUID; the second insert will fail with a conflict, return 409 to the client",
+        "Use a database unique constraint on draft UUID; the second insert will fail, but return 200 OK (treat as idempotent success)",
+        "Store drafts in Redis with SET NX (set if not exists); the second request will fail and return 409",
+        "Generate a server-side draft ID (auto-increment) and ignore the client UUID; duplicates are impossible"
+      ],
+      "correct": 1,
+      "explanation": "The client sends the same UUID twice (intentional retry or accidental race). The server should treat this as idempotent: the draft already exists, so respond with success (200 OK, returning the existing draft). This requires a unique constraint on UUID (first insert succeeds, second fails with uniqueness violation). Catch the error and respond 200. Option A (409 Conflict) is wrong—409 implies an error, but this is expected behavior for idempotency; the client shouldn't see an error. Option C (Redis SET NX then 409) has the same issue. Option D (ignore client UUID) breaks offline-first sync—clients need stable IDs to reconcile local and server state."
+    },
+    {
+      "id": "sc-ss-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS app issues JWTs with a 1-hour expiration. A customer reports that a malicious employee (who was fired and had their account disabled) is still able to access the API using an old JWT. What is the root cause?",
+          "options": [
+            "The JWT is signed with a weak algorithm (HS256) and was cracked by the attacker",
+            "JWTs are stateless and self-contained; the server cannot revoke them before expiration without external state",
+            "The JWT was issued before the account was disabled, so the server's authentication logic is buggy",
+            "The attacker is using a refresh token to generate new access tokens"
+          ],
+          "correct": 1,
+          "explanation": "JWTs are stateless: once issued, they're valid until expiration. The server verifies the signature and claims but doesn't check a database or session store. Disabling the account in the database doesn't invalidate existing JWTs—they're self-contained. Option A (weak signature) is unlikely and unrelated to revocation. Option C is half-true (the JWT was issued pre-disable), but that's expected behavior, not a bug. Option D (refresh token) is possible, but the question says 'old JWT,' implying the access token itself is the issue."
+        },
+        {
+          "question": "To mitigate this, the team decides to implement JWT revocation. Which approach is MOST consistent with stateless architecture while still enabling revocation?",
+          "options": [
+            "Store all issued JWTs in Redis with expiration; on each request, check if the JWT is in Redis (whitelist)",
+            "Store a revocation list (blacklist) in Redis containing revoked JWT IDs; check this list on each request",
+            "Reduce JWT expiration to 5 minutes and require frequent token refresh; revoke refresh tokens (stored server-side) immediately on account disable",
+            "Embed a 'revocation timestamp' in user records; reject JWTs issued before that timestamp"
+          ],
+          "correct": 2,
+          "explanation": "Short-lived access tokens (5-15 min) limit the blast radius—a revoked user can only act for a few minutes. Refresh tokens are stored server-side (database, Redis) and can be revoked immediately. This is a hybrid approach: stateless access tokens + stateful refresh tokens. Option A (whitelist all JWTs) defeats the purpose of stateless tokens—requires a lookup on every request. Option B (blacklist) is better but still requires checking Redis every request and grows unbounded. Option D (revocation timestamp) works but requires a database lookup per request to fetch the user's revocation timestamp. Industry standard: short-lived access + revocable refresh (OAuth 2.0 pattern)."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-049",
+      "type": "numeric-input",
+      "question": "A stateless API uses Redis to cache user profile data. Cache TTL is 10 minutes. On cache miss, the server fetches the profile from PostgreSQL (50ms latency), writes it to Redis, and returns it to the client. Cache hit rate is 95%. Average request rate is 10,000 requests/second. How many requests per second will hit PostgreSQL?",
+      "answer": 500,
+      "unit": "requests/second",
+      "tolerance": 0.1,
+      "explanation": "95% hit rate means 5% miss. 10,000 req/s x 5% = 500 req/s hit PostgreSQL. This is the cache miss rate, and it directly determines database load. If cache hit rate drops (e.g., TTL too short, cache eviction), database load spikes—classic thundering herd risk. This is why cache hit rate is a critical SLO for stateless, read-heavy systems."
+    },
+    {
+      "id": "sc-ss-050",
+      "type": "multiple-choice",
+      "question": "A REST API supports bulk operations: clients can submit a batch of 1000 actions (e.g., create users, update records) in a single POST /batch request. The server processes each action sequentially. Some actions may fail (validation errors, conflicts). The client expects a response listing success/failure for each action. If the server crashes halfway through processing, the client retries the entire batch. What is the safest way to make this idempotent?",
+      "options": [
+        "The client includes a batch_id (UUID); the server stores the batch result in a database keyed by batch_id and returns it on retry",
+        "Each action in the batch includes its own idempotency key; the server processes each action idempotently",
+        "The server uses a database transaction to process all actions atomically; on retry, the transaction will fail with a conflict",
+        "The server generates a hash of the entire batch payload and checks if that hash was already processed"
+      ],
+      "correct": 1,
+      "explanation": "Batch-level idempotency (option A) is fragile: if the batch partially succeeds before a crash, retrying returns the cached result—but what if the client changes the batch slightly? Fine-grained idempotency (per-action keys) is more robust: each action is independently idempotent. On retry, already-processed actions succeed immediately (idempotent), and failed actions are re-attempted. Option A works but is less flexible (client can't modify the batch). Option C (single transaction) is too strict—one failure fails the entire batch, and partial success isn't possible. Option D (payload hash) breaks if the client changes anything."
+    },
+    {
+      "id": "sc-ss-051",
+      "type": "multi-select",
+      "question": "A stateless API must emit audit logs for every request (user ID, action, timestamp). Logs must be durable and queryable. Select ALL valid approaches for a stateless architecture:",
+      "options": [
+        "Each app server writes logs to a local file; a sidecar agent (Fluentd, Filebeat) ships logs to Elasticsearch",
+        "Each app server writes logs synchronously to a centralized PostgreSQL audit table on every request",
+        "Each app server publishes log events to a Kafka topic; a separate consumer writes to Elasticsearch or S3",
+        "Each app server buffers logs in memory and flushes to S3 every 5 minutes"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "A and C are correct. A (local file + shipper): App writes logs locally (fast, non-blocking), and a sidecar ships them asynchronously to a durable store. This is the standard pattern in Kubernetes. C (Kafka + async consumer): App publishes to Kafka (fast, fire-and-forget), and a separate service writes to long-term storage. Both approaches decouple log writing from request processing (low latency) and are stateless. B is wrong: synchronous writes to Postgres add 10-50ms latency to every request and create a single point of failure. D is wrong: buffering in memory violates statefulness (data lost on crash before flush)."
+    },
+    {
+      "id": "sc-ss-052",
+      "type": "ordering",
+      "question": "A distributed system must process financial transactions idempotently. Each transaction has a client-provided transaction_id. The server writes the transaction to PostgreSQL and publishes an event to Kafka for downstream processing. Rank the following steps to ensure exactly-once semantics:",
+      "items": [
+        "Check if the transaction_id exists in the database (idempotency check)",
+        "Write the transaction record to PostgreSQL",
+        "Publish the transaction event to Kafka",
+        "Commit the database transaction"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: (0) Check idempotency first—if the transaction_id exists, return success immediately (already processed). (1) Write to database (INSERT). (2) Publish to Kafka—do this before committing the DB transaction. (3) Commit DB transaction. This ensures atomicity: if Kafka publish fails, the DB transaction aborts (rolled back), and the client retries. If the DB commit fails after Kafka publish, the Kafka event is orphaned, but the client retries, and the idempotency check prevents duplicate processing. Doing step 3 before step 2 (commit before Kafka) risks a committed transaction with no event."
+    },
+    {
+      "id": "sc-ss-053",
+      "type": "multiple-choice",
+      "question": "A web app uses session cookies to track logged-in users. The session ID is a 128-bit random UUID stored in a cookie. Session data (user ID, permissions) lives in Redis, keyed by session ID. An attacker steals a user's session cookie (via XSS or network sniffing) and uses it to impersonate the user. Which defense would have PREVENTED this attack?",
+      "options": [
+        "Rotate the session ID on every request to limit the window of stolen session validity",
+        "Bind the session to the user's IP address; reject requests from a different IP",
+        "Set the HttpOnly and Secure flags on the session cookie",
+        "Use short-lived sessions (5-minute TTL) to minimize exposure"
+      ],
+      "correct": 2,
+      "explanation": "HttpOnly prevents XSS from reading the cookie (blocks document.cookie). Secure prevents MITM from sniffing the cookie over HTTP (cookie only sent over HTTPS). If both were set, the attacker couldn't steal the cookie in the first place (assuming HTTPS everywhere). Option A (rotate session ID) mitigates damage after theft but doesn't prevent theft. Option B (IP binding) is brittle—mobile users change IPs frequently (cell tower handoffs, Wi-Fi to LTE), causing false lockouts. Option D (short TTL) limits exposure but doesn't prevent theft. Defense-in-depth requires all of these, but C is the primary prevention against XSS/MITM session theft."
+    },
+    {
+      "id": "sc-ss-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A SaaS app allows users to upload CSV files (up to 100 MB) for bulk data import. The upload flow: (1) client uploads file to the API server, (2) server validates the CSV, (3) server saves it to S3, (4) server enqueues a background job to process it. During a deploy, 50% of app servers restart. Users report that uploads sometimes \"hang\" or \"reset to 0%.\" What is the likely cause?",
+          "options": [
+            "The load balancer's idle timeout (60 seconds) is shorter than the upload time (2-3 minutes), causing connection termination",
+            "App servers buffer the file in memory during upload; when the server restarts, the upload fails and the client retries from scratch",
+            "S3 has rate limits on PUT operations, causing uploads to slow down",
+            "The background job queue is overloaded and dropping jobs"
+          ],
+          "correct": 1,
+          "explanation": "The client uploads the file to the app server (via HTTP POST with multipart/form-data). The server buffers it in memory or on disk, then writes to S3. If the server restarts mid-upload, the connection drops, the client retries, and the upload starts over—user sees a reset. This is a stateful upload problem. Option A (LB timeout) is plausible but less likely—the question says 'during a deploy,' pointing to server restarts. Option C (S3 rate limits) would cause slowdowns, not resets. Option D (job queue) is irrelevant to the upload phase."
+        },
+        {
+          "question": "To make uploads resilient to server restarts, the team switches to a multipart/resumable upload pattern. The client uploads the file in 10 MB chunks, and the server writes each chunk directly to S3 as part of an S3 multipart upload. Where should the server store the in-progress upload state (S3 upload ID, uploaded chunk indices)?",
+          "options": [
+            "In server memory on the app server that initiated the upload; use sticky sessions to route subsequent chunks to the same server",
+            "In Redis with a 24-hour TTL, keyed by a client-provided upload_id",
+            "In S3 metadata tags on the target object",
+            "On the client side; the client tracks which chunks have been uploaded and tells the server on each request"
+          ],
+          "correct": 1,
+          "explanation": "Multipart upload state is session-like: temporary, scoped to a single operation, and must survive server restarts. Redis (or DynamoDB) with TTL is ideal—any server can handle any chunk (stateless), and abandoned uploads are cleaned up automatically. Option A (memory + sticky) reintroduces statefulness. Option C (S3 metadata) is not suitable for in-progress state—S3 multipart uploads don't expose partial state via tags. Option D (client-side) helps for client-side retry logic but doesn't help the server manage S3 multipart upload state."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-055",
+      "type": "multiple-choice",
+      "question": "A globally distributed app uses JWT access tokens (15-minute TTL) and refresh tokens (30-day TTL). Refresh tokens are stored in a PostgreSQL database (single region, us-east-1). EU users experience 150ms latency on the /refresh endpoint due to cross-Atlantic round trips to the database. The team considers replicating the refresh token table to a Postgres read replica in eu-west-1 and routing EU users to the replica. What is the PRIMARY risk?",
+      "options": [
+        "Postgres replication lag (~100ms) could cause token refresh failures if a token is rotated in us-east-1 but the replica hasn't replicated yet",
+        "Read replicas are read-only; the /refresh endpoint needs to write (rotate refresh tokens), so it must go to the primary in us-east-1",
+        "JWT signatures cannot be verified against a read replica; the primary database is required",
+        "Refresh tokens are sensitive credentials and should not be replicated across regions for security reasons"
+      ],
+      "correct": 1,
+      "explanation": "Refresh token rotation is a write operation: the endpoint reads the old token, validates it, issues new tokens, invalidates the old token (write), and stores the new token (write). Read replicas are read-only—writes must go to the primary. So EU users would still hit us-east-1 for writes, experiencing the same 150ms latency. Option A (replication lag) is a real issue but secondary—writes can't go to the replica at all. Option C is nonsense—JWT verification uses the signing key, not the database. Option D is incorrect—replication doesn't inherently compromise security if in-transit encryption and access controls are in place. The fix: use a multi-region writable database or accept the latency."
+    },
+    {
+      "id": "sc-ss-056",
+      "type": "numeric-input",
+      "question": "A stateless API uses Redis for rate limiting (100 requests per user per minute). Each rate limit check involves 3 Redis operations: (1) ZREMRANGEBYSCORE (remove old entries), (2) ZCARD (count entries), (3) ZADD (add new entry). The API serves 5000 requests/second. Assuming all requests are from unique users (worst case—no sharing of rate limit buckets), what is the total Redis operations per second? (Answer in thousands.)",
+      "answer": 15,
+      "unit": "thousand ops/sec",
+      "tolerance": 0.1,
+      "explanation": "Each request triggers 3 Redis ops. 5000 req/s x 3 ops/req = 15,000 ops/sec = 15k ops/sec. Redis can handle 100k+ ops/sec on a single instance (depending on command complexity and network), so 15k is well within capacity. However, this illustrates why sliding window rate limiting is expensive—every request = multiple Redis commands. Fixed window counters (INCR + TTL) use 1-2 ops/request and scale better."
+    },
+    {
+      "id": "sc-ss-057",
+      "type": "multi-select",
+      "question": "A stateless API must handle user logout. The session ID is stored in a cookie, and session data lives in Redis. Select ALL actions the logout endpoint should perform:",
+      "options": [
+        "Delete the session from Redis using the session ID from the cookie",
+        "Instruct the browser to delete the session cookie (Set-Cookie with Max-Age=0 or Expires in the past)",
+        "Add the session ID to a blacklist in Redis to prevent reuse if an attacker captured the cookie before logout",
+        "Rotate the user's password hash in the database to invalidate all sessions across devices"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "A, B, C are correct. A: Delete the session from Redis so it can't be used again (server-side cleanup). B: Tell the browser to delete the cookie (client-side cleanup). Without this, the browser still sends the cookie on subsequent requests. C: Add the session ID to a short-lived blacklist (TTL = session TTL) to defend against session fixation/replay attacks—if an attacker stole the cookie before logout, the blacklist prevents reuse. D is wrong: Rotating the password hash doesn't invalidate sessions in a stateless architecture (sessions are keyed by session ID, not password hash). To invalidate all sessions across devices, delete all sessions for that user from Redis."
+    },
+    {
+      "id": "sc-ss-058",
+      "type": "multiple-choice",
+      "question": "A microservices architecture has 10 services, each stateless and horizontally scaled. Service A calls Service B, which calls Service C. Each service uses JWTs for authentication, passed via the Authorization header. A user makes a request to Service A, which takes 500ms to complete (including downstream calls). The JWT has a 15-minute expiration. Midway through the request (250ms in), the JWT expires. Service C rejects the request with 401 Unauthorized. What is the ROOT CAUSE of this issue?",
+      "options": [
+        "JWT expiration timestamps should be validated at the edge (API gateway) only, not in downstream services",
+        "The JWT expiration is too short (15 minutes) for long-running requests",
+        "The JWT's 'exp' claim is an absolute timestamp; if the token is near expiration when the request starts, it may expire during request processing",
+        "Service B should refresh the JWT before calling Service C"
+      ],
+      "correct": 2,
+      "explanation": "JWTs have an absolute expiration time (Unix timestamp in the 'exp' claim). If the token expires at 12:00:00 and the request starts at 11:59:58, the token is valid when Service A receives it, but by the time Service C validates it (12:00:01), it's expired. This is expiration skew in distributed systems. Option A is wrong—services should validate JWTs for defense in depth. Option B is a misdiagnosis—15 minutes is standard, and the issue is timing, not TTL. Option D (refresh mid-request) is not standard. Fixes: (1) Add a short grace period (e.g., accept tokens up to 30 seconds past expiration). (2) Use longer TTLs. (3) Refresh the token preemptively if it's close to expiration."
+    },
+    {
+      "id": "sc-ss-059",
+      "type": "ordering",
+      "question": "A stateless API must support OAuth 2.0 authorization code flow for third-party integrations. Rank the following steps in the correct order:",
+      "items": [
+        "Redirect the user to the OAuth provider's /authorize endpoint with client_id and redirect_uri",
+        "The OAuth provider redirects the user back to the app's callback URL with an authorization code",
+        "The app exchanges the authorization code for an access token by calling the provider's /token endpoint",
+        "The app stores the access token (and optional refresh token) in the database, associated with the user"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "This is the standard OAuth 2.0 authorization code flow (RFC 6749). (0) App redirects user to OAuth provider with client_id and redirect_uri. (1) User authenticates and consents; provider redirects back to app's callback with an authorization code. (2) App backend exchanges the authorization code for an access token (POST to provider's /token endpoint). (3) App stores the access token in the database for future API calls to the provider on the user's behalf. The authorization code is short-lived and single-use (exchanged immediately), while the access token is stored for ongoing use."
+    },
+    {
+      "id": "sc-ss-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "A team builds a stateless API that stores user sessions in Redis. They use JSON.stringify to serialize session objects and JSON.parse to deserialize them. During a production incident, they discover that Redis latency spikes to 50ms when a single user's session grows to 500KB (the user has 10,000 items in their favorites list). What is the root cause of the latency spike?",
+          "options": [
+            "Redis is single-threaded; a 500KB GET command blocks the event loop for ~1ms, but client-side JSON.parse of 500KB takes ~50ms on a single core",
+            "Redis has a 256KB maximum value size limit, so the 500KB session is being split across multiple keys and requires multiple round trips",
+            "The 500KB value exceeds Redis's inline protocol buffer, forcing it to use bulk string protocol which is slower",
+            "Redis compresses values larger than 64KB using LZF, and the decompression overhead adds latency"
+          ],
+          "correct": 0,
+          "explanation": "Redis itself handles large values efficiently (single-digit milliseconds for a 500KB GET). The bottleneck is client-side JSON deserialization. Parsing 500KB of JSON on a single CPU core can take 10-50ms depending on the language and data structure. (B) Redis supports values up to 512MB. (C) Redis always uses bulk string protocol for GET responses; there's no protocol switch. (D) Redis doesn't compress values. The fix: limit session size (paginate favorites), use a compact serialization format (protobuf, MessagePack), or store large collections in dedicated Redis data structures (sorted sets) instead of serialized JSON."
+        },
+        {
+          "question": "The team decides to move the favorites list out of the session and into a dedicated Redis sorted set (user:{userId}:favorites). The session now only stores userId, email, and preferences (~1KB). When the user views their favorites page, the API reads both the session and the favorites set. How should these two reads be optimized?",
+          "options": [
+            "Use Redis MULTI/EXEC transaction to read both atomically — ensures consistency between session and favorites",
+            "Use Redis pipeline to send both GET and ZRANGE commands in a single network round trip — reduces latency from 2 RTTs to 1 RTT",
+            "Use a Lua script to read both values server-side and return a combined result — minimizes network transfer",
+            "Read the session first; if valid, read favorites in a second request — sequential reads ensure the session is valid before fetching data"
+          ],
+          "correct": 1,
+          "explanation": "Redis pipelining sends multiple commands in one network round trip and receives all responses together. For two independent reads (session GET + favorites ZRANGE), pipelining reduces latency from 2x RTT to 1x RTT. (A) MULTI/EXEC provides atomicity (both reads see the same snapshot), but that's unnecessary here — session and favorites are independent data. MULTI/EXEC adds overhead (4 commands: MULTI, GET, ZRANGE, EXEC). (C) Lua scripts run atomically on the server but add complexity; for two simple reads, pipelining is simpler. (D) sequential reads waste a full RTT; the session check doesn't need to complete before fetching favorites (they're independent)."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-061",
+      "type": "multiple-choice",
+      "question": "Your team is migrating a stateful web app to a stateless architecture. Sessions are currently stored in application memory (sticky sessions). The app serves 50K concurrent users with session sizes averaging 8KB. Which session store offers the best balance of latency, cost, and operational complexity for this use case?",
+      "options": [
+        "Memcached cluster (3 nodes, 32GB each) — fastest reads, lowest cost, no persistence",
+        "Redis cluster (3 nodes, 32GB each) — sub-millisecond reads, persistence, supports complex data types",
+        "DynamoDB on-demand — serverless, auto-scaling, 99.99% SLA, but higher read latency (~5-10ms)",
+        "Encrypted session cookies (4KB limit) — zero backend cost, but requires splitting sessions across multiple cookies"
+      ],
+      "correct": 1,
+      "explanation": "Redis cluster is optimal here. At 50K users x 8KB = 400MB of session data, you need persistence (users expect sessions to survive restarts) and sub-millisecond latency for acceptable UX. Memcached (A) lacks persistence — a node restart loses sessions. DynamoDB (C) adds 5-10ms per request, degrading tail latency for high-traffic pages. Encrypted cookies (D) hit the 4KB limit and require client-side assembly, adding complexity and still needing backend verification. Redis offers persistence, <1ms p99 latency, and supports atomic session updates (HSET for partial field updates)."
+    },
+    {
+      "id": "sc-ss-062",
+      "type": "numeric-input",
+      "question": "Your stateless API issues signed JWT access tokens (RS256). Each token validation requires verifying the signature, which costs 0.3ms of CPU time. Your API gateway validates all incoming requests. At 200,000 requests per second, how many CPU cores are needed JUST for JWT validation? (Assume each core can do 1000ms of work per second.)",
+      "answer": 60,
+      "unit": "CPU cores",
+      "tolerance": 0.1,
+      "explanation": "200,000 req/sec x 0.3ms/req = 60,000ms of CPU time per second. Each core provides 1000ms/sec of compute. 60,000 / 1000 = 60 cores dedicated to JWT validation alone. This illustrates why high-throughput stateless APIs often cache validated tokens in memory or switch from RS256 (asymmetric, ~0.3ms) to HS256 (symmetric, ~0.01ms). At 200K req/sec with HS256, you'd need only 2 cores for validation — a 30x reduction."
+    },
+    {
+      "id": "sc-ss-063",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your SPA calls a stateless API on api.example.com from app.example.com. The API uses httpOnly session cookies for auth. CORS is configured with Access-Control-Allow-Origin: https://app.example.com. Users report session cookies aren't being sent with API requests. What's the most likely root cause?",
+          "options": [
+            "The SPA's fetch() calls are missing credentials: 'include' — browsers don't send cookies cross-origin by default",
+            "The API response is missing Access-Control-Allow-Credentials: true — required for cookie-based CORS",
+            "Session cookies lack SameSite=None; Secure attributes — needed for cross-site cookie transmission",
+            "The SPA and API are on different subdomains — cookies require Domain=.example.com to span subdomains"
+          ],
+          "correct": 1,
+          "explanation": "Both credentials: 'include' (client-side) AND Access-Control-Allow-Credentials: true (server-side) are required. The question states CORS is configured, implying some server headers exist. The most common oversight is the server missing Allow-Credentials: true. Without it, browsers block cookie transmission even if the client sends credentials: 'include'. (A) is also required but usually caught earlier. (C) applies to true cross-site (different eTLD+1), but app.example.com to api.example.com is same-site. (D) is wrong; cookies without Domain attribute are sent to exact-match origins."
+        },
+        {
+          "question": "The team fixes the CORS configuration. Now they want to prevent CSRF attacks. Which additional measure is most effective for this stateless API?",
+          "options": [
+            "Add a custom X-CSRF-Token header derived from the session cookie and validate it server-side",
+            "Set SameSite=Strict on the session cookie to block cross-site requests entirely",
+            "Require an Origin header match and reject requests where Origin doesn't match api.example.com",
+            "Use double-submit cookie pattern: send CSRF token in both a cookie and a request header, validate they match"
+          ],
+          "correct": 0,
+          "explanation": "For a stateless API serving an SPA, a custom header with session-derived token is best. The server generates a CSRF token tied to the session, stores it in the session, and the SPA includes it in X-CSRF-Token. Browsers prevent cross-origin requests from setting custom headers without CORS preflight, blocking CSRF. (B) SameSite=Strict breaks legitimate cross-site navigation (e.g., OAuth redirects). (C) Origin header can be spoofed in some legacy browsers. (D) double-submit works but is weaker if an attacker can inject cookies via subdomain or HTTP endpoint; session-derived tokens are cryptographically tied to the session."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-064",
+      "type": "multi-select",
+      "question": "Your stateless microservices use JWTs for authentication. Each service validates tokens independently. Select all statements that are TRUE about this architecture:",
+      "options": [
+        "If a user's privileges are revoked, services will continue to accept valid JWTs until they expire unless you implement a token blacklist",
+        "Services can verify token signatures without calling the auth service if they share the public key (for RS256) or secret (for HS256)",
+        "Rotating the JWT signing key requires deploying all services simultaneously to avoid authentication failures",
+        "Including user roles in the JWT payload eliminates the need for services to query a user database for authorization decisions"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "A is TRUE: JWTs are self-contained. Revocation requires a blacklist/revocation list or short TTLs. B is TRUE: RS256 uses public-key cryptography (services hold the public key); HS256 uses a shared secret. Both allow local validation. C is FALSE: key rotation can use a grace period — publish the new key, allow both old/new for a transition window, then retire the old key. Services fetch keys from a JWKS endpoint. D is FALSE: roles in JWTs enable authorization, but the JWT can go stale (user promoted but old token still has old roles). For real-time authorization, you still need to query a source of truth or use short-lived tokens."
+    },
+    {
+      "id": "sc-ss-065",
+      "type": "multiple-choice",
+      "question": "Your stateless Node.js API runs on AWS Lambda behind API Gateway. Cold starts take 800ms (Lambda init + DB connection pool setup). Sessions are stored in ElastiCache Redis. To minimize cold start impact on session validation latency, which approach is most effective?",
+      "options": [
+        "Pre-warm Lambdas with CloudWatch Events pinging the function every 5 minutes to keep containers warm",
+        "Use Provisioned Concurrency to keep 10 Lambda instances initialized and connected to Redis at all times",
+        "Switch to JWT tokens stored in cookies — Lambda validates tokens locally without Redis roundtrip, eliminating the cold start penalty for session lookups",
+        "Implement lazy Redis connection initialization — defer connecting to Redis until the first request that actually needs session data"
+      ],
+      "correct": 2,
+      "explanation": "JWT tokens are most effective. Cold starts cost 800ms regardless of how you warm Lambdas. JWTs eliminate the Redis dependency for authentication, removing network latency and connection setup. (A) pre-warming is unreliable — AWS can evict containers unpredictably, and you pay for wasted invocations. (B) Provisioned Concurrency works but costs 24/7 for idle capacity; JWTs are free and scale to zero. (D) lazy initialization doesn't help — the first request still pays 800ms + Redis connection time. For serverless, stateless auth (JWTs) is architecturally superior: no warm-up, no idle cost, infinite scale."
+    },
+    {
+      "id": "sc-ss-066",
+      "type": "ordering",
+      "question": "Rank these session data serialization formats by typical payload size (smallest to largest) for a session containing: userId (int64), email (string, 30 chars), permissions (array of 5 strings, avg 10 chars each), lastAccess (timestamp):",
+      "items": [
+        "Protocol Buffers (protobuf) with schema definition",
+        "MessagePack (binary JSON)",
+        "JSON with short key names (e.g., 'u', 'e', 'p', 'l')",
+        "JSON with descriptive key names (e.g., 'userId', 'email', 'permissions', 'lastAccess')"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: protobuf < MessagePack < JSON (short keys) < JSON (long keys). Protobuf (~70 bytes): schema-driven, no field names in payload, varint encoding for ints. MessagePack (~90 bytes): binary JSON, compact but still includes key names (as short binary strings). JSON short keys (~130 bytes): text-based, single-char keys save ~30 bytes vs long keys. JSON long keys (~160 bytes): human-readable but verbose. For high-throughput session stores (millions of keys), protobuf can reduce network transfer and storage costs by 50%+, but requires schema versioning discipline."
+    },
+    {
+      "id": "sc-ss-067",
+      "type": "multiple-choice",
+      "question": "You're deploying a canary release of your stateless API (10% traffic to v2, 90% to v1). v2 adds a new field to the session schema: 'preferences.theme'. Sessions are stored in Redis as JSON. A user on v2 sets theme=dark, then their next request is routed to v1. What happens, and how should you design for this scenario?",
+      "options": [
+        "v1 ignores the unknown 'theme' field when deserializing the session, and the user's theme preference is lost when v1 updates the session — design with forward compatibility: v1 must preserve unknown fields",
+        "v1 throws a deserialization error because the schema doesn't match, causing a 500 error — design with schema versioning: add a 'schemaVersion' field and reject incompatible sessions",
+        "Redis automatically rejects the write from v2 because the schema has changed — design with schema enforcement at the database layer using JSON schema validation",
+        "v1 successfully reads the session because JSON is self-describing, and the theme field is simply ignored with no side effects"
+      ],
+      "correct": 0,
+      "explanation": "JSON deserializers typically ignore unknown fields, so v1 can read the session. But if v1 writes the session back (e.g., updating lastAccess), it serializes only the fields it knows, dropping 'theme'. Solution: forward compatibility — v1's session model should preserve unknown fields (e.g., store raw JSON, update only known fields, merge on write). (B) is overly strict; schema versioning is useful but rejecting sessions breaks UX. (C) Redis doesn't enforce schemas. (D) is half-right (read succeeds) but wrong about 'no side effects' — the write-back loses data. Canary deploys with shared state require backward AND forward compatibility."
+    },
+    {
+      "id": "sc-ss-068",
+      "type": "multi-select",
+      "question": "Your stateless API uses Redis for session caching. During a flash sale, you observe a 'thundering herd' effect: when a popular session key expires, 5000 concurrent requests all miss the cache, query the database to rebuild the session, and write back to Redis. Select all effective strategies to mitigate this:",
+      "options": [
+        "Implement probabilistic early expiration: refresh the cache entry shortly before TTL expires based on a random probability",
+        "Use Redis SETNX with a short 'rebuilding' lock: the first request to miss sets a lock key, others wait or serve stale data until the lock is released",
+        "Increase Redis memory and set MAXMEMORY-POLICY to allkeys-lru to prevent any evictions during the sale",
+        "Add jitter to session TTLs (e.g., 3600s +/- 60s) so expirations are spread over time rather than synchronized"
+      ],
+      "correctIndices": [1, 3],
+      "explanation": "B (lock-based rebuild) and D (TTL jitter) are effective. B: the first miss acquires a lock (SETNX 'rebuilding:sessionId' EX 5), rebuilds the session, and releases the lock; other requests wait or serve stale. This is the 'cache stampede' mitigation pattern. D: jittered TTLs prevent mass simultaneous expirations. A is less effective here — probabilistic early expiration helps with gradual expiry but doesn't prevent the herd if 5K requests arrive in the same millisecond. C is wrong: the problem isn't eviction, it's expiration; allkeys-lru doesn't stop TTL-based expiry, and you can't prevent expiration by adding memory."
+    },
+    {
+      "id": "sc-ss-069",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your stateless API uses request-scoped middleware to attach a correlation ID (generated or extracted from X-Request-ID header) to every log entry. You're migrating from a monolith to microservices. Service A calls Service B, which calls Service C. How should you propagate the correlation ID to maintain request traceability across services?",
+          "options": [
+            "Each service generates a new correlation ID for outbound requests and logs a parent-child relationship mapping",
+            "Service A's correlation ID is passed in the X-Request-ID header to B, B forwards it to C — all services log the same ID",
+            "Store the correlation ID in a distributed cache (Redis) keyed by the user's session ID, and each service retrieves it from the cache",
+            "Use HTTP cookies to carry the correlation ID across service boundaries — browsers and HTTP clients automatically forward cookies"
+          ],
+          "correct": 1,
+          "explanation": "Propagate the same correlation ID (trace ID) through headers (X-Request-ID or X-Trace-ID). All services log the same ID, enabling you to grep logs or query tracing systems (e.g., Jaeger) for a single request's full path. (A) parent-child IDs are used in distributed tracing (span IDs) but you still need a shared trace ID. (C) cache lookup adds latency and couples services to Redis. (D) cookies aren't sent in server-to-server HTTP calls (only browser to server), so this doesn't work for microservice communication."
+        },
+        {
+          "question": "The team implements correlation ID propagation. Now they want to add distributed tracing with OpenTelemetry. Which additional propagation mechanism is required to support trace sampling decisions across services?",
+          "options": [
+            "Propagate a trace context header (traceparent) containing trace ID, parent span ID, and sampling flags using W3C Trace Context standard",
+            "Add a X-Sampling-Rate header with a decimal (0.0-1.0) indicating the probability that this trace should be recorded",
+            "Store sampling decisions in a shared Redis key (trace:{traceId}:sampled) that all services check before emitting spans",
+            "Use consistent hashing on the trace ID to deterministically decide sampling in each service independently"
+          ],
+          "correct": 0,
+          "explanation": "W3C Trace Context / traceparent header is the standard. It encodes trace ID, parent span ID, and a 'sampled' flag (01 = sampled, 00 = not sampled). All services honor the upstream sampling decision, ensuring either the entire trace is sampled or none of it is (avoiding partial traces). (B) propagating the rate doesn't guarantee consistent decisions — two services might decide differently. (C) Redis lookup adds latency and a dependency. (D) consistent hashing per service can yield inconsistent results if services use different hash functions. The sampled flag in traceparent solves this: the root service decides, all descendants obey."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-070",
+      "type": "numeric-input",
+      "question": "Your SaaS platform uses a shared Redis cluster for session storage across 500 tenants. Tenant 'ACME' has 10,000 concurrent users. You implement key namespacing (tenant:{tenantId}:session:{sessionId}). A capacity planning exercise: if you deploy per-tenant Redis instances (32GB each) with average session size of 10KB and 10K concurrent users per tenant, how many tenants can share a single 32GB Redis instance at 80% memory utilization? (Assume 1.3x overhead for Redis data structures.)",
+      "answer": 197,
+      "unit": "tenants",
+      "tolerance": 0.1,
+      "explanation": "Per tenant: 10K users x 10KB = 100MB raw data. With 1.3x Redis overhead for data structures: 130MB per tenant. 80% of 32GB = 25.6GB usable. 25.6GB / 130MB = ~197 tenants per instance. In practice, you'd also consider peak load, key expiration patterns, and memory fragmentation, which could reduce this by 10-20%."
+    },
+    {
+      "id": "sc-ss-071",
+      "type": "multiple-choice",
+      "question": "Your stateless microservices connect to a Postgres database. Each service instance maintains a connection pool (10 connections). You have 50 service instances. During a traffic spike, you add 50 more instances, and Postgres starts rejecting connections (max_connections=500). What's the best architectural fix to allow horizontal scaling without hitting connection limits?",
+      "options": [
+        "Increase Postgres max_connections to 2000 — each connection costs ~10MB RAM, so provision a larger DB instance",
+        "Deploy PgBouncer in transaction-pooling mode — multiplex thousands of application connections onto a small pool of Postgres connections",
+        "Reduce each service's connection pool to 5 connections, halving the total connection count and leaving headroom for scaling",
+        "Implement connection pooling at the application layer with a global semaphore limiting total connections across all instances to 450"
+      ],
+      "correct": 1,
+      "explanation": "PgBouncer transaction pooling is the best fix. 100 instances x 10 conns = 1000 app connections, but PgBouncer multiplexes them onto 50-100 Postgres connections by assigning a backend connection only during an active transaction. (A) raising max_connections doesn't scale — each connection costs RAM and CPU, degrading Postgres performance beyond ~500 connections. (C) reducing pool size helps short-term but doesn't solve the scaling problem (200 instances x 5 = 1000 again). (D) global semaphore requires coordination (Redis, etc.), adds complexity, and doesn't address the root cause. PgBouncer is the standard solution for stateless services + Postgres."
+    },
+    {
+      "id": "sc-ss-072",
+      "type": "multi-select",
+      "question": "Your fraud detection system fingerprints user sessions by hashing (IP address + User-Agent + Accept-Language). If the fingerprint changes mid-session, the session is invalidated. Select all scenarios where this approach will cause FALSE POSITIVES (legitimate users losing sessions):",
+      "options": [
+        "A mobile user switches from WiFi to cellular data, changing their IP address",
+        "A user's browser auto-updates in the background, changing the User-Agent string",
+        "A user behind a corporate NAT gateway shares the same IP with 500 coworkers",
+        "A user accesses the app from two different devices (laptop and phone) with the same account"
+      ],
+      "correctIndices": [0, 1],
+      "explanation": "A and B are false positives. A: Mobile users frequently switch networks (WiFi to cellular), changing IPs mid-session — this is legitimate behavior. B: Browser auto-updates change the User-Agent mid-session (e.g., Chrome 120 to 121), breaking the fingerprint. (C) is NOT a false positive — shared IP doesn't change the fingerprint for a single user; it's a limitation (can't distinguish users) but doesn't invalidate sessions. (D) is correct behavior, not a false positive — two devices should have different sessions (different fingerprints). Better fingerprinting uses canvas/WebGL fingerprints, TLS fingerprints, and behavioral signals."
+    },
+    {
+      "id": "sc-ss-073",
+      "type": "multiple-choice",
+      "question": "Your stateless API uses Redis for sessions. You're implementing a disaster recovery plan. Redis is configured with AOF persistence (appendonly yes, fsync everysec). During a region-wide outage, you fail over to a replica in another region. The replica is 10 seconds behind. What's the impact on user sessions?",
+      "options": [
+        "Users lose up to 10 seconds of session updates (e.g., items added to cart, preferences changed) — cross-region async replication means recent writes are lost",
+        "All sessions are intact because AOF persists every write to disk — the replica can replay the AOF log to catch up with zero data loss",
+        "Users lose all sessions created in the last 10 seconds; existing sessions are intact — sessions are either fully replicated or not at all",
+        "Sessions are eventually consistent; users may see stale session data for 10 seconds after failover — no data is lost, just delayed"
+      ],
+      "correct": 0,
+      "explanation": "Asynchronous replication means the replica lags by ~10 seconds. Users lose session updates made in that window. AOF on the primary doesn't help (B is wrong) — the primary is down, and the replica doesn't have the primary's AOF. (C) partially true but misleading — it's not binary (all or nothing); updates within the lag window are lost. (D) is wrong — data IS lost, not just delayed; the replica never received those writes. For critical sessions (payments), use synchronous replication at the cost of cross-region latency (~50-100ms). For non-critical (UI preferences), accept the loss."
+    },
+    {
+      "id": "sc-ss-074",
+      "type": "ordering",
+      "question": "Rank these token storage locations for a stateless SPA by security (most secure to least secure) against XSS attacks:",
+      "items": [
+        "httpOnly, Secure, SameSite=Strict cookie",
+        "In-memory JavaScript variable (lost on page refresh)",
+        "localStorage",
+        "sessionStorage"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: httpOnly cookie > in-memory > localStorage >= sessionStorage. httpOnly cookies are inaccessible to JavaScript, blocking XSS token theft (but vulnerable to CSRF, mitigate with SameSite). In-memory variables are safer than storage APIs because they're not persisted and XSS must run during the page session. localStorage and sessionStorage are both accessible to any script; localStorage is slightly worse (survives browser restart and is shared across tabs), sessionStorage is per-tab but still XSS-accessible. Best practice: httpOnly cookies for refresh tokens, short-lived access tokens in memory."
+    },
+    {
+      "id": "sc-ss-075",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your stateless API issues JWTs with 15-minute expiration and 7-day refresh tokens (stored in httpOnly cookies). The refresh token endpoint (/auth/refresh) returns a new access token. An attacker steals a refresh token. What's the maximum time window the attacker can impersonate the user?",
+          "options": [
+            "15 minutes — only until the current access token expires",
+            "7 days — until the refresh token expires",
+            "Indefinitely — the attacker can refresh indefinitely, obtaining new refresh tokens each time",
+            "Until the user logs in again — login invalidates all previous refresh tokens"
+          ],
+          "correct": 1,
+          "explanation": "The refresh token is valid for 7 days. Each refresh returns a new access token (15 min), but the refresh token itself remains valid until expiry (7 days). The attacker can call /auth/refresh every 15 minutes to get new access tokens for 7 days. (C) is wrong unless refresh token rotation is implemented (each refresh issues a NEW refresh token and invalidates the old one). (D) is wrong unless you implement 'logout all devices' that invalidates refresh tokens server-side. Mitigation: refresh token rotation + detection of concurrent refresh token use."
+        },
+        {
+          "question": "The team implements refresh token rotation: each /auth/refresh call returns a new access token AND a new refresh token, invalidating the old refresh token. Now an attacker steals a refresh token. What additional mechanism is needed to detect and block the attack?",
+          "options": [
+            "Rate limiting on /auth/refresh to 1 request per minute per user",
+            "Detecting reuse of an old (invalidated) refresh token — if seen, invalidate the entire token family (all refresh tokens for that user)",
+            "Requiring step-up authentication (password re-entry) every 24 hours before allowing refresh",
+            "Logging refresh token usage and alerting on geographic anomalies (e.g., refresh from US then Russia 1 minute later)"
+          ],
+          "correct": 1,
+          "explanation": "Reuse detection is the key mechanism. With rotation, a legitimate user holds token N+1, attacker holds token N. If the attacker uses token N (now invalid), the server detects reuse and invalidates the entire token family (all tokens issued from the original login), forcing re-authentication. This stops the attack immediately. (A) rate limiting helps but doesn't detect theft. (C) step-up auth reduces the window but doesn't detect active attacks. (D) anomaly detection is good but slow and has false positives. Reuse detection is deterministic and immediate."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-076",
+      "type": "multiple-choice",
+      "question": "Your stateless microservices architecture uses JWTs with 'audience' (aud) claims to scope tokens. The payment service only accepts tokens with aud: ['payment-service']. A developer accidentally deploys a front-end that requests tokens with aud: ['*']. What security risk does this introduce?",
+      "options": [
+        "No risk — the payment service validates the aud claim and rejects wildcard tokens, so the misconfigured front-end simply fails to call the payment API",
+        "Privilege escalation — if any service accepts wildcard audiences, an attacker can use a single token to access all services; prevent by enforcing aud allowlists at the auth service",
+        "Token bloat — wildcard audiences increase JWT size, causing HTTP header size limits to be exceeded",
+        "Replay attacks — wildcard tokens can be reused across services, enabling cross-service replay"
+      ],
+      "correct": 1,
+      "explanation": "Wildcard audiences break the principle of least privilege. If any service accepts aud: ['*'] (either by misconfiguration or lax validation), a token intended for the front-end can access backend services. Prevention: the auth service must reject wildcard or overly broad audience requests and enforce an allowlist. (A) is too optimistic — assumes perfect validation everywhere. (C) aud arrays are tiny, not a size concern. (D) replay attacks are mitigated by exp and jti, not aud; aud is for authorization scoping."
+    },
+    {
+      "id": "sc-ss-077",
+      "type": "numeric-input",
+      "question": "Your stateless API serves 100,000 requests per second. Each request validates a JWT (RS256, 2048-bit key) by verifying the signature. Signature verification takes 0.5ms of CPU time per request. If you cache validated JWTs in memory (keyed by token hash) with a 60-second TTL, and 80% of requests use a token already in the cache, how much CPU time per second (in milliseconds) is saved by caching?",
+      "answer": 40000,
+      "unit": "ms/sec",
+      "tolerance": 0.1,
+      "explanation": "Without caching: 100K req/sec x 0.5ms = 50,000ms CPU/sec. With caching: 80% cache hits = 80K req/sec skip verification, 20% = 20K req/sec verify. CPU used: 20K x 0.5ms = 10,000ms/sec. CPU saved: 50,000 - 10,000 = 40,000ms/sec. This is 40 CPU cores worth of work. Caching validated JWTs is common in high-throughput stateless systems. Tradeoff: revoked tokens remain valid until cache TTL expires (60s exposure window)."
+    },
+    {
+      "id": "sc-ss-078",
+      "type": "multi-select",
+      "question": "Your team is migrating a monolithic app to stateless microservices. The legacy app uses database-backed sessions (session ID in cookie, session data in MySQL sessions table). Select all reasons why Redis is a better choice than MySQL for session storage in the new stateless architecture:",
+      "options": [
+        "Redis supports automatic TTL-based expiration, eliminating the need for a cron job to delete expired sessions",
+        "Redis offers lower read latency (~1ms) compared to MySQL (~5-10ms), reducing session lookup overhead on every request",
+        "Redis supports atomic operations (INCR, HINCRBY) for updating session fields like page view counts without read-modify-write race conditions",
+        "Redis provides stronger consistency guarantees (ACID transactions) than MySQL for distributed session updates across multiple data centers"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "A, B, and C are true. A: Redis native TTL auto-deletes expired keys; MySQL requires DELETE WHERE expires_at < NOW() cron jobs. B: Redis is in-memory, orders of magnitude faster than MySQL disk I/O. C: Redis atomic ops (INCR, HINCRBY, HSET) prevent race conditions; MySQL requires SELECT FOR UPDATE or optimistic locking. D is FALSE: Redis offers weaker consistency than MySQL. Redis replication is asynchronous (data loss on failover), while MySQL with InnoDB offers ACID and synchronous replication. For sessions, Redis's performance and TTL handling outweigh consistency concerns."
+    },
+    {
+      "id": "sc-ss-079",
+      "type": "multiple-choice",
+      "question": "Your stateless API uses Redis for rate limiting (sliding window: allow 100 requests per minute per user). During a Redis outage, requests fail with 'Cannot connect to Redis'. The business wants graceful degradation. What's the safest fallback strategy?",
+      "options": [
+        "Allow all requests — fail open to maintain availability, accept the risk of abuse during the outage",
+        "Reject all requests with 503 Service Unavailable — fail closed to prevent abuse, sacrifice availability",
+        "Implement local in-memory rate limiting per instance (100 req/min per user per instance) — partially enforce limits without Redis",
+        "Queue requests in memory and retry Redis connection every 100ms until it recovers, then process the queue"
+      ],
+      "correct": 2,
+      "explanation": "Local in-memory rate limiting is the best compromise. Each instance enforces 100 req/min independently. With N instances, effective limit is ~100*N req/min (loose but not unbounded). (A) fail-open risks abuse (DDoS, scraping). (B) fail-closed sacrifices availability for all users. (D) queueing requests during an outage is dangerous — memory exhaustion, increased latency, and the queue backlog causes a thundering herd when Redis recovers. Local rate limiting provides partial enforcement and degrades gracefully."
+    },
+    {
+      "id": "sc-ss-080",
+      "type": "ordering",
+      "question": "Rank these approaches for handling session state in a long-running background job (e.g., generating a 10-minute export for a user) by architectural cleanliness in a stateless system (cleanest to least clean):",
+      "items": [
+        "Pass all necessary user context (user ID, permissions, preferences) as job parameters; the job operates without session/token dependencies",
+        "Pass a long-lived service account JWT (24 hours) scoped to the job type; the job authenticates as a service, not the user",
+        "Pass the user's session ID to the job; the job reads the session from Redis on startup and periodically refreshes it",
+        "Pass a short-lived JWT (15 min) to the job; if the job runs longer, it fails and requires the user to retry"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: pass context as params > service account token > session ID > short-lived JWT. Passing user context as job params is cleanest — no session coupling, idempotent, replayable, no auth expiration. Service account token decouples from user sessions but still requires token validation. Session ID couples the job to session lifetime and Redis availability. Short-lived JWT is worst — a 15-min token fails for a 10-min job if the user logged out or the token expires. For long-running jobs, pass data, not credentials."
+    },
+    {
+      "id": "sc-ss-081",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your team is migrating from database-backed sessions to Redis. The current schema has a sessions table with columns: session_id, user_id, data (JSON), created_at, expires_at. You want zero-downtime migration. Which migration strategy allows both old (MySQL) and new (Redis) session stores to coexist during the rollout?",
+          "options": [
+            "Dual-write: write sessions to both MySQL and Redis; read from Redis (fallback to MySQL on miss); after 7 days (max session TTL), delete MySQL sessions table",
+            "Lazy migration: read from MySQL; on read, copy session to Redis and set TTL; new sessions write to Redis only; MySQL sessions expire naturally",
+            "Blue-green deployment: deploy new instances with Redis-only; route 100% traffic to new instances; roll back to MySQL instances if issues arise",
+            "Feature flag: use Redis for new sessions (created after migration start); use MySQL for old sessions; gradually force-expire old sessions over 7 days"
+          ],
+          "correct": 0,
+          "explanation": "Dual-write with read-from-Redis-first is the safest zero-downtime approach. Writes go to both stores (ensuring consistency), reads prefer Redis (performance). After max session TTL (7 days), all active sessions are in Redis, and you can drop MySQL. (B) lazy migration risks inconsistency — if a session is updated in MySQL but not yet migrated, Redis has stale data. (C) blue-green is binary (all or nothing), risky for session state (rollback loses sessions created in Redis). (D) feature flag by timestamp works but requires tracking creation time and dual read logic; dual-write is simpler."
+        },
+        {
+          "question": "During the dual-write migration, a developer notices that session updates are slower (p99 latency increased from 10ms to 18ms). The session update code does: await saveToMySQL(session); await saveToRedis(session); What optimization reduces latency while maintaining dual-write correctness?",
+          "options": [
+            "Write to Redis first (fast), then MySQL — if MySQL write fails, delete the Redis key to maintain consistency",
+            "Write to both stores in parallel using Promise.all — latency equals max of both writes instead of sum",
+            "Write to Redis only (fast path); queue MySQL writes asynchronously in the background — accept eventual consistency for MySQL during migration",
+            "Batch session updates — collect 10 updates in memory, write to both stores once every second to reduce round trips"
+          ],
+          "correct": 1,
+          "explanation": "Parallel writes with Promise.all is correct. Sequential writes take 10ms (MySQL) + 1ms (Redis) = 11ms. Parallel writes take max(10ms, 1ms) = 10ms. Both writes still complete before responding to the client, maintaining strong consistency. (A) write-order optimization doesn't help (Redis is fast, MySQL is the bottleneck). (C) async queueing breaks consistency — if the process crashes, MySQL loses the write. (D) batching increases complexity and delays (users wait up to 1 second for session updates to persist)."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-082",
+      "type": "multiple-choice",
+      "question": "Your stateless SaaS app uses JWTs with custom claims: {userId, tenantId, roles}. A customer requests 'organization-wide logout' — when an admin clicks 'logout all users,' all 5000 employees' sessions should be invalidated immediately. How do you implement this in a stateless JWT architecture?",
+      "options": [
+        "Add a tokenVersion field to the user record in the database; increment it on logout-all; include tokenVersion in JWTs; reject tokens with mismatched versions",
+        "Maintain a Redis blacklist of invalidated tokens (by jti); on logout-all, add all 5000 token JTIs to the blacklist with TTL matching token expiration",
+        "Add a lastLogoutAll timestamp to the tenant record; include token issuedAt (iat) in JWTs; reject tokens where iat < lastLogoutAll",
+        "Reduce JWT expiration to 5 minutes; on logout-all, wait 5 minutes for all tokens to expire naturally"
+      ],
+      "correct": 2,
+      "explanation": "Tenant-level lastLogoutAll timestamp is the most efficient. Store lastLogoutAll per tenant; each request checks if token.iat < tenant.lastLogoutAll, rejecting old tokens. One database read per tenant (cacheable). (A) tokenVersion works but requires per-user storage and invalidates per-user, not org-wide. (B) blacklisting 5000 JTIs is expensive and doesn't scale. (D) waiting 5 minutes is poor UX. For org-wide actions, tenant-scoped timestamps are the stateless-friendly solution."
+    },
+    {
+      "id": "sc-ss-083",
+      "type": "multi-select",
+      "question": "Your stateless API uses connection pooling to Postgres (10 connections per instance, 20 instances = 200 total connections). You're implementing a health check endpoint (/health) that Kubernetes calls every 5 seconds. The health check queries SELECT 1 to verify database connectivity. Select all problems this introduces:",
+      "options": [
+        "Health checks consume connection pool slots — if all 10 connections are busy, the health check waits, causing Kubernetes to mark the instance as unhealthy and restart it (cascading failure)",
+        "Health checks generate 4 queries/sec per instance x 20 instances = 80 QPS to Postgres, adding unnecessary load",
+        "Health checks don't detect application-level issues (e.g., slow queries, deadlocks) — SELECT 1 only tests network connectivity, giving false positives for 'healthy'",
+        "Health checks cause connection churn — opening and closing a connection every 5 seconds increases Postgres connection overhead and CPU usage"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "A, B, and C are problems. A: health checks can block on pool exhaustion, causing false negatives. Solution: use a dedicated health check connection outside the pool, or check pool stats without executing a query. B: 80 QPS is low but wasteful; multiplied across many services, health checks can become significant load. C: SELECT 1 tests connectivity, not application health. Better: check connection pool stats, recent query success rate, or a lightweight query on real tables. D is FALSE if you reuse a persistent health check connection. Best practice: health checks should be cheap and not share resources with application queries."
+    },
+    {
+      "id": "sc-ss-084",
+      "type": "multiple-choice",
+      "question": "Your stateless e-commerce API uses Redis for session storage. The session includes a shopping cart (array of {productId, quantity}). A user adds an item to their cart from two browser tabs simultaneously. Both tabs read the session, append their item, and write back to Redis. What happens, and how do you prevent data loss?",
+      "options": [
+        "Last write wins — one tab's addition is lost; prevent with optimistic locking (WATCH key in Redis, abort transaction if key changed between read and write)",
+        "Both writes succeed — Redis merges the two cart arrays automatically, resulting in both items in the cart",
+        "Redis detects the conflict and returns an error to both clients, requiring them to retry with exponential backoff",
+        "The session is corrupted — Redis stores a malformed JSON structure that causes deserialization errors on the next read"
+      ],
+      "correct": 0,
+      "explanation": "Last write wins, use optimistic locking. Redis doesn't merge writes — the second write overwrites the first, losing one item. Solution: optimistic locking with WATCH: 1) WATCH session:123, 2) GET session:123, 3) modify cart in app code, 4) MULTI...SET session:123...EXEC. If another client modified the key between step 2 and 4, EXEC fails and the client retries. (B) Redis doesn't auto-merge. (C) Redis doesn't detect conflicts without WATCH. (D) Redis stores bytes; JSON corruption would require the app writing invalid JSON. Better approach: use Redis hashes (HSET) for carts, allowing atomic field updates."
+    },
+    {
+      "id": "sc-ss-085",
+      "type": "numeric-input",
+      "question": "Your stateless API uses JWTs (RS256, 2048-bit). JWTs are 1200 bytes (base64-encoded). You serve 50,000 requests per second. Each request sends the JWT in the Authorization: Bearer header. How much network bandwidth (in Mbps) is consumed by JWT transmission alone (requests only, ignoring responses)?",
+      "answer": 480,
+      "unit": "Mbps",
+      "tolerance": 0.1,
+      "explanation": "50K req/sec x 1200 bytes = 60,000,000 bytes/sec = 60 MB/sec. Convert to Mbps: 60 MB/sec x 8 bits/byte = 480 Mbps. This is non-trivial bandwidth, especially in cloud environments where data transfer costs money. For high-throughput APIs, JWT size matters. Optimizations: use shorter claim names, switch to opaque tokens (Redis-backed session IDs, ~20 bytes), or use cookie-based JWTs."
+    },
+    {
+      "id": "sc-ss-086",
+      "type": "ordering",
+      "question": "Rank these idempotency strategies for a stateless payment API by robustness (most robust to least robust) in preventing duplicate charges when clients retry requests:",
+      "items": [
+        "Client generates a UUID idempotency key per operation; server stores {key: result} in Redis with 24-hour TTL; on retry, return cached result",
+        "Client sends request with a unique nonce; server checks if payment_id exists in database; if exists, return existing record",
+        "Server generates an idempotency key by hashing (userId + amount + timestamp); stores in database; rejects duplicates within 5-minute window",
+        "Client includes a request_id in headers; server logs all request_ids to a file; on duplicate, reads the log to find the previous response"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: Redis-backed UUID > DB-backed nonce > server-generated hash > log file. Client-generated UUID in Redis is most robust: cryptographically unique, fast lookup, cached result enables instant retry response. DB-backed nonce is durable but slower. Server-generated hash with timestamp is fragile — clock skew or concurrent requests at the same timestamp can collide. Log file is impractical — slow searches, not distributed, and files don't support fast lookups."
+    },
+    {
+      "id": "sc-ss-087",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your stateless order processing service uses a saga pattern to coordinate a multi-step workflow: 1) Reserve inventory, 2) Charge payment, 3) Send confirmation email. Each step is idempotent. The saga state is stored in DynamoDB (orderId -> {step, status}). If step 2 fails, the saga executes compensating transactions (refund inventory). Where should the saga state live to maintain statelessness?",
+          "options": [
+            "In-memory within the service instance — each instance tracks its own sagas, and sagas are lost if the instance crashes",
+            "In DynamoDB — saga state is externalized, any instance can resume a saga, and DynamoDB TTL cleans up completed sagas",
+            "In a dedicated 'saga coordinator' service — a stateful orchestrator manages all sagas, other services remain stateless",
+            "In the client application — the client tracks which steps succeeded and retries failed steps"
+          ],
+          "correct": 1,
+          "explanation": "DynamoDB is correct for a stateless service. Externalizing saga state to a database allows any instance to pick up and resume a saga (e.g., after a crash or during retries). (A) in-memory violates statelessness and loses sagas on crash. (C) dedicated orchestrator works but introduces a new stateful service. (D) client-side saga coordination is complex, unreliable (clients can disconnect), and exposes business logic."
+        },
+        {
+          "question": "The team implements DynamoDB-backed sagas. They observe that some sagas get 'stuck' — step 2 (charge payment) fails, but the compensating transaction (refund inventory) never runs. The saga record shows status: 'step2_failed' for 24 hours. What mechanism is missing?",
+          "options": [
+            "A saga timeout — after 10 minutes in 'step2_failed' state, automatically trigger compensating transactions and mark the saga as 'aborted'",
+            "A dead letter queue (DLQ) — failed saga steps publish to a DLQ, and a separate worker processes DLQ messages to trigger compensation",
+            "A scheduled job (cron) that scans DynamoDB for stale sagas (status=failed, updated_at > 1 hour ago) and triggers compensating transactions",
+            "Saga versioning — add a 'version' field to saga state; optimistic locking prevents concurrent updates from corrupting the state"
+          ],
+          "correct": 2,
+          "explanation": "A scheduled job to scan for stale sagas is the missing mechanism. Sagas can get stuck if the service crashes after writing 'step2_failed' but before triggering compensation. A periodic scanner (every 5-10 minutes) finds stuck sagas and resumes them. (A) saga timeout is useful but requires an active process to enforce it — same problem. (B) DLQ helps with async failures but doesn't solve 'stuck' state in the saga record. (D) versioning prevents corruption but doesn't resume stuck sagas."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-088",
+      "type": "multiple-choice",
+      "question": "Your stateless API uses Redis Cluster (3 masters, 3 replicas) for session storage. A network partition splits the cluster into two groups of 3 nodes each. Redis Cluster uses automatic failover. What is the primary risk to session consistency during this partition?",
+      "options": [
+        "Both halves of the cluster accept writes for their respective hash slots, creating split-brain — sessions may diverge",
+        "Redis Cluster elects one half as primary and the other as read-only — sessions remain consistent",
+        "Both halves merge session writes when the network heals using CRDTs — sessions converge automatically",
+        "All writes fail during the partition — sessions remain consistent but the cluster is unavailable"
+      ],
+      "correct": 0,
+      "explanation": "By default, Redis Cluster continues accepting writes during a partition if each half has enough nodes for its hash slots. This can create split-brain: different writes to the same session on each side. When the partition heals, one side's writes are lost (last-write-wins during resync). (B) Redis Cluster doesn't elect a 'primary partition'; each master independently serves its hash slots. (C) Redis doesn't use CRDTs; reconciliation uses last-write-wins. (D) only true with cluster-require-full-coverage enabled. For critical session data, enable full-coverage mode to sacrifice availability for consistency."
+    },
+    {
+      "id": "sc-ss-089",
+      "type": "multi-select",
+      "question": "Your stateless API generates audit logs for compliance (every session creation, update, deletion). Logs must be immutable and include: userId, action, timestamp, IP address, sessionId. Select all valid approaches to implement this in a stateless architecture:",
+      "options": [
+        "Synchronously write audit logs to a separate append-only database table within the same transaction as the session write",
+        "Asynchronously publish audit events to a Kafka topic; a separate consumer writes to an append-only log store (e.g., S3 or Elasticsearch)",
+        "Include audit log data in the session object itself (session.auditLog array) and store it in Redis alongside the session data",
+        "Write audit logs to a local file on each service instance; use a log shipper (Fluentd, Filebeat) to aggregate logs to a centralized store"
+      ],
+      "correctIndices": [1, 3],
+      "explanation": "B and D are valid for stateless services. B (async Kafka + consumer): decouples logging from the critical path, scales independently, and Kafka provides durability. D (local file + log shipper): common pattern (sidecar container ships logs to ELK/Splunk); works in stateless environments because logs are shipped before instances terminate. A is NOT stateless-friendly: tightly couples session writes to audit DB transactions, adding latency and a dependency. C is wrong: storing audit logs IN the session violates separation of concerns, bloats session size, and audit logs should outlive sessions."
+    },
+    {
+      "id": "sc-ss-090",
+      "type": "multiple-choice",
+      "question": "Your stateless SaaS platform serves 1000 tenants. Each tenant has custom session timeout policies (5 minutes to 8 hours). Sessions are stored in Redis with EXPIRE. You discover that some tenants' sessions expire too early. Debugging reveals that session updates (e.g., user clicks a button, lastAccess is updated) don't refresh the TTL. What's the root cause?",
+      "options": [
+        "Redis EXPIRE sets an absolute expiration time, not a sliding window — the TTL is set once at creation and doesn't reset on updates; fix by calling EXPIRE on every session update",
+        "Redis key eviction policy (maxmemory-policy allkeys-lru) is evicting sessions before their TTL expires; fix by increasing Redis memory",
+        "The session update code uses HSET to update fields, which implicitly removes the TTL; fix by calling EXPIRE after every HSET",
+        "Redis replication lag causes TTL desynchronization between master and replicas; fix by enabling WAIT for synchronous replication"
+      ],
+      "correct": 0,
+      "explanation": "Redis EXPIRE sets an absolute expiration timestamp, not a sliding window. If you SET key EX 3600 at time T, the key expires at T+3600, even if you HSET the key 100 times between T and T+3600. For sliding window session timeouts, you must call EXPIRE on every session update. (B) LRU eviction is unrelated to TTL-based expiration. (C) HSET does NOT remove the TTL — it preserves existing TTL on the key. (D) replication lag doesn't cause TTL desync. Fix: call EXPIRE on every session update to implement sliding timeouts."
+    },
+    {
+      "id": "sc-ss-091",
+      "type": "multiple-choice",
+      "question": "A stateless API uses Redis Cluster for session storage (6 nodes). During a routine maintenance operation, one node is temporarily unavailable. The application receives an error: MOVED 12345 10.0.0.5:6379 when trying to read a session. What does this error mean, and what should the application do?",
+      "options": [
+        "The session key was deleted during maintenance; the application should create a new session and ask the user to re-authenticate",
+        "The hash slot for this key has been migrated to a different node; the application's Redis client should redirect the request to the specified node and update its slot mapping",
+        "Redis Cluster is in read-only mode during maintenance; the application should queue the read and retry after maintenance completes",
+        "The session data is corrupted due to the node failure; the application should delete the key and rebuild the session from the database"
+      ],
+      "correct": 1,
+      "explanation": "MOVED is a standard Redis Cluster redirect response. During resharding or node maintenance, hash slots are migrated between nodes. MOVED tells the client: 'This slot is now served by node 10.0.0.5:6379; go there instead.' Well-implemented Redis clients (Jedis, ioredis, redis-py) handle MOVED automatically: redirect the request and update the local slot-to-node mapping for future requests. (A) the session isn't deleted, just relocated. (C) MOVED isn't about read-only mode; it's about slot ownership. (D) corruption isn't indicated by MOVED — it's a normal cluster operation."
+    },
+    {
+      "id": "sc-ss-092",
+      "type": "ordering",
+      "question": "Rank these session validation failure responses by security best practices (most secure to least secure) for a stateless API:",
+      "items": [
+        "Return 401 Unauthorized with generic message: 'Authentication required'",
+        "Return 401 Unauthorized with WWW-Authenticate: Bearer error='invalid_token', error_description='Token signature verification failed'",
+        "Return 403 Forbidden with detailed message: 'Session expired at 2025-01-15T10:30:00Z, please login again'",
+        "Return 200 OK with response body: {error: 'Invalid session', code: 'SESSION_INVALID'}"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order: generic 401 > detailed 401 > 403 with timestamp > 200 with error. Generic 401 is most secure: doesn't leak info about why auth failed. Detailed 401 leaks failure reason — helpful for debugging but aids attackers. 403 with timestamp leaks session expiry time, aiding timing attacks. 200 with error body is worst: violates HTTP semantics (auth failures are 401, not 200), confuses clients, and still leaks error details. Best practice: 401 with minimal info in production, detailed errors only in dev/logs."
+    },
+    {
+      "id": "sc-ss-093",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your stateless GraphQL API uses session cookies for authentication. The schema includes a 'me' query (returns current user's profile). During a security audit, you discover that some frontend developers are calling 'me' on every component mount (10+ times per page load) to check auth state. This causes 10x traffic to the session store (Redis). How do you optimize this while maintaining statelessness?",
+          "options": [
+            "Cache the 'me' query response in Redis with a 60-second TTL, keyed by session ID",
+            "Add a client-side Apollo GraphQL cache policy: cache 'me' query results in memory for 60 seconds, avoiding redundant network requests",
+            "Replace session cookies with JWTs — include user profile claims in the token, eliminating the need to query Redis for 'me'",
+            "Implement GraphQL query batching — combine multiple 'me' queries into a single request, reducing network round trips"
+          ],
+          "correct": 1,
+          "explanation": "Client-side caching is the best fix. The problem is client behavior (redundant queries), so fix it at the source. Apollo Client can cache 'me' results for 60s, eliminating network requests entirely. (A) server-side caching helps but still incurs network latency (10 requests). (C) JWTs solve it architecturally but require a migration. (D) batching reduces requests from 10 to 1, but doesn't cache — the next page load sends another request."
+        },
+        {
+          "question": "The team implements client-side caching. Now they need to invalidate the 'me' cache when the user updates their profile. The profile update mutation is updateProfile(input: {displayName}). How should the mutation trigger cache invalidation in Apollo Client?",
+          "options": [
+            "The updateProfile mutation returns the updated User object; Apollo Client automatically updates the cache for queries returning the same User (by ID)",
+            "The server includes a Cache-Control: no-cache header in the updateProfile response, instructing Apollo Client to refetch",
+            "The mutation manually calls client.cache.evict to remove the user from the cache, forcing 'me' to refetch",
+            "The mutation sets a Set-Cookie header to update a cache-bust token in the session cookie"
+          ],
+          "correct": 0,
+          "explanation": "Returning the updated User object lets Apollo auto-update the cache. Apollo Client normalizes cached data by __typename and id. If updateProfile returns User {id: '123', displayName: 'NewName'}, Apollo updates all cached queries referencing User:123 (including 'me'). This is automatic and immediate. (B) Cache-Control headers don't affect Apollo's in-memory cache. (C) manual eviction works but is fragile. (D) session cookie changes don't invalidate Apollo cache."
+        }
+      ]
+    },
+    {
+      "id": "sc-ss-094",
+      "type": "multiple-choice",
+      "question": "Your stateless API uses PostgreSQL for persistent data and Redis for sessions. You're implementing a 'remember me' feature: users can stay logged in for 30 days instead of 7. What's the most secure way to implement extended sessions?",
+      "options": [
+        "Set the session cookie's Max-Age to 30 days and the Redis TTL to 30 days",
+        "Use two tokens: a short-lived session token (7 days in Redis) and a long-lived 'remember me' token (30 days in PostgreSQL); when the session expires, use the remember token to create a new session",
+        "Store the user's password hash in the session cookie (encrypted with AES-256); when the session expires, automatically re-authenticate using the stored hash",
+        "Extend the JWT expiration to 30 days and store JWTs in localStorage to survive browser restarts"
+      ],
+      "correct": 1,
+      "explanation": "Dual-token: short session + long remember token is most secure. The session token (7 days, Redis) is ephemeral and fast. The remember token (30 days, PostgreSQL) is randomly generated and stored in a database table (user_id, token_hash, expires_at). If the session expires, the client sends the remember token to create a new session. This allows token revocation (delete from DB) and limits blast radius (stealing a remember token doesn't give immediate access). (A) 30-day sessions are risky. (C) storing password hashes in cookies is catastrophic. (D) localStorage is XSS-vulnerable."
+    },
+    {
+      "id": "sc-ss-095",
+      "type": "multi-select",
+      "question": "Your team is designing a stateless video streaming service. Each stream session lasts 2 hours on average. The service must handle 100K concurrent streams. Session state includes: video_id, user_id, playback_position (updated every 10 seconds), quality_setting. Select all TRUE statements about session management for this use case:",
+      "options": [
+        "Storing playback_position in Redis with 10-second write frequency (100K users x 0.1 writes/sec = 10K writes/sec) is feasible with a Redis cluster",
+        "Using JWTs for session state is impractical because playback_position changes every 10 seconds, requiring clients to receive a new JWT frequently",
+        "Storing playback_position client-side (in the video player's memory) and syncing to the server only on pause, seek, or session end reduces server load by 95%+",
+        "Externalizing playback_position to a DynamoDB table with on-demand pricing is more cost-effective than Redis for this write-heavy workload"
+      ],
+      "correctIndices": [0, 2],
+      "explanation": "A and C are true. A: 10K writes/sec is well within Redis Cluster capacity (100K+ writes/sec per cluster). B is FALSE: you wouldn't use JWTs for frequently-changing state; you'd use opaque tokens with Redis. The statement is misleading because JWTs aren't the right tool regardless. C: client-side position tracking with periodic sync (every 30s or on pause) is standard for video players — reduces writes by 95%+. D is FALSE: DynamoDB on-demand at 10K writes/sec = ~$1080/day; Redis is far cheaper for high-write workloads."
+    },
+    {
+      "id": "sc-ss-096",
+      "type": "multiple-choice",
+      "question": "Your stateless API team is debating where to validate JWTs: at the API gateway (before routing to services) vs. in each microservice independently. Which approach offers the best security-performance tradeoff?",
+      "options": [
+        "Validate at the gateway only — centralized validation reduces CPU cost but the gateway becomes a single point of failure for auth",
+        "Validate in each microservice — defense in depth but duplicates validation work and increases latency for multi-hop requests",
+        "Hybrid: gateway validates JWT and adds a signed internal token (HMAC) to requests; services validate the faster internal token instead of the original JWT",
+        "Gateway validates and caches validation results in Redis (key: JWT hash, value: claims) with 60s TTL; services check the cache and skip signature verification"
+      ],
+      "correct": 2,
+      "explanation": "Hybrid (gateway validates, services validate internal token) is the best tradeoff. Gateway does expensive JWT validation (RS256), then signs an internal token (HMAC, 10x faster) and injects it into headers. Services validate the HMAC, trusting that the gateway already verified the external JWT. This combines gateway centralization (single RS256 check) with zero-trust (services don't blindly trust the gateway). (A) gateway-only is risky if compromised. (B) per-service is secure but slow for multi-hop. (D) caching in Redis adds latency. This pattern is used by Istio, Envoy, and AWS API Gateway."
+    },
+    {
+      "id": "sc-ss-097",
+      "type": "numeric-input",
+      "question": "Your stateless API uses Redis for rate limiting with a sliding window (100 requests per minute per user). The implementation uses a sorted set with 3 Redis commands per request: ZADD, ZREMRANGEBYSCORE, ZCARD. With 1 million active users averaging 50 requests per minute, the ops team warns that a single Redis instance handles ~100K commands/sec. How many Redis Cluster shards are needed to handle the rate limiting load with 50% headroom?",
+      "answer": 50,
+      "unit": "shards",
+      "tolerance": 0.15,
+      "explanation": "1M users x 50 req/min = 833,333 req/sec. Each request triggers 3 Redis commands: 833,333 x 3 = 2,500,000 commands/sec total. A single Redis instance handles ~100K commands/sec. Base shards needed: 2,500,000 / 100,000 = 25 shards. With 50% headroom for traffic spikes: 25 x 1.5 = 37.5, round up to 38. However, the 3 commands per request aren't pipelined (they depend on each other's results), so effective throughput per shard may be lower. A safer estimate is ~50 shards. This illustrates why sliding window rate limiting is operationally expensive — switching to fixed window counters (1 INCR command per request) would reduce the shard count by 3x."
+    },
+    {
+      "id": "sc-ss-098",
+      "type": "ordering",
+      "question": "Rank these failure modes for a stateless API using Redis for sessions by impact on user experience (most disruptive to least disruptive):",
+      "items": [
+        "Redis memory full, LRU eviction starts, oldest 5% of sessions evicted mid-session, users logged out unexpectedly",
+        "Redis master fails, replica promoted, 5-second downtime, all in-flight requests fail with 500 errors",
+        "Redis cluster undergoes rolling restart (one node at a time), each node unavailable for 10 seconds, causing 1% of requests to fail over 5 minutes",
+        "Redis master-replica replication lag spikes to 30 seconds, reads from replica return stale session data"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Correct order by UX impact: LRU eviction > master failover > rolling restart > replication lag. LRU eviction mid-session: users randomly logged out, lose work (e.g., filled form, cart cleared) — very disruptive, data loss. Master failover (5s): all users see errors briefly, but sessions recover after failover. Rolling restart: 1% of users see errors spread over 5 minutes — low individual impact. Replication lag (30s stale reads): usually tolerable (user sees old data briefly) — no errors. Design principle: data loss > availability loss > partial availability > staleness."
+    },
+    {
+      "id": "sc-ss-099",
+      "type": "multi-select",
+      "question": "Your stateless API is deployed across 3 AWS regions (us-east-1, eu-west-1, ap-southeast-1). Sessions are stored in Redis (one cluster per region). A user logs in to us-east-1, then travels to Europe and their DNS resolves to eu-west-1. Select all valid strategies to allow the user to access their session in eu-west-1:",
+      "options": [
+        "Use manual asynchronous replication between regional Redis clusters — custom code to replicate session writes",
+        "Use a global Redis deployment (Redis Enterprise Active-Active or AWS Global Datastore) with automatic cross-region replication",
+        "Include the user's region in the session cookie; if the user hits eu-west-1, proxy the session fetch to us-east-1",
+        "Use JWTs instead of Redis sessions — tokens are self-contained and region-agnostic, eliminating the need for session replication"
+      ],
+      "correctIndices": [1, 3],
+      "explanation": "B and D are valid. B (Redis Active-Active): purpose-built for multi-region deployments, provides automatic conflict resolution. D (JWTs): inherently region-agnostic, no replication needed. A (manual replication) is complex and error-prone — you'd need to implement bi-directional async replication, conflict resolution, and handle network partitions yourself. C (proxy to origin region) adds latency — defeats the purpose of multi-region deployment. For global apps, JWTs are simplest. For complex session data (shopping carts), Redis Active-Active works but costs more."
+    },
+    {
+      "id": "sc-ss-100",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Your stateless API uses Kafka for async event processing. The billing service consumes user_subscribed events and creates invoices. Each event has: {userId, planId, timestamp, eventId (UUID)}. The service uses eventId as an idempotency key (stored in Postgres: processed_events table). During a Kafka rebalance, the same event is delivered twice. What happens?",
+          "options": [
+            "Two invoices are created — Kafka doesn't guarantee exactly-once delivery without additional configuration",
+            "One invoice is created — the consumer checks processed_events, sees the eventId already exists, and skips processing",
+            "The second processing attempt fails with a database constraint violation on eventId, preventing the duplicate invoice",
+            "Kafka's exactly-once semantics prevent duplicate delivery by default"
+          ],
+          "correct": 1,
+          "explanation": "IF the consumer implements idempotency correctly: 1) Begin transaction, 2) Check if eventId exists in processed_events, 3) If exists, commit (no-op), 4) If not exists, process event, insert eventId, create invoice, commit. This is the standard idempotent consumer pattern. (C) would work if you insert eventId BEFORE processing, but constraint violations are messy. (D) Kafka EOS requires explicit configuration. (A) is what happens WITHOUT idempotency."
+        },
+        {
+          "question": "The team implements idempotent event processing. Now they're concerned about the processed_events table growing unbounded (1M events/day = 365M rows/year). What's the best strategy to manage table growth while maintaining idempotency?",
+          "options": [
+            "Set a TTL on processed_events rows (delete rows older than 30 days) — events older than 30 days are unlikely to be replayed due to Kafka retention policies",
+            "Use a bloom filter instead of a database table — check for duplicates with a 0.1% false positive rate",
+            "Partition the processed_events table by month; drop old partitions annually",
+            "Switch to Kafka's transactional producer + consumer to eliminate the need for processed_events table entirely"
+          ],
+          "correct": 0,
+          "explanation": "TTL-based deletion is best. Kafka retention is typically 7-30 days; events older than retention can't be replayed. So you only need to deduplicate events within the retention window + a safety margin (e.g., 30 days). After 30 days, delete the row. (B) bloom filters have false positives (incorrectly flag valid events as duplicates, skipping them) — unacceptable for billing. (C) partitioning helps performance but doesn't reduce total storage unless you drop partitions (which is equivalent to TTL). (D) Kafka EOS prevents broker-level duplicates but doesn't help with application-level retries."
+        }
+      ]
+    }
+  ]
+}
