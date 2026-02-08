@@ -39,6 +39,7 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 **Tests:**
 - `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing)
 - `node --test config.test.js` — Config and content validation (syntax, structure, duplicate IDs)
+- `node --test index.bootstrap.test.js` — UI bootstrap smoke test for `index.html` wiring (DOM bindings, no init-time reference errors)
 
 **Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs both test suites when SDP files are staged. This catches syntax errors in config.js and invalid content before they reach production.
 
