@@ -11,12 +11,12 @@
 
 ## Now (In Progress)
 
-- [ ] **Unit 7: Scaling Compute** — planned, chapter-by-chapter content creation next
+- [ ] **Unit 7: Scaling Compute** — in progress, chapter-by-chapter content creation
   - [x] Chapter 1: Load Balancing Fundamentals — 100 problems (L4/L7 routing, health checks, drain/failover behavior, stickiness, weighted policies, canary controls)
   Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
   Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
   - [x] Chapter 2: Statelessness & Session Strategy — 100 problems (session externalization, JWT vs opaque tokens, idempotency, Redis management, token refresh/revocation, CORS/cookie security, rate limiting, saga patterns)
-  - [ ] Chapter 3: Horizontal vs Vertical Scaling Decisions
+  - [x] Chapter 3: Horizontal vs Vertical Scaling Decisions — 100 problems (bottleneck decomposition, CPU/memory/network saturation, coordination overhead, cost curves, blast-radius trade-offs)
     Scope: Capacity planning and architectural trade-offs between bigger nodes and more nodes across workloads.
     Key concepts: bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, cost curves.
   - [ ] Chapter 4: Autoscaling Signals & Policies
