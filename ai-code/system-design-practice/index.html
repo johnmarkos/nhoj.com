@@ -882,6 +882,12 @@
     const orderingContainer = document.getElementById("ordering-container");
     const orderingItems = document.getElementById("ordering-items");
     const orderingSubmit = document.getElementById("ordering-submit");
+    const multiSubmitContainer = document.getElementById(
+      "multi-submit-container",
+    );
+    const stageIndicator = document.getElementById("stage-indicator");
+    const stageContext = document.getElementById("stage-context");
+    const stageContextText = document.getElementById("stage-context-text");
 
     // Results view elements
     const scoreEl = document.getElementById("score");
@@ -895,7 +901,310 @@
     const resultsExportStatus = document.getElementById("results-export-status");
     const resultsSummary = document.getElementById("results-summary");
 
-    // ... existing code ...
+    // =============================================
+    // UI helpers
+    // =============================================
+
+    function showError(message) {
+      errorMsg.textContent = message;
+      errorMsg.classList.add("visible");
+    }
+
+    function hideError() {
+      errorMsg.classList.remove("visible");
+    }
+
+    function hideAllQuestionTypes() {
+      optionsEl.classList.add("hidden-container");
+      numericContainer.classList.add("hidden-container");
+      orderingContainer.classList.add("hidden-container");
+      multiSubmitContainer.classList.add("hidden-container");
+      stageIndicator.classList.add("hidden-container");
+      stageContext.classList.add("hidden-container");
+      correctAnswerDisplay.classList.add("hidden-container");
+    }
+
+    // =============================================
+    // Landing page rendering
+    // =============================================
+
+    function renderUnitList() {
+      const container = document.getElementById("unit-list");
+      container.innerHTML = "";
+
+      const ul = document.createElement("ul");
+      ul.className = "unit-list";
+
+      UNITS.forEach((unit) => {
+        const li = document.createElement("li");
+        li.className = "unit-item";
+
+        const title = document.createElement("div");
+        title.className = "unit-title";
+        title.textContent = `Unit ${unit.id}: ${unit.title}`;
+        li.appendChild(title);
+
+        const chapterUl = document.createElement("ul");
+        chapterUl.className = "chapter-list";
+
+        const readyChapters = unit.chapters.filter((chapter) => chapter.ready);
+        if (readyChapters.length > 1) {
+          const allLi = document.createElement("li");
+          const allBtn = document.createElement("button");
+          allBtn.className = "chapter-btn practice-all-btn";
+          allBtn.dataset.unit = unit.id;
+          allBtn.textContent = `\u25b6 Practice All ${unit.title} (${readyChapters.length} chapters)`;
+          allBtn.addEventListener("click", () => loadUnit(unit.id, allBtn));
+          allLi.appendChild(allBtn);
+          chapterUl.appendChild(allLi);
+        }
+
+        unit.chapters.forEach((chapter) => {
+          const chapterLi = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.className = "chapter-btn";
+
+          if (chapter.ready) {
+            btn.dataset.chapter = `unit-${unit.id}-chapter-${chapter.num}`;
+            btn.textContent = `${chapter.num}. ${chapter.title}`;
+            btn.addEventListener("click", () =>
+              loadChapter(btn.dataset.chapter, btn),
+            );
+          } else {
+            btn.disabled = true;
+            btn.textContent = `${chapter.num}. ${chapter.title} (coming soon)`;
+          }
+
+          chapterLi.appendChild(btn);
+          chapterUl.appendChild(chapterLi);
+        });
+
+        li.appendChild(chapterUl);
+        ul.appendChild(li);
+      });
+
+      container.appendChild(ul);
+    }
+
+    // =============================================
+    // Content loading
+    // =============================================
+
+    async function loadUnit(unitId, buttonEl) {
+      if (buttonEl.disabled) return;
+
+      hideError();
+      const originalText = buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
+      buttonEl.disabled = true;
+      buttonEl.classList.add("loading");
+      buttonEl.textContent = "Loading...";
+
+      const unit = UNITS.find((u) => u.id === unitId);
+      const readyChapters = unit.chapters.filter((chapter) => chapter.ready);
+
+      try {
+        const chapterPromises = readyChapters.map((chapter) =>
+          fetch(`content/unit-${unitId}-chapter-${chapter.num}.json`).then(
+            (response) => {
+              if (!response.ok) {
+                throw new Error(`Failed to load chapter ${chapter.num}`);
+              }
+              return response.json();
+            },
+          ),
+        );
+
+        const chapters = await Promise.all(chapterPromises);
+        const allProblems = chapters.flatMap((chapter) => chapter.problems);
+
+        const chapterTitle = `All ${unit.title}`;
+        const chapterDescription = `${allProblems.length} problems from ${readyChapters.length} chapters`;
+
+        quiz.loadProblems(allProblems, CONFIG.maxProblems);
+        startPractice(chapterTitle, chapterDescription);
+      } catch (error) {
+        console.error("Failed to load unit:", error);
+        showError("Failed to load unit. Please try again.");
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+      } finally {
+        buttonEl.classList.remove("loading");
+      }
+    }
+
+    async function loadChapter(chapterId, buttonEl) {
+      if (buttonEl.disabled) return;
+
+      hideError();
+      const originalText = buttonEl.textContent;
+      buttonEl.dataset.originalText = originalText;
+      buttonEl.disabled = true;
+      buttonEl.classList.add("loading");
+      buttonEl.textContent = "Loading...";
+
+      try {
+        const response = await fetch(`content/${chapterId}.json`);
+        if (!response.ok) {
+          throw new Error(`Failed to load (${response.status})`);
+        }
+        const data = await response.json();
+
+        quiz.loadProblems(data.problems, CONFIG.maxProblems);
+        startPractice(data.chapterTitle, data.chapterDescription);
+      } catch (error) {
+        console.error("Failed to load chapter:", error);
+        showError("Failed to load chapter. Please try again.");
+        buttonEl.textContent = originalText;
+        buttonEl.disabled = false;
+      } finally {
+        buttonEl.classList.remove("loading");
+      }
+    }
+
+    // =============================================
+    // View transitions
+    // =============================================
+
+    function startPractice(title, description) {
+      landing.classList.add("hidden");
+      results.classList.remove("active");
+      practice.classList.add("active");
+
+      practiceTitle.textContent = title;
+      chapterDesc.textContent = description;
+
+      quiz.start();
+    }
+
+    function backToMenu() {
+      practice.classList.remove("active");
+      results.classList.remove("active");
+      landing.classList.remove("hidden");
+
+      quiz.reset();
+
+      document
+        .querySelectorAll(".chapter-btn[data-original-text]")
+        .forEach((btn) => {
+          btn.textContent = btn.dataset.originalText;
+          btn.disabled = false;
+          btn.classList.remove("loading");
+        });
+
+      sessionStatusLabel.textContent = "";
+      sessionStatusLabel.classList.add("hidden-container");
+      resultsSummary.classList.add("hidden-container");
+      showSummaryBtn.textContent = "Show Summary";
+      setResultsExportStatus("");
+      latestSessionSummary = null;
+
+      window.scrollTo(0, 0);
+    }
+
+    // =============================================
+    // Question type renderers
+    // =============================================
+
+    function renderMultipleChoiceQuestion(problem) {
+      questionText.textContent = problem.question;
+      optionsEl.classList.remove("hidden-container");
+      optionsEl.innerHTML = "";
+
+      problem.options.forEach((option, index) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.type = "multiple-choice";
+        li.appendChild(btn);
+        optionsEl.appendChild(li);
+      });
+    }
+
+    function renderNumericQuestion(problem) {
+      questionText.textContent = problem.question;
+      numericContainer.classList.remove("hidden-container");
+      numericInput.value = "";
+      numericInput.disabled = false;
+      numericInput.classList.remove("correct", "incorrect");
+      numericSubmit.disabled = false;
+      numericUnit.textContent = problem.unit || "";
+      correctAnswerDisplay.classList.add("hidden-container");
+      numericInput.focus();
+    }
+
+    function renderMultiSelectQuestion(problem) {
+      questionText.textContent = problem.question;
+      optionsEl.classList.remove("hidden-container");
+      multiSubmitContainer.classList.remove("hidden-container");
+      multiSubmit.disabled = false;
+      optionsEl.innerHTML = "";
+
+      const hint = document.createElement("li");
+      hint.innerHTML =
+        '<div class="multi-select-hint">Select all that apply</div>';
+      optionsEl.appendChild(hint);
+
+      problem.options.forEach((option, index) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.className = "option-btn multi-select";
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.type = "multi-select";
+        btn.setAttribute("aria-pressed", "false");
+        li.appendChild(btn);
+        optionsEl.appendChild(li);
+      });
+    }
+
+    function renderTwoStageQuestion(problem, stageIndex, previousAnswer) {
+      const stage = problem.stages[stageIndex];
+
+      stageIndicator.classList.remove("hidden-container");
+      stageIndicator.textContent = `Part ${stageIndex + 1} of ${problem.stages.length}`;
+
+      if (stageIndex > 0 && previousAnswer != null) {
+        stageContext.classList.remove("hidden-container");
+        stageContextText.textContent = previousAnswer;
+      } else {
+        stageContext.classList.add("hidden-container");
+      }
+
+      questionText.textContent = stage.question;
+      optionsEl.classList.remove("hidden-container");
+      optionsEl.innerHTML = "";
+
+      stage.options.forEach((option, index) => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.textContent = option;
+        btn.dataset.index = index;
+        btn.dataset.type = "two-stage";
+        btn.dataset.stage = stageIndex;
+        li.appendChild(btn);
+        optionsEl.appendChild(li);
+      });
+    }
+
+    // =============================================
+    // Feedback display
+    // =============================================
+
+    function showFeedback(isCorrect, explanation) {
+      feedback.classList.add("visible");
+      feedback.classList.add(isCorrect ? "correct" : "incorrect");
+      feedbackTitle.textContent = isCorrect ? "Correct!" : "Incorrect";
+      feedbackExplanation.textContent = explanation;
+
+      const { current, total } = quiz.progress;
+      nextBtn.classList.remove("hidden");
+      nextBtn.textContent = current < total ? "Next" : "See Results";
+      nextBtn.focus();
+    }
 
     let selectedOrderingIndex = -1; // -1 means nothing selected
     let latestSessionSummary = null;
@@ -1056,7 +1365,138 @@
       }
     }
 
-    // ... existing code ...
+    // =============================================
+    // Engine event listeners
+    // =============================================
+
+    quiz.on(
+      "questionShow",
+      ({ problem, index, total, type, shuffledItems }) => {
+        hideAllQuestionTypes();
+        optionsEl.innerHTML = "";
+
+        feedback.classList.remove("visible", "correct", "incorrect");
+        nextBtn.classList.add("hidden");
+
+        currentEl.textContent = index + 1;
+        totalEl.textContent = total;
+        progressEl.setAttribute("aria-label", `Question ${index + 1} of ${total}`);
+
+        if (CONFIG.showProblemId && problem.id) {
+          problemIdEl.textContent = problem.id;
+          problemIdEl.style.display = "block";
+        } else {
+          problemIdEl.style.display = "none";
+        }
+
+        if (type === "two-stage") {
+          renderTwoStageQuestion(problem, 0, null);
+        } else if (type === "numeric-input") {
+          renderNumericQuestion(problem);
+        } else if (type === "ordering") {
+          renderOrderingQuestion(problem, shuffledItems);
+        } else if (type === "multi-select") {
+          renderMultiSelectQuestion(problem);
+        } else {
+          renderMultipleChoiceQuestion(problem);
+        }
+
+        window.scrollTo(0, 0);
+      },
+    );
+
+    quiz.on(
+      "optionSelected",
+      ({ index, correct, correctIndex, explanation, isFinalStage, allCorrect }) => {
+        const buttons = optionsEl.querySelectorAll(".option-btn");
+        buttons.forEach((btn, buttonIndex) => {
+          btn.disabled = true;
+          if (buttonIndex === correctIndex) {
+            btn.classList.add("correct");
+          } else if (buttonIndex === index && !correct) {
+            btn.classList.add("incorrect");
+          }
+        });
+
+        if (isFinalStage) {
+          showFeedback(allCorrect, explanation);
+        } else {
+          showFeedback(correct, explanation);
+        }
+      },
+    );
+
+    quiz.on("twoStageAdvance", ({ stageResult, nextStage }) => {
+      const buttons = optionsEl.querySelectorAll(".option-btn");
+      buttons.forEach((btn, buttonIndex) => {
+        btn.disabled = true;
+        if (buttonIndex === stageResult.correctIndex) {
+          btn.classList.add("correct");
+        } else if (buttonIndex === stageResult.index && !stageResult.correct) {
+          btn.classList.add("incorrect");
+        }
+      });
+
+      setTimeout(() => {
+        const problem = quiz.problem;
+        hideAllQuestionTypes();
+        optionsEl.innerHTML = "";
+        renderTwoStageQuestion(
+          problem,
+          nextStage.stageIndex,
+          nextStage.previousAnswer,
+        );
+      }, TWO_STAGE_TRANSITION_DELAY);
+    });
+
+    quiz.on("numericResult", ({ correct, formatted, unit, explanation }) => {
+      numericInput.disabled = true;
+      numericSubmit.disabled = true;
+      numericInput.classList.add(correct ? "correct" : "incorrect");
+
+      if (!correct) {
+        correctAnswerDisplay.classList.remove("hidden-container");
+        correctAnswerValue.textContent = formatted + (unit ? ` ${unit}` : "");
+      }
+
+      showFeedback(correct, explanation);
+    });
+
+    quiz.on("multiSelectToggle", ({ index, selected }) => {
+      const btn = optionsEl.querySelector(`[data-index="${index}"]`);
+      if (!btn) return;
+      btn.classList.toggle("selected", selected);
+      btn.setAttribute("aria-pressed", selected.toString());
+    });
+
+    quiz.on(
+      "multiSelectResult",
+      ({ selected, correctIndices, correct, explanation }) => {
+        const selectedSet = new Set(selected);
+        const buttons = optionsEl.querySelectorAll(".option-btn.multi-select");
+        buttons.forEach((btn, buttonIndex) => {
+          btn.disabled = true;
+          const wasSelected = selectedSet.has(buttonIndex);
+          const shouldBeSelected = correctIndices.includes(buttonIndex);
+
+          if (wasSelected && shouldBeSelected) {
+            btn.classList.add("correct-selected");
+          } else if (wasSelected && !shouldBeSelected) {
+            btn.classList.add("incorrect-selected");
+          } else if (!wasSelected && shouldBeSelected) {
+            btn.classList.add("correct-missed");
+          }
+        });
+
+        multiSubmit.disabled = true;
+        multiSubmitContainer.classList.add("hidden-container");
+        showFeedback(correct, explanation);
+      },
+    );
+
+    quiz.on("orderingUpdate", ({ order }) => {
+      updateOrderingDisplay(order);
+    });
 
     quiz.on(
       "orderingResult",
@@ -1101,7 +1541,32 @@
       });
     });
 
-    // ... existing code ...
+    // =============================================
+    // DOM event bindings
+    // =============================================
+
+    optionsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".option-btn");
+      if (btn && !btn.disabled) {
+        const type = btn.dataset.type || "multiple-choice";
+        const index = parseInt(btn.dataset.index, 10);
+        if (type === "multi-select") {
+          quiz.toggleMultiSelect(index);
+        } else {
+          quiz.selectOption(index);
+        }
+      }
+    });
+
+    numericSubmit.addEventListener("click", () => {
+      quiz.submitNumeric(numericInput.value);
+    });
+
+    numericInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        quiz.submitNumeric(numericInput.value);
+      }
+    });
 
     orderingItems.addEventListener("click", (e) => {
       const item = e.target.closest(".ordering-item");
