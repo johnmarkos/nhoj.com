@@ -11,6 +11,7 @@
 - Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems and marked the chapter as ready in `config.js`.
 - Chapter 2 review/fix pass completed: fixed arithmetic errors in 3 numeric problems, replaced 2 near-duplicate problems, clarified edge cases in refresh token calculations, added systems context to pure arithmetic problem.
 - Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`sc-hv-001` to `sc-hv-100`) and marked the chapter as ready in `config.js`.
+- Chapter 3 review/fix pass completed: replaced repetitive templated prompts with diversified bottleneck-driven scenarios, expanded unique multi-select/ordering/numeric trade-off coverage, and tightened two-stage diagnosis/action framing to reduce near-duplicate saturation.
 
 ## Unit 5 quality fixes (2026-02-07)
 
