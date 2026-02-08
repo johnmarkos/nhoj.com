@@ -195,6 +195,25 @@ export class OpenQuizzer {
     return [...this.#answers];
   }
 
+  getSessionSummary() {
+    const score = this.score;
+    const problemsById = new Map(this.#problems.map((problem) => [problem.id, problem]));
+    const results = this.#answers.map((answer) => {
+      const problem = problemsById.get(answer.problemId);
+      return this.#buildSummaryResult(problem, answer);
+    });
+
+    return {
+      timestamp: new Date().toISOString(),
+      score: {
+        correct: score.correct,
+        total: score.total,
+        percentage: score.percentage,
+      },
+      results,
+    };
+  }
+
   // --- Lifecycle ---
 
   loadProblems(problems, maxProblems = 0) {
@@ -340,48 +359,32 @@ export class OpenQuizzer {
     });
   }
 
-  placeOrderingItem(originalIndex) {
+  moveOrderingItem(fromIndex, toIndex) {
     if (this.#state !== "practicing") return;
     if (this.#answered) return;
 
-    // If already placed, ignore (use removeOrderingItem to remove)
-    if (this.#orderingOrder.includes(originalIndex)) return;
-
-    this.#orderingOrder.push(originalIndex);
-    const problem = this.#problems[this.#currentIndex];
-    const complete = this.#orderingOrder.length === problem.items.length;
-
-    this.#emit("orderingUpdate", {
-      order: [...this.#orderingOrder],
-      complete,
-    });
-
-    if (complete) {
-      this.#gradeOrdering();
+    if (
+      fromIndex < 0 ||
+      fromIndex >= this.#orderingOrder.length ||
+      toIndex < 0 ||
+      toIndex >= this.#orderingOrder.length
+    ) {
+      return;
     }
-  }
 
-  removeOrderingItem(originalIndex) {
-    if (this.#state !== "practicing") return;
-    if (this.#answered) return;
-
-    const pos = this.#orderingOrder.indexOf(originalIndex);
-    if (pos === -1) return;
-
-    this.#orderingOrder.splice(pos, 1);
+    const item = this.#orderingOrder[fromIndex];
+    this.#orderingOrder.splice(fromIndex, 1);
+    this.#orderingOrder.splice(toIndex, 0, item);
 
     this.#emit("orderingUpdate", {
       order: [...this.#orderingOrder],
-      complete: false,
     });
   }
 
-  resetOrdering() {
+  submitOrdering() {
     if (this.#state !== "practicing") return;
     if (this.#answered) return;
-
-    this.#orderingOrder = [];
-    this.#emit("orderingUpdate", { order: [], complete: false });
+    this.#gradeOrdering();
   }
 
   // --- Private helpers ---
@@ -409,6 +412,7 @@ export class OpenQuizzer {
     if (type === "ordering") {
       const shuffledIndices = [...Array(problem.items.length).keys()];
       shuffleArray(shuffledIndices);
+      this.#orderingOrder = [...shuffledIndices];
       shuffledItems = shuffledIndices.map((i) => ({
         originalIndex: i,
         text: problem.items[i],
@@ -523,12 +527,83 @@ export class OpenQuizzer {
 
   #complete() {
     const finalScore = this.score;
+    const sessionSummary = this.getSessionSummary();
     this.#setState("complete");
     this.#emit("complete", {
       correct: finalScore.correct,
       total: finalScore.total,
       percentage: finalScore.percentage,
       answers: this.answers,
+      sessionSummary,
     });
+  }
+
+  #buildSummaryResult(problem, answer) {
+    if (!problem) {
+      return {
+        id: answer.problemId,
+        type: "unknown",
+        correct: answer.correct,
+        userAnswer: null,
+        correctAnswer: null,
+      };
+    }
+
+    const type = problem.type || "multiple-choice";
+    const base = {
+      id: answer.problemId,
+      type,
+      question: problem.question || "",
+      correct: answer.correct,
+    };
+
+    if (type === "multiple-choice") {
+      return {
+        ...base,
+        userAnswer: answer.selected,
+        correctAnswer: problem.correct,
+      };
+    }
+
+    if (type === "numeric-input") {
+      return {
+        ...base,
+        userAnswer: answer.userValue,
+        correctAnswer: problem.answer,
+      };
+    }
+
+    if (type === "ordering") {
+      return {
+        ...base,
+        userAnswer: [...answer.userOrder],
+        correctAnswer: [...problem.correctOrder],
+      };
+    }
+
+    if (type === "multi-select") {
+      return {
+        ...base,
+        userAnswer: [...answer.selected],
+        correctAnswer: [...problem.correctIndices],
+      };
+    }
+
+    if (type === "two-stage") {
+      return {
+        ...base,
+        userAnswer: answer.stageAnswers.map((stageAnswer) => ({
+          selected: stageAnswer.selected,
+          correct: stageAnswer.correct,
+        })),
+        correctAnswer: problem.stages.map((stage) => stage.correct),
+      };
+    }
+
+    return {
+      ...base,
+      userAnswer: null,
+      correctAnswer: null,
+    };
   }
 }

@@ -361,16 +361,53 @@ describe("numeric input", () => {
 // =============================================
 
 describe("ordering", () => {
-  it("correct order auto-grades", () => {
+  it("correct order submitted", () => {
     const quiz = new OpenQuizzer();
-    quiz.loadProblems([orderingProblem("o1")]);
-    quiz.start();
-    const updates = collectEvents(quiz, "orderingUpdate");
-    const results = collectEvents(quiz, "orderingResult");
+    const problem = orderingProblem("o1");
+    // Mock shuffle to ensure known initial state (reverse correct order)
+    quiz.loadProblems([problem]);
 
-    quiz.placeOrderingItem(0);
-    quiz.placeOrderingItem(1);
-    quiz.placeOrderingItem(2);
+    // We need to know the initial shuffled order to manipulate it
+    // But since we can't easily mock the internal shuffle without dependency injection,
+    // we'll listen for the initial emission
+    const showEvents = collectEvents(quiz, "questionShow");
+    quiz.start();
+
+    const initialItems = showEvents[0].shuffledItems;
+    // We need to move items to match correctOrder [0, 1, 2]
+
+    // Helper to find current index of an original index
+    const getIdx = (originalIdx) => {
+      // Access via side-channel or just use the public emitted state if we were a real UI
+      // For tests, we can use the last orderingUpdate or just rely on the fact 
+      // that we are simulating the user who sees the list.
+      // Let's just blindly sort it to match the test requirement.
+      // But we don't know the internal state without peeking or tracking updates.
+      return -1; // Placeholder, see logic below
+    };
+
+    // Instead of complex solving, let's just use the fact that we can move 
+    // items from position A to B.
+    // Let's spy on the emitted order.
+    let currentOrder = initialItems.map(i => i.originalIndex);
+
+    // Sort logic: Selection sort
+    for (let i = 0; i < problem.correctOrder.length; i++) {
+      const targetOriginalIndex = problem.correctOrder[i];
+      const currentPos = currentOrder.indexOf(targetOriginalIndex);
+
+      if (currentPos !== i) {
+        quiz.moveOrderingItem(currentPos, i);
+
+        // update our local validation shadow
+        const item = currentOrder[currentPos];
+        currentOrder.splice(currentPos, 1);
+        currentOrder.splice(i, 0, item);
+      }
+    }
+
+    const results = collectEvents(quiz, "orderingResult");
+    quiz.submitOrdering();
 
     assert.equal(results.length, 1);
     assert.equal(results[0].correct, true);
@@ -378,57 +415,75 @@ describe("ordering", () => {
     assert.equal(quiz.state, "answered");
   });
 
-  it("incorrect order", () => {
+  it("incorrect order submitted", () => {
     const quiz = new OpenQuizzer();
     quiz.loadProblems([orderingProblem("o1")]);
     quiz.start();
     const results = collectEvents(quiz, "orderingResult");
 
-    quiz.placeOrderingItem(2);
-    quiz.placeOrderingItem(1);
-    quiz.placeOrderingItem(0);
+    // Just submit immediately (stats are shuffled, likely wrong)
+    // There is a 1/6 chance it's correct by accident, but let's assume it's wrong for the test
+    // or force a wrong move.
 
+    // To be safe, let's force a wrong order. Correct is [0, 1, 2].
+    // We'll trigger a move to ensure we have a state, then fail.
+    // Actually, simply submitting the shuffled order is almost certainly wrong, 
+    // but better to be deterministic.
+
+    // Let's force it to be [2, 1, 0]
+    // 1. Find 2, move to 0
+    // 2. Find 1, move to 1
+    // 3. 0 should be at 2
+
+    const showEvents = collectEvents(quiz, "questionShow");
+    // restart to capture event
+    quiz.retry();
+    const initialItems = showEvents[0].shuffledItems;
+    let currentOrder = initialItems.map(i => i.originalIndex);
+
+    const targetOrder = [2, 1, 0];
+
+    for (let i = 0; i < targetOrder.length; i++) {
+      const target = targetOrder[i];
+      const currentPos = currentOrder.indexOf(target);
+      if (currentPos !== i) {
+        quiz.moveOrderingItem(currentPos, i);
+        const item = currentOrder[currentPos];
+        currentOrder.splice(currentPos, 1);
+        currentOrder.splice(i, 0, item);
+      }
+    }
+
+    quiz.submitOrdering();
     assert.equal(results[0].correct, false);
+    assert.deepEqual(results[0].userOrder, [2, 1, 0]);
   });
 
-  it("remove and re-place", () => {
+  it("moveOrderingItem updates order", () => {
     const quiz = new OpenQuizzer();
     quiz.loadProblems([orderingProblem("o1")]);
     quiz.start();
+
+    // Capture initial order
     const updates = collectEvents(quiz, "orderingUpdate");
 
-    quiz.placeOrderingItem(2);
-    quiz.placeOrderingItem(1);
-    quiz.removeOrderingItem(2);
-
-    assert.deepEqual(updates[updates.length - 1].order, [1]);
-    assert.equal(updates[updates.length - 1].complete, false);
-  });
-
-  it("resetOrdering clears order", () => {
-    const quiz = new OpenQuizzer();
-    quiz.loadProblems([orderingProblem("o1")]);
-    quiz.start();
-    const updates = collectEvents(quiz, "orderingUpdate");
-
-    quiz.placeOrderingItem(0);
-    quiz.placeOrderingItem(1);
-    quiz.resetOrdering();
-
-    assert.deepEqual(updates[updates.length - 1].order, []);
-  });
-
-  it("duplicate place is ignored", () => {
-    const quiz = new OpenQuizzer();
-    quiz.loadProblems([orderingProblem("o1")]);
-    quiz.start();
-    const updates = collectEvents(quiz, "orderingUpdate");
-
-    quiz.placeOrderingItem(0);
-    quiz.placeOrderingItem(0); // should be ignored
+    // Move index 0 to index 1
+    quiz.moveOrderingItem(0, 1);
 
     assert.equal(updates.length, 1);
-    assert.deepEqual(updates[0].order, [0]);
+    assert.ok(updates[0].order.length === 3);
+  });
+
+  it("moveOrderingItem with invalid bounds is ignored", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([orderingProblem("o1")]);
+    quiz.start();
+    const updates = collectEvents(quiz, "orderingUpdate");
+
+    quiz.moveOrderingItem(-1, 0);
+    quiz.moveOrderingItem(0, 100);
+
+    assert.equal(updates.length, 0);
   });
 });
 
@@ -574,6 +629,9 @@ describe("full session flow", () => {
     assert.equal(completeEvents[0].correct, 2);
     assert.equal(completeEvents[0].total, 3);
     assert.equal(completeEvents[0].percentage, 67);
+    assert.equal(typeof completeEvents[0].sessionSummary, "object");
+    assert.equal(completeEvents[0].sessionSummary.score.correct, 2);
+    assert.equal(completeEvents[0].sessionSummary.score.total, 3);
 
     // Retry
     quiz.retry();
@@ -589,6 +647,11 @@ describe("full session flow", () => {
       orderingProblem("o1"),
       multiSelectProblem("ms1", [1, 3]),
     ]);
+    let currentShuffledItems = [];
+    quiz.on("questionShow", ({ shuffledItems }) => {
+      if (shuffledItems) currentShuffledItems = shuffledItems;
+    });
+
     quiz.start();
 
     // Answer each question correctly regardless of shuffle order
@@ -601,7 +664,21 @@ describe("full session flow", () => {
       } else if (type === "numeric-input") {
         quiz.submitNumeric(String(p.answer));
       } else if (type === "ordering") {
-        p.correctOrder.forEach((idx) => quiz.placeOrderingItem(idx));
+        // Sort to match correctOrder
+        let currentOrder = currentShuffledItems.map(item => item.originalIndex);
+
+        for (let k = 0; k < p.correctOrder.length; k++) {
+          const targetOriginalIndex = p.correctOrder[k];
+          const currentPos = currentOrder.indexOf(targetOriginalIndex);
+
+          if (currentPos !== k) {
+            quiz.moveOrderingItem(currentPos, k);
+            const item = currentOrder[currentPos];
+            currentOrder.splice(currentPos, 1);
+            currentOrder.splice(k, 0, item);
+          }
+        }
+        quiz.submitOrdering();
       } else if (type === "multi-select") {
         p.correctIndices.forEach((idx) => quiz.toggleMultiSelect(idx));
         quiz.submitMultiSelect();
@@ -735,6 +812,69 @@ describe("getters", () => {
     quiz.next(); // complete
     quiz.retry();
     assert.equal(quiz.progress.total, 2); // retry still has 2
+  });
+
+  it("getSessionSummary returns score and type-aware answer details", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 2),
+      numericProblem("n1", { answer: 100, tolerance: "exact" }),
+      orderingProblem("o1"),
+      multiSelectProblem("ms1", [1, 3]),
+      twoStageProblem("ts1"),
+    ]);
+
+    let currentOrderingItems = [];
+    quiz.on("questionShow", ({ shuffledItems }) => {
+      if (shuffledItems) currentOrderingItems = shuffledItems;
+    });
+
+    quiz.start();
+    while (quiz.state !== "complete") {
+      const problem = quiz.problem;
+      const type = problem.type || "multiple-choice";
+
+      if (type === "multiple-choice") {
+        quiz.selectOption(problem.correct);
+      } else if (type === "numeric-input") {
+        quiz.submitNumeric(String(problem.answer));
+      } else if (type === "ordering") {
+        let currentOrder = currentOrderingItems.map((item) => item.originalIndex);
+        for (let i = 0; i < problem.correctOrder.length; i++) {
+          const targetOriginalIndex = problem.correctOrder[i];
+          const currentPos = currentOrder.indexOf(targetOriginalIndex);
+          if (currentPos !== i) {
+            quiz.moveOrderingItem(currentPos, i);
+            const item = currentOrder[currentPos];
+            currentOrder.splice(currentPos, 1);
+            currentOrder.splice(i, 0, item);
+          }
+        }
+        quiz.submitOrdering();
+      } else if (type === "multi-select") {
+        problem.correctIndices.forEach((index) => quiz.toggleMultiSelect(index));
+        quiz.submitMultiSelect();
+      } else if (type === "two-stage") {
+        problem.stages.forEach((stage) => quiz.selectOption(stage.correct));
+      }
+
+      quiz.next();
+    }
+
+    const summary = quiz.getSessionSummary();
+
+    assert.equal(typeof summary.timestamp, "string");
+    assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
+    assert.deepEqual(summary.score, { correct: 5, total: 5, percentage: 100 });
+    assert.equal(summary.results.length, 5);
+
+    const byType = new Map(summary.results.map((result) => [result.type, result]));
+    assert.deepEqual(byType.get("multiple-choice").correctAnswer, 2);
+    assert.equal(byType.get("numeric-input").correctAnswer, 100);
+    assert.deepEqual(byType.get("ordering").correctAnswer, [0, 1, 2]);
+    assert.deepEqual(byType.get("multi-select").correctAnswer, [1, 3]);
+    assert.deepEqual(byType.get("two-stage").correctAnswer, [0, 1]);
+    assert.equal(Array.isArray(byType.get("two-stage").userAnswer), true);
   });
 });
 
