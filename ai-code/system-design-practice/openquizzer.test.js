@@ -1253,6 +1253,57 @@ describe("index.html UI wiring contracts", () => {
   });
 
   // -----------------------------------------
+  // Runtime meta tag customization
+  // -----------------------------------------
+
+  describe("runtime meta tag customization", () => {
+    it("sets document.title from CONFIG.title", () => {
+      assert.ok(
+        script.includes("document.title = CONFIG.title"),
+        "missing document.title = CONFIG.title — page title won't reflect instance config",
+      );
+    });
+
+    it("sets meta description from CONFIG.description", () => {
+      assert.ok(
+        script.includes('.setAttribute("content", CONFIG.description)'),
+        "missing meta description update — description won't reflect instance config",
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // Instance meta tag customization
+  // -----------------------------------------
+  //
+  // Instances must replace the OpenQuizzer placeholder <title> and
+  // <meta description> with values matching their CONFIG. These tests
+  // catch a copy-from-template that forgot to update the static tags.
+
+  describe("instance meta tag customization", () => {
+    it("static <title> is not the template placeholder", () => {
+      assert.ok(
+        !html.includes("<title>OpenQuizzer</title>"),
+        "static <title> is still the template placeholder — update it to match CONFIG.title",
+      );
+    });
+
+    it("static <title> matches CONFIG.title", () => {
+      assert.ok(
+        html.includes("<title>System Design Practice</title>"),
+        "static <title> does not match CONFIG.title",
+      );
+    });
+
+    it("static meta description is not the template placeholder", () => {
+      assert.ok(
+        !html.includes('content="An OpenQuizzer instance"'),
+        "static meta description is still the template placeholder — update it to match CONFIG.description",
+      );
+    });
+  });
+
+  // -----------------------------------------
   // Agent artifact rejection
   // -----------------------------------------
 
