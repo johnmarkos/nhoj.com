@@ -13,27 +13,27 @@
 
 - [ ] **Unit 7: Scaling Compute** — in progress, chapter-by-chapter content creation
   - [x] Chapter 1: Load Balancing Fundamentals — 100 problems (L4/L7 routing, health checks, drain/failover behavior, stickiness, weighted policies, canary controls)
-  Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
-  Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
+        Scope: L4/L7 balancing goals, request routing, health checks, session affinity trade-offs, L4 vs L7 behavior.
+        Key concepts: round-robin/least-connections, passive vs active health checks, sticky sessions, fail-open/fail-closed.
   - [x] Chapter 2: Statelessness & Session Strategy — 100 problems (session externalization, JWT vs opaque tokens, idempotency, Redis management, token refresh/revocation, CORS/cookie security, rate limiting, saga patterns)
   - [x] Chapter 3: Horizontal vs Vertical Scaling Decisions — 100 problems (bottleneck decomposition, CPU/memory/network saturation, coordination overhead, cost curves, blast-radius trade-offs)
-    Scope: Capacity planning and architectural trade-offs between bigger nodes and more nodes across workloads.
-    Key concepts: bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, cost curves.
+        Scope: Capacity planning and architectural trade-offs between bigger nodes and more nodes across workloads.
+        Key concepts: bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, cost curves.
   - [ ] Chapter 4: Autoscaling Signals & Policies
-    Scope: Building stable autoscaling behavior using demand signals, cooldowns, and safety limits.
-    Key concepts: target tracking, queue-depth scaling, predictive vs reactive scaling, hysteresis, thrash prevention.
+        Scope: Building stable autoscaling behavior using demand signals, cooldowns, and safety limits.
+        Key concepts: target tracking, queue-depth scaling, predictive vs reactive scaling, hysteresis, thrash prevention.
   - [ ] Chapter 5: Hotspots, Sharding & Work Distribution
-    Scope: Removing compute hotspots and balancing work across partitions/workers while preserving correctness boundaries.
-    Key concepts: partition-key quality, skew mitigation, consistent hashing, work stealing, ordered vs unordered processing.
+        Scope: Removing compute hotspots and balancing work across partitions/workers while preserving correctness boundaries.
+        Key concepts: partition-key quality, skew mitigation, consistent hashing, work stealing, ordered vs unordered processing.
   - [ ] Chapter 6: Multi-Region Compute Strategy
-    Scope: Active-active and active-passive compute designs with latency, failover, and blast-radius constraints.
-    Key concepts: geo-routing, failover orchestration, regional isolation, cross-region replication impact, control planes.
+        Scope: Active-active and active-passive compute designs with latency, failover, and blast-radius constraints.
+        Key concepts: geo-routing, failover orchestration, regional isolation, cross-region replication impact, control planes.
   - [ ] Chapter 7: Compute Selection & Platform Trade-offs
-    Scope: Choosing between VMs, containers, serverless, and managed runtimes by workload profile and ops model.
-    Key concepts: cold starts, bin packing, noisy neighbors, deployment velocity, portability vs managed convenience.
+        Scope: Choosing between VMs, containers, serverless, and managed runtimes by workload profile and ops model.
+        Key concepts: cold starts, bin packing, noisy neighbors, deployment velocity, portability vs managed convenience.
   - [ ] Chapter 8: Scaling Compute Scenarios
-    Scope: Integrated design scenarios combining load balancing, autoscaling, statelessness, hotspot mitigation, and regional strategy.
-    Key concepts: end-to-end diagnosis, bottleneck triage, staged migration plans, SLO/cost trade-offs under incident pressure.
+        Scope: Integrated design scenarios combining load balancing, autoscaling, statelessness, hotspot mitigation, and regional strategy.
+        Key concepts: end-to-end diagnosis, bottleneck triage, staged migration plans, SLO/cost trade-offs under incident pressure.
 
 ## Next (Units 7-10)
 

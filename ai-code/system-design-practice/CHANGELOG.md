@@ -1,5 +1,13 @@
 # Changelog
 
+## OpenQuizzer upgrade — meta tag customization (2026-02-08)
+
+- Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer (UI wiring contract tests, Prettier formatting, selection-based reordering, probability weighting, session length caps, partial-session results).
+- Customized static `<title>` and `<meta description>` in `index.html` so Slack/social link previews show "System Design Practice" instead of generic "Quiz" placeholder.
+- Replaced template placeholder integrity tests in `openquizzer.test.js` with instance-specific checks that verify meta tags match CONFIG.
+- Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
+- Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
+
 ## Unit 7: Scaling Compute (in progress — 300 problems so far)
 
 1. Load Balancing Fundamentals (100 problems) — L4 vs L7 routing decisions, health-check strategy, connection draining, stickiness trade-offs, weighted balancing, fail-open/fail-closed behavior, and canary traffic controls
@@ -83,8 +91,8 @@
 ## Phase 5: OpenQuizzer instance
 
 - Extracted instance-specific content into `config.js` (title, description, back-link, units)
-- `index.html` is now byte-identical to OpenQuizzer template
-- Upgrade path: copy `openquizzer.js`, `openquizzer.test.js`, `index.html` from OpenQuizzer
+- `index.html` copied from OpenQuizzer template with instance-specific `<title>` and `<meta description>`
+- Upgrade path: copy `openquizzer.js`, `openquizzer.test.js`, `index.html` from OpenQuizzer, customize meta tags and tests
 - OpenQuizzer repo is now canonical for engine + UI; this project is an instance
 
 ## Phase 4: Template repo

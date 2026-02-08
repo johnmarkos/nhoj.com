@@ -10,11 +10,12 @@ Guidance for agents working on this repository.
 
 **Target user:** Experienced engineers (L5+) who know how to code and have built systems. The gap is articulating architectural reasoning under interview pressure and getting enough reps for fluency.
 
-**The Bus Test:** Every *problem* must be solvable in under a minute on a phone with no prep. Atomic, self-contained, immediate feedback. Session length is user's choice — large problem banks (50-100 per chapter) with randomization provide variety without repeats. Spaced repetition is v2; volume is fake spaced repetition for now.
+**The Bus Test:** Every _problem_ must be solvable in under a minute on a phone with no prep. Atomic, self-contained, immediate feedback. Session length is user's choice — large problem banks (50-100 per chapter) with randomization provide variety without repeats. Spaced repetition is v2; volume is fake spaced repetition for now.
 
 ## Project Structure
 
 Before making any file changes, confirm which repository and directory the changes belong in. The main repos are:
+
 - **nhoj.com** (`/home/nhoj/Documents/learning/web/nhoj.com/`) — Personal site, including this project at `ai-code/system-design-practice/`
 - **openquizzer** (`/home/nhoj/Documents/learning/web/openquizzer/`) — Canonical quiz engine and generic UI
 
@@ -37,21 +38,23 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 **Local preview:** Content loads via `fetch()`, so you need a local server to test (e.g., `python3 -m http.server`). Opening `index.html` directly via `file://` won't load problems.
 
 **Tests:**
-- `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing)
+
+- `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing) and UI wiring contract tests (function definitions, event bindings, DOM references, meta tag customization)
 - `node --test config.test.js` — Config and content validation (syntax, structure, duplicate IDs)
 - `node --test index.bootstrap.test.js` — UI bootstrap smoke test for `index.html` wiring (DOM bindings, no init-time reference errors)
 
-**Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs both test suites when SDP files are staged. This catches syntax errors in config.js and invalid content before they reach production.
+**Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs all three test suites plus Prettier when SDP files are staged. This catches syntax errors, invalid content, and formatting issues before they reach production.
 
 ## Architecture
 
-This is an **OpenQuizzer instance**. Three generic files come from the OpenQuizzer template repo; one file is instance-specific:
+This is an **OpenQuizzer instance**. Three files come from the OpenQuizzer template repo; one file is instance-specific:
 
-- **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently.
-- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine and config, renders questions based on engine events, delegates user actions to engine methods. Generic across all instances.
-- **`config.js`** — Instance-specific: title, description, back-link, and units/chapters catalog. This is the only file that differs from the template.
+- **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently. Copied verbatim from OpenQuizzer.
+- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine and config, renders questions based on engine events, delegates user actions to engine methods. Copied from OpenQuizzer, then the static `<title>` and `<meta description>` tags are customized for this instance (crawlers like Slack don't run JS, so the static HTML must have the right values).
+- **`openquizzer.test.js`** — Engine and UI wiring contract tests. Copied from OpenQuizzer, then the "template placeholder integrity" tests are replaced with instance-specific tests that verify the meta tags match this instance's config.
+- **`config.js`** — Instance-specific: title, description, back-link, and units/chapters catalog. Never overwritten during upgrades.
 
-**Upgrade path:** Copy `openquizzer.js`, `openquizzer.test.js`, and `index.html` from the OpenQuizzer repo (`/home/nhoj/Documents/learning/web/openquizzer/`). `config.js` and `content/` are untouched.
+**Upgrade path:** Copy `openquizzer.js`, `openquizzer.test.js`, and `index.html` from the OpenQuizzer repo (`/home/nhoj/Documents/learning/web/openquizzer/`). Then customize: (1) update the static `<title>` and `<meta description>` in `index.html` to match `config.js`, (2) replace the "template placeholder integrity" tests in `openquizzer.test.js` with instance-specific meta tag checks. `config.js` and `content/` are untouched.
 
 **OpenQuizzer relationship:** The OpenQuizzer repo is canonical for the engine and generic UI. This project is an instance that consumes those files. When the engine or UI changes in OpenQuizzer, copy the files here.
 
@@ -64,6 +67,7 @@ Three views managed by CSS classes:
 - **Results** (`#results`) — Score summary (shown after completing all problems)
 
 **Unit/chapter list is dynamic.** The `units` array in `config.js` defines all units and chapters. To add a new chapter:
+
 1. Create the JSON file in `content/`
 2. Set `ready: true` for that chapter in the `units` array in `config.js`
 
@@ -72,6 +76,7 @@ The "Practice All" button appears automatically when a unit has 2+ ready chapter
 ## Design System
 
 Uses the nhoj.com design system (see parent `AGENTS.md`):
+
 - **Font:** JetBrains Mono via Google Fonts
 - **Colors:** CSS variables with light/dark mode via `prefers-color-scheme`
 - **Style:** GitHub-inspired terminal aesthetic, mobile-first
@@ -85,8 +90,8 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 3. API Design (complete — 791 problems, 8 chapters)
 4. Storage Selection (complete — 800 problems, 8 chapters)
 5. Caching (complete — 800 problems, 8 chapters)
-6. Messaging & Async (in progress)
-7. Scaling Compute
+6. Messaging & Async (complete — 770 problems, 8 chapters)
+7. Scaling Compute (in progress)
 8. Consistency & Coordination
 9. Reliability
 10. Classic Designs Decomposed
@@ -165,6 +170,7 @@ The loop for each chapter:
 Do not stop after step 3 unless the user explicitly asks to pause. The default behavior is to continue through steps 4-7 in the same work session.
 
 When starting a **new unit**, plan it in detail before writing any content:
+
 - Define all 8 chapter topics with scope descriptions
 - Identify the key concepts each chapter should cover
 - Get user approval on the plan before proceeding
@@ -176,6 +182,7 @@ Follow the author/reviewer dialogue pattern. Review one chapter at a time, prese
 ## Pre-Commit Checklist
 
 When building new apps or features, always validate:
+
 1. Correct target directory (ask if unclear)
 2. No syntax errors in config files
 3. Run tests (`node --test config.test.js`) and verify they pass before committing
@@ -207,18 +214,21 @@ The goal: a future agent instance should be productive faster because of what we
 Insights captured from development:
 
 **Code review:**
+
 - Use the author/reviewer dialogue pattern — reviewer critiques, author responds, iterate until consensus
 - Check for: inline styles (use CSS classes), proper error handling, accessibility (ARIA labels, focus management), race conditions (disable buttons during async ops)
 - Review code with scale in mind — what works for 1 chapter may not work for 10 units × 8 chapters
 - When adding state fields, audit all functions that read/write state (especially reset functions like `backToMenu()` and `retry()`)
 
 **Content review:**
+
 - Verify all math in problems — easy to introduce errors
 - "Cannot determine from this data" is a valid L6 answer (tests understanding of what info is needed) but use sparingly
 - Pure unit conversions (seconds in a day) are too easy for L6 — add systems context or cut them
 - Multi-step problems and "gotcha" questions (where the obvious answer is wrong) are good L6 material
 
 **Content generation:**
+
 - Generate more problems than needed, expect to cull 10-20%
 - Run automated checks for uncertainty markers ("Hmm", "Wait", "Let me") in explanations — these often indicate math errors that need fixing
 - "Depends on X" answers are valid L6 content when they test real-world nuance (e.g., "depends on database implementation"), but verify each one
@@ -227,40 +237,50 @@ Insights captured from development:
 - Pure arithmetic problems need systems context — instead of "5000 × 2 = ?", ask about the business cost or capacity implication of the number
 
 **Content review process:**
+
 - Review ONE chapter at a time, not a whole unit — context overflow degrades review quality
 - Use a subagent for reviews to protect the main context window from the full JSON content
 - The review checklist (wrong answers, near-duplicates, definitions, multi-select issues, etc.) is in the Content Creation Workflow section above
 - Typical chapter review finds 15-25 issues; expect to make 15-30 edits per chapter
 
 **Process:**
+
 - The bus test applies to individual problems, not sessions — 100 problems per chapter is fine because users control session length
 - Randomization provides "fake spaced repetition" until real spaced repetition is built
 
 **Dead code removal:**
+
 - When features evolve (e.g., Reference Numbers from static to interactive), old code paths become orphaned
 - Search for unused functions/elements during code review — grep for function names and verify they're called
 - Remove dead code promptly; it confuses future readers and accumulates
 
 **Display toggling:**
+
 - Prefer CSS classes (`.hidden-container`) over inline `style.display` manipulation
 - More consistent, easier to debug, and keeps styling in CSS where it belongs
 
 **Multi-select quality:**
+
 - All-correct multi-selects ("select all that apply" where all 4 are correct) are valid when testing "know the complete set" (e.g., "which are real PostgreSQL index types?") but should have at least one distractor when testing discriminating judgment
 - Single-correct multi-selects should be converted to multiple-choice — "select all that apply" with one answer is confusing UX
 - Automated check: flag any multi-select where correctIndices.length == options.length or correctIndices.length == 1
 
 **Uncertainty markers:**
+
 - "Actually" used as rhetorical "in fact" (highlighting counterintuitive points) is fine and pedagogically effective — don't flag these
 - "maybe", "probably" as hedging in explanations should be replaced with confident language
 - False positive rate is high (~80%) — manual review is needed after automated flagging
 
 **Accessibility basics:**
+
 - `aria-live="polite"` on dynamic content (feedback messages) for screen reader announcements
 - `aria-pressed` on toggle buttons (multi-select options)
 - Keyboard accessibility for custom interactions (flagged ordering for v2)
 
 **Config separation:**
+
 - Instance-specific content (title, description, units, back-link) belongs in `config.js`, not `index.html`
-- `index.html` should be byte-identical across all instances — never edit it for instance customization
-- When upgrading from OpenQuizzer, copy three files (`openquizzer.js`, `openquizzer.test.js`, `index.html`) and verify tests pass
+- `index.html` is copied from OpenQuizzer with two instance-specific edits: the static `<title>` and `<meta description>` tags (for link preview crawlers that don't run JS). Everything else in `index.html` stays identical to the template.
+- `openquizzer.test.js` is copied from OpenQuizzer with one customization: the "template placeholder integrity" tests are replaced with instance-specific tests that verify meta tags have been updated.
+- `openquizzer.js` is always copied verbatim — no instance edits.
+- When upgrading from OpenQuizzer, copy all three files, apply the two `index.html` meta tag edits, swap the placeholder tests in `openquizzer.test.js`, then verify all tests pass.
