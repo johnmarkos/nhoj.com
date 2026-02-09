@@ -8,13 +8,14 @@
 - Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
 - Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
 
-## Unit 7: Scaling Compute (in progress — 500 problems so far)
+## Unit 7: Scaling Compute (in progress — 600 problems so far)
 
 1. Load Balancing Fundamentals (100 problems) — L4 vs L7 routing decisions, health-check strategy, connection draining, stickiness trade-offs, weighted balancing, fail-open/fail-closed behavior, and canary traffic controls
 2. Statelessness & Session Strategy (100 problems) — Session externalization, JWT vs opaque tokens, idempotency patterns, Redis session management, token refresh/revocation, CORS/cookie security, rate limiting state, saga patterns, connection pooling, graceful degradation
 3. Horizontal vs Vertical Scaling Decisions (100 problems) — Bottleneck decomposition, CPU/memory/network saturation patterns, coordination overhead, scaling economics, blast-radius trade-offs, and phased scaling response strategy
 4. Autoscaling Signals & Policies (100 problems) — Target tracking, queue-depth and queue-age scaling, predictive vs reactive controls, hysteresis/cooldowns, dependency-aware guardrails, and thrash prevention under bursty demand
 5. Hotspots, Sharding & Work Distribution (100 problems) — Hot partition diagnosis, partition-key quality, consistent hashing/virtual nodes, fairness controls, work stealing, re-sharding safety, and ordering-vs-throughput trade-offs
+6. Multi-Region Compute Strategy (100 problems) — Active-active vs active-passive topologies, geo-routing policy, failover/failback orchestration, regional isolation, replication lag/RPO trade-offs, and control-plane blast-radius management
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed exact/near-duplicate scenario prompts and diversified two-stage operational contexts to reduce thematic saturation.
@@ -26,6 +27,8 @@
 - Chapter 4 review/fix pass completed: corrected strong answer-position bias in multiple-choice/two-stage items, diversified two-stage diagnosis-action framing, and tightened explanations to map directly to each scenario's failure mode.
 - Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`sc-hs-001` to `sc-hs-100`) and marked the chapter as ready in `config.js`.
 - Chapter 5 review/fix pass completed: removed duplicate prompt patterns in multiple-choice and two-stage items, diversified follow-up scenario framing, and tightened stage explanations around partition-skew diagnosis and mitigation selection.
+- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`sc-mr-001` to `sc-mr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 6 review/fix pass completed: removed duplicate prompt patterns in multiple-choice/two-stage items, diversified regional incident follow-up framing, and tightened stage explanations around failover/isolation diagnosis and mitigation choice.
 
 ## Unit 5 quality fixes (2026-02-07)
 

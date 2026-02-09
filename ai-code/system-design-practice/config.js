@@ -111,7 +111,7 @@ export const CONFIG = {
           title: "Hotspots, Sharding & Work Distribution",
           ready: true,
         },
-        { num: 6, title: "Multi-Region Compute Strategy", ready: false },
+        { num: 6, title: "Multi-Region Compute Strategy", ready: true },
         {
           num: 7,
           title: "Compute Selection & Platform Trade-offs",

@@ -25,7 +25,7 @@
   - [x] Chapter 5: Hotspots, Sharding & Work Distribution — 100 problems (partition-key quality, skew diagnosis, consistent hashing with virtual nodes, fairness controls, work stealing, ordered vs unordered processing trade-offs)
         Scope: Removing compute hotspots and balancing work across partitions/workers while preserving correctness boundaries.
         Key concepts: partition-key quality, skew mitigation, consistent hashing, work stealing, ordered vs unordered processing.
-  - [ ] Chapter 6: Multi-Region Compute Strategy
+  - [x] Chapter 6: Multi-Region Compute Strategy — 100 problems (active-active/active-passive topology choices, geo-routing, failover/failback policy, regional isolation, replication lag trade-offs, control-plane safety)
         Scope: Active-active and active-passive compute designs with latency, failover, and blast-radius constraints.
         Key concepts: geo-routing, failover orchestration, regional isolation, cross-region replication impact, control planes.
   - [ ] Chapter 7: Compute Selection & Platform Trade-offs
