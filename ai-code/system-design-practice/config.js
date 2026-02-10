@@ -193,7 +193,7 @@ export const CONFIG = {
           ready: true,
         },
         { num: 5, title: "Chat Core Messaging Architecture", ready: true },
-        { num: 6, title: "Chat Presence, Sync & Reliability", ready: false },
+        { num: 6, title: "Chat Presence, Sync & Reliability", ready: true },
         {
           num: 7,
           title: "Notification System Core Architecture",

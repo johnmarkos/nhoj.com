@@ -30,7 +30,7 @@
   - [x] Chapter 5: Chat Core Messaging Architecture
         Scope: Message lifecycle from send to deliver/ack across direct and group chat with ordering semantics.
         Key concepts: session routing, ordering keys, delivery guarantees, group fanout strategy, offline inbox design.
-  - [ ] Chapter 6: Chat Presence, Sync & Reliability
+  - [x] Chapter 6: Chat Presence, Sync & Reliability
         Scope: Presence modeling, multi-device sync, media path decomposition, and degradation/failover behavior.
         Key concepts: presence heartbeat/state model, unread counters, attachment flows, replay safety, E2EE boundaries.
   - [ ] Chapter 7: Notification System Core Architecture
