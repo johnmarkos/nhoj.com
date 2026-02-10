@@ -2,44 +2,31 @@
 
 ## Unit 9: Reliability (complete — 800 problems)
 
-- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`rel-scn-001` to `rel-scn-100`) and marked the chapter as ready in `config.js`.
-- Chapter 8 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-8. Reliability Scenarios (100 problems)
-
-- Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ops-001` to `rel-ops-100`) and marked the chapter as ready in `config.js`.
-- Chapter 7 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-7. Reliability Engineering Operations (100 problems)
-
-- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`rel-dr-001` to `rel-dr-100`) and marked the chapter as ready in `config.js`.
-- Chapter 6 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-6. Data Safety, Durability & Recovery (100 problems)
-
-- Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`rel-gd-001` to `rel-gd-100`) and marked the chapter as ready in `config.js`.
-- Chapter 5 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-5. Graceful Degradation & Dependency Isolation (100 problems)
-
-- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`rel-rf-001` to `rel-rf-100`) and marked the chapter as ready in `config.js`.
-- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-4. Redundancy, Replication & Failover Strategy (100 problems)
-
-- Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ca-001` to `rel-ca-100`) and marked the chapter as ready in `config.js`.
-- Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
-3. Circuit Breakers, Load Shedding & Admission Control (100 problems)
-
-- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`rel-tr-001` to `rel-tr-100`) and marked the chapter as ready in `config.js`.
-- Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
-
 1. Failure Modes & Fault Domains (100 problems) — Fail-stop vs partial-failure diagnosis, correlated-failure containment, fault-domain blast-radius mapping, dependency failure taxonomy, and fault-domain-aware mitigation selection
-2. Timeouts, Retries & Backoff Control (100 problems)
+2. Timeouts, Retries & Backoff Control (100 problems) — Timeout budgeting, capped retries, exponential backoff with jitter, retry amplification controls, and idempotency-safe retry policy design
+3. Circuit Breakers, Load Shedding & Admission Control (100 problems) — Circuit state tuning, priority-aware shedding, per-boundary concurrency limits, and brownout controls to prevent overload cascades
+4. Redundancy, Replication & Failover Strategy (100 problems) — N+1 capacity planning, multi-AZ/region redundancy, failover/failback gating, and freshness/quorum-aware promotion safety
+5. Graceful Degradation & Dependency Isolation (100 problems) — Critical-path isolation, fallback quality tiers, kill switches, bulkhead boundaries, and degraded-mode behavior contracts
+6. Data Safety, Durability & Recovery (100 problems) — RPO/RTO policy design, backup and snapshot safety, point-in-time recovery planning, restore drills, and integrity verification
+7. Reliability Engineering Operations (100 problems) — SLI/SLO design, error-budget policy, alert quality, incident command patterns, and postmortem action closure discipline
+8. Reliability Scenarios (100 problems) — Integrated reliability incident practice across retries, partial outages, failover/failback, graceful degradation, and recovery sequencing under pressure
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`rel-fd-001` to `rel-fd-100`) and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed repetitive prompt-openings, eliminated duplicate patterns, and tightened multi-select distractor quality to ensure discriminating reliability judgment.
+- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`rel-tr-001` to `rel-tr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ca-001` to `rel-ca-100`) and marked the chapter as ready in `config.js`.
+- Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`rel-rf-001` to `rel-rf-100`) and marked the chapter as ready in `config.js`.
+- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`rel-gd-001` to `rel-gd-100`) and marked the chapter as ready in `config.js`.
+- Chapter 5 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`rel-dr-001` to `rel-dr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 6 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ops-001` to `rel-ops-100`) and marked the chapter as ready in `config.js`.
+- Chapter 7 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`rel-scn-001` to `rel-scn-100`) and marked the chapter as ready in `config.js`.
+- Chapter 8 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
 
 ## OpenQuizzer upgrade — meta tag customization (2026-02-08)
 
