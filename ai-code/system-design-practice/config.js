@@ -117,7 +117,7 @@ export const CONFIG = {
           title: "Compute Selection & Platform Trade-offs",
           ready: true,
         },
-        { num: 8, title: "Scaling Compute Scenarios", ready: false },
+        { num: 8, title: "Scaling Compute Scenarios", ready: true },
       ],
     },
   ],
