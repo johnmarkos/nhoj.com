@@ -28,7 +28,7 @@
   - [x] Chapter 6: Multi-Region Compute Strategy — 100 problems (active-active/active-passive topology choices, geo-routing, failover/failback policy, regional isolation, replication lag trade-offs, control-plane safety)
         Scope: Active-active and active-passive compute designs with latency, failover, and blast-radius constraints.
         Key concepts: geo-routing, failover orchestration, regional isolation, cross-region replication impact, control planes.
-  - [ ] Chapter 7: Compute Selection & Platform Trade-offs
+  - [x] Chapter 7: Compute Selection & Platform Trade-offs — 100 problems (VM/container/serverless/managed-runtime selection, cold starts, bin packing and noisy neighbors, ops velocity, portability vs lock-in)
         Scope: Choosing between VMs, containers, serverless, and managed runtimes by workload profile and ops model.
         Key concepts: cold starts, bin packing, noisy neighbors, deployment velocity, portability vs managed convenience.
   - [ ] Chapter 8: Scaling Compute Scenarios
