@@ -202,7 +202,7 @@ export const CONFIG = {
         {
           num: 8,
           title: "Notification System Scale & Scenarios",
-          ready: false,
+          ready: true,
         },
       ],
     },

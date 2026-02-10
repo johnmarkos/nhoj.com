@@ -11,10 +11,11 @@
 - [x] **Unit 7: Scaling Compute** — 8 chapters, 800 problems
 - [x] **Unit 8: Consistency & Coordination** — 8 chapters, 800 problems
 - [x] **Unit 9: Reliability** — 8 chapters, 800 problems
+- [x] **Unit 10: Classic Designs Decomposed** — 8 chapters, 800 problems
 
 ## Now (In Progress)
 
-- [ ] **Unit 10: Classic Designs Decomposed** — chapter-by-chapter content creation
+- [x] **Unit 10: Classic Designs Decomposed** — complete (800 problems)
   - [x] Chapter 1: Twitter/X Timeline Write & Fanout
         Scope: Decomposing tweet ingest, home-timeline fanout choices, and read-path assembly under scale and failure.
         Key concepts: fanout-on-write vs fanout-on-read, celebrity handling, timeline materialization, hot-key mitigation.
@@ -36,7 +37,7 @@
   - [x] Chapter 7: Notification System Core Architecture
         Scope: Multi-channel notification pipeline decomposition from event ingest to policy and channel dispatch.
         Key concepts: preference evaluation, deduplication/idempotency, scheduling windows, channel adapters, rate governance.
-  - [ ] Chapter 8: Notification System Scale & Scenarios
+  - [x] Chapter 8: Notification System Scale & Scenarios
         Scope: Incident-style scenarios combining spikes, dependency failures, retries, and priority-driven delivery controls.
         Key concepts: queue tiering, retry budgets, SLA segmentation, fallback channels, campaign-throttle coordination.
 
