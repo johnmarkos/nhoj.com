@@ -18,7 +18,7 @@
   - [x] Chapter 1: Twitter/X Timeline Write & Fanout
         Scope: Decomposing tweet ingest, home-timeline fanout choices, and read-path assembly under scale and failure.
         Key concepts: fanout-on-write vs fanout-on-read, celebrity handling, timeline materialization, hot-key mitigation.
-  - [ ] Chapter 2: Twitter/X Timeline Ranking, Serving & Reliability
+  - [x] Chapter 2: Twitter/X Timeline Ranking, Serving & Reliability
         Scope: Ranking pipeline decomposition, cache policy, freshness/consistency boundaries, and operational controls.
         Key concepts: ranking stages, cache layering, freshness SLA, invalidation, feed-serving fault containment.
   - [ ] Chapter 3: URL Shortener Core Architecture

@@ -184,7 +184,7 @@ export const CONFIG = {
         {
           num: 2,
           title: "Twitter/X Timeline Ranking, Serving & Reliability",
-          ready: false,
+          ready: true,
         },
         { num: 3, title: "URL Shortener Core Architecture", ready: false },
         {
