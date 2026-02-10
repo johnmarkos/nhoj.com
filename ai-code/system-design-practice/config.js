@@ -147,7 +147,7 @@ export const CONFIG = {
           ready: true,
         },
         { num: 7, title: "Conflict Resolution & Convergence", ready: true },
-        { num: 8, title: "Consistency & Coordination Scenarios", ready: false },
+        { num: 8, title: "Consistency & Coordination Scenarios", ready: true },
       ],
     },
   ],

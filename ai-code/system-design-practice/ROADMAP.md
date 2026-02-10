@@ -9,38 +9,14 @@
 - [x] **Unit 5: Caching** — 8 chapters, 800 problems
 - [x] **Unit 6: Messaging & Async** — 8 chapters, 770 problems
 - [x] **Unit 7: Scaling Compute** — 8 chapters, 800 problems
+- [x] **Unit 8: Consistency & Coordination** — 8 chapters, 800 problems
 
 ## Now (In Progress)
 
-- [ ] **Unit 8: Consistency & Coordination** — in progress, chapter-by-chapter content creation
-  - [x] Chapter 1: Consistency Models Fundamentals — 100 problems (read/write consistency guarantees, user-visible anomaly diagnosis, session guarantees, bounded staleness, endpoint-level consistency trade-offs)
-        Scope: Core read/write consistency guarantees and how they affect user-visible behavior under replication.
-        Key concepts: linearizability, sequential consistency, causal consistency, eventual consistency, session guarantees.
-  - [x] Chapter 2: Quorums, Replication & Read/Write Paths — 100 problems (quorum overlap trade-offs, leader/follower read-path design, tunable consistency by endpoint criticality, lag-aware routing, failover/degraded-mode consistency policy)
-        Scope: Replicated data-path choices and how quorum math impacts latency, durability, and stale-read risk.
-        Key concepts: leader/follower replication, quorum reads/writes, tunable consistency, read repair, anti-entropy.
-  - [x] Chapter 3: Time, Ordering & Causality — 100 problems (clock-skew and reordering failure modes, logical/causal ordering, vector/Lamport clock reasoning, replay safety, concurrent update conflict handling)
-        Scope: Coordinating distributed events when wall clocks are unreliable and ordering must be explicit.
-        Key concepts: logical clocks, vector clocks, Lamport timestamps, clock skew, causal ordering.
-  - [x] Chapter 4: Transactions & Isolation in Distributed Systems — 100 problems (isolation anomaly diagnosis, invariant-scoped strictness, OCC/PCC trade-offs, saga/outbox patterns, deadlock/compensation handling)
-        Scope: Balancing correctness and throughput when multi-key invariants cross services and storage boundaries.
-        Key concepts: ACID vs BASE trade-offs, isolation anomalies, optimistic/pessimistic concurrency control, distributed transactions.
-  - [x] Chapter 5: Coordination Patterns & Distributed Locking — 100 problems (lease/fencing safety, leader-election split-brain prevention, lock liveness/fairness trade-offs, stale-owner rejection, singleton-job coordination)
-        Scope: Safe coordination for leases, elections, and critical sections without creating fragile single points.
-        Key concepts: leases, fencing tokens, leader election, lock safety/liveness, split-brain avoidance.
-  - [x] Chapter 6: Consensus & Membership — 100 problems (quorum/term safety, stale-leader write prevention, election-storm mitigation, membership reconfiguration discipline, commit-visibility correctness)
-        Scope: Reliable agreement and cluster reconfiguration under crash/partition faults.
-        Key concepts: Raft/Paxos intuition, quorum intersection, log replication, membership changes, failure detection.
-  - [x] Chapter 7: Conflict Resolution & Convergence — 100 problems (concurrent-write conflict taxonomy, LWW pitfalls, CRDT/domain-merge trade-offs, replay-safe convergence, unresolved-conflict escalation policies)
-        Scope: Handling concurrent writes and reconciling divergent state in eventually consistent systems.
-        Key concepts: last-write-wins trade-offs, CRDT intuition, merge semantics, idempotency, compensating logic.
-  - [ ] Chapter 8: Consistency & Coordination Scenarios
-        Scope: Integrated incident/design scenarios that combine consistency guarantees, quorum policy, and coordination under failure.
-        Key concepts: end-to-end trade-off diagnosis, invariant protection, partition-mode behavior, latency/correctness/cost decisions.
+- [ ] **Unit 9: Reliability** — planning + chapter-by-chapter content creation
 
-## Next (Units 9-10)
+## Next (Unit 10)
 
-- [ ] **Unit 9: Reliability** — Failure modes, redundancy, graceful degradation, circuit breakers, retries
 - [ ] **Unit 10: Classic Designs Decomposed** — Twitter, URL shortener, chat, notification system — as atomic questions
 
 ## Features (After Content Complete)

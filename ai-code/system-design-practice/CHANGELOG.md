@@ -8,7 +8,7 @@
 - Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
 - Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
 
-## Unit 8: Consistency & Coordination (in progress — 700 problems so far)
+## Unit 8: Consistency & Coordination (complete — 800 problems)
 
 1. Consistency Models Fundamentals (100 problems) — Linearizability/sequential/causal/eventual consistency trade-offs, user-visible anomaly diagnosis, session guarantees, bounded staleness, and endpoint-level guarantee selection by invariant criticality
 2. Quorums, Replication & Read/Write Paths (100 problems) — Leader/follower read-path design, quorum overlap math, endpoint-tiered tunable consistency, lag-aware routing, degraded-mode replication policy, and stale-read mitigation controls
@@ -17,6 +17,7 @@
 5. Coordination Patterns & Distributed Locking (100 problems) — Lease and fencing-token correctness, leader election safety, lock liveness/fairness controls, stale-owner rejection, and singleton-job coordination under failure
 6. Consensus & Membership (100 problems) — Quorum/term safety, stale-leader write prevention, election stability tuning, membership reconfiguration discipline, and commit-visibility correctness under faults
 7. Conflict Resolution & Convergence (100 problems) — Concurrent-write conflict diagnostics, domain-specific merge semantics, CRDT fit decisions, replay-safe convergence controls, and unresolved-conflict escalation policy
+8. Consistency & Coordination Scenarios (100 problems) — Integrated incident-driven practice spanning consistency models, quorum/read-write paths, causal ordering, transactions, coordination safety, consensus behavior, and convergence trade-offs
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`cc-cm-001` to `cc-cm-100`) and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed duplicate prompt patterns in multiple-choice items, eliminated uncertainty-marker wording artifacts, and tightened consistency-model mitigation framing for endpoint-level guarantee selection.
@@ -32,6 +33,8 @@
 - Chapter 6 review/fix pass completed: verified duplicate-free prompt distribution and tightened mitigation framing around quorum/term discipline, safe membership reconfiguration, and stale-leader write prevention.
 - Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`cc-cr-001` to `cc-cr-100`) and marked the chapter as ready in `config.js`.
 - Chapter 7 review/fix pass completed: verified duplicate-free prompt distribution and tightened mitigation framing around domain-specific merge semantics, replay-safe convergence controls, and conflict-escalation boundaries.
+- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`cc-scn-001` to `cc-scn-100`) and marked the chapter as ready in `config.js`.
+- Chapter 8 review/fix pass completed: verified duplicate-free prompt distribution and tightened integrated scenario framing around bottleneck-first consistency diagnosis, policy guardrails, and end-to-end mitigation sequencing.
 
 ## Unit 7: Scaling Compute (complete — 800 problems)
 
