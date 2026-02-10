@@ -134,14 +134,18 @@ export const CONFIG = {
         {
           num: 4,
           title: "Transactions & Isolation in Distributed Systems",
-          ready: false,
+          ready: true,
         },
         {
           num: 5,
           title: "Coordination Patterns & Distributed Locking",
           ready: false,
         },
-        { num: 6, title: "Consensus & Membership", ready: false },
+        {
+          num: 6,
+          title: "Consensus & Membership",
+          ready: false,
+        },
         { num: 7, title: "Conflict Resolution & Convergence", ready: false },
         { num: 8, title: "Consistency & Coordination Scenarios", ready: false },
       ],

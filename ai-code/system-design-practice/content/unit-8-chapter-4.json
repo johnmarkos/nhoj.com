@@ -1,0 +1,1636 @@
+{
+  "unit": 8,
+  "unitTitle": "Consistency & Coordination",
+  "chapter": 4,
+  "chapterTitle": "Transactions & Isolation in Distributed Systems",
+  "chapterDescription": "Balancing correctness and throughput across transaction boundaries, isolation guarantees, and cross-service failure modes.",
+  "problems": [
+    {
+      "id": "cc-ti-001",
+      "type": "multiple-choice",
+      "question": "A checkout + inventory workflow is seeing lost updates under concurrent writes. Which transaction/isolation decision is strongest? The incident reproduced under synthetic concurrent load.",
+      "options": [
+        "Use optimistic concurrency with version checks on contention-prone rows plus retry policy.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-002",
+      "type": "multiple-choice",
+      "question": "A payment + ledger posting pipeline is seeing write skew across related records. Which transaction/isolation decision is strongest? Recent retries amplified duplicate side effects.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use serializable/strong isolation only on invariant-critical transaction boundaries."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-003",
+      "type": "multiple-choice",
+      "question": "A ticket booking reservation path is seeing phantom reads in range checks. Which transaction/isolation decision is strongest? Business requires strict invariant correctness on this path.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Apply explicit locking or SELECT FOR UPDATE on shared invariant records.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-004",
+      "type": "multiple-choice",
+      "question": "A profile update + audit trail flow is seeing non-repeatable reads in multi-step logic. Which transaction/isolation decision is strongest? Latency is important but correctness takes priority here.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Split critical invariant write path from eventually consistent side effects via outbox pattern.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-005",
+      "type": "multiple-choice",
+      "question": "A multi-service order fulfillment is seeing partial failure between service boundaries. Which transaction/isolation decision is strongest? Current implementation spans multiple storage boundaries.",
+      "options": [
+        "Use saga with compensating actions where distributed 2PC is impractical.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-006",
+      "type": "multiple-choice",
+      "question": "A cart merge + coupon validation path is seeing double-spend risk in concurrent debits. Which transaction/isolation decision is strongest? On-call reports intermittent race-condition behavior.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Enforce idempotency keys on externally retried transactional endpoints."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-007",
+      "type": "multiple-choice",
+      "question": "A wallet debit + notification service is seeing stale reads before invariant checks. Which transaction/isolation decision is strongest? Audit findings flagged transactional ambiguity.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Promote range-check logic to isolation level that prevents phantom-based violations.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-008",
+      "type": "multiple-choice",
+      "question": "A shipping allocation + stock decrement flow is seeing deadlock contention at peak load. Which transaction/isolation decision is strongest? Rollback handling is currently inconsistent across services.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Reduce deadlock risk via deterministic lock ordering and smaller transaction scope.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-009",
+      "type": "multiple-choice",
+      "question": "A refund orchestration pipeline is seeing idempotency gaps during retries. Which transaction/isolation decision is strongest? The team needs a reversible first mitigation.",
+      "options": [
+        "Use transactional outbox to atomically persist state change + event emission intent.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-010",
+      "type": "multiple-choice",
+      "question": "A quota enforcement + usage write path is seeing cross-service commit ambiguity. Which transaction/isolation decision is strongest? Traffic spikes expose hidden isolation anomalies.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Model invariant ownership to minimize multi-entity cross-service transactions."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-011",
+      "type": "multiple-choice",
+      "question": "A document edit + permission update workflow is seeing lost updates under concurrent writes. Which transaction/isolation decision is strongest? A prior fix addressed symptoms but not root cause.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use optimistic concurrency with version checks on contention-prone rows plus retry policy.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-012",
+      "type": "multiple-choice",
+      "question": "A subscription renewal + entitlement grant path is seeing write skew across related records. Which transaction/isolation decision is strongest? Service-level retries are not transaction-aware today.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use serializable/strong isolation only on invariant-critical transaction boundaries.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-013",
+      "type": "multiple-choice",
+      "question": "A marketplace purchase + seller payout flow is seeing phantom reads in range checks. Which transaction/isolation decision is strongest? Data model changes increased contention hotspots.",
+      "options": [
+        "Apply explicit locking or SELECT FOR UPDATE on shared invariant records.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-014",
+      "type": "multiple-choice",
+      "question": "A fraud hold + transaction commit path is seeing non-repeatable reads in multi-step logic. Which transaction/isolation decision is strongest? Current path mixes critical writes and side effects.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Split critical invariant write path from eventually consistent side effects via outbox pattern."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-015",
+      "type": "multiple-choice",
+      "question": "A seat assignment + payment capture flow is seeing partial failure between service boundaries. Which transaction/isolation decision is strongest? Cross-region latency made distributed locking slower.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use saga with compensating actions where distributed 2PC is impractical.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-016",
+      "type": "multiple-choice",
+      "question": "A identity verification + account activation flow is seeing double-spend risk in concurrent debits. Which transaction/isolation decision is strongest? Partial failure handling is not formally documented.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Enforce idempotency keys on externally retried transactional endpoints.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-017",
+      "type": "multiple-choice",
+      "question": "A campaign publish + cache invalidation path is seeing stale reads before invariant checks. Which transaction/isolation decision is strongest? The issue appears only under concurrent tenant activity.",
+      "options": [
+        "Promote range-check logic to isolation level that prevents phantom-based violations.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-018",
+      "type": "multiple-choice",
+      "question": "A service-plan upgrade + billing adjustment is seeing deadlock contention at peak load. Which transaction/isolation decision is strongest? Metrics show lock waits rising before errors.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Reduce deadlock risk via deterministic lock ordering and smaller transaction scope."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-019",
+      "type": "multiple-choice",
+      "question": "A batch settlement + reporting close process is seeing idempotency gaps during retries. Which transaction/isolation decision is strongest? The team wants to avoid global strongest isolation everywhere.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use transactional outbox to atomically persist state change + event emission intent.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-020",
+      "type": "multiple-choice",
+      "question": "A notification preference + downstream sync flow is seeing cross-service commit ambiguity. Which transaction/isolation decision is strongest? Critical entities are a subset of total traffic.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Model invariant ownership to minimize multi-entity cross-service transactions.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-021",
+      "type": "multiple-choice",
+      "question": "A checkout + inventory workflow is seeing lost updates under concurrent writes. Which transaction/isolation decision is strongest? Recent deployment changed transaction boundaries.",
+      "options": [
+        "Use optimistic concurrency with version checks on contention-prone rows plus retry policy.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-022",
+      "type": "multiple-choice",
+      "question": "A payment + ledger posting pipeline is seeing write skew across related records. Which transaction/isolation decision is strongest? SLO pressure discourages blanket heavy locking.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use serializable/strong isolation only on invariant-critical transaction boundaries."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-023",
+      "type": "multiple-choice",
+      "question": "A ticket booking reservation path is seeing phantom reads in range checks. Which transaction/isolation decision is strongest? Incident review requires explicit isolation-level rationale.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Apply explicit locking or SELECT FOR UPDATE on shared invariant records.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-024",
+      "type": "multiple-choice",
+      "question": "A profile update + audit trail flow is seeing non-repeatable reads in multi-step logic. Which transaction/isolation decision is strongest? Compensation logic is present but not consistently triggered.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Split critical invariant write path from eventually consistent side effects via outbox pattern.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-025",
+      "type": "multiple-choice",
+      "question": "A multi-service order fulfillment is seeing partial failure between service boundaries. Which transaction/isolation decision is strongest? A dependent service sometimes commits later than expected.",
+      "options": [
+        "Use saga with compensating actions where distributed 2PC is impractical.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-026",
+      "type": "multiple-choice",
+      "question": "A cart merge + coupon validation path is seeing double-spend risk in concurrent debits. Which transaction/isolation decision is strongest? Observability now includes conflict/retry counters.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Enforce idempotency keys on externally retried transactional endpoints."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-027",
+      "type": "multiple-choice",
+      "question": "A wallet debit + notification service is seeing stale reads before invariant checks. Which transaction/isolation decision is strongest? The workflow is sensitive to duplicate external callbacks.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Promote range-check logic to isolation level that prevents phantom-based violations.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-028",
+      "type": "multiple-choice",
+      "question": "A shipping allocation + stock decrement flow is seeing deadlock contention at peak load. Which transaction/isolation decision is strongest? Business accepts eventual consistency for non-critical side effects.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Reduce deadlock risk via deterministic lock ordering and smaller transaction scope.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-029",
+      "type": "multiple-choice",
+      "question": "A refund orchestration pipeline is seeing idempotency gaps during retries. Which transaction/isolation decision is strongest? Data ownership is split across service boundaries.",
+      "options": [
+        "Use transactional outbox to atomically persist state change + event emission intent.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-030",
+      "type": "multiple-choice",
+      "question": "A quota enforcement + usage write path is seeing cross-service commit ambiguity. Which transaction/isolation decision is strongest? Consistency bugs are harming user trust and reconciliation.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Model invariant ownership to minimize multi-entity cross-service transactions."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-031",
+      "type": "multiple-choice",
+      "question": "A document edit + permission update workflow is seeing lost updates under concurrent writes. Which transaction/isolation decision is strongest? The fix must keep throughput acceptable at peak.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use optimistic concurrency with version checks on contention-prone rows plus retry policy.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-032",
+      "type": "multiple-choice",
+      "question": "A subscription renewal + entitlement grant path is seeing write skew across related records. Which transaction/isolation decision is strongest? Rollback semantics should be deterministic for operators.",
+      "options": [
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use serializable/strong isolation only on invariant-critical transaction boundaries.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely."
+      ],
+      "correct": 1,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-033",
+      "type": "multiple-choice",
+      "question": "A marketplace purchase + seller payout flow is seeing phantom reads in range checks. Which transaction/isolation decision is strongest? The current model assumes rare conflicts that are now frequent.",
+      "options": [
+        "Apply explicit locking or SELECT FOR UPDATE on shared invariant records.",
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness."
+      ],
+      "correct": 0,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-034",
+      "type": "multiple-choice",
+      "question": "A fraud hold + transaction commit path is seeing non-repeatable reads in multi-step logic. Which transaction/isolation decision is strongest? Product added a new invariant without storage redesign.",
+      "options": [
+        "Lower isolation globally to maximize throughput and ignore anomalies.",
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Split critical invariant write path from eventually consistent side effects via outbox pattern."
+      ],
+      "correct": 3,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-035",
+      "type": "multiple-choice",
+      "question": "A seat assignment + payment capture flow is seeing partial failure between service boundaries. Which transaction/isolation decision is strongest? Post-incident prevention is required with test coverage.",
+      "options": [
+        "Rely on client retries to resolve all transactional conflicts safely.",
+        "Treat distributed side effects as independent of transaction correctness.",
+        "Use saga with compensating actions where distributed 2PC is impractical.",
+        "Lower isolation globally to maximize throughput and ignore anomalies."
+      ],
+      "correct": 2,
+      "explanation": "Isolation/transaction strategy should be scoped to invariant-critical paths while keeping side effects safely coordinated."
+    },
+    {
+      "id": "cc-ti-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: payment + ledger posting pipeline exhibits non-repeatable reads in multi-step logic. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for payment + ledger posting pipeline mismatches non-repeatable reads in multi-step logic, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving throughput?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Apply explicit locking or SELECT FOR UPDATE on shared invariant records."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ticket booking reservation path exhibits partial failure between service boundaries. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for ticket booking reservation path mismatches partial failure between service boundaries, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under retry storms?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Split critical invariant write path from eventually consistent side effects via outbox pattern.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: profile update + audit trail flow exhibits double-spend risk in concurrent debits. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for profile update + audit trail flow mismatches double-spend risk in concurrent debits, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during partial downstream failure?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use saga with compensating actions where distributed 2PC is impractical.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: multi-service order fulfillment exhibits stale reads before invariant checks. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for multi-service order fulfillment mismatches stale reads before invariant checks, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with strict audit requirements?",
+          "options": [
+            "Enforce idempotency keys on externally retried transactional endpoints.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: cart merge + coupon validation path exhibits deadlock contention at peak load. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for cart merge + coupon validation path mismatches deadlock contention at peak load, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change without overusing global serializable mode?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Promote range-check logic to isolation level that prevents phantom-based violations."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: wallet debit + notification service exhibits idempotency gaps during retries. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for wallet debit + notification service mismatches idempotency gaps during retries, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during peak contention windows?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Reduce deadlock risk via deterministic lock ordering and smaller transaction scope.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shipping allocation + stock decrement flow exhibits cross-service commit ambiguity. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for shipping allocation + stock decrement flow mismatches cross-service commit ambiguity, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with distributed side effects present?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use transactional outbox to atomically persist state change + event emission intent.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: refund orchestration pipeline exhibits lost updates under concurrent writes. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for refund orchestration pipeline mismatches lost updates under concurrent writes, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under cross-service latency variance?",
+          "options": [
+            "Model invariant ownership to minimize multi-entity cross-service transactions.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: quota enforcement + usage write path exhibits write skew across related records. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for quota enforcement + usage write path mismatches write skew across related records, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preventing duplicate commits?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use optimistic concurrency with version checks on contention-prone rows plus retry policy."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: document edit + permission update workflow exhibits phantom reads in range checks. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for document edit + permission update workflow mismatches phantom reads in range checks, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change before broad rollout?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use serializable/strong isolation only on invariant-critical transaction boundaries.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: subscription renewal + entitlement grant path exhibits non-repeatable reads in multi-step logic. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for subscription renewal + entitlement grant path mismatches non-repeatable reads in multi-step logic, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with deterministic rollback needs?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Apply explicit locking or SELECT FOR UPDATE on shared invariant records.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: marketplace purchase + seller payout flow exhibits partial failure between service boundaries. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for marketplace purchase + seller payout flow mismatches partial failure between service boundaries, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under strict inventory correctness?",
+          "options": [
+            "Split critical invariant write path from eventually consistent side effects via outbox pattern.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: fraud hold + transaction commit path exhibits double-spend risk in concurrent debits. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for fraud hold + transaction commit path mismatches double-spend risk in concurrent debits, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while minimizing lock duration?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use saga with compensating actions where distributed 2PC is impractical."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: seat assignment + payment capture flow exhibits stale reads before invariant checks. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for seat assignment + payment capture flow mismatches stale reads before invariant checks, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during recovery from incident backlog?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Enforce idempotency keys on externally retried transactional endpoints.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: identity verification + account activation flow exhibits deadlock contention at peak load. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for identity verification + account activation flow mismatches deadlock contention at peak load, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with bounded operational complexity?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Promote range-check logic to isolation level that prevents phantom-based violations.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: campaign publish + cache invalidation path exhibits idempotency gaps during retries. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for campaign publish + cache invalidation path mismatches idempotency gaps during retries, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under mixed criticality operations?",
+          "options": [
+            "Reduce deadlock risk via deterministic lock ordering and smaller transaction scope.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: service-plan upgrade + billing adjustment exhibits cross-service commit ambiguity. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for service-plan upgrade + billing adjustment mismatches cross-service commit ambiguity, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving API idempotency?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use transactional outbox to atomically persist state change + event emission intent."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: batch settlement + reporting close process exhibits lost updates under concurrent writes. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for batch settlement + reporting close process mismatches lost updates under concurrent writes, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during multi-tenant concurrency spikes?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Model invariant ownership to minimize multi-entity cross-service transactions.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: notification preference + downstream sync flow exhibits write skew across related records. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for notification preference + downstream sync flow mismatches write skew across related records, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with clear compensation semantics?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use optimistic concurrency with version checks on contention-prone rows plus retry policy.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: checkout + inventory workflow exhibits phantom reads in range checks. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for checkout + inventory workflow mismatches phantom reads in range checks, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under constrained database resources?",
+          "options": [
+            "Use serializable/strong isolation only on invariant-critical transaction boundaries.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: payment + ledger posting pipeline exhibits non-repeatable reads in multi-step logic. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for payment + ledger posting pipeline mismatches non-repeatable reads in multi-step logic, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while reducing deadlock frequency?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Apply explicit locking or SELECT FOR UPDATE on shared invariant records."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ticket booking reservation path exhibits partial failure between service boundaries. What is the primary diagnosis?",
+          "options": [
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for ticket booking reservation path mismatches partial failure between service boundaries, causing correctness risk."
+          ],
+          "correct": 3,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during schema evolution changes?",
+          "options": [
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Split critical invariant write path from eventually consistent side effects via outbox pattern.",
+            "Force one universal transaction pattern on all workflows regardless invariants."
+          ],
+          "correct": 2,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: profile update + audit trail flow exhibits double-spend risk in concurrent debits. What is the primary diagnosis?",
+          "options": [
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for profile update + audit trail flow mismatches double-spend risk in concurrent debits, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact."
+          ],
+          "correct": 2,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with explicit failure-mode documentation?",
+          "options": [
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Use saga with compensating actions where distributed 2PC is impractical.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise."
+          ],
+          "correct": 1,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: multi-service order fulfillment exhibits stale reads before invariant checks. What is the primary diagnosis?",
+          "options": [
+            "Cross-service partial failures can be ignored if local DB commits succeed.",
+            "The current transaction design for multi-service order fulfillment mismatches stale reads before invariant checks, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled."
+          ],
+          "correct": 1,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while keeping p99 acceptable?",
+          "options": [
+            "Enforce idempotency keys on externally retried transactional endpoints.",
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later."
+          ],
+          "correct": 0,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: cart merge + coupon validation path exhibits deadlock contention at peak load. What is the primary diagnosis?",
+          "options": [
+            "The current transaction design for cart merge + coupon validation path mismatches deadlock contention at peak load, causing correctness risk.",
+            "Isolation anomalies are purely observability artifacts with no data impact.",
+            "Transaction boundaries do not matter if retries are enabled.",
+            "Cross-service partial failures can be ignored if local DB commits succeed."
+          ],
+          "correct": 0,
+          "explanation": "The issue is a transaction/isolation mismatch with domain invariants and failure boundaries."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under controlled canary rollout?",
+          "options": [
+            "Force one universal transaction pattern on all workflows regardless invariants.",
+            "Disable conflict checks to reduce latency and operational noise.",
+            "Accept occasional invariant violations and reconcile manually later.",
+            "Promote range-check logic to isolation level that prevents phantom-based violations."
+          ],
+          "correct": 3,
+          "explanation": "Apply targeted stronger controls where invariants demand them and keep non-critical paths lighter."
+        }
+      ]
+    },
+    {
+      "id": "cc-ti-061",
+      "type": "multi-select",
+      "question": "When is serializable isolation typically justified? (Select all that apply)",
+      "options": [
+        "Strict invariant enforcement paths",
+        "Double-spend/oversell prevention",
+        "All read-only analytics paths",
+        "Regulatory-critical correctness boundaries"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Serializable isolation is expensive and should be focused on high-value correctness paths."
+    },
+    {
+      "id": "cc-ti-062",
+      "type": "multi-select",
+      "question": "Which are classic isolation anomalies? (Select all that apply)",
+      "options": [
+        "Lost update",
+        "Write skew",
+        "Guaranteed deterministic ordering everywhere",
+        "Phantom reads"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Lost updates, write skew, and phantoms are common anomalies under weaker isolation."
+    },
+    {
+      "id": "cc-ti-063",
+      "type": "multi-select",
+      "question": "Distributed transaction alternatives to 2PC often include which? (Select all that apply)",
+      "options": [
+        "Saga with compensating actions",
+        "Transactional outbox",
+        "Blind eventual retries without idempotency",
+        "Idempotent command handling"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Sagas/outbox/idempotency are practical patterns for cross-service consistency."
+    },
+    {
+      "id": "cc-ti-064",
+      "type": "multi-select",
+      "question": "To reduce deadlocks, which practices help? (Select all that apply)",
+      "options": [
+        "Consistent lock acquisition order",
+        "Keep transactions short",
+        "Acquire locks in random order to spread contention",
+        "Reduce touched rows per transaction"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Deterministic ordering and smaller scopes reduce deadlock probability."
+    },
+    {
+      "id": "cc-ti-065",
+      "type": "multi-select",
+      "question": "Idempotency is especially important for which cases? (Select all that apply)",
+      "options": [
+        "Client retries after timeouts",
+        "At-least-once message delivery",
+        "Single in-memory local operation only",
+        "External callback replays"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Idempotency protects correctness when duplicate attempts occur."
+    },
+    {
+      "id": "cc-ti-066",
+      "type": "multi-select",
+      "question": "Outbox pattern helps with which guarantees? (Select all that apply)",
+      "options": [
+        "State change and event intent persist atomically",
+        "Avoiding dual-write race between DB and broker",
+        "Global total order of all events",
+        "Reliable async publication with replay"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Outbox addresses dual-write safety and reliable event publication."
+    },
+    {
+      "id": "cc-ti-067",
+      "type": "multi-select",
+      "question": "Signs that isolation is too weak include which? (Select all that apply)",
+      "options": [
+        "Intermittent invariant violations under concurrency",
+        "Frequent reconciliation corrections",
+        "Consistent correctness under load tests",
+        "Race-condition bug reports tied to peak traffic"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Weak isolation often surfaces as intermittent yet expensive correctness failures."
+    },
+    {
+      "id": "cc-ti-068",
+      "type": "multi-select",
+      "question": "When may weaker isolation be acceptable? (Select all that apply)",
+      "options": [
+        "Non-critical derived data paths",
+        "Read-only analytics with tolerance for minor staleness",
+        "Hard financial invariants",
+        "Workflows with compensating controls and bounded impact"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Weaker isolation can work where business impact of anomalies is limited and controlled."
+    },
+    {
+      "id": "cc-ti-069",
+      "type": "multi-select",
+      "question": "Which controls protect against write skew? (Select all that apply)",
+      "options": [
+        "Serializable isolation or equivalent checks",
+        "Materialized constraint locks/check rows",
+        "Ignoring concurrent predicate reads",
+        "Application-level invariant revalidation before commit"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Write skew requires predicate-aware or invariant-aware protections."
+    },
+    {
+      "id": "cc-ti-070",
+      "type": "multi-select",
+      "question": "Good saga design practices include which? (Select all that apply)",
+      "options": [
+        "Explicit compensation for each step",
+        "Clear timeout and retry semantics",
+        "Assume compensation can never fail",
+        "Persist saga state transitions durably"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Sagas need durable progress tracking and explicit compensation strategy."
+    },
+    {
+      "id": "cc-ti-071",
+      "type": "multi-select",
+      "question": "For cross-service correctness, useful patterns include which? (Select all that apply)",
+      "options": [
+        "Idempotent commands/events",
+        "Versioned state transitions",
+        "Ad hoc side effects outside transaction model",
+        "Ownership boundaries minimizing distributed writes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Robust distributed correctness comes from explicit boundaries and replay-safe semantics."
+    },
+    {
+      "id": "cc-ti-072",
+      "type": "multi-select",
+      "question": "Which metrics are useful for transaction/isolation health? (Select all that apply)",
+      "options": [
+        "Conflict retry rate",
+        "Deadlock count",
+        "Only average CPU",
+        "Invariant-violation incident rate"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Conflict, deadlock, and invariant metrics reveal isolation effectiveness."
+    },
+    {
+      "id": "cc-ti-073",
+      "type": "multi-select",
+      "question": "When using optimistic concurrency, which are required? (Select all that apply)",
+      "options": [
+        "Version/timestamp compare on write",
+        "Retry strategy for conflicts",
+        "Guaranteed zero conflicts by design",
+        "Bounded retry/backoff policy"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "OCC requires conflict detection and safe retry behavior."
+    },
+    {
+      "id": "cc-ti-074",
+      "type": "multi-select",
+      "question": "Common 2PC concerns in high-scale systems include which? (Select all that apply)",
+      "options": [
+        "Coordinator availability sensitivity",
+        "Increased latency/lock duration",
+        "Automatic elimination of partial failures",
+        "Operational complexity under partitions"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "2PC can improve atomicity but at significant availability/latency complexity costs."
+    },
+    {
+      "id": "cc-ti-075",
+      "type": "multi-select",
+      "question": "To keep transaction scope healthy, which tactics help? (Select all that apply)",
+      "options": [
+        "Minimize work inside transaction",
+        "Avoid external calls in transaction boundary",
+        "Combine unrelated writes in one giant transaction",
+        "Precompute non-critical data outside critical path"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Smaller, focused transactions reduce contention and failure blast radius."
+    },
+    {
+      "id": "cc-ti-076",
+      "type": "multi-select",
+      "question": "Which anti-patterns commonly create isolation bugs? (Select all that apply)",
+      "options": [
+        "Assuming retries imply correctness",
+        "Undocumented isolation assumptions",
+        "Explicit invariant tests in CI load scenarios",
+        "Mixing critical and non-critical writes without boundary"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Implicit assumptions and boundary blur are common root causes."
+    },
+    {
+      "id": "cc-ti-077",
+      "type": "multi-select",
+      "question": "Rollback/compensation quality improves with which? (Select all that apply)",
+      "options": [
+        "Deterministic compensating commands",
+        "Observable saga state transitions",
+        "Best-effort undocumented manual fixes only",
+        "Idempotent compensation execution"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Compensation must be explicit, observable, and replay-safe."
+    },
+    {
+      "id": "cc-ti-078",
+      "type": "numeric-input",
+      "question": "A service processes 1,800,000 tx/day. Conflict retry rate is 1.4%. Retries/day?",
+      "answer": 25200,
+      "unit": "transactions",
+      "tolerance": 0.03,
+      "explanation": "0.014 * 1,800,000 = 25,200."
+    },
+    {
+      "id": "cc-ti-079",
+      "type": "numeric-input",
+      "question": "Deadlock incidents are 72/day; each costs 35s to recover. Total deadlock recovery minutes/day?",
+      "answer": 42,
+      "unit": "minutes",
+      "tolerance": 0.05,
+      "explanation": "72*35 = 2,520 seconds = 42 minutes."
+    },
+    {
+      "id": "cc-ti-080",
+      "type": "numeric-input",
+      "question": "Outbox publisher drains 9,000 events/min. Backlog is 540,000 events. Minutes to drain (no new events)?",
+      "answer": 60,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "540,000 / 9,000 = 60 minutes."
+    },
+    {
+      "id": "cc-ti-081",
+      "type": "numeric-input",
+      "question": "A critical endpoint has 95,000 req/hour. Duplicate callback rate is 0.6%. Duplicate attempts/hour?",
+      "answer": 570,
+      "unit": "requests",
+      "tolerance": 0.03,
+      "explanation": "0.006 * 95,000 = 570."
+    },
+    {
+      "id": "cc-ti-082",
+      "type": "numeric-input",
+      "question": "Transaction p99 is 280ms. Lock-delay time contributes 95ms. What percent of p99 is lock-delay time?",
+      "answer": 33.93,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "95 / 280 = 33.93%."
+    },
+    {
+      "id": "cc-ti-083",
+      "type": "numeric-input",
+      "question": "A saga has 5 steps with independent 99.5% success each. Approximate end-to-end success probability (%)?",
+      "answer": 97.52,
+      "unit": "%",
+      "tolerance": 0.2,
+      "explanation": "0.995^5 = 0.9752 (97.52%)."
+    },
+    {
+      "id": "cc-ti-084",
+      "type": "numeric-input",
+      "question": "Inventory check allows 120ms budget; current serializable transaction adds 45ms over baseline. Remaining budget?",
+      "answer": 75,
+      "unit": "ms",
+      "tolerance": 0,
+      "explanation": "120 - 45 = 75ms remaining."
+    },
+    {
+      "id": "cc-ti-085",
+      "type": "numeric-input",
+      "question": "A lock hotspot key sees 6,600 attempts/min, 15% blocked >1s. Blocked attempts/min?",
+      "answer": 990,
+      "unit": "attempts",
+      "tolerance": 0.02,
+      "explanation": "0.15 * 6,600 = 990."
+    },
+    {
+      "id": "cc-ti-086",
+      "type": "numeric-input",
+      "question": "Compensation workflow resolves 92% automatically out of 25,000 failed sagas/day. Manual interventions/day?",
+      "answer": 2000,
+      "unit": "sagas",
+      "tolerance": 0.03,
+      "explanation": "8% of 25,000 = 2,000."
+    },
+    {
+      "id": "cc-ti-087",
+      "type": "numeric-input",
+      "question": "If 18% of operations require strict isolation out of 140,000 ops/min, strict-isolation ops/min?",
+      "answer": 25200,
+      "unit": "ops/min",
+      "tolerance": 0.02,
+      "explanation": "0.18 * 140,000 = 25,200."
+    },
+    {
+      "id": "cc-ti-088",
+      "type": "numeric-input",
+      "question": "A transaction path costs $0.00045 per call at 2,400,000 calls/day. Daily cost?",
+      "answer": 1080,
+      "unit": "USD",
+      "tolerance": 0.02,
+      "explanation": "2,400,000 * 0.00045 = $1,080."
+    },
+    {
+      "id": "cc-ti-089",
+      "type": "numeric-input",
+      "question": "Write skew incidents dropped from 480/day to 96/day after isolation change. Percent reduction?",
+      "answer": 80,
+      "unit": "%",
+      "tolerance": 0.2,
+      "explanation": "(480-96)/480 = 80%."
+    },
+    {
+      "id": "cc-ti-090",
+      "type": "ordering",
+      "question": "Order a transaction design flow for invariant-critical paths.",
+      "items": [
+        "Define invariant boundary",
+        "Choose isolation/concurrency control",
+        "Implement retries/compensation semantics",
+        "Validate under contention tests"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Start with invariant definition, then enforce and validate."
+    },
+    {
+      "id": "cc-ti-091",
+      "type": "ordering",
+      "question": "Order by increasing isolation strength (typical).",
+      "items": [
+        "Read committed",
+        "Repeatable read",
+        "Snapshot isolation",
+        "Serializable"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Guarantee strength and cost generally rise together."
+    },
+    {
+      "id": "cc-ti-092",
+      "type": "ordering",
+      "question": "Order deadlock mitigation steps from immediate to structural.",
+      "items": [
+        "Retry with backoff",
+        "Enforce lock acquisition order",
+        "Reduce transaction scope",
+        "Refactor data ownership boundaries"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Quick operational mitigation first, structural fixes next."
+    },
+    {
+      "id": "cc-ti-093",
+      "type": "ordering",
+      "question": "Order distributed transaction fallback maturity.",
+      "items": [
+        "Ad hoc manual compensation",
+        "Documented compensation scripts",
+        "Saga state machine with durable log",
+        "Saga with tests/alerts and replay safety"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity increases with explicit automation and validation."
+    },
+    {
+      "id": "cc-ti-094",
+      "type": "ordering",
+      "question": "Order by increasing risk of invariant violation.",
+      "items": [
+        "Serializable critical section",
+        "OCC with strict version checks",
+        "Weak isolation with periodic reconcile",
+        "Uncoordinated eventually consistent writes"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk grows as correctness constraints weaken."
+    },
+    {
+      "id": "cc-ti-095",
+      "type": "ordering",
+      "question": "Order dual-write safety patterns from weakest to strongest.",
+      "items": [
+        "DB write then best-effort event publish",
+        "Retry publish on failure",
+        "Transactional outbox + relay",
+        "Outbox + idempotent consumer + replay audit"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Outbox + idempotency + audit provides strongest practical safety."
+    },
+    {
+      "id": "cc-ti-096",
+      "type": "ordering",
+      "question": "Order by increasing throughput impact (typical).",
+      "items": [
+        "Narrow strict path + broad eventual side effects",
+        "Entity-tiered tunable isolation",
+        "Large serializable transaction scope",
+        "Global synchronous distributed transaction"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Broader strict coordination generally reduces throughput."
+    },
+    {
+      "id": "cc-ti-097",
+      "type": "ordering",
+      "question": "Order rollback handling robustness.",
+      "items": [
+        "Manual rollback notes",
+        "Scripted rollback per service",
+        "Coordinated compensation workflow",
+        "Tested compensation workflow with observability"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Robustness improves with automation, coordination, and testing."
+    },
+    {
+      "id": "cc-ti-098",
+      "type": "ordering",
+      "question": "Order by strongest evidence for isolation tuning success.",
+      "items": [
+        "Lower average latency only",
+        "Lower conflict retries",
+        "Lower invariant violation incidents",
+        "Lower violations with stable latency/cost under load tests"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Success must include correctness and operational trade-offs."
+    },
+    {
+      "id": "cc-ti-099",
+      "type": "ordering",
+      "question": "Order migration safety for transaction-boundary changes.",
+      "items": [
+        "Canary path",
+        "Shadow invariant checks",
+        "Progressive expansion",
+        "Post-rollout regression guardrails"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Staged rollout with shadow checks lowers migration risk."
+    },
+    {
+      "id": "cc-ti-100",
+      "type": "ordering",
+      "question": "Order by increasing operational complexity.",
+      "items": [
+        "Single DB local transaction",
+        "Cross-service idempotent workflow",
+        "Saga orchestration with compensation",
+        "Distributed consensus-backed transaction coordination"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Cross-service coordination increases complexity and cost."
+    }
+  ]
+}

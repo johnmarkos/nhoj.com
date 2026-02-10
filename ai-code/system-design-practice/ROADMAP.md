@@ -22,7 +22,7 @@
   - [x] Chapter 3: Time, Ordering & Causality — 100 problems (clock-skew and reordering failure modes, logical/causal ordering, vector/Lamport clock reasoning, replay safety, concurrent update conflict handling)
         Scope: Coordinating distributed events when wall clocks are unreliable and ordering must be explicit.
         Key concepts: logical clocks, vector clocks, Lamport timestamps, clock skew, causal ordering.
-  - [ ] Chapter 4: Transactions & Isolation in Distributed Systems
+  - [x] Chapter 4: Transactions & Isolation in Distributed Systems — 100 problems (isolation anomaly diagnosis, invariant-scoped strictness, OCC/PCC trade-offs, saga/outbox patterns, deadlock/compensation handling)
         Scope: Balancing correctness and throughput when multi-key invariants cross services and storage boundaries.
         Key concepts: ACID vs BASE trade-offs, isolation anomalies, optimistic/pessimistic concurrency control, distributed transactions.
   - [ ] Chapter 5: Coordination Patterns & Distributed Locking
