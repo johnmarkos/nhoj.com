@@ -176,5 +176,35 @@ export const CONFIG = {
         { num: 8, title: "Reliability Scenarios", ready: true },
       ],
     },
+    {
+      id: 10,
+      title: "Classic Designs Decomposed",
+      chapters: [
+        { num: 1, title: "Twitter/X Timeline Write & Fanout", ready: true },
+        {
+          num: 2,
+          title: "Twitter/X Timeline Ranking, Serving & Reliability",
+          ready: false,
+        },
+        { num: 3, title: "URL Shortener Core Architecture", ready: false },
+        {
+          num: 4,
+          title: "URL Shortener Scale, Analytics & Operations",
+          ready: false,
+        },
+        { num: 5, title: "Chat Core Messaging Architecture", ready: false },
+        { num: 6, title: "Chat Presence, Sync & Reliability", ready: false },
+        {
+          num: 7,
+          title: "Notification System Core Architecture",
+          ready: false,
+        },
+        {
+          num: 8,
+          title: "Notification System Scale & Scenarios",
+          ready: false,
+        },
+      ],
+    },
   ],
 };

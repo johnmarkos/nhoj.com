@@ -1,5 +1,19 @@
 # Changelog
 
+## Unit 10: Classic Designs Decomposed (in progress)
+
+- Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`cd-tw-001` to `cd-tw-100`) and marked the chapter as ready in `config.js`.
+- Chapter 1 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+
+1. Twitter/X Timeline Write & Fanout (100 problems)
+2. Twitter/X Timeline Ranking, Serving & Reliability (100 problems)
+3. URL Shortener Core Architecture (100 problems)
+4. URL Shortener Scale, Analytics & Operations (100 problems)
+5. Chat Core Messaging Architecture (100 problems)
+6. Chat Presence, Sync & Reliability (100 problems)
+7. Notification System Core Architecture (100 problems)
+8. Notification System Scale & Scenarios (100 problems)
+
 ## Unit 9: Reliability (complete — 800 problems)
 
 1. Failure Modes & Fault Domains (100 problems) — Fail-stop vs partial-failure diagnosis, correlated-failure containment, fault-domain blast-radius mapping, dependency failure taxonomy, and fault-domain-aware mitigation selection

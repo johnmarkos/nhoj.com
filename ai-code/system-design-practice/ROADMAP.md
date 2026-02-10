@@ -15,10 +15,34 @@
 ## Now (In Progress)
 
 - [ ] **Unit 10: Classic Designs Decomposed** — chapter-by-chapter content creation
+  - [x] Chapter 1: Twitter/X Timeline Write & Fanout
+        Scope: Decomposing tweet ingest, home-timeline fanout choices, and read-path assembly under scale and failure.
+        Key concepts: fanout-on-write vs fanout-on-read, celebrity handling, timeline materialization, hot-key mitigation.
+  - [ ] Chapter 2: Twitter/X Timeline Ranking, Serving & Reliability
+        Scope: Ranking pipeline decomposition, cache policy, freshness/consistency boundaries, and operational controls.
+        Key concepts: ranking stages, cache layering, freshness SLA, invalidation, feed-serving fault containment.
+  - [ ] Chapter 3: URL Shortener Core Architecture
+        Scope: Atomic design of short-link creation, key generation, redirect serving, and correctness constraints.
+        Key concepts: ID generation (counter/hash/snowflake), collision handling, redirect latency path, abuse controls.
+  - [ ] Chapter 4: URL Shortener Scale, Analytics & Operations
+        Scope: Scaling redirect traffic, event/analytics pipeline decomposition, and reliability/cost governance.
+        Key concepts: write/read amplification, click analytics pipeline, cold/hot partitioning, retention trade-offs.
+  - [ ] Chapter 5: Chat Core Messaging Architecture
+        Scope: Message lifecycle from send to deliver/ack across direct and group chat with ordering semantics.
+        Key concepts: session routing, ordering keys, delivery guarantees, group fanout strategy, offline inbox design.
+  - [ ] Chapter 6: Chat Presence, Sync & Reliability
+        Scope: Presence modeling, multi-device sync, media path decomposition, and degradation/failover behavior.
+        Key concepts: presence heartbeat/state model, unread counters, attachment flows, replay safety, E2EE boundaries.
+  - [ ] Chapter 7: Notification System Core Architecture
+        Scope: Multi-channel notification pipeline decomposition from event ingest to policy and channel dispatch.
+        Key concepts: preference evaluation, deduplication/idempotency, scheduling windows, channel adapters, rate governance.
+  - [ ] Chapter 8: Notification System Scale & Scenarios
+        Scope: Incident-style scenarios combining spikes, dependency failures, retries, and priority-driven delivery controls.
+        Key concepts: queue tiering, retry budgets, SLA segmentation, fallback channels, campaign-throttle coordination.
 
 ## Next (Unit 10)
 
-- [ ] **Unit 10: Classic Designs Decomposed** — Twitter, URL shortener, chat, notification system — as atomic questions
+- [ ] **Post-Unit 10 feature push** — spaced repetition, skill grid, progress persistence, interview simulation
 
 ## Features (After Content Complete)
 
