@@ -13,44 +13,36 @@
 - [x] **Unit 9: Reliability** — 8 chapters, 800 problems
 - [x] **Unit 10: Classic Designs Decomposed** — 8 chapters, 800 problems
 
-## Now (In Progress)
+## Now (Feedback & Progress — via OpenQuizzer upgrades)
 
-- [x] **Unit 10: Classic Designs Decomposed** — complete (800 problems)
-  - [x] Chapter 1: Twitter/X Timeline Write & Fanout
-        Scope: Decomposing tweet ingest, home-timeline fanout choices, and read-path assembly under scale and failure.
-        Key concepts: fanout-on-write vs fanout-on-read, celebrity handling, timeline materialization, hot-key mitigation.
-  - [x] Chapter 2: Twitter/X Timeline Ranking, Serving & Reliability
-        Scope: Ranking pipeline decomposition, cache policy, freshness/consistency boundaries, and operational controls.
-        Key concepts: ranking stages, cache layering, freshness SLA, invalidation, feed-serving fault containment.
-  - [x] Chapter 3: URL Shortener Core Architecture
-        Scope: Atomic design of short-link creation, key generation, redirect serving, and correctness constraints.
-        Key concepts: ID generation (counter/hash/snowflake), collision handling, redirect latency path, abuse controls.
-  - [x] Chapter 4: URL Shortener Scale, Analytics & Operations
-        Scope: Scaling redirect traffic, event/analytics pipeline decomposition, and reliability/cost governance.
-        Key concepts: write/read amplification, click analytics pipeline, cold/hot partitioning, retention trade-offs.
-  - [x] Chapter 5: Chat Core Messaging Architecture
-        Scope: Message lifecycle from send to deliver/ack across direct and group chat with ordering semantics.
-        Key concepts: session routing, ordering keys, delivery guarantees, group fanout strategy, offline inbox design.
-  - [x] Chapter 6: Chat Presence, Sync & Reliability
-        Scope: Presence modeling, multi-device sync, media path decomposition, and degradation/failover behavior.
-        Key concepts: presence heartbeat/state model, unread counters, attachment flows, replay safety, E2EE boundaries.
-  - [x] Chapter 7: Notification System Core Architecture
-        Scope: Multi-channel notification pipeline decomposition from event ingest to policy and channel dispatch.
-        Key concepts: preference evaluation, deduplication/idempotency, scheduling windows, channel adapters, rate governance.
-  - [x] Chapter 8: Notification System Scale & Scenarios
-        Scope: Incident-style scenarios combining spikes, dependency failures, retries, and priority-driven delivery controls.
-        Key concepts: queue tiering, retry budgets, SLA segmentation, fallback channels, campaign-throttle coordination.
+Features below come from the OpenQuizzer engine roadmap. This instance gets them by copying the updated engine/UI files. Instance-specific work (content tagging) is called out separately.
 
-## Next (Unit 10)
+### OpenQuizzer v2.7: Single-Session Feedback
 
-- [ ] **Post-Unit 10 feature push** — spaced repetition, skill grid, progress persistence, interview simulation
+- [ ] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
+- [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
+  - Tagging taxonomy: align with the 10 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
 
-## Features (After Content Complete)
+### OpenQuizzer v2.8: Session Import & Aggregate View
 
-- [ ] **Spaced repetition** — Track problem history, surface weak areas (depends on OpenQuizzer v1.1)
-- [ ] **Skill grid** — FitStar-style Elo per dimension (estimation, data modeling, API design, etc.)
-- [ ] **Progress persistence** — localStorage to resume across sessions
-- [ ] **Interview simulation mode** — Timed sessions, random mix across all units
+- [ ] **Upgrade engine/UI** — Copy from upstream after v2.8 ships
+- [ ] No instance-specific work expected — session summaries already include chapter/unit context from v2.7. Aggregate dashboard shows per-unit and per-tag accuracy percentages automatically.
+
+### OpenQuizzer v2.9: localStorage Persistence & Elo Scores
+
+- [ ] **Upgrade engine/UI** — Copy from upstream after v2.9 ships
+- [ ] No instance-specific work expected — auto-save, spaced repetition, and Elo proficiency scores per unit/tag work with existing content. The aggregate dashboard upgrades from simple accuracy % to difficulty-weighted Elo ratings.
+
+### OpenQuizzer v3.0: File Import/Export
+
+- [ ] **Upgrade engine/UI** — Copy from upstream after v3.0 ships
+
+## Later (Instance-Specific Features)
+
+Features that go beyond what OpenQuizzer provides generically.
+
+- [ ] **Skill grid** — FitStar-style visual display of Elo scores across all 10 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
+- [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v3.0).
 
 ## Content Quality
 
@@ -62,7 +54,6 @@
 
 - [ ] **Community contributions** — Accept PRs for new problems with quality guidelines
 - [ ] **Alternative tracks** — Frontend system design, ML system design, data engineering
-- [ ] **Mock interview mode** — 45-minute timed session with problem mix matching real interviews
 
 ## Won't Do
 
