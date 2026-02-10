@@ -31,7 +31,7 @@
   - [x] Chapter 6: Consensus & Membership — 100 problems (quorum/term safety, stale-leader write prevention, election-storm mitigation, membership reconfiguration discipline, commit-visibility correctness)
         Scope: Reliable agreement and cluster reconfiguration under crash/partition faults.
         Key concepts: Raft/Paxos intuition, quorum intersection, log replication, membership changes, failure detection.
-  - [ ] Chapter 7: Conflict Resolution & Convergence
+  - [x] Chapter 7: Conflict Resolution & Convergence — 100 problems (concurrent-write conflict taxonomy, LWW pitfalls, CRDT/domain-merge trade-offs, replay-safe convergence, unresolved-conflict escalation policies)
         Scope: Handling concurrent writes and reconciling divergent state in eventually consistent systems.
         Key concepts: last-write-wins trade-offs, CRDT intuition, merge semantics, idempotency, compensating logic.
   - [ ] Chapter 8: Consistency & Coordination Scenarios

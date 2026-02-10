@@ -1,0 +1,1636 @@
+{
+  "unit": 8,
+  "unitTitle": "Consistency & Coordination",
+  "chapter": 7,
+  "chapterTitle": "Conflict Resolution & Convergence",
+  "chapterDescription": "Designing merge semantics and replay-safe conflict handling for eventually consistent systems with concurrent updates.",
+  "problems": [
+    {
+      "id": "cc-cr-001",
+      "type": "multiple-choice",
+      "question": "A user profile merge service is facing concurrent updates to same field. Which conflict-resolution/convergence decision is strongest? Recent partition tests exposed merge ambiguity.",
+      "options": [
+        "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-002",
+      "type": "multiple-choice",
+      "question": "A collaborative doc state store is facing offline edits arriving out of order. Which conflict-resolution/convergence decision is strongest? User trust impact is high for this data class.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use version/vector metadata to detect concurrency and drive deterministic merge decisions."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-003",
+      "type": "multiple-choice",
+      "question": "A shopping cart sync backend is facing divergent region writes after partition. Which conflict-resolution/convergence decision is strongest? The system handles offline-first clients at scale.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-004",
+      "type": "multiple-choice",
+      "question": "A inventory reconciliation service is facing duplicate event replay with stale payload. Which conflict-resolution/convergence decision is strongest? Current LWW behavior caused silent field loss.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Make merge handlers idempotent and replay-safe with dedupe/version guards.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-005",
+      "type": "multiple-choice",
+      "question": "A chat thread state projector is facing last-write-wins data loss risk. Which conflict-resolution/convergence decision is strongest? Replay rates increased after retry-policy changes.",
+      "options": [
+        "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-006",
+      "type": "multiple-choice",
+      "question": "A feature-flag state distribution is facing merge ambiguity for non-commutative operations. Which conflict-resolution/convergence decision is strongest? Auditability requirements now include conflict rationale.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Partition entities by conflict profile and apply tailored merge policy per class."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-007",
+      "type": "multiple-choice",
+      "question": "A multi-region settings service is facing compensation event arriving late. Which conflict-resolution/convergence decision is strongest? Business requires deterministic merge outcomes.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Record causal history needed for conflict explanation and auditability.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-008",
+      "type": "multiple-choice",
+      "question": "A ad campaign config sync is facing partial convergence under retry backoff. Which conflict-resolution/convergence decision is strongest? Some fields are commutative; others are not.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Define compensation ordering semantics so late compensations cannot corrupt newer state.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-009",
+      "type": "multiple-choice",
+      "question": "A identity claim convergence pipeline is facing idempotency gap in merge handlers. Which conflict-resolution/convergence decision is strongest? The team needs a safe first migration step.",
+      "options": [
+        "Bound eventual convergence windows and alert on prolonged divergence.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-010",
+      "type": "multiple-choice",
+      "question": "A ticket reservation reconciliation is facing conflicting business rule updates. Which conflict-resolution/convergence decision is strongest? Current event payload lacks explicit causality metadata.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Protect invariant-critical writes with stronger coordination, leaving tolerant fields convergent."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-011",
+      "type": "multiple-choice",
+      "question": "A billing adjustment merger is facing concurrent updates to same field. Which conflict-resolution/convergence decision is strongest? Conflict incidents are intermittent but high impact.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-012",
+      "type": "multiple-choice",
+      "question": "A notification state converger is facing offline edits arriving out of order. Which conflict-resolution/convergence decision is strongest? Compensation events can arrive significantly late.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Use version/vector metadata to detect concurrency and drive deterministic merge decisions.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-013",
+      "type": "multiple-choice",
+      "question": "A comment thread merge service is facing divergent region writes after partition. Which conflict-resolution/convergence decision is strongest? Cross-device edits frequently race in production.",
+      "options": [
+        "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-014",
+      "type": "multiple-choice",
+      "question": "A offline-first mobile sync API is facing duplicate event replay with stale payload. Which conflict-resolution/convergence decision is strongest? Schema evolution introduced merge policy drift.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Make merge handlers idempotent and replay-safe with dedupe/version guards."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-015",
+      "type": "multiple-choice",
+      "question": "A catalog attribute merge path is facing last-write-wins data loss risk. Which conflict-resolution/convergence decision is strongest? Operators need visibility into unresolved conflicts.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-016",
+      "type": "multiple-choice",
+      "question": "A fraud case state reconciler is facing merge ambiguity for non-commutative operations. Which conflict-resolution/convergence decision is strongest? Critical invariants must never be resolved by blind overwrite.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Partition entities by conflict profile and apply tailored merge policy per class.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-017",
+      "type": "multiple-choice",
+      "question": "A support ticket merge workflow is facing compensation event arriving late. Which conflict-resolution/convergence decision is strongest? Current merge code is difficult to reason about.",
+      "options": [
+        "Record causal history needed for conflict explanation and auditability.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-018",
+      "type": "multiple-choice",
+      "question": "A shipment status convergence service is facing partial convergence under retry backoff. Which conflict-resolution/convergence decision is strongest? Performance constraints discourage global strict coordination.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Define compensation ordering semantics so late compensations cannot corrupt newer state."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-019",
+      "type": "multiple-choice",
+      "question": "A membership preference sync store is facing idempotency gap in merge handlers. Which conflict-resolution/convergence decision is strongest? User-facing consistency SLOs were recently added.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Bound eventual convergence windows and alert on prolonged divergence.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-020",
+      "type": "multiple-choice",
+      "question": "A device configuration convergence backend is facing conflicting business rule updates. Which conflict-resolution/convergence decision is strongest? Downstream systems assume converged state within minutes.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Protect invariant-critical writes with stronger coordination, leaving tolerant fields convergent.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-021",
+      "type": "multiple-choice",
+      "question": "A user profile merge service is facing concurrent updates to same field. Which conflict-resolution/convergence decision is strongest? The platform supports dedupe keys and version checks.",
+      "options": [
+        "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-022",
+      "type": "multiple-choice",
+      "question": "A collaborative doc state store is facing offline edits arriving out of order. Which conflict-resolution/convergence decision is strongest? There is no current escalation path for irreconcilable conflicts.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use version/vector metadata to detect concurrency and drive deterministic merge decisions."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-023",
+      "type": "multiple-choice",
+      "question": "A shopping cart sync backend is facing divergent region writes after partition. Which conflict-resolution/convergence decision is strongest? Some tenants tolerate delay but not silent data loss.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-024",
+      "type": "multiple-choice",
+      "question": "A inventory reconciliation service is facing duplicate event replay with stale payload. Which conflict-resolution/convergence decision is strongest? Replay and reorder are common after failover.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Make merge handlers idempotent and replay-safe with dedupe/version guards.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-025",
+      "type": "multiple-choice",
+      "question": "A chat thread state projector is facing last-write-wins data loss risk. Which conflict-resolution/convergence decision is strongest? A prior patch reduced duplicates but increased drift.",
+      "options": [
+        "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-026",
+      "type": "multiple-choice",
+      "question": "A feature-flag state distribution is facing merge ambiguity for non-commutative operations. Which conflict-resolution/convergence decision is strongest? The product now supports cross-region active-active writes.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Partition entities by conflict profile and apply tailored merge policy per class."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-027",
+      "type": "multiple-choice",
+      "question": "A multi-region settings service is facing compensation event arriving late. Which conflict-resolution/convergence decision is strongest? Business teams demand explicit merge policy documentation.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Record causal history needed for conflict explanation and auditability.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-028",
+      "type": "multiple-choice",
+      "question": "A ad campaign config sync is facing partial convergence under retry backoff. Which conflict-resolution/convergence decision is strongest? Observability now tracks divergence duration by entity.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Define compensation ordering semantics so late compensations cannot corrupt newer state.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-029",
+      "type": "multiple-choice",
+      "question": "A identity claim convergence pipeline is facing idempotency gap in merge handlers. Which conflict-resolution/convergence decision is strongest? Conflicts cluster around a few high-write fields.",
+      "options": [
+        "Bound eventual convergence windows and alert on prolonged divergence.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-030",
+      "type": "multiple-choice",
+      "question": "A ticket reservation reconciliation is facing conflicting business rule updates. Which conflict-resolution/convergence decision is strongest? The migration must be canary-friendly and reversible.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Protect invariant-critical writes with stronger coordination, leaving tolerant fields convergent."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-031",
+      "type": "multiple-choice",
+      "question": "A billing adjustment merger is facing concurrent updates to same field. Which conflict-resolution/convergence decision is strongest? Client retries may re-send stale updates unexpectedly.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-032",
+      "type": "multiple-choice",
+      "question": "A notification state converger is facing offline edits arriving out of order. Which conflict-resolution/convergence decision is strongest? Compensating logic exists but lacks ordering safeguards.",
+      "options": [
+        "Assume replayed updates are always newer than stored state.",
+        "Use version/vector metadata to detect concurrency and drive deterministic merge decisions.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput."
+      ],
+      "correct": 1,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-033",
+      "type": "multiple-choice",
+      "question": "A comment thread merge service is facing divergent region writes after partition. Which conflict-resolution/convergence decision is strongest? Throughput targets remain strict despite stronger merge semantics.",
+      "options": [
+        "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state."
+      ],
+      "correct": 0,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-034",
+      "type": "multiple-choice",
+      "question": "A offline-first mobile sync API is facing duplicate event replay with stale payload. Which conflict-resolution/convergence decision is strongest? Support teams need explainable conflict outcomes.",
+      "options": [
+        "Apply universal last-write-wins for every entity and field.",
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Make merge handlers idempotent and replay-safe with dedupe/version guards."
+      ],
+      "correct": 3,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-035",
+      "type": "multiple-choice",
+      "question": "A catalog attribute merge path is facing last-write-wins data loss risk. Which conflict-resolution/convergence decision is strongest? Post-incident hardening is part of this scope.",
+      "options": [
+        "Discard conflicting updates silently to preserve throughput.",
+        "Assume replayed updates are always newer than stored state.",
+        "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+        "Apply universal last-write-wins for every entity and field."
+      ],
+      "correct": 2,
+      "explanation": "Convergence quality improves when merge policies reflect domain semantics and replay/concurrency realities."
+    },
+    {
+      "id": "cc-cr-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shopping cart sync backend reports incidents around last-write-wins data loss risk. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in shopping cart sync backend mismatches last-write-wins data loss risk, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving user-visible coherence?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Make merge handlers idempotent and replay-safe with dedupe/version guards."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: inventory reconciliation service reports incidents around merge ambiguity for non-commutative operations. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in inventory reconciliation service mismatches merge ambiguity for non-commutative operations, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under replay-heavy failure recovery?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: chat thread state projector reports incidents around compensation event arriving late. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in chat thread state projector mismatches compensation event arriving late, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during cross-region divergence?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Partition entities by conflict profile and apply tailored merge policy per class.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feature-flag state distribution reports incidents around partial convergence under retry backoff. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in feature-flag state distribution mismatches partial convergence under retry backoff, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change without silent data loss?",
+          "options": [
+            "Record causal history needed for conflict explanation and auditability.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: multi-region settings service reports incidents around idempotency gap in merge handlers. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in multi-region settings service mismatches idempotency gap in merge handlers, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with strict auditability needs?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Define compensation ordering semantics so late compensations cannot corrupt newer state."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ad campaign config sync reports incidents around conflicting business rule updates. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in ad campaign config sync mismatches conflicting business rule updates, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under high write concurrency?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Bound eventual convergence windows and alert on prolonged divergence.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: identity claim convergence pipeline reports incidents around concurrent updates to same field. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in identity claim convergence pipeline mismatches concurrent updates to same field, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while keeping merge latency acceptable?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Protect invariant-critical writes with stronger coordination, leaving tolerant fields convergent.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ticket reservation reconciliation reports incidents around offline edits arriving out of order. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in ticket reservation reconciliation mismatches offline edits arriving out of order, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during compensation reordering?",
+          "options": [
+            "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: billing adjustment merger reports incidents around divergent region writes after partition. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in billing adjustment merger mismatches divergent region writes after partition, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with mixed commutative/non-commutative fields?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Use version/vector metadata to detect concurrency and drive deterministic merge decisions."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: notification state converger reports incidents around duplicate event replay with stale payload. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in notification state converger mismatches duplicate event replay with stale payload, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change before wider rollout?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: comment thread merge service reports incidents around last-write-wins data loss risk. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in comment thread merge service mismatches last-write-wins data loss risk, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under offline client resync storms?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Make merge handlers idempotent and replay-safe with dedupe/version guards.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: offline-first mobile sync API reports incidents around merge ambiguity for non-commutative operations. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in offline-first mobile sync API mismatches merge ambiguity for non-commutative operations, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while controlling operational complexity?",
+          "options": [
+            "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: catalog attribute merge path reports incidents around compensation event arriving late. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in catalog attribute merge path mismatches compensation event arriving late, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with bounded convergence SLO?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Partition entities by conflict profile and apply tailored merge policy per class."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: fraud case state reconciler reports incidents around partial convergence under retry backoff. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in fraud case state reconciler mismatches partial convergence under retry backoff, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during schema migration?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Record causal history needed for conflict explanation and auditability.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: support ticket merge workflow reports incidents around idempotency gap in merge handlers. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in support ticket merge workflow mismatches idempotency gap in merge handlers, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under tenant-specific merge policies?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Define compensation ordering semantics so late compensations cannot corrupt newer state.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shipment status convergence service reports incidents around conflicting business rule updates. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in shipment status convergence service mismatches conflicting business rule updates, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving invariants?",
+          "options": [
+            "Bound eventual convergence windows and alert on prolonged divergence.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: membership preference sync store reports incidents around concurrent updates to same field. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in membership preference sync store mismatches concurrent updates to same field, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with explicit conflict explainability?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Protect invariant-critical writes with stronger coordination, leaving tolerant fields convergent."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: device configuration convergence backend reports incidents around offline edits arriving out of order. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in device configuration convergence backend mismatches offline edits arriving out of order, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during prolonged partitions?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Use domain-specific merge semantics instead of global last-write-wins for critical fields.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: user profile merge service reports incidents around divergent region writes after partition. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in user profile merge service mismatches divergent region writes after partition, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under retry amplification?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Use version/vector metadata to detect concurrency and drive deterministic merge decisions.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: collaborative doc state store reports incidents around duplicate event replay with stale payload. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in collaborative doc state store mismatches duplicate event replay with stale payload, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while minimizing manual intervention?",
+          "options": [
+            "Use CRDT-style commutative structures where business semantics allow safe convergence.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shopping cart sync backend reports incidents around last-write-wins data loss risk. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in shopping cart sync backend mismatches last-write-wins data loss risk, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with deterministic outcomes?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Make merge handlers idempotent and replay-safe with dedupe/version guards."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: inventory reconciliation service reports incidents around merge ambiguity for non-commutative operations. What is the primary diagnosis?",
+          "options": [
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in inventory reconciliation service mismatches merge ambiguity for non-commutative operations, causing incorrect convergence."
+          ],
+          "correct": 3,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under cost constraints?",
+          "options": [
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Escalate unresolved conflicts to explicit user/business resolution flow for high-risk data.",
+            "Disable conflict detection to reduce write latency."
+          ],
+          "correct": 2,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: chat thread state projector reports incidents around compensation event arriving late. What is the primary diagnosis?",
+          "options": [
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in chat thread state projector mismatches compensation event arriving late, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists."
+          ],
+          "correct": 2,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during backfill replay?",
+          "options": [
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Partition entities by conflict profile and apply tailored merge policy per class.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only."
+          ],
+          "correct": 1,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feature-flag state distribution reports incidents around partial convergence under retry backoff. What is the primary diagnosis?",
+          "options": [
+            "Replay handling is independent from merge correctness.",
+            "Current merge policy in feature-flag state distribution mismatches partial convergence under retry backoff, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome."
+          ],
+          "correct": 1,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while reducing unresolved-conflict backlog?",
+          "options": [
+            "Record causal history needed for conflict explanation and auditability.",
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup."
+          ],
+          "correct": 0,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: multi-region settings service reports incidents around idempotency gap in merge handlers. What is the primary diagnosis?",
+          "options": [
+            "Current merge policy in multi-region settings service mismatches idempotency gap in merge handlers, causing incorrect convergence.",
+            "Conflict anomalies are acceptable if eventual state exists.",
+            "LWW always preserves most important business outcome.",
+            "Replay handling is independent from merge correctness."
+          ],
+          "correct": 0,
+          "explanation": "The issue stems from mismatched merge semantics versus domain correctness needs."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with canary-safe migration controls?",
+          "options": [
+            "Disable conflict detection to reduce write latency.",
+            "Resolve all conflicts with newest wall-clock timestamp only.",
+            "Ignore unresolved conflicts until quarterly cleanup.",
+            "Define compensation ordering semantics so late compensations cannot corrupt newer state."
+          ],
+          "correct": 3,
+          "explanation": "Adopt explicit merge semantics and replay-safe guards aligned to data criticality."
+        }
+      ]
+    },
+    {
+      "id": "cc-cr-061",
+      "type": "multi-select",
+      "question": "Why can global last-write-wins be dangerous? (Select all that apply)",
+      "options": [
+        "Can silently drop valid concurrent intent",
+        "Depends on skewed wall-clock order",
+        "Always preserves domain invariants",
+        "Can mask business-critical conflicts"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "LWW is simple but often unsafe for invariant-critical or semantically rich fields."
+    },
+    {
+      "id": "cc-cr-062",
+      "type": "multi-select",
+      "question": "CRDT-style approaches are best suited for which? (Select all that apply)",
+      "options": [
+        "Commutative/associative state updates",
+        "Convergence without central coordination",
+        "Arbitrary non-commutative financial transfers",
+        "High-replay distributed updates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "CRDTs fit naturally convergent data types, not all business operations."
+    },
+    {
+      "id": "cc-cr-063",
+      "type": "multi-select",
+      "question": "Replay-safe merge handlers should include which? (Select all that apply)",
+      "options": [
+        "Idempotency keys",
+        "Version/causal checks",
+        "Blind overwrite on duplicate events",
+        "Deterministic merge output"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Replay safety requires dedupe, ordering checks, and deterministic behavior."
+    },
+    {
+      "id": "cc-cr-064",
+      "type": "multi-select",
+      "question": "Useful conflict observability includes which? (Select all that apply)",
+      "options": [
+        "Conflict rate by entity/field",
+        "Unresolved conflict age",
+        "Only host CPU",
+        "Convergence latency distribution"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Conflict operations need direct visibility into rate, age, and convergence timing."
+    },
+    {
+      "id": "cc-cr-065",
+      "type": "multi-select",
+      "question": "When should conflicts escalate to manual/business resolution? (Select all that apply)",
+      "options": [
+        "Invariant-critical data with ambiguous merge",
+        "High-value financial/contract fields",
+        "Low-risk commutative counters",
+        "Irreconcilable concurrent updates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Manual escalation is for ambiguous/high-risk conflicts where automation is unsafe."
+    },
+    {
+      "id": "cc-cr-066",
+      "type": "multi-select",
+      "question": "Compensation events can corrupt state unless which are true? (Select all that apply)",
+      "options": [
+        "Compensations are ordered/validated against current version",
+        "Late compensation cannot overwrite newer accepted state",
+        "Compensations bypass merge checks",
+        "Compensation handlers are idempotent"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Compensations require ordering and idempotent safeguards against stale overwrites."
+    },
+    {
+      "id": "cc-cr-067",
+      "type": "multi-select",
+      "question": "Convergence policy by entity class should consider which? (Select all that apply)",
+      "options": [
+        "Business criticality",
+        "Update concurrency profile",
+        "One policy for all entities always",
+        "Commutativity of operations"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Entity-specific policy improves correctness/cost balance."
+    },
+    {
+      "id": "cc-cr-068",
+      "type": "multi-select",
+      "question": "Signs merge policy is insufficient include which? (Select all that apply)",
+      "options": [
+        "Recurring “state reverted” incidents",
+        "Large unresolved conflict backlog",
+        "Stable convergence SLO with low anomaly rates",
+        "Support escalations on lost updates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Reversions, backlog, and escalations indicate merge policy mismatch."
+    },
+    {
+      "id": "cc-cr-069",
+      "type": "multi-select",
+      "question": "To keep convergence explainable, which are useful? (Select all that apply)",
+      "options": [
+        "Persist merge decision metadata",
+        "Expose conflict reason codes",
+        "Delete conflicting evidence to simplify logs",
+        "Trace causal/version lineage"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Explainability requires durable metadata and lineage visibility."
+    },
+    {
+      "id": "cc-cr-070",
+      "type": "multi-select",
+      "question": "Which anti-patterns often break eventual convergence? (Select all that apply)",
+      "options": [
+        "Non-idempotent replay handlers",
+        "Hidden schema-dependent merge assumptions",
+        "Deterministic merge functions",
+        "Ignoring causal metadata in updates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Replay/causal blind spots and hidden assumptions cause drift."
+    },
+    {
+      "id": "cc-cr-071",
+      "type": "multi-select",
+      "question": "When stronger coordination is preferable to merge logic alone? (Select all that apply)",
+      "options": [
+        "Hard invariants with high failure cost",
+        "Financial transfer uniqueness constraints",
+        "Low-risk social counters",
+        "Operations that cannot be safely commuted"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Some invariants require stronger coordination than eventual merge semantics."
+    },
+    {
+      "id": "cc-cr-072",
+      "type": "multi-select",
+      "question": "Good migration practices for new merge semantics include which? (Select all that apply)",
+      "options": [
+        "Canary by entity segment",
+        "Dual-path validation metrics",
+        "Big-bang cutover with no fallback",
+        "Rollback criteria for anomaly spikes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Staged rollout and rollback guardrails reduce migration risk."
+    },
+    {
+      "id": "cc-cr-073",
+      "type": "multi-select",
+      "question": "Conflict-resolution SLOs can include which? (Select all that apply)",
+      "options": [
+        "Max unresolved conflict age",
+        "Convergence latency percentile",
+        "Only total write QPS",
+        "Conflict-loss incident count"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "SLOs should target conflict handling quality, not just throughput."
+    },
+    {
+      "id": "cc-cr-074",
+      "type": "multi-select",
+      "question": "Which fields are often good CRDT candidates? (Select all that apply)",
+      "options": [
+        "Set membership preferences",
+        "Grow-only counters with semantics",
+        "Single authoritative legal contract term",
+        "Commutative tag updates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "CRDT fit is strongest for commutative/idempotent state types."
+    },
+    {
+      "id": "cc-cr-075",
+      "type": "multi-select",
+      "question": "To prevent stale replay overwrite, which controls are useful? (Select all that apply)",
+      "options": [
+        "Monotonic version guards",
+        "Compare-and-set semantics",
+        "Accept any later-arrival timestamp blindly",
+        "Dedupe state with expiry policy"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Monotonic/CAS + dedupe protects newer state against stale replays."
+    },
+    {
+      "id": "cc-cr-076",
+      "type": "multi-select",
+      "question": "For offline-first clients, which safeguards improve merge outcomes? (Select all that apply)",
+      "options": [
+        "Client operation IDs",
+        "Server-side conflict classification",
+        "Blind overwrite on reconnect",
+        "User-visible conflict UI for critical fields"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Offline sync needs operation identity, server classification, and user-visible fallback."
+    },
+    {
+      "id": "cc-cr-077",
+      "type": "multi-select",
+      "question": "Which can reduce unresolved conflict backlog? (Select all that apply)",
+      "options": [
+        "Domain-specific auto-merge improvements",
+        "Priority triage for high-risk entities",
+        "Ignoring aged conflicts indefinitely",
+        "Clear ownership for manual resolution queues"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Backlog reduction requires better auto-merge and accountable resolution workflows."
+    },
+    {
+      "id": "cc-cr-078",
+      "type": "numeric-input",
+      "question": "A system processes 3,600,000 updates/day with conflict rate 0.8%. Conflicts/day?",
+      "answer": 28800,
+      "unit": "updates",
+      "tolerance": 0.03,
+      "explanation": "0.008*3,600,000=28,800."
+    },
+    {
+      "id": "cc-cr-079",
+      "type": "numeric-input",
+      "question": "Unresolved conflicts are 12,000 with resolver throughput 150/min. Minutes to clear backlog (no new conflicts)?",
+      "answer": 80,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "12,000/150=80."
+    },
+    {
+      "id": "cc-cr-080",
+      "type": "numeric-input",
+      "question": "Replay duplicate rate is 1.6% on 950,000 events/day. Duplicate events/day?",
+      "answer": 15200,
+      "unit": "events",
+      "tolerance": 0.03,
+      "explanation": "0.016*950,000=15,200."
+    },
+    {
+      "id": "cc-cr-081",
+      "type": "numeric-input",
+      "question": "Conflict auto-resolve succeeds for 91% of 40,000 conflicts/day. Manual conflicts/day?",
+      "answer": 3600,
+      "unit": "conflicts",
+      "tolerance": 0.03,
+      "explanation": "9% of 40,000 = 3,600."
+    },
+    {
+      "id": "cc-cr-082",
+      "type": "numeric-input",
+      "question": "Convergence p95 is 28s, SLO target is 20s. Percent over target?",
+      "answer": 40,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(28-20)/20=40%."
+    },
+    {
+      "id": "cc-cr-083",
+      "type": "numeric-input",
+      "question": "A merge metadata field adds 36 bytes/update at 55,000 updates/sec. Extra MB/sec (decimal)?",
+      "answer": 1.98,
+      "unit": "MB/sec",
+      "tolerance": 0.08,
+      "explanation": "55,000*36=1,980,000 bytes/sec = 1.98 MB/sec."
+    },
+    {
+      "id": "cc-cr-084",
+      "type": "numeric-input",
+      "question": "LWW-loss incidents fell from 260/week to 52/week. Percent reduction?",
+      "answer": 80,
+      "unit": "%",
+      "tolerance": 0.2,
+      "explanation": "(260-52)/260=80%."
+    },
+    {
+      "id": "cc-cr-085",
+      "type": "numeric-input",
+      "question": "Conflict-check path adds 12ms to 35% of 18,000 req/sec. Added req-ms per second?",
+      "answer": 75600,
+      "unit": "req-ms/sec",
+      "tolerance": 0.03,
+      "explanation": "18,000*0.35*12 = 75,600 req-ms/sec."
+    },
+    {
+      "id": "cc-cr-086",
+      "type": "numeric-input",
+      "question": "If 14% of 120,000 writes/min require strong coordination fallback, fallback writes/min?",
+      "answer": 16800,
+      "unit": "writes/min",
+      "tolerance": 0.02,
+      "explanation": "0.14*120,000=16,800."
+    },
+    {
+      "id": "cc-cr-087",
+      "type": "numeric-input",
+      "question": "Divergence-alert threshold is 15 minutes; current median unresolved age is 9 minutes. Remaining budget?",
+      "answer": 6,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "15-9=6 minutes."
+    },
+    {
+      "id": "cc-cr-088",
+      "type": "numeric-input",
+      "question": "A conflict queue receives 480 items/min and resolves 530/min. Net drain rate?",
+      "answer": 50,
+      "unit": "items/min",
+      "tolerance": 0,
+      "explanation": "530-480=50 drained per minute."
+    },
+    {
+      "id": "cc-cr-089",
+      "type": "numeric-input",
+      "question": "Compensation misorder incidents are 0.12% of 2,500,000 events/day. Incidents/day?",
+      "answer": 3000,
+      "unit": "events",
+      "tolerance": 0.03,
+      "explanation": "0.0012*2,500,000=3,000."
+    },
+    {
+      "id": "cc-cr-090",
+      "type": "ordering",
+      "question": "Order a robust conflict-resolution workflow.",
+      "items": [
+        "Detect/label conflict type",
+        "Apply domain merge policy",
+        "Validate resulting invariants",
+        "Escalate unresolved high-risk conflicts"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Classify, merge, validate, then escalate if unsafe."
+    },
+    {
+      "id": "cc-cr-091",
+      "type": "ordering",
+      "question": "Order by increasing overwrite risk.",
+      "items": [
+        "CAS with version check",
+        "Merge with causal metadata",
+        "LWW with synchronized clocks assumption",
+        "Blind last-arrival overwrite"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk rises as causal/version safeguards are removed."
+    },
+    {
+      "id": "cc-cr-092",
+      "type": "ordering",
+      "question": "Order convergence migration safety.",
+      "items": [
+        "Canary entity subset",
+        "Dual-path compare metrics",
+        "Progressive expansion",
+        "Retire legacy merge path"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Safe migration uses staged rollout with metric comparison."
+    },
+    {
+      "id": "cc-cr-093",
+      "type": "ordering",
+      "question": "Order by increasing manual effort.",
+      "items": [
+        "Deterministic auto-merge",
+        "Policy-based merge + occasional review",
+        "Frequent manual triage queue",
+        "All conflicts manually resolved"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Manual burden rises as automation quality decreases."
+    },
+    {
+      "id": "cc-cr-094",
+      "type": "ordering",
+      "question": "Order replay protection strength.",
+      "items": [
+        "Timestamp compare only",
+        "Idempotency key check",
+        "Idempotency + version monotonic guard",
+        "Idempotency + version + causal dependency checks"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Replay safety improves with layered checks."
+    },
+    {
+      "id": "cc-cr-095",
+      "type": "ordering",
+      "question": "Order by strongest evidence of convergence health.",
+      "items": [
+        "Low average latency only",
+        "Low conflict rate only",
+        "Low conflict + low unresolved age",
+        "Low conflict + low unresolved age + low loss incidents"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Strong evidence combines rate, age, and correctness outcomes."
+    },
+    {
+      "id": "cc-cr-096",
+      "type": "ordering",
+      "question": "Order conflict policy granularity from coarsest to finest.",
+      "items": [
+        "Single global merge rule",
+        "Per-service merge rule",
+        "Per-entity merge rule",
+        "Per-field/entity merge rule with escalation paths"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Finer policy granularity better matches domain semantics."
+    },
+    {
+      "id": "cc-cr-097",
+      "type": "ordering",
+      "question": "Order by suitability for commutative updates.",
+      "items": [
+        "Blind overwrite",
+        "Timestamp LWW",
+        "Set/counter CRDT merge",
+        "Domain-specific commutative CRDT + audit trail"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Commutative semantics become stronger and safer with explicit CRDT policy."
+    },
+    {
+      "id": "cc-cr-098",
+      "type": "ordering",
+      "question": "Order incident response for divergence spike.",
+      "items": [
+        "Scope affected entities",
+        "Contain risky writes/paths",
+        "Apply merge/replay fix",
+        "Add recurrence guardrails and tests"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Scope, contain, fix, and harden."
+    },
+    {
+      "id": "cc-cr-099",
+      "type": "ordering",
+      "question": "Order by increasing operational complexity.",
+      "items": [
+        "Simple LWW policy",
+        "Entity-tiered merge policy",
+        "Entity-tiered + causal metadata",
+        "Entity-tiered + causal + manual escalation workflows"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Complexity grows with metadata richness and workflow depth."
+    },
+    {
+      "id": "cc-cr-100",
+      "type": "ordering",
+      "question": "Order by increasing guarantee strength against silent data loss.",
+      "items": [
+        "Best-effort overwrite",
+        "LWW with timestamps",
+        "Versioned deterministic merges",
+        "Versioned deterministic merges + invariant validation + escalation"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Silent-loss protection improves with explicit checks and escalation."
+    }
+  ]
+}

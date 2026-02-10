@@ -146,7 +146,7 @@ export const CONFIG = {
           title: "Consensus & Membership",
           ready: true,
         },
-        { num: 7, title: "Conflict Resolution & Convergence", ready: false },
+        { num: 7, title: "Conflict Resolution & Convergence", ready: true },
         { num: 8, title: "Consistency & Coordination Scenarios", ready: false },
       ],
     },
