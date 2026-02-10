@@ -12,8 +12,8 @@
 
 ## Now (In Progress)
 
-- [ ] **Unit 8: Consistency & Coordination** — planned, chapter-by-chapter content creation
-  - [ ] Chapter 1: Consistency Models Fundamentals
+- [ ] **Unit 8: Consistency & Coordination** — in progress, chapter-by-chapter content creation
+  - [x] Chapter 1: Consistency Models Fundamentals — 100 problems (read/write consistency guarantees, user-visible anomaly diagnosis, session guarantees, bounded staleness, endpoint-level consistency trade-offs)
         Scope: Core read/write consistency guarantees and how they affect user-visible behavior under replication.
         Key concepts: linearizability, sequential consistency, causal consistency, eventual consistency, session guarantees.
   - [ ] Chapter 2: Quorums, Replication & Read/Write Paths

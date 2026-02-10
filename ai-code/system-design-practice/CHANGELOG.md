@@ -8,6 +8,13 @@
 - Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
 - Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
 
+## Unit 8: Consistency & Coordination (in progress — 100 problems so far)
+
+1. Consistency Models Fundamentals (100 problems) — Linearizability/sequential/causal/eventual consistency trade-offs, user-visible anomaly diagnosis, session guarantees, bounded staleness, and endpoint-level guarantee selection by invariant criticality
+
+- Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`cc-cm-001` to `cc-cm-100`) and marked the chapter as ready in `config.js`.
+- Chapter 1 review/fix pass completed: removed duplicate prompt patterns in multiple-choice items, eliminated uncertainty-marker wording artifacts, and tightened consistency-model mitigation framing for endpoint-level guarantee selection.
+
 ## Unit 7: Scaling Compute (complete — 800 problems)
 
 1. Load Balancing Fundamentals (100 problems) — L4 vs L7 routing decisions, health-check strategy, connection draining, stickiness trade-offs, weighted balancing, fail-open/fail-closed behavior, and canary traffic controls

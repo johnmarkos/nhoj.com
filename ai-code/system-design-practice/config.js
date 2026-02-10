@@ -120,5 +120,31 @@ export const CONFIG = {
         { num: 8, title: "Scaling Compute Scenarios", ready: true },
       ],
     },
+    {
+      id: 8,
+      title: "Consistency & Coordination",
+      chapters: [
+        { num: 1, title: "Consistency Models Fundamentals", ready: true },
+        {
+          num: 2,
+          title: "Quorums, Replication & Read/Write Paths",
+          ready: false,
+        },
+        { num: 3, title: "Time, Ordering & Causality", ready: false },
+        {
+          num: 4,
+          title: "Transactions & Isolation in Distributed Systems",
+          ready: false,
+        },
+        {
+          num: 5,
+          title: "Coordination Patterns & Distributed Locking",
+          ready: false,
+        },
+        { num: 6, title: "Consensus & Membership", ready: false },
+        { num: 7, title: "Conflict Resolution & Convergence", ready: false },
+        { num: 8, title: "Consistency & Coordination Scenarios", ready: false },
+      ],
+    },
   ],
 };
