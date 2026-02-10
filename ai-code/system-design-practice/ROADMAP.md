@@ -25,7 +25,7 @@
   - [x] Chapter 4: Transactions & Isolation in Distributed Systems — 100 problems (isolation anomaly diagnosis, invariant-scoped strictness, OCC/PCC trade-offs, saga/outbox patterns, deadlock/compensation handling)
         Scope: Balancing correctness and throughput when multi-key invariants cross services and storage boundaries.
         Key concepts: ACID vs BASE trade-offs, isolation anomalies, optimistic/pessimistic concurrency control, distributed transactions.
-  - [ ] Chapter 5: Coordination Patterns & Distributed Locking
+  - [x] Chapter 5: Coordination Patterns & Distributed Locking — 100 problems (lease/fencing safety, leader-election split-brain prevention, lock liveness/fairness trade-offs, stale-owner rejection, singleton-job coordination)
         Scope: Safe coordination for leases, elections, and critical sections without creating fragile single points.
         Key concepts: leases, fencing tokens, leader election, lock safety/liveness, split-brain avoidance.
   - [ ] Chapter 6: Consensus & Membership

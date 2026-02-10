@@ -1,0 +1,1636 @@
+{
+  "unit": 8,
+  "unitTitle": "Consistency & Coordination",
+  "chapter": 5,
+  "chapterTitle": "Coordination Patterns & Distributed Locking",
+  "chapterDescription": "Designing safe coordination using leases, leader election, fencing tokens, and lock policies that balance safety and liveness under failures.",
+  "problems": [
+    {
+      "id": "cc-cl-001",
+      "type": "multiple-choice",
+      "question": "A payment worker lease scheduler is facing split-brain leadership after network partition. Which coordination/locking decision is strongest? A recent partition event exposed ownership ambiguity.",
+      "options": [
+        "Use fencing tokens and enforce token checks at the resource boundary.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-002",
+      "type": "multiple-choice",
+      "question": "A inventory reservation lock service is facing lock expiry and stale owner writes. Which coordination/locking decision is strongest? Correctness requires exactly-once side effects at boundaries.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use lease-based ownership with renewals and conservative expiry margins."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-003",
+      "type": "multiple-choice",
+      "question": "A leader-elected config updater is facing lost lease renewal under GC pause. Which coordination/locking decision is strongest? Coordination latency budget is tight but secondary to correctness.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use randomized backoff/jitter for lock retries to avoid herd effects.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-004",
+      "type": "multiple-choice",
+      "question": "A distributed cron executor is facing thundering herd on lock acquisition. Which coordination/locking decision is strongest? Current implementation lacks explicit fencing semantics.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Separate leader election from work ownership and verify epoch on writes.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-005",
+      "type": "multiple-choice",
+      "question": "A queue consumer coordination service is facing lock service partial outage. Which coordination/locking decision is strongest? The service saw duplicate singleton execution last week.",
+      "options": [
+        "Implement deterministic lock handoff/draining for graceful ownership transfer.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-006",
+      "type": "multiple-choice",
+      "question": "A session cleanup lease manager is facing clock-skew affecting lease validity. Which coordination/locking decision is strongest? Operators need deterministic failover runbooks.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use quorum-backed coordination store with monotonic session/term semantics."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-007",
+      "type": "multiple-choice",
+      "question": "A order pipeline coordinator is facing double execution of singleton job. Which coordination/locking decision is strongest? Backoff behavior is currently synchronized across workers.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Apply idempotent job execution with dedupe key even for singleton tasks.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-008",
+      "type": "multiple-choice",
+      "question": "A fraud rule publisher lock path is facing fencing token not enforced downstream. Which coordination/locking decision is strongest? System clocks are not trusted for strict lease authority.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Detect and revoke stale ownership via heartbeat + session invalidation.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-009",
+      "type": "multiple-choice",
+      "question": "A document edit lock manager is facing lock starvation under high contention. Which coordination/locking decision is strongest? Incident analysis found stale owners writing after failover.",
+      "options": [
+        "Instrument lock delay/renew failure metrics and trigger safe degraded mode.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-010",
+      "type": "multiple-choice",
+      "question": "A quota reset coordinator is facing orphaned lock after worker crash. Which coordination/locking decision is strongest? The team needs safe degraded behavior under lock-store outage.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Scope lock granularity to reduce contention hot spots and starvation risk."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-011",
+      "type": "multiple-choice",
+      "question": "A tenant migration orchestrator is facing split-brain leadership after network partition. Which coordination/locking decision is strongest? GC pauses are common in one runtime tier.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use fencing tokens and enforce token checks at the resource boundary.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-012",
+      "type": "multiple-choice",
+      "question": "A cache rebuild coordinator is facing lock expiry and stale owner writes. Which coordination/locking decision is strongest? Cross-region links occasionally flap under load.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use lease-based ownership with renewals and conservative expiry margins.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-013",
+      "type": "multiple-choice",
+      "question": "A notification batch ownership service is facing lost lease renewal under GC pause. Which coordination/locking decision is strongest? Downstream services currently trust caller identity only.",
+      "options": [
+        "Use randomized backoff/jitter for lock retries to avoid herd effects.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-014",
+      "type": "multiple-choice",
+      "question": "A data export leader election service is facing thundering herd on lock acquisition. Which coordination/locking decision is strongest? Leader transitions happen frequently during deploys.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Separate leader election from work ownership and verify epoch on writes."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-015",
+      "type": "multiple-choice",
+      "question": "A index rebuild lock service is facing lock service partial outage. Which coordination/locking decision is strongest? Lock contention spikes at minute boundaries.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Implement deterministic lock handoff/draining for graceful ownership transfer.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-016",
+      "type": "multiple-choice",
+      "question": "A feature rollout coordinator is facing clock-skew affecting lease validity. Which coordination/locking decision is strongest? Retry storms correlate with ownership churn.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use quorum-backed coordination store with monotonic session/term semantics.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-017",
+      "type": "multiple-choice",
+      "question": "A billing close-job lock manager is facing double execution of singleton job. Which coordination/locking decision is strongest? Some jobs can tolerate delay but not duplication.",
+      "options": [
+        "Apply idempotent job execution with dedupe key even for singleton tasks.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-018",
+      "type": "multiple-choice",
+      "question": "A shipment allocator lease service is facing fencing token not enforced downstream. Which coordination/locking decision is strongest? A prior fix increased throughput but reduced safety.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Detect and revoke stale ownership via heartbeat + session invalidation."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-019",
+      "type": "multiple-choice",
+      "question": "A reconciliation task coordinator is facing lock starvation under high contention. Which coordination/locking decision is strongest? Tenant fairness is required during lock acquisition.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Instrument lock delay/renew failure metrics and trigger safe degraded mode.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-020",
+      "type": "multiple-choice",
+      "question": "A moderation queue ownership service is facing orphaned lock after worker crash. Which coordination/locking decision is strongest? Ownership telemetry is incomplete during incidents.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Scope lock granularity to reduce contention hot spots and starvation risk.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-021",
+      "type": "multiple-choice",
+      "question": "A payment worker lease scheduler is facing split-brain leadership after network partition. Which coordination/locking decision is strongest? Multiple workers may race after restart storms.",
+      "options": [
+        "Use fencing tokens and enforce token checks at the resource boundary.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-022",
+      "type": "multiple-choice",
+      "question": "A inventory reservation lock service is facing lock expiry and stale owner writes. Which coordination/locking decision is strongest? Rollback safety is required for any coordinator changes.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use lease-based ownership with renewals and conservative expiry margins."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-023",
+      "type": "multiple-choice",
+      "question": "A leader-elected config updater is facing lost lease renewal under GC pause. Which coordination/locking decision is strongest? Critical resource updates must reject stale owners.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use randomized backoff/jitter for lock retries to avoid herd effects.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-024",
+      "type": "multiple-choice",
+      "question": "A distributed cron executor is facing thundering herd on lock acquisition. Which coordination/locking decision is strongest? Capacity limits prevent blanket strictness on all paths.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Separate leader election from work ownership and verify epoch on writes.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-025",
+      "type": "multiple-choice",
+      "question": "A queue consumer coordination service is facing lock service partial outage. Which coordination/locking decision is strongest? Ownership semantics need explicit API contracts.",
+      "options": [
+        "Implement deterministic lock handoff/draining for graceful ownership transfer.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-026",
+      "type": "multiple-choice",
+      "question": "A session cleanup lease manager is facing clock-skew affecting lease validity. Which coordination/locking decision is strongest? Queue backlog grows when lock retries synchronize.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use quorum-backed coordination store with monotonic session/term semantics."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-027",
+      "type": "multiple-choice",
+      "question": "A order pipeline coordinator is facing double execution of singleton job. Which coordination/locking decision is strongest? Failure detector false positives occur under packet loss.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Apply idempotent job execution with dedupe key even for singleton tasks.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-028",
+      "type": "multiple-choice",
+      "question": "A fraud rule publisher lock path is facing fencing token not enforced downstream. Which coordination/locking decision is strongest? Coordination store maintenance windows are unavoidable.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Detect and revoke stale ownership via heartbeat + session invalidation.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-029",
+      "type": "multiple-choice",
+      "question": "A document edit lock manager is facing lock starvation under high contention. Which coordination/locking decision is strongest? Failover drills showed ambiguous leader epochs.",
+      "options": [
+        "Instrument lock delay/renew failure metrics and trigger safe degraded mode.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-030",
+      "type": "multiple-choice",
+      "question": "A quota reset coordinator is facing orphaned lock after worker crash. Which coordination/locking decision is strongest? Current docs do not define lock liveness guarantees.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Scope lock granularity to reduce contention hot spots and starvation risk."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-031",
+      "type": "multiple-choice",
+      "question": "A tenant migration orchestrator is facing split-brain leadership after network partition. Which coordination/locking decision is strongest? Compensating actions exist but are rarely tested.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use fencing tokens and enforce token checks at the resource boundary.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-032",
+      "type": "multiple-choice",
+      "question": "A cache rebuild coordinator is facing lock expiry and stale owner writes. Which coordination/locking decision is strongest? Data writes should be safe even during leadership churn.",
+      "options": [
+        "Assume lock holder identity is always current without epoch checks.",
+        "Use lease-based ownership with renewals and conservative expiry margins.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps."
+      ],
+      "correct": 1,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-033",
+      "type": "multiple-choice",
+      "question": "A notification batch ownership service is facing lost lease renewal under GC pause. Which coordination/locking decision is strongest? Critical windows cannot pause all coordinators simultaneously.",
+      "options": [
+        "Use randomized backoff/jitter for lock retries to avoid herd effects.",
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks."
+      ],
+      "correct": 0,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-034",
+      "type": "multiple-choice",
+      "question": "A data export leader election service is facing thundering herd on lock acquisition. Which coordination/locking decision is strongest? This path is high-impact despite low request volume.",
+      "options": [
+        "Use wall-clock timestamps alone to validate lease ownership.",
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Separate leader election from work ownership and verify epoch on writes."
+      ],
+      "correct": 3,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-035",
+      "type": "multiple-choice",
+      "question": "A index rebuild lock service is facing lock service partial outage. Which coordination/locking decision is strongest? Post-incident prevention must be measurable.",
+      "options": [
+        "Disable lock expiration to avoid ownership flaps.",
+        "Assume lock holder identity is always current without epoch checks.",
+        "Implement deterministic lock handoff/draining for graceful ownership transfer.",
+        "Use wall-clock timestamps alone to validate lease ownership."
+      ],
+      "correct": 2,
+      "explanation": "Coordination correctness requires explicit ownership validity, stale-owner rejection, and failure-aware lease semantics."
+    },
+    {
+      "id": "cc-cl-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: leader-elected config updater reports failures around thundering herd on lock acquisition. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for leader-elected config updater mismatches thundering herd on lock acquisition, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preventing stale-owner writes?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Implement deterministic lock handoff/draining for graceful ownership transfer."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: distributed cron executor reports failures around lock service partial outage. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for distributed cron executor mismatches lock service partial outage, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during partition recovery?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use quorum-backed coordination store with monotonic session/term semantics.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: queue consumer coordination service reports failures around clock-skew affecting lease validity. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for queue consumer coordination service mismatches clock-skew affecting lease validity, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under lock-store latency spikes?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Apply idempotent job execution with dedupe key even for singleton tasks.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: session cleanup lease manager reports failures around double execution of singleton job. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for session cleanup lease manager mismatches double execution of singleton job, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change without split-brain risk?",
+          "options": [
+            "Detect and revoke stale ownership via heartbeat + session invalidation.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: order pipeline coordinator reports failures around fencing token not enforced downstream. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for order pipeline coordinator mismatches fencing token not enforced downstream, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with strict side-effect correctness?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Instrument lock delay/renew failure metrics and trigger safe degraded mode."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: fraud rule publisher lock path reports failures around lock starvation under high contention. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for fraud rule publisher lock path mismatches lock starvation under high contention, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while keeping retry storms bounded?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Scope lock granularity to reduce contention hot spots and starvation risk.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: document edit lock manager reports failures around orphaned lock after worker crash. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for document edit lock manager mismatches orphaned lock after worker crash, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under GC pause variability?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use fencing tokens and enforce token checks at the resource boundary.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: quota reset coordinator reports failures around split-brain leadership after network partition. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for quota reset coordinator mismatches split-brain leadership after network partition, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during leader handoff?",
+          "options": [
+            "Use lease-based ownership with renewals and conservative expiry margins.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: tenant migration orchestrator reports failures around lock expiry and stale owner writes. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for tenant migration orchestrator mismatches lock expiry and stale owner writes, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with limited ops intervention?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use randomized backoff/jitter for lock retries to avoid herd effects."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: cache rebuild coordinator reports failures around lost lease renewal under GC pause. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for cache rebuild coordinator mismatches lost lease renewal under GC pause, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change before broad rollout?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Separate leader election from work ownership and verify epoch on writes.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: notification batch ownership service reports failures around thundering herd on lock acquisition. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for notification batch ownership service mismatches thundering herd on lock acquisition, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under quorum degradation?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Implement deterministic lock handoff/draining for graceful ownership transfer.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: data export leader election service reports failures around lock service partial outage. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for data export leader election service mismatches lock service partial outage, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving tenant fairness?",
+          "options": [
+            "Use quorum-backed coordination store with monotonic session/term semantics.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: index rebuild lock service reports failures around clock-skew affecting lease validity. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for index rebuild lock service mismatches clock-skew affecting lease validity, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during deploy churn?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Apply idempotent job execution with dedupe key even for singleton tasks."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feature rollout coordinator reports failures around double execution of singleton job. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for feature rollout coordinator mismatches double execution of singleton job, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with deterministic failover semantics?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Detect and revoke stale ownership via heartbeat + session invalidation.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: billing close-job lock manager reports failures around fencing token not enforced downstream. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for billing close-job lock manager mismatches fencing token not enforced downstream, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under clock uncertainty?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Instrument lock delay/renew failure metrics and trigger safe degraded mode.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shipment allocator lease service reports failures around lock starvation under high contention. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for shipment allocator lease service mismatches lock starvation under high contention, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during singleton job pressure?",
+          "options": [
+            "Scope lock granularity to reduce contention hot spots and starvation risk.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: reconciliation task coordinator reports failures around orphaned lock after worker crash. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for reconciliation task coordinator mismatches orphaned lock after worker crash, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with downstream token enforcement?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use fencing tokens and enforce token checks at the resource boundary."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: moderation queue ownership service reports failures around split-brain leadership after network partition. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for moderation queue ownership service mismatches split-brain leadership after network partition, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while reducing lock contention?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use lease-based ownership with renewals and conservative expiry margins.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: payment worker lease scheduler reports failures around lock expiry and stale owner writes. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for payment worker lease scheduler mismatches lock expiry and stale owner writes, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under transient packet loss?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use randomized backoff/jitter for lock retries to avoid herd effects.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: inventory reservation lock service reports failures around lost lease renewal under GC pause. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for inventory reservation lock service mismatches lost lease renewal under GC pause, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with explicit degraded mode?",
+          "options": [
+            "Separate leader election from work ownership and verify epoch on writes.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: leader-elected config updater reports failures around thundering herd on lock acquisition. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for leader-elected config updater mismatches thundering herd on lock acquisition, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during incident containment?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Implement deterministic lock handoff/draining for graceful ownership transfer."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: distributed cron executor reports failures around lock service partial outage. What is the primary diagnosis?",
+          "options": [
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for distributed cron executor mismatches lock service partial outage, creating safety/liveness risk."
+          ],
+          "correct": 3,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with replay-safe job semantics?",
+          "options": [
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Use quorum-backed coordination store with monotonic session/term semantics.",
+            "Force a single global lock for all workflows to simplify ownership."
+          ],
+          "correct": 2,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: queue consumer coordination service reports failures around clock-skew affecting lease validity. What is the primary diagnosis?",
+          "options": [
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for queue consumer coordination service mismatches clock-skew affecting lease validity, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains."
+          ],
+          "correct": 2,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving throughput?",
+          "options": [
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Apply idempotent job execution with dedupe key even for singleton tasks.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable."
+          ],
+          "correct": 1,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: session cleanup lease manager reports failures around double execution of singleton job. What is the primary diagnosis?",
+          "options": [
+            "Leader changes never require downstream write validation.",
+            "The current coordination model for session cleanup lease manager mismatches double execution of singleton job, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks."
+          ],
+          "correct": 1,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under high acquisition fanout?",
+          "options": [
+            "Detect and revoke stale ownership via heartbeat + session invalidation.",
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only."
+          ],
+          "correct": 0,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: order pipeline coordinator reports failures around fencing token not enforced downstream. What is the primary diagnosis?",
+          "options": [
+            "The current coordination model for order pipeline coordinator mismatches fencing token not enforced downstream, creating safety/liveness risk.",
+            "Coordination anomalies are harmless if eventually one owner remains.",
+            "Lease validity can be inferred solely from local clocks.",
+            "Leader changes never require downstream write validation."
+          ],
+          "correct": 0,
+          "explanation": "This reflects coordination safety gaps between ownership claims and resource-write validation."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with measurable coordination SLOs?",
+          "options": [
+            "Force a single global lock for all workflows to simplify ownership.",
+            "Allow stale owners to finish writes if lock service is unstable.",
+            "Pause all workers on uncertainty and rely on manual cleanup only.",
+            "Instrument lock delay/renew failure metrics and trigger safe degraded mode."
+          ],
+          "correct": 3,
+          "explanation": "Apply ownership model fixes that block stale writers and stabilize leader/lease transitions."
+        }
+      ]
+    },
+    {
+      "id": "cc-cl-061",
+      "type": "multi-select",
+      "question": "Fencing tokens protect against which failures? (Select all that apply)",
+      "options": [
+        "Stale owner writes after lease expiry",
+        "Split-brain leader overlap",
+        "Guaranteed zero retries",
+        "Delayed messages from old leader terms"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Fencing ensures only newest valid owner can mutate protected resources."
+    },
+    {
+      "id": "cc-cl-062",
+      "type": "multi-select",
+      "question": "Good lease design usually includes which? (Select all that apply)",
+      "options": [
+        "Renewal heartbeat",
+        "Conservative expiry margin",
+        "Infinite lease duration",
+        "Clear ownership revocation semantics"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Leases need renewal and bounded validity with explicit revocation behavior."
+    },
+    {
+      "id": "cc-cl-063",
+      "type": "multi-select",
+      "question": "Leader election safety practices include which? (Select all that apply)",
+      "options": [
+        "Monotonic term/epoch numbers",
+        "Quorum-based election store",
+        "Blind local clock winner choice",
+        "Write-path term validation"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Election safety requires term monotonicity and quorum/validation controls."
+    },
+    {
+      "id": "cc-cl-064",
+      "type": "multi-select",
+      "question": "Common lock anti-patterns include which? (Select all that apply)",
+      "options": [
+        "No jitter on retries",
+        "No stale-owner write rejection",
+        "Per-resource lock granularity tuning",
+        "Undocumented lock expiry assumptions"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Missing jitter, stale-owner checks, and explicit assumptions cause failures."
+    },
+    {
+      "id": "cc-cl-065",
+      "type": "multi-select",
+      "question": "How to improve liveness under lock contention? (Select all that apply)",
+      "options": [
+        "Randomized backoff",
+        "Smaller lock scope",
+        "Global synchronized retry bursts",
+        "Queue-based acquisition fairness"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Backoff, scope reduction, and fairness improve liveness under load."
+    },
+    {
+      "id": "cc-cl-066",
+      "type": "multi-select",
+      "question": "When lock service is degraded, safe behavior can include which? (Select all that apply)",
+      "options": [
+        "Read-only fallback for some paths",
+        "Fail closed on invariant-critical writes",
+        "Continue unsafe writes without ownership validation",
+        "Operator-visible degraded mode"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Degraded modes should preserve correctness and make risk explicit."
+    },
+    {
+      "id": "cc-cl-067",
+      "type": "multi-select",
+      "question": "Singleton job safety often needs which? (Select all that apply)",
+      "options": [
+        "Lease/leader ownership check",
+        "Idempotent execution key",
+        "Assume scheduler never duplicates execution",
+        "Fencing at side-effect sink"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Singleton safety requires ownership and dedupe protections."
+    },
+    {
+      "id": "cc-cl-068",
+      "type": "multi-select",
+      "question": "Clock skew affects lease systems how? (Select all that apply)",
+      "options": [
+        "Can produce false lease-expiry assumptions",
+        "Can allow stale owner overlap risk",
+        "Makes logical/term checks unnecessary",
+        "Requires conservative lease timing"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Skew undermines naive timing; term-based validation and timing margins help."
+    },
+    {
+      "id": "cc-cl-069",
+      "type": "multi-select",
+      "question": "Useful coordination observability includes which? (Select all that apply)",
+      "options": [
+        "Lock acquisition latency",
+        "Lease renewal failure rate",
+        "Only average CPU",
+        "Term/epoch conflict events"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Coordination health needs direct lock/lease/election telemetry."
+    },
+    {
+      "id": "cc-cl-070",
+      "type": "multi-select",
+      "question": "Which reduce split-brain write risk? (Select all that apply)",
+      "options": [
+        "Resource-side fencing checks",
+        "Term-aware write validation",
+        "Trusting cached leader identity indefinitely",
+        "Quorum-backed leadership state"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Split-brain safety needs both election correctness and resource-side enforcement."
+    },
+    {
+      "id": "cc-cl-071",
+      "type": "multi-select",
+      "question": "For lock starvation prevention, which are useful? (Select all that apply)",
+      "options": [
+        "Fair queueing or priority policy",
+        "Bounded retry backoff windows",
+        "Unbounded high-priority preemption forever",
+        "Per-tenant acquisition limits"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Fairness mechanisms limit starvation in shared lock domains."
+    },
+    {
+      "id": "cc-cl-072",
+      "type": "multi-select",
+      "question": "Coordination boundaries should usually separate which concerns? (Select all that apply)",
+      "options": [
+        "Ownership election vs work execution",
+        "Safety checks vs business side effects",
+        "All operations into one global lock",
+        "Critical vs non-critical resource paths"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Clear boundaries keep coordination safer and less coupled."
+    },
+    {
+      "id": "cc-cl-073",
+      "type": "multi-select",
+      "question": "Failover drill quality improves with which? (Select all that apply)",
+      "options": [
+        "Measured promotion time",
+        "Stale-owner write simulation",
+        "Skipping downstream validation checks",
+        "Rollback criteria"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "High-quality drills test stale-owner rejection and recovery criteria."
+    },
+    {
+      "id": "cc-cl-074",
+      "type": "multi-select",
+      "question": "When using distributed locks, what should be idempotent? (Select all that apply)",
+      "options": [
+        "Lock holder side effects",
+        "Compensation actions",
+        "Ownership checks only",
+        "Retry-driven command processing"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Idempotency protects correctness when coordination retries/replays happen."
+    },
+    {
+      "id": "cc-cl-075",
+      "type": "multi-select",
+      "question": "Which are signs coordination scope is too broad? (Select all that apply)",
+      "options": [
+        "High lock contention across unrelated workflows",
+        "Slow leader handoff affecting many services",
+        "Independent paths unaffected by lock scope",
+        "Frequent global lock bottlenecks"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Over-broad coordination increases contention and blast radius."
+    },
+    {
+      "id": "cc-cl-076",
+      "type": "multi-select",
+      "question": "What helps safe lease renewal? (Select all that apply)",
+      "options": [
+        "Renew before expiry threshold",
+        "Treat missed renewals as ownership loss",
+        "Ignore renewal failures under load",
+        "Persist renewal attempts for audit/debug"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Renewal logic should be conservative, explicit, and observable."
+    },
+    {
+      "id": "cc-cl-077",
+      "type": "multi-select",
+      "question": "For downstream stale-write defense, useful controls include which? (Select all that apply)",
+      "options": [
+        "Reject writes with older fencing token",
+        "Compare term/epoch monotonicity",
+        "Accept any authenticated write regardless epoch",
+        "Log token mismatch incidents"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Downstream resource validation is essential to stale-owner defense."
+    },
+    {
+      "id": "cc-cl-078",
+      "type": "numeric-input",
+      "question": "Lock acquisition attempts are 120,000/min with 3.5% contention failures. Failures/min?",
+      "answer": 4200,
+      "unit": "attempts",
+      "tolerance": 0.02,
+      "explanation": "0.035 * 120,000 = 4,200."
+    },
+    {
+      "id": "cc-cl-079",
+      "type": "numeric-input",
+      "question": "Lease TTL is 12s and renewals occur every 4s. How many renewal opportunities before expiry?",
+      "answer": 3,
+      "unit": "renewals",
+      "tolerance": 0,
+      "explanation": "12/4 = 3 renewal intervals."
+    },
+    {
+      "id": "cc-cl-080",
+      "type": "numeric-input",
+      "question": "Leader failover takes 18s and occurs 14 times/day. Total failover downtime minutes/day?",
+      "answer": 4.2,
+      "unit": "minutes",
+      "tolerance": 0.05,
+      "explanation": "18*14=252s = 4.2 minutes."
+    },
+    {
+      "id": "cc-cl-081",
+      "type": "numeric-input",
+      "question": "A singleton job runs 6,000 times/day. Duplicate execution rate is 0.4%. Duplicates/day?",
+      "answer": 24,
+      "unit": "runs",
+      "tolerance": 0.02,
+      "explanation": "0.004*6,000=24."
+    },
+    {
+      "id": "cc-cl-082",
+      "type": "numeric-input",
+      "question": "Fencing token mismatches are 540/day out of 1,800,000 protected writes/day. Mismatch rate (%)?",
+      "answer": 0.03,
+      "unit": "%",
+      "tolerance": 0.01,
+      "explanation": "540/1,800,000=0.0003 = 0.03%."
+    },
+    {
+      "id": "cc-cl-083",
+      "type": "numeric-input",
+      "question": "Lock delay p99 is 320ms; target is 200ms. Percent over target?",
+      "answer": 60,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(320-200)/200=60%."
+    },
+    {
+      "id": "cc-cl-084",
+      "type": "numeric-input",
+      "question": "Coordinator handles 75,000 ownership checks/sec. 8% are critical-path checks requiring strict fencing. Critical checks/sec?",
+      "answer": 6000,
+      "unit": "checks/sec",
+      "tolerance": 0.02,
+      "explanation": "0.08*75,000=6,000."
+    },
+    {
+      "id": "cc-cl-085",
+      "type": "numeric-input",
+      "question": "Backoff jitter spreads retries uniformly over 500ms window for 2,000 contenders. Average contenders per 10ms slice?",
+      "answer": 40,
+      "unit": "contenders",
+      "tolerance": 0.2,
+      "explanation": "500ms/10ms=50 slices; 2,000/50=40."
+    },
+    {
+      "id": "cc-cl-086",
+      "type": "numeric-input",
+      "question": "Lease-renew success is 99.2% across 900,000 renewals/day. Failed renewals/day?",
+      "answer": 7200,
+      "unit": "renewals",
+      "tolerance": 0.03,
+      "explanation": "0.8% of 900,000 = 7,200."
+    },
+    {
+      "id": "cc-cl-087",
+      "type": "numeric-input",
+      "question": "A stale-owner incident drops from 150/week to 18/week after fencing enforcement. Percent reduction?",
+      "answer": 88,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(150-18)/150=88%."
+    },
+    {
+      "id": "cc-cl-088",
+      "type": "numeric-input",
+      "question": "Term conflicts are 96/day; each triggers 12s safe pause window. Total pause minutes/day?",
+      "answer": 19.2,
+      "unit": "minutes",
+      "tolerance": 0.05,
+      "explanation": "96*12=1,152s=19.2min."
+    },
+    {
+      "id": "cc-cl-089",
+      "type": "numeric-input",
+      "question": "A lock scope refactor cuts contested resources from 480 to 192. Percent reduction?",
+      "answer": 60,
+      "unit": "%",
+      "tolerance": 0.2,
+      "explanation": "(480-192)/480=60%."
+    },
+    {
+      "id": "cc-cl-090",
+      "type": "ordering",
+      "question": "Order a safe leader failover sequence.",
+      "items": [
+        "Detect leadership loss",
+        "Elect new leader via quorum",
+        "Start leader with new term/token",
+        "Reject stale-term writes"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Failover should establish new term before accepting writes."
+    },
+    {
+      "id": "cc-cl-091",
+      "type": "ordering",
+      "question": "Order lock acquisition strategy maturity.",
+      "items": [
+        "Naive immediate retry",
+        "Retry with fixed delay",
+        "Retry with jitter/backoff",
+        "Fair queued acquisition + metrics"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity increases with stability and fairness controls."
+    },
+    {
+      "id": "cc-cl-092",
+      "type": "ordering",
+      "question": "Order stale-owner defense strength.",
+      "items": [
+        "Owner ID check only",
+        "Lease validity timestamp check",
+        "Epoch/term check at write sink",
+        "Fencing token monotonic enforcement"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Fencing at resource sink is strongest stale-owner protection."
+    },
+    {
+      "id": "cc-cl-093",
+      "type": "ordering",
+      "question": "Order by increasing split-brain risk.",
+      "items": [
+        "Quorum election + fencing",
+        "Quorum election without sink validation",
+        "Single-node leader cache",
+        "Independent local leaders per node"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk rises as consensus and downstream validation weaken."
+    },
+    {
+      "id": "cc-cl-094",
+      "type": "ordering",
+      "question": "Order lock-scope design from broadest to narrowest.",
+      "items": [
+        "Global system lock",
+        "Workflow-class lock",
+        "Entity-group lock",
+        "Per-entity lock"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Narrower scopes usually reduce contention/blast radius."
+    },
+    {
+      "id": "cc-cl-095",
+      "type": "ordering",
+      "question": "Order coordination incident response flow.",
+      "items": [
+        "Scope affected resources",
+        "Contain with safe degraded mode",
+        "Apply ownership/fencing fix",
+        "Add recurrence tests/alerts"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Scope, contain, fix, harden."
+    },
+    {
+      "id": "cc-cl-096",
+      "type": "ordering",
+      "question": "Order by increasing liveness under contention.",
+      "items": [
+        "No backoff retries",
+        "Fixed retry delay",
+        "Exponential backoff + jitter",
+        "Fair queue + bounded retries"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Liveness improves with jitter and fairness mechanisms."
+    },
+    {
+      "id": "cc-cl-097",
+      "type": "ordering",
+      "question": "Order rollout safety for coordination changes.",
+      "items": [
+        "Canary lock domain",
+        "Measure stale-write and renewal metrics",
+        "Expand gradually",
+        "Finalize runbook/rollback guards"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Progressive rollout with metrics reduces coordination risk."
+    },
+    {
+      "id": "cc-cl-098",
+      "type": "ordering",
+      "question": "Order by strongest evidence quality for coordination fix success.",
+      "items": [
+        "Lower average latency only",
+        "Lower lock contention only",
+        "Lower stale-owner and duplicate-exec incidents",
+        "Sustained correctness + latency + incident reduction"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Best evidence combines correctness and performance outcomes."
+    },
+    {
+      "id": "cc-cl-099",
+      "type": "ordering",
+      "question": "Order by increasing operational complexity.",
+      "items": [
+        "Single coordinator instance",
+        "Replicated lock service",
+        "Replicated service + fencing enforcement",
+        "Multi-region coordination with failover drills"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Complexity grows with replication, enforcement depth, and geography."
+    },
+    {
+      "id": "cc-cl-100",
+      "type": "ordering",
+      "question": "Order lease lifecycle steps.",
+      "items": [
+        "Acquire lease",
+        "Renew lease periodically",
+        "Detect renewal failure and relinquish",
+        "Transfer/reacquire safely"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Safe lifecycle requires explicit relinquish and transfer behavior."
+    }
+  ]
+}

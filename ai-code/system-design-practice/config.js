@@ -139,7 +139,7 @@ export const CONFIG = {
         {
           num: 5,
           title: "Coordination Patterns & Distributed Locking",
-          ready: false,
+          ready: true,
         },
         {
           num: 6,
