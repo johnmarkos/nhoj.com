@@ -2,7 +2,11 @@
 
 ## Unit 9: Reliability (in progress)
 
+- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`rel-tr-001` to `rel-tr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+
 1. Failure Modes & Fault Domains (100 problems) — Fail-stop vs partial-failure diagnosis, correlated-failure containment, fault-domain blast-radius mapping, dependency failure taxonomy, and fault-domain-aware mitigation selection
+2. Timeouts, Retries & Backoff Control (100 problems)
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`rel-fd-001` to `rel-fd-100`) and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed repetitive prompt-openings, eliminated duplicate patterns, and tightened multi-select distractor quality to ensure discriminating reliability judgment.

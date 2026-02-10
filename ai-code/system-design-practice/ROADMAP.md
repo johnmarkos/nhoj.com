@@ -17,7 +17,7 @@
   - [x] Chapter 1: Failure Modes & Fault Domains
         Scope: Identifying realistic failure classes and mapping blast radius across service, node, zone, and region boundaries.
         Key concepts: fail-stop vs partial failure, correlated failures, fault domains, dependency failure taxonomy, blast-radius reasoning.
-  - [ ] Chapter 2: Timeouts, Retries & Backoff Control
+  - [x] Chapter 2: Timeouts, Retries & Backoff Control
         Scope: Designing retry behavior that improves success rates without causing retry storms or cascading overload.
         Key concepts: timeout budgets, capped retries, exponential backoff with jitter, retry amplification, idempotency coupling.
   - [ ] Chapter 3: Circuit Breakers, Load Shedding & Admission Control

@@ -155,7 +155,7 @@ export const CONFIG = {
       title: "Reliability",
       chapters: [
         { num: 1, title: "Failure Modes & Fault Domains", ready: true },
-        { num: 2, title: "Timeouts, Retries & Backoff Control", ready: false },
+        { num: 2, title: "Timeouts, Retries & Backoff Control", ready: true },
         {
           num: 3,
           title: "Circuit Breakers, Load Shedding & Admission Control",
