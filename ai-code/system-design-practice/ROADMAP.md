@@ -33,7 +33,7 @@
   - [x] Chapter 6: Chat Presence, Sync & Reliability
         Scope: Presence modeling, multi-device sync, media path decomposition, and degradation/failover behavior.
         Key concepts: presence heartbeat/state model, unread counters, attachment flows, replay safety, E2EE boundaries.
-  - [ ] Chapter 7: Notification System Core Architecture
+  - [x] Chapter 7: Notification System Core Architecture
         Scope: Multi-channel notification pipeline decomposition from event ingest to policy and channel dispatch.
         Key concepts: preference evaluation, deduplication/idempotency, scheduling windows, channel adapters, rate governance.
   - [ ] Chapter 8: Notification System Scale & Scenarios

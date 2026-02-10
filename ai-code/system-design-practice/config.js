@@ -197,7 +197,7 @@ export const CONFIG = {
         {
           num: 7,
           title: "Notification System Core Architecture",
-          ready: false,
+          ready: true,
         },
         {
           num: 8,
