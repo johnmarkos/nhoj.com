@@ -150,5 +150,31 @@ export const CONFIG = {
         { num: 8, title: "Consistency & Coordination Scenarios", ready: true },
       ],
     },
+    {
+      id: 9,
+      title: "Reliability",
+      chapters: [
+        { num: 1, title: "Failure Modes & Fault Domains", ready: true },
+        { num: 2, title: "Timeouts, Retries & Backoff Control", ready: false },
+        {
+          num: 3,
+          title: "Circuit Breakers, Load Shedding & Admission Control",
+          ready: false,
+        },
+        {
+          num: 4,
+          title: "Redundancy, Replication & Failover Strategy",
+          ready: false,
+        },
+        {
+          num: 5,
+          title: "Graceful Degradation & Dependency Isolation",
+          ready: false,
+        },
+        { num: 6, title: "Data Safety, Durability & Recovery", ready: false },
+        { num: 7, title: "Reliability Engineering Operations", ready: false },
+        { num: 8, title: "Reliability Scenarios", ready: false },
+      ],
+    },
   ],
 };

@@ -14,7 +14,7 @@
 ## Now (In Progress)
 
 - [ ] **Unit 9: Reliability** — planned, chapter-by-chapter content creation
-  - [ ] Chapter 1: Failure Modes & Fault Domains
+  - [x] Chapter 1: Failure Modes & Fault Domains
         Scope: Identifying realistic failure classes and mapping blast radius across service, node, zone, and region boundaries.
         Key concepts: fail-stop vs partial failure, correlated failures, fault domains, dependency failure taxonomy, blast-radius reasoning.
   - [ ] Chapter 2: Timeouts, Retries & Backoff Control

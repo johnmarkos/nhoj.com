@@ -1,5 +1,12 @@
 # Changelog
 
+## Unit 9: Reliability (in progress)
+
+1. Failure Modes & Fault Domains (100 problems) — Fail-stop vs partial-failure diagnosis, correlated-failure containment, fault-domain blast-radius mapping, dependency failure taxonomy, and fault-domain-aware mitigation selection
+
+- Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`rel-fd-001` to `rel-fd-100`) and marked the chapter as ready in `config.js`.
+- Chapter 1 review/fix pass completed: removed repetitive prompt-openings, eliminated duplicate patterns, and tightened multi-select distractor quality to ensure discriminating reliability judgment.
+
 ## OpenQuizzer upgrade — meta tag customization (2026-02-08)
 
 - Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer (UI wiring contract tests, Prettier formatting, selection-based reordering, probability weighting, session length caps, partial-session results).
