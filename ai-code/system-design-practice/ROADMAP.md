@@ -24,7 +24,7 @@
   - [x] Chapter 3: URL Shortener Core Architecture
         Scope: Atomic design of short-link creation, key generation, redirect serving, and correctness constraints.
         Key concepts: ID generation (counter/hash/snowflake), collision handling, redirect latency path, abuse controls.
-  - [ ] Chapter 4: URL Shortener Scale, Analytics & Operations
+  - [x] Chapter 4: URL Shortener Scale, Analytics & Operations
         Scope: Scaling redirect traffic, event/analytics pipeline decomposition, and reliability/cost governance.
         Key concepts: write/read amplification, click analytics pipeline, cold/hot partitioning, retention trade-offs.
   - [ ] Chapter 5: Chat Core Messaging Architecture

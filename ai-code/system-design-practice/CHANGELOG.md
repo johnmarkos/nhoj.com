@@ -2,6 +2,9 @@
 
 ## Unit 10: Classic Designs Decomposed (in progress)
 
+- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`cd-ua-001` to `cd-ua-100`) and marked the chapter as ready in `config.js`.
+- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+
 - Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`cd-us-001` to `cd-us-100`) and marked the chapter as ready in `config.js`.
 - Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
 

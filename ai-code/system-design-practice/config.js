@@ -190,7 +190,7 @@ export const CONFIG = {
         {
           num: 4,
           title: "URL Shortener Scale, Analytics & Operations",
-          ready: false,
+          ready: true,
         },
         { num: 5, title: "Chat Core Messaging Architecture", ready: false },
         { num: 6, title: "Chat Presence, Sync & Reliability", ready: false },
