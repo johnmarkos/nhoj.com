@@ -32,7 +32,7 @@
   - [x] Chapter 6: Data Safety, Durability & Recovery
         Scope: Preventing irreversible data loss and planning restoration with explicit RPO/RTO guarantees.
         Key concepts: backups/snapshots, point-in-time recovery, durability classes, restore drills, data integrity verification.
-  - [ ] Chapter 7: Reliability Engineering Operations
+  - [x] Chapter 7: Reliability Engineering Operations
         Scope: Operating reliability as a continuous process with measurable SLOs, error budgets, and incident learning loops.
         Key concepts: SLI/SLO design, error-budget policy, alert quality, incident command patterns, postmortem action tracking.
   - [ ] Chapter 8: Reliability Scenarios
