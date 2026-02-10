@@ -2,6 +2,11 @@
 
 ## Unit 9: Reliability (in progress)
 
+- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`rel-dr-001` to `rel-dr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 6 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+
+6. Data Safety, Durability & Recovery (100 problems)
+
 - Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`rel-gd-001` to `rel-gd-100`) and marked the chapter as ready in `config.js`.
 - Chapter 5 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
 

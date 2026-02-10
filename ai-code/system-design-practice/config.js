@@ -171,7 +171,7 @@ export const CONFIG = {
           title: "Graceful Degradation & Dependency Isolation",
           ready: true,
         },
-        { num: 6, title: "Data Safety, Durability & Recovery", ready: false },
+        { num: 6, title: "Data Safety, Durability & Recovery", ready: true },
         { num: 7, title: "Reliability Engineering Operations", ready: false },
         { num: 8, title: "Reliability Scenarios", ready: false },
       ],

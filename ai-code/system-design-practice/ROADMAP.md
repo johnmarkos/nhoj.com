@@ -29,7 +29,7 @@
   - [x] Chapter 5: Graceful Degradation & Dependency Isolation
         Scope: Preserving core user journeys when dependencies degrade by using fallback modes and strict dependency boundaries.
         Key concepts: critical-path isolation, fallback data quality tiers, feature kill switches, bulkheads, graceful capability degradation.
-  - [ ] Chapter 6: Data Safety, Durability & Recovery
+  - [x] Chapter 6: Data Safety, Durability & Recovery
         Scope: Preventing irreversible data loss and planning restoration with explicit RPO/RTO guarantees.
         Key concepts: backups/snapshots, point-in-time recovery, durability classes, restore drills, data integrity verification.
   - [ ] Chapter 7: Reliability Engineering Operations
