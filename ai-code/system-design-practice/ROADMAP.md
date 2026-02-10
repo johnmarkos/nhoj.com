@@ -28,7 +28,7 @@
   - [x] Chapter 5: Coordination Patterns & Distributed Locking — 100 problems (lease/fencing safety, leader-election split-brain prevention, lock liveness/fairness trade-offs, stale-owner rejection, singleton-job coordination)
         Scope: Safe coordination for leases, elections, and critical sections without creating fragile single points.
         Key concepts: leases, fencing tokens, leader election, lock safety/liveness, split-brain avoidance.
-  - [ ] Chapter 6: Consensus & Membership
+  - [x] Chapter 6: Consensus & Membership — 100 problems (quorum/term safety, stale-leader write prevention, election-storm mitigation, membership reconfiguration discipline, commit-visibility correctness)
         Scope: Reliable agreement and cluster reconfiguration under crash/partition faults.
         Key concepts: Raft/Paxos intuition, quorum intersection, log replication, membership changes, failure detection.
   - [ ] Chapter 7: Conflict Resolution & Convergence
