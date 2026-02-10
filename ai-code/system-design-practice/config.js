@@ -192,7 +192,7 @@ export const CONFIG = {
           title: "URL Shortener Scale, Analytics & Operations",
           ready: true,
         },
-        { num: 5, title: "Chat Core Messaging Architecture", ready: false },
+        { num: 5, title: "Chat Core Messaging Architecture", ready: true },
         { num: 6, title: "Chat Presence, Sync & Reliability", ready: false },
         {
           num: 7,

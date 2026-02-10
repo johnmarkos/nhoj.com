@@ -27,7 +27,7 @@
   - [x] Chapter 4: URL Shortener Scale, Analytics & Operations
         Scope: Scaling redirect traffic, event/analytics pipeline decomposition, and reliability/cost governance.
         Key concepts: write/read amplification, click analytics pipeline, cold/hot partitioning, retention trade-offs.
-  - [ ] Chapter 5: Chat Core Messaging Architecture
+  - [x] Chapter 5: Chat Core Messaging Architecture
         Scope: Message lifecycle from send to deliver/ack across direct and group chat with ordering semantics.
         Key concepts: session routing, ordering keys, delivery guarantees, group fanout strategy, offline inbox design.
   - [ ] Chapter 6: Chat Presence, Sync & Reliability

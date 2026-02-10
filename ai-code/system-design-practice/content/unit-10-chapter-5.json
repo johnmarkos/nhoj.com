@@ -1,0 +1,1636 @@
+{
+  "unit": 10,
+  "unitTitle": "Classic Designs Decomposed",
+  "chapter": 5,
+  "chapterTitle": "Chat Core Messaging Architecture",
+  "chapterDescription": "Decompose end-to-end chat messaging flow across send, route, store, deliver, and ack paths.",
+  "problems": [
+    {
+      "id": "cd-cc-001",
+      "type": "multiple-choice",
+      "question": "Case Alpha: message send API. Dominant risk is out-of-order delivery in group conversations. Which next move is strongest? The team needs a mitigation that can be canaried in under an hour.",
+      "options": [
+        "Use per-conversation ordering keys with idempotent delivery semantics.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-002",
+      "type": "multiple-choice",
+      "question": "Case Beta: connection/session router. Dominant risk is duplicate delivery during reconnect storms. Which next move is strongest? Recent traffic growth exposed this bottleneck repeatedly.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Separate durable message commit from best-effort realtime push fanout.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-003",
+      "type": "multiple-choice",
+      "question": "Case Gamma: group chat fanout worker. Dominant risk is offline message backlog growth during outages. Which next move is strongest? Leadership asked for a fix that reduces recurrence, not just MTTR.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Persist delivery state transitions so reconnect logic can resume safely.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-004",
+      "type": "multiple-choice",
+      "question": "Case Delta: message persistence log. Dominant risk is session stickiness causing uneven gateway load. Which next move is strongest? A previous rollback fixed averages but not tail impact.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Use adaptive group fanout strategy (small-group push, large-group pull)."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-005",
+      "type": "multiple-choice",
+      "question": "Case Epsilon: offline inbox service. Dominant risk is ack loss leading to false undelivered state. Which next move is strongest? User trust risk is highest on this path.",
+      "options": [
+        "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-006",
+      "type": "multiple-choice",
+      "question": "Case Zeta: delivery ack processor. Dominant risk is fanout overload for large group channels. Which next move is strongest? A shared dependency has uncertain health right now.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Partition gateway sessions by stable user key and rebalance with drain controls.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-007",
+      "type": "multiple-choice",
+      "question": "Case Eta: typing indicator stream. Dominant risk is history query latency spikes on hot chats. Which next move is strongest? The change must preserve cost discipline during peak.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Serve history from optimized recent-window store plus archival fallback.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-008",
+      "type": "multiple-choice",
+      "question": "Case Theta: message history fetch API. Dominant risk is delivery retries triggering duplicate notifications. Which next move is strongest? Telemetry shows risk concentrated in one partition class.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Protect offline inbox throughput with per-tenant quotas and backpressure."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-009",
+      "type": "multiple-choice",
+      "question": "Case Iota: message ordering coordinator. Dominant risk is presence and delivery paths contending for same infra. Which next move is strongest? The product team accepts graceful degradation, not silent corruption.",
+      "options": [
+        "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-010",
+      "type": "multiple-choice",
+      "question": "Case Kappa: cross-device delivery service. Dominant risk is cross-region routing drift for roaming users. Which next move is strongest? Current runbooks are missing explicit ownership for this boundary.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Use regional affinity with explicit cross-region forwarding contracts for roamers.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-011",
+      "type": "multiple-choice",
+      "question": "Case Lambda: message send API. Dominant risk is out-of-order delivery in group conversations. Which next move is strongest? A cross-region path recently changed behavior after migration.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Use per-conversation ordering keys with idempotent delivery semantics.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-012",
+      "type": "multiple-choice",
+      "question": "Case Mu: connection/session router. Dominant risk is duplicate delivery during reconnect storms. Which next move is strongest? Client retries are already elevated and can amplify mistakes.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Separate durable message commit from best-effort realtime push fanout."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-013",
+      "type": "multiple-choice",
+      "question": "Case Nu: group chat fanout worker. Dominant risk is offline message backlog growth during outages. Which next move is strongest? Capacity headroom exists but only in specific pools.",
+      "options": [
+        "Persist delivery state transitions so reconnect logic can resume safely.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-014",
+      "type": "multiple-choice",
+      "question": "Case Xi: message persistence log. Dominant risk is session stickiness causing uneven gateway load. Which next move is strongest? A partial failure is masking itself as success in metrics.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Use adaptive group fanout strategy (small-group push, large-group pull).",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-015",
+      "type": "multiple-choice",
+      "question": "Case Omicron: offline inbox service. Dominant risk is ack loss leading to false undelivered state. Which next move is strongest? This fix must hold under celebrity or campaign spike conditions.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-016",
+      "type": "multiple-choice",
+      "question": "Case Pi: delivery ack processor. Dominant risk is fanout overload for large group channels. Which next move is strongest? SLO burn suggests immediate containment plus follow-up hardening.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Partition gateway sessions by stable user key and rebalance with drain controls."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-017",
+      "type": "multiple-choice",
+      "question": "Case Rho: typing indicator stream. Dominant risk is history query latency spikes on hot chats. Which next move is strongest? On-call requested a reversible operational first step.",
+      "options": [
+        "Serve history from optimized recent-window store plus archival fallback.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-018",
+      "type": "multiple-choice",
+      "question": "Case Sigma: message history fetch API. Dominant risk is delivery retries triggering duplicate notifications. Which next move is strongest? The system mixes strict and eventual paths with unclear contracts.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Protect offline inbox throughput with per-tenant quotas and backpressure.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-019",
+      "type": "multiple-choice",
+      "question": "Case Tau: message ordering coordinator. Dominant risk is presence and delivery paths contending for same infra. Which next move is strongest? A hot-key pattern is likely from real traffic skew.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-020",
+      "type": "multiple-choice",
+      "question": "Case Upsilon: cross-device delivery service. Dominant risk is cross-region routing drift for roaming users. Which next move is strongest? The path must remain mobile-latency friendly under stress.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Use regional affinity with explicit cross-region forwarding contracts for roamers."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-021",
+      "type": "multiple-choice",
+      "question": "Case Phi: message send API. Dominant risk is out-of-order delivery in group conversations. Which next move is strongest? Compliance requires explicit behavior for edge-case failures.",
+      "options": [
+        "Use per-conversation ordering keys with idempotent delivery semantics.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-022",
+      "type": "multiple-choice",
+      "question": "Case Chi: connection/session router. Dominant risk is duplicate delivery during reconnect storms. Which next move is strongest? This boundary has failed during the last two game days.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Separate durable message commit from best-effort realtime push fanout.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-023",
+      "type": "multiple-choice",
+      "question": "Case Psi: group chat fanout worker. Dominant risk is offline message backlog growth during outages. Which next move is strongest? A cache invalidation gap has customer-visible impact.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Persist delivery state transitions so reconnect logic can resume safely.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-024",
+      "type": "multiple-choice",
+      "question": "Case Omega: message persistence log. Dominant risk is session stickiness causing uneven gateway load. Which next move is strongest? Dependency retries currently exceed safe server limits.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Use adaptive group fanout strategy (small-group push, large-group pull)."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-025",
+      "type": "multiple-choice",
+      "question": "Case Atlas: offline inbox service. Dominant risk is ack loss leading to false undelivered state. Which next move is strongest? The fix should avoid broad architectural rewrites this quarter.",
+      "options": [
+        "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-026",
+      "type": "multiple-choice",
+      "question": "Case Nova: delivery ack processor. Dominant risk is fanout overload for large group channels. Which next move is strongest? Current metrics hide per-tenant variance that matters.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Partition gateway sessions by stable user key and rebalance with drain controls.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-027",
+      "type": "multiple-choice",
+      "question": "Case Orion: typing indicator stream. Dominant risk is history query latency spikes on hot chats. Which next move is strongest? The fallback path is under-tested in production-like load.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Serve history from optimized recent-window store plus archival fallback.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-028",
+      "type": "multiple-choice",
+      "question": "Case Vega: message history fetch API. Dominant risk is delivery retries triggering duplicate notifications. Which next move is strongest? A control-plane issue is bleeding into data-plane reliability.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Protect offline inbox throughput with per-tenant quotas and backpressure."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-029",
+      "type": "multiple-choice",
+      "question": "Case Helios: message ordering coordinator. Dominant risk is presence and delivery paths contending for same infra. Which next move is strongest? The system must preserve critical events over bulk traffic.",
+      "options": [
+        "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-030",
+      "type": "multiple-choice",
+      "question": "Case Aurora: cross-device delivery service. Dominant risk is cross-region routing drift for roaming users. Which next move is strongest? Recent deploys changed queue and timeout settings together.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Use regional affinity with explicit cross-region forwarding contracts for roamers.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-031",
+      "type": "multiple-choice",
+      "question": "Case Nimbus: message send API. Dominant risk is out-of-order delivery in group conversations. Which next move is strongest? The edge layer is healthy but origin saturation is growing.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Use per-conversation ordering keys with idempotent delivery semantics.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-032",
+      "type": "multiple-choice",
+      "question": "Case Pulse: connection/session router. Dominant risk is duplicate delivery during reconnect storms. Which next move is strongest? Operational complexity is rising faster than team onboarding.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Separate durable message commit from best-effort realtime push fanout."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-033",
+      "type": "multiple-choice",
+      "question": "Case Forge: group chat fanout worker. Dominant risk is offline message backlog growth during outages. Which next move is strongest? Stakeholders need clear trade-off rationale in the postmortem.",
+      "options": [
+        "Persist delivery state transitions so reconnect logic can resume safely.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-034",
+      "type": "multiple-choice",
+      "question": "Case Harbor: message persistence log. Dominant risk is session stickiness causing uneven gateway load. Which next move is strongest? A localized failure is at risk of becoming cross-region.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Use adaptive group fanout strategy (small-group push, large-group pull).",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-035",
+      "type": "multiple-choice",
+      "question": "Case Vector: offline inbox service. Dominant risk is ack loss leading to false undelivered state. Which next move is strongest? Recovery sequencing matters as much as immediate containment.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-cc-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message send API: signal points to session stickiness causing uneven gateway load. Support tickets confirm this pattern is recurring. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around message send API mismatches session stickiness causing uneven gateway load, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Partition gateway sessions by stable user key and rebalance with drain controls.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for connection/session router: signal points to ack loss leading to false undelivered state. The incident timeline shows policy mismatch across services. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around connection/session router mismatches ack loss leading to false undelivered state, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Serve history from optimized recent-window store plus archival fallback.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for group chat fanout worker: signal points to fanout overload for large group channels. Last failover drill reproduced the same weakness. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around group chat fanout worker mismatches fanout overload for large group channels, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Protect offline inbox throughput with per-tenant quotas and backpressure."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message persistence log: signal points to history query latency spikes on hot chats. A recent schema change increased failure surface area. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around message persistence log mismatches history query latency spikes on hot chats, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for offline inbox service: signal points to delivery retries triggering duplicate notifications. A dependency team changed defaults without shared review. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around offline inbox service mismatches delivery retries triggering duplicate notifications, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Use regional affinity with explicit cross-region forwarding contracts for roamers.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for delivery ack processor: signal points to presence and delivery paths contending for same infra. Alert noise is obscuring root-cause signals. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around delivery ack processor mismatches presence and delivery paths contending for same infra, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Use per-conversation ordering keys with idempotent delivery semantics.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for typing indicator stream: signal points to cross-region routing drift for roaming users. Backlog growth started before CPU looked saturated. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around typing indicator stream mismatches cross-region routing drift for roaming users, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Separate durable message commit from best-effort realtime push fanout."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message history fetch API: signal points to out-of-order delivery in group conversations. Canary data points already indicate partial regression. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around message history fetch API mismatches out-of-order delivery in group conversations, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Persist delivery state transitions so reconnect logic can resume safely.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message ordering coordinator: signal points to duplicate delivery during reconnect storms. A single hot tenant now dominates this workload. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around message ordering coordinator mismatches duplicate delivery during reconnect storms, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Use adaptive group fanout strategy (small-group push, large-group pull).",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for cross-device delivery service: signal points to offline message backlog growth during outages. The current fallback behavior is undocumented for clients. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around cross-device delivery service mismatches offline message backlog growth during outages, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message send API: signal points to session stickiness causing uneven gateway load. Traffic composition changed after a mobile release. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around message send API mismatches session stickiness causing uneven gateway load, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Partition gateway sessions by stable user key and rebalance with drain controls."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for connection/session router: signal points to ack loss leading to false undelivered state. This path is business-critical during daily peaks. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around connection/session router mismatches ack loss leading to false undelivered state, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Serve history from optimized recent-window store plus archival fallback.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for group chat fanout worker: signal points to fanout overload for large group channels. The same class of issue appeared in a prior quarter. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around group chat fanout worker mismatches fanout overload for large group channels, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Protect offline inbox throughput with per-tenant quotas and backpressure.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message persistence log: signal points to history query latency spikes on hot chats. Error budget policy now requires corrective action. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around message persistence log mismatches history query latency spikes on hot chats, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for offline inbox service: signal points to delivery retries triggering duplicate notifications. The mitigation needs explicit rollback checkpoints. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around offline inbox service mismatches delivery retries triggering duplicate notifications, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Use regional affinity with explicit cross-region forwarding contracts for roamers."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for delivery ack processor: signal points to presence and delivery paths contending for same infra. Some retries are deterministic failures and should not repeat. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around delivery ack processor mismatches presence and delivery paths contending for same infra, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Use per-conversation ordering keys with idempotent delivery semantics.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for typing indicator stream: signal points to cross-region routing drift for roaming users. A read/write boundary is currently coupled too tightly. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around typing indicator stream mismatches cross-region routing drift for roaming users, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Separate durable message commit from best-effort realtime push fanout.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message history fetch API: signal points to out-of-order delivery in group conversations. Global averages hide one region with severe tail latency. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around message history fetch API mismatches out-of-order delivery in group conversations, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Persist delivery state transitions so reconnect logic can resume safely.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message ordering coordinator: signal points to duplicate delivery during reconnect storms. Multiple teams are changing this path concurrently. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around message ordering coordinator mismatches duplicate delivery during reconnect storms, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Use adaptive group fanout strategy (small-group push, large-group pull)."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for cross-device delivery service: signal points to offline message backlog growth during outages. Only one zone currently has reliable spare capacity. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around cross-device delivery service mismatches offline message backlog growth during outages, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Implement ack dedupe and replay-safe retry windows for unstable clients.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message send API: signal points to session stickiness causing uneven gateway load. Observability exists, but ownership on action is unclear. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around message send API mismatches session stickiness causing uneven gateway load, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Partition gateway sessions by stable user key and rebalance with drain controls.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for connection/session router: signal points to ack loss leading to false undelivered state. This risk compounds when demand spikes suddenly. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around connection/session router mismatches ack loss leading to false undelivered state, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Serve history from optimized recent-window store plus archival fallback.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for group chat fanout worker: signal points to fanout overload for large group channels. The team prefers smallest high-leverage change first. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around group chat fanout worker mismatches fanout overload for large group channels, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Protect offline inbox throughput with per-tenant quotas and backpressure."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for message persistence log: signal points to history query latency spikes on hot chats. Known unknowns remain around stale cache windows. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around message persistence log mismatches history query latency spikes on hot chats, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Isolate typing/presence ephemeral streams from critical delivery workflows.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for offline inbox service: signal points to delivery retries triggering duplicate notifications. A rollback is possible but expensive if used too broadly. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around offline inbox service mismatches delivery retries triggering duplicate notifications, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Use regional affinity with explicit cross-region forwarding contracts for roamers.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-cc-061",
+      "type": "multi-select",
+      "question": "Which signals best identify decomposition boundary mistakes? (Select all that apply)",
+      "options": [
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards",
+        "Dependency saturation by class",
+        "Only global averages without segmentation"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-062",
+      "type": "multi-select",
+      "question": "Which controls improve safety on critical write paths? (Select all that apply)",
+      "options": [
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls",
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-063",
+      "type": "multi-select",
+      "question": "Which practices reduce hot-key or hot-partition impact? (Select all that apply)",
+      "options": [
+        "Queue isolation for heavy producers",
+        "Single partition for all traffic classes",
+        "Adaptive sharding for hot entities",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-064",
+      "type": "multi-select",
+      "question": "What improves reliability when mixing sync and async paths? (Select all that apply)",
+      "options": [
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes",
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-065",
+      "type": "multi-select",
+      "question": "Which choices usually lower operational risk at scale? (Select all that apply)",
+      "options": [
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria",
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-066",
+      "type": "multi-select",
+      "question": "What should be explicit in API/service contracts for this design? (Select all that apply)",
+      "options": [
+        "Per-endpoint consistency/freshness policy",
+        "Explicit fallback behavior matrix",
+        "Implicit behavior based on team memory",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-067",
+      "type": "multi-select",
+      "question": "Which anti-patterns often cause incident recurrence? (Select all that apply)",
+      "options": [
+        "Dependency saturation by class",
+        "Only global averages without segmentation",
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-068",
+      "type": "multi-select",
+      "question": "What increases confidence before broad traffic rollout? (Select all that apply)",
+      "options": [
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries",
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-069",
+      "type": "multi-select",
+      "question": "Which controls protect high-priority traffic during spikes? (Select all that apply)",
+      "options": [
+        "Adaptive sharding for hot entities",
+        "Key-level replication for skewed load",
+        "Queue isolation for heavy producers",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-070",
+      "type": "multi-select",
+      "question": "Which telemetry dimensions are most actionable for design triage? (Select all that apply)",
+      "options": [
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing",
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-071",
+      "type": "multi-select",
+      "question": "Which governance actions improve cross-team reliability ownership? (Select all that apply)",
+      "options": [
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only",
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-072",
+      "type": "multi-select",
+      "question": "What helps prevent retry amplification cascades? (Select all that apply)",
+      "options": [
+        "Implicit behavior based on team memory",
+        "Contracted degraded-mode semantics",
+        "Per-endpoint consistency/freshness policy",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-073",
+      "type": "multi-select",
+      "question": "Which fallback strategies are strong when dependencies degrade? (Select all that apply)",
+      "options": [
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards",
+        "Dependency saturation by class",
+        "Only global averages without segmentation"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-074",
+      "type": "multi-select",
+      "question": "What reduces data-quality regressions in eventual pipelines? (Select all that apply)",
+      "options": [
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls",
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-075",
+      "type": "multi-select",
+      "question": "Which runbook components improve incident execution quality? (Select all that apply)",
+      "options": [
+        "Queue isolation for heavy producers",
+        "Single partition for all traffic classes",
+        "Adaptive sharding for hot entities",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-076",
+      "type": "multi-select",
+      "question": "Which architecture choices improve blast-radius containment? (Select all that apply)",
+      "options": [
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes",
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-077",
+      "type": "multi-select",
+      "question": "What evidence demonstrates a fix worked beyond short-term recovery? (Select all that apply)",
+      "options": [
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria",
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-cc-078",
+      "type": "numeric-input",
+      "question": "A critical path handles 5,400,000 requests/day and 0.18% fail SLO. Failures/day?",
+      "answer": 9720,
+      "unit": "requests",
+      "tolerance": 0.03,
+      "explanation": "0.0018*5,400,000=9,720."
+    },
+    {
+      "id": "cd-cc-079",
+      "type": "numeric-input",
+      "question": "Queue ingest is 2,200 events/min and drain is 2,530 events/min. Net drain rate?",
+      "answer": 330,
+      "unit": "events/min",
+      "tolerance": 0,
+      "explanation": "2,530-2,200=330."
+    },
+    {
+      "id": "cd-cc-080",
+      "type": "numeric-input",
+      "question": "Retries add 0.28 extra attempts at 75,000 req/sec. Effective attempts/sec?",
+      "answer": 96000,
+      "unit": "attempts/sec",
+      "tolerance": 0.02,
+      "explanation": "75,000*1.28=96,000."
+    },
+    {
+      "id": "cd-cc-081",
+      "type": "numeric-input",
+      "question": "Failover takes 16s and occurs 24 times/day. Total failover seconds/day?",
+      "answer": 384,
+      "unit": "seconds",
+      "tolerance": 0,
+      "explanation": "16*24=384."
+    },
+    {
+      "id": "cd-cc-082",
+      "type": "numeric-input",
+      "question": "Target p99 is 650ms; observed p99 is 845ms. Percent over target?",
+      "answer": 30,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(845-650)/650=30%."
+    },
+    {
+      "id": "cd-cc-083",
+      "type": "numeric-input",
+      "question": "If 34% of 130,000 req/min are high-priority, how many high-priority req/min?",
+      "answer": 44200,
+      "unit": "requests/min",
+      "tolerance": 0.02,
+      "explanation": "0.34*130,000=44,200."
+    },
+    {
+      "id": "cd-cc-084",
+      "type": "numeric-input",
+      "question": "Error rate drops from 1.0% to 0.22%. Percent reduction?",
+      "answer": 78,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(1.0-0.22)/1.0=78%."
+    },
+    {
+      "id": "cd-cc-085",
+      "type": "numeric-input",
+      "question": "A 9-node quorum cluster requires majority writes. Minimum acknowledgements?",
+      "answer": 5,
+      "unit": "acks",
+      "tolerance": 0,
+      "explanation": "Majority of 9 is 5."
+    },
+    {
+      "id": "cd-cc-086",
+      "type": "numeric-input",
+      "question": "Backlog is 56,000 tasks with net drain 350 tasks/min. Minutes to clear?",
+      "answer": 160,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "56,000/350=160."
+    },
+    {
+      "id": "cd-cc-087",
+      "type": "numeric-input",
+      "question": "A fleet has 18 zones and 3 are unavailable. Percent remaining available?",
+      "answer": 83.33,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "15/18=83.33%."
+    },
+    {
+      "id": "cd-cc-088",
+      "type": "numeric-input",
+      "question": "MTTR improved from 52 min to 34 min. Percent reduction?",
+      "answer": 34.62,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(52-34)/52=34.62%."
+    },
+    {
+      "id": "cd-cc-089",
+      "type": "numeric-input",
+      "question": "If 11% of 2,800,000 daily ops need manual checks, checks/day?",
+      "answer": 308000,
+      "unit": "operations",
+      "tolerance": 0.02,
+      "explanation": "0.11*2,800,000=308,000."
+    },
+    {
+      "id": "cd-cc-090",
+      "type": "ordering",
+      "question": "Order a classic-design decomposition workflow.",
+      "items": [
+        "Identify critical user journey and invariants",
+        "Split request path into atomic components",
+        "Assign reliability/scale controls per boundary",
+        "Validate with load/failure drills and refine"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Start with outcomes/invariants, then decompose, control, and validate."
+    },
+    {
+      "id": "cd-cc-091",
+      "type": "ordering",
+      "question": "Order by increasing design risk.",
+      "items": [
+        "Explicit boundaries with contracts",
+        "Shared dependency with safeguards",
+        "Shared dependency without safeguards",
+        "Implicit coupling with no ownership"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk rises as boundaries and ownership degrade."
+    },
+    {
+      "id": "cd-cc-092",
+      "type": "ordering",
+      "question": "Order safe incident mitigation steps.",
+      "items": [
+        "Scope blast radius and affected flows",
+        "Contain with guardrails and admission controls",
+        "Apply targeted root-cause fix",
+        "Run recurrence checks and hardening actions"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Scope, contain, fix, then harden."
+    },
+    {
+      "id": "cd-cc-093",
+      "type": "ordering",
+      "question": "Order by increasing retry-control maturity.",
+      "items": [
+        "Fixed immediate retries",
+        "Capped exponential retries",
+        "Capped retries with jitter",
+        "Jittered retries with retry budgets and telemetry"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity improves with safeguards and observability."
+    },
+    {
+      "id": "cd-cc-094",
+      "type": "ordering",
+      "question": "Order fallback sophistication.",
+      "items": [
+        "Implicit fallback behavior",
+        "Manual fallback toggles",
+        "Documented fallback matrix",
+        "Policy-driven automated fallback with tests"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Sophistication rises with explicit policy and automation."
+    },
+    {
+      "id": "cd-cc-095",
+      "type": "ordering",
+      "question": "Order failover validation rigor.",
+      "items": [
+        "Host health check only",
+        "Health plus freshness checks",
+        "Health/freshness plus staged traffic shift",
+        "Staged shift plus failback rehearsal and rollback gates"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Rigor increases with validation and reversible control."
+    },
+    {
+      "id": "cd-cc-096",
+      "type": "ordering",
+      "question": "Order by increasing blast radius.",
+      "items": [
+        "Single process failure",
+        "Single node failure",
+        "Single zone failure",
+        "Cross-region control-plane failure"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Blast radius expands from local failures to regional control issues."
+    },
+    {
+      "id": "cd-cc-097",
+      "type": "ordering",
+      "question": "Order data-path durability confidence.",
+      "items": [
+        "In-memory only acknowledgment",
+        "Single durable write",
+        "Replicated durable write",
+        "Replicated durable write plus replay/integrity verification"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Durability confidence grows with replication and verification."
+    },
+    {
+      "id": "cd-cc-098",
+      "type": "ordering",
+      "question": "Order by increasing operational discipline.",
+      "items": [
+        "Ad hoc incident response",
+        "Named responder roles",
+        "Role-based response with timeline",
+        "Role-based response plus action closure tracking"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Discipline improves with structure and accountability."
+    },
+    {
+      "id": "cd-cc-099",
+      "type": "ordering",
+      "question": "Order rollout safety for major design changes.",
+      "items": [
+        "Canary small cohort",
+        "Monitor guardrail metrics",
+        "Expand traffic gradually",
+        "Finalize runbook and ownership updates"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Rollout should progress from limited exposure to institutionalization."
+    },
+    {
+      "id": "cd-cc-100",
+      "type": "ordering",
+      "question": "Order evidence strength for fix success.",
+      "items": [
+        "Single successful test run",
+        "Short canary stability",
+        "Sustained SLO recovery in production",
+        "Sustained recovery plus failure-drill pass"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Evidence strength rises with sustained production and drill results."
+    }
+  ]
+}
