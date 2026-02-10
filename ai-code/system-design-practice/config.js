@@ -159,7 +159,7 @@ export const CONFIG = {
         {
           num: 3,
           title: "Circuit Breakers, Load Shedding & Admission Control",
-          ready: false,
+          ready: true,
         },
         {
           num: 4,

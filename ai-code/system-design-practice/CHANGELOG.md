@@ -2,6 +2,11 @@
 
 ## Unit 9: Reliability (in progress)
 
+- Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ca-001` to `rel-ca-100`) and marked the chapter as ready in `config.js`.
+- Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+
+3. Circuit Breakers, Load Shedding & Admission Control (100 problems)
+
 - Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`rel-tr-001` to `rel-tr-100`) and marked the chapter as ready in `config.js`.
 - Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
 

@@ -20,7 +20,7 @@
   - [x] Chapter 2: Timeouts, Retries & Backoff Control
         Scope: Designing retry behavior that improves success rates without causing retry storms or cascading overload.
         Key concepts: timeout budgets, capped retries, exponential backoff with jitter, retry amplification, idempotency coupling.
-  - [ ] Chapter 3: Circuit Breakers, Load Shedding & Admission Control
+  - [x] Chapter 3: Circuit Breakers, Load Shedding & Admission Control
         Scope: Protecting systems under stress by bounding concurrency and failing safely before saturation cascades.
         Key concepts: circuit states, fail-open/fail-closed trade-offs, token/leaky-bucket admission, priority shedding, brownout control.
   - [ ] Chapter 4: Redundancy, Replication & Failover Strategy
