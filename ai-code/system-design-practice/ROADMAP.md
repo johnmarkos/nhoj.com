@@ -19,7 +19,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 ### OpenQuizzer v2.7: Single-Session Feedback
 
-- [ ] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
+- [x] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
 - [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
   - Tagging taxonomy: align with the 10 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
 
