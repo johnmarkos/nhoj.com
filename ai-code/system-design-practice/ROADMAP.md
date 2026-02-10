@@ -26,7 +26,7 @@
   - [x] Chapter 4: Redundancy, Replication & Failover Strategy
         Scope: Building availability with N+1 capacity, multi-AZ/region redundancy, and safe failover/failback procedures.
         Key concepts: active-active vs active-passive reliability trade-offs, hot/warm/cold standby, failover runbooks, quorum-aware failback.
-  - [ ] Chapter 5: Graceful Degradation & Dependency Isolation
+  - [x] Chapter 5: Graceful Degradation & Dependency Isolation
         Scope: Preserving core user journeys when dependencies degrade by using fallback modes and strict dependency boundaries.
         Key concepts: critical-path isolation, fallback data quality tiers, feature kill switches, bulkheads, graceful capability degradation.
   - [ ] Chapter 6: Data Safety, Durability & Recovery
