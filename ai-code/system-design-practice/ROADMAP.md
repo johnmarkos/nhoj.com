@@ -13,7 +13,7 @@
 
 ## Now (In Progress)
 
-- [ ] **Unit 9: Reliability** — planned, chapter-by-chapter content creation
+- [x] **Unit 9: Reliability** — complete (800 problems)
   - [x] Chapter 1: Failure Modes & Fault Domains
         Scope: Identifying realistic failure classes and mapping blast radius across service, node, zone, and region boundaries.
         Key concepts: fail-stop vs partial failure, correlated failures, fault domains, dependency failure taxonomy, blast-radius reasoning.
@@ -35,7 +35,7 @@
   - [x] Chapter 7: Reliability Engineering Operations
         Scope: Operating reliability as a continuous process with measurable SLOs, error budgets, and incident learning loops.
         Key concepts: SLI/SLO design, error-budget policy, alert quality, incident command patterns, postmortem action tracking.
-  - [ ] Chapter 8: Reliability Scenarios
+  - [x] Chapter 8: Reliability Scenarios
         Scope: Integrated reliability incidents combining retry storms, partial outages, failover decisions, and degradation strategy under pressure.
         Key concepts: end-to-end incident triage, cascading-failure containment, recovery sequencing, SLO/cost trade-off decisions.
 

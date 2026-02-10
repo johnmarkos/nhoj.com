@@ -173,7 +173,7 @@ export const CONFIG = {
         },
         { num: 6, title: "Data Safety, Durability & Recovery", ready: true },
         { num: 7, title: "Reliability Engineering Operations", ready: true },
-        { num: 8, title: "Reliability Scenarios", ready: false },
+        { num: 8, title: "Reliability Scenarios", ready: true },
       ],
     },
   ],

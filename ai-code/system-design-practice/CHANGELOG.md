@@ -1,6 +1,11 @@
 # Changelog
 
-## Unit 9: Reliability (in progress)
+## Unit 9: Reliability (complete — 800 problems)
+
+- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`rel-scn-001` to `rel-scn-100`) and marked the chapter as ready in `config.js`.
+- Chapter 8 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+
+8. Reliability Scenarios (100 problems)
 
 - Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ops-001` to `rel-ops-100`) and marked the chapter as ready in `config.js`.
 - Chapter 7 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
