@@ -2,38 +2,31 @@
 
 ## Unit 10: Classic Designs Decomposed (complete — 800 problems)
 
-- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`cd-ns-001` to `cd-ns-100`) and marked the chapter as ready in `config.js`.
-- Chapter 8 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`cd-nc-001` to `cd-nc-100`) and marked the chapter as ready in `config.js`.
-- Chapter 7 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`cd-cp-001` to `cd-cp-100`) and marked the chapter as ready in `config.js`.
-- Chapter 6 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`cd-cc-001` to `cd-cc-100`) and marked the chapter as ready in `config.js`.
-- Chapter 5 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`cd-ua-001` to `cd-ua-100`) and marked the chapter as ready in `config.js`.
-- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`cd-us-001` to `cd-us-100`) and marked the chapter as ready in `config.js`.
-- Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`cd-tr-001` to `cd-tr-100`) and marked the chapter as ready in `config.js`.
-- Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+1. Twitter/X Timeline Write & Fanout (100 problems) — Tweet ingest, follower fanout policy, timeline materialization, and celebrity-load containment
+2. Twitter/X Timeline Ranking, Serving & Reliability (100 problems) — Ranking pipeline decomposition, serving-cache policy, freshness boundaries, and reliability guardrails
+3. URL Shortener Core Architecture (100 problems) — Short-link creation path, key generation, redirect serving, and abuse/collision safety controls
+4. URL Shortener Scale, Analytics & Operations (100 problems) — Redirect-scale operations, analytics decomposition, retention economics, and replay-safe reporting
+5. Chat Core Messaging Architecture (100 problems) — Message send/deliver/ack decomposition, group fanout strategy, ordering semantics, and offline inbox design
+6. Chat Presence, Sync & Reliability (100 problems) — Presence soft-state modeling, multi-device sync, receipt consistency, attachment isolation, and replay safety
+7. Notification System Core Architecture (100 problems) — Event ingest, preference evaluation, dedupe/idempotency controls, scheduling, and channel dispatch boundaries
+8. Notification System Scale & Scenarios (100 problems) — Integrated notification incidents across spikes, retries, provider failover, queue priority, and recovery sequencing
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`cd-tw-001` to `cd-tw-100`) and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
-
-1. Twitter/X Timeline Write & Fanout (100 problems)
-2. Twitter/X Timeline Ranking, Serving & Reliability (100 problems)
-3. URL Shortener Core Architecture (100 problems)
-4. URL Shortener Scale, Analytics & Operations (100 problems)
-5. Chat Core Messaging Architecture (100 problems)
-6. Chat Presence, Sync & Reliability (100 problems)
-7. Notification System Core Architecture (100 problems)
-8. Notification System Scale & Scenarios (100 problems)
+- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`cd-tr-001` to `cd-tr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 2 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`cd-us-001` to `cd-us-100`) and marked the chapter as ready in `config.js`.
+- Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`cd-ua-001` to `cd-ua-100`) and marked the chapter as ready in `config.js`.
+- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 5 completed and validated with config/content tests: added 100 mixed-type problems (`cd-cc-001` to `cd-cc-100`) and marked the chapter as ready in `config.js`.
+- Chapter 5 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 6 completed and validated with config/content tests: added 100 mixed-type problems (`cd-cp-001` to `cd-cp-100`) and marked the chapter as ready in `config.js`.
+- Chapter 6 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 7 completed and validated with config/content tests: added 100 mixed-type problems (`cd-nc-001` to `cd-nc-100`) and marked the chapter as ready in `config.js`.
+- Chapter 7 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
+- Chapter 8 completed and validated with config/content tests: added 100 mixed-type problems (`cd-ns-001` to `cd-ns-100`) and marked the chapter as ready in `config.js`.
+- Chapter 8 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger classic-design trade-off reasoning.
 
 ## Unit 9: Reliability (complete — 800 problems)
 
