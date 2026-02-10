@@ -130,7 +130,7 @@ export const CONFIG = {
           title: "Quorums, Replication & Read/Write Paths",
           ready: true,
         },
-        { num: 3, title: "Time, Ordering & Causality", ready: false },
+        { num: 3, title: "Time, Ordering & Causality", ready: true },
         {
           num: 4,
           title: "Transactions & Isolation in Distributed Systems",

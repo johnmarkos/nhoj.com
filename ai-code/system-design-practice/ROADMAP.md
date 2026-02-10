@@ -19,7 +19,7 @@
   - [x] Chapter 2: Quorums, Replication & Read/Write Paths — 100 problems (quorum overlap trade-offs, leader/follower read-path design, tunable consistency by endpoint criticality, lag-aware routing, failover/degraded-mode consistency policy)
         Scope: Replicated data-path choices and how quorum math impacts latency, durability, and stale-read risk.
         Key concepts: leader/follower replication, quorum reads/writes, tunable consistency, read repair, anti-entropy.
-  - [ ] Chapter 3: Time, Ordering & Causality
+  - [x] Chapter 3: Time, Ordering & Causality — 100 problems (clock-skew and reordering failure modes, logical/causal ordering, vector/Lamport clock reasoning, replay safety, concurrent update conflict handling)
         Scope: Coordinating distributed events when wall clocks are unreliable and ordering must be explicit.
         Key concepts: logical clocks, vector clocks, Lamport timestamps, clock skew, causal ordering.
   - [ ] Chapter 4: Transactions & Isolation in Distributed Systems
