@@ -12,9 +12,33 @@
 
 ## Now (In Progress)
 
-- [ ] **Unit 8: Consistency & Coordination** — planning + chapter-by-chapter content creation
+- [ ] **Unit 8: Consistency & Coordination** — planned, chapter-by-chapter content creation
+  - [ ] Chapter 1: Consistency Models Fundamentals
+        Scope: Core read/write consistency guarantees and how they affect user-visible behavior under replication.
+        Key concepts: linearizability, sequential consistency, causal consistency, eventual consistency, session guarantees.
+  - [ ] Chapter 2: Quorums, Replication & Read/Write Paths
+        Scope: Replicated data-path choices and how quorum math impacts latency, durability, and stale-read risk.
+        Key concepts: leader/follower replication, quorum reads/writes, tunable consistency, read repair, anti-entropy.
+  - [ ] Chapter 3: Time, Ordering & Causality
+        Scope: Coordinating distributed events when wall clocks are unreliable and ordering must be explicit.
+        Key concepts: logical clocks, vector clocks, Lamport timestamps, clock skew, causal ordering.
+  - [ ] Chapter 4: Transactions & Isolation in Distributed Systems
+        Scope: Balancing correctness and throughput when multi-key invariants cross services and storage boundaries.
+        Key concepts: ACID vs BASE trade-offs, isolation anomalies, optimistic/pessimistic concurrency control, distributed transactions.
+  - [ ] Chapter 5: Coordination Patterns & Distributed Locking
+        Scope: Safe coordination for leases, elections, and critical sections without creating fragile single points.
+        Key concepts: leases, fencing tokens, leader election, lock safety/liveness, split-brain avoidance.
+  - [ ] Chapter 6: Consensus & Membership
+        Scope: Reliable agreement and cluster reconfiguration under crash/partition faults.
+        Key concepts: Raft/Paxos intuition, quorum intersection, log replication, membership changes, failure detection.
+  - [ ] Chapter 7: Conflict Resolution & Convergence
+        Scope: Handling concurrent writes and reconciling divergent state in eventually consistent systems.
+        Key concepts: last-write-wins trade-offs, CRDT intuition, merge semantics, idempotency, compensating logic.
+  - [ ] Chapter 8: Consistency & Coordination Scenarios
+        Scope: Integrated incident/design scenarios that combine consistency guarantees, quorum policy, and coordination under failure.
+        Key concepts: end-to-end trade-off diagnosis, invariant protection, partition-mode behavior, latency/correctness/cost decisions.
 
-## Next (Units 8-10)
+## Next (Units 9-10)
 
 - [ ] **Unit 9: Reliability** — Failure modes, redundancy, graceful degradation, circuit breakers, retries
 - [ ] **Unit 10: Classic Designs Decomposed** — Twitter, URL shortener, chat, notification system — as atomic questions
