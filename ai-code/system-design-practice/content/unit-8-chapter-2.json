@@ -1,0 +1,1636 @@
+{
+  "unit": 8,
+  "unitTitle": "Consistency & Coordination",
+  "chapter": 2,
+  "chapterTitle": "Quorums, Replication & Read/Write Paths",
+  "chapterDescription": "Designing quorum policies and replication read/write paths to balance stale-read risk, latency, availability, and correctness across endpoint classes.",
+  "problems": [
+    {
+      "id": "cc-qr-001",
+      "type": "multiple-choice",
+      "question": "A global user profile store must handle strict read-after-write for critical fields. Which quorum/replication strategy is strongest? Recent incidents show stale reads right after writes.",
+      "options": [
+        "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-002",
+      "type": "multiple-choice",
+      "question": "A order state service must handle latency-sensitive read path with occasional stale tolerance. Which quorum/replication strategy is strongest? The team needs a reversible first mitigation step.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Route critical reads to leader/quorum while keeping tolerant reads on follower paths."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-003",
+      "type": "multiple-choice",
+      "question": "A inventory availability store must handle regional failover with degraded links. Which quorum/replication strategy is strongest? Replica lag increased during the last traffic surge.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-004",
+      "type": "multiple-choice",
+      "question": "A notification preference DB must handle high write burst followed by heavy reads. Which quorum/replication strategy is strongest? Critical-path correctness cannot be compromised.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Increase replication observability (lag, read source, quorum success) and gate routing on health.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-005",
+      "type": "multiple-choice",
+      "question": "A feed metadata service must handle cross-region replica lag spikes. Which quorum/replication strategy is strongest? Latency budgets are tight on non-critical endpoints.",
+      "options": [
+        "Use quorum overlap (R+W>N) for entities requiring low stale-read risk.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-006",
+      "type": "multiple-choice",
+      "question": "A session token store must handle availability priority during partitions. Which quorum/replication strategy is strongest? Regional failover recently stressed read routing.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Separate degraded-mode policy for availability-priority endpoints under partition."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-007",
+      "type": "multiple-choice",
+      "question": "A checkout cart store must handle critical invariant on stock decrement. Which quorum/replication strategy is strongest? Current contracts do not document freshness semantics.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-008",
+      "type": "multiple-choice",
+      "question": "A pricing catalog store must handle cost pressure on quorum reads. Which quorum/replication strategy is strongest? Users report cross-device state mismatch behavior.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Introduce endpoint-level consistency contracts tied to business correctness impact.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-009",
+      "type": "multiple-choice",
+      "question": "A fraud rule repository must handle mixed critical/non-critical entity classes. Which quorum/replication strategy is strongest? Ops wants explicit degraded-mode runbooks.",
+      "options": [
+        "Use region-aware quorum policy to avoid unhealthy replica participation.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-010",
+      "type": "multiple-choice",
+      "question": "A ticket reservation store must handle stale-read incidents reported by users. Which quorum/replication strategy is strongest? Quorum cost is under active optimization pressure.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Bound follower-read staleness with freshness checks and leader fallback."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-011",
+      "type": "multiple-choice",
+      "question": "A support conversation metadata store must handle strict read-after-write for critical fields. Which quorum/replication strategy is strongest? Read source visibility was missing during incident response.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-012",
+      "type": "multiple-choice",
+      "question": "A device registration store must handle latency-sensitive read path with occasional stale tolerance. Which quorum/replication strategy is strongest? The workload has mixed entity criticality.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Route critical reads to leader/quorum while keeping tolerant reads on follower paths.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-013",
+      "type": "multiple-choice",
+      "question": "A shipping option cache-backed store must handle regional failover with degraded links. Which quorum/replication strategy is strongest? Business risk is concentrated in a small endpoint subset.",
+      "options": [
+        "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-014",
+      "type": "multiple-choice",
+      "question": "A feature toggle store must handle high write burst followed by heavy reads. Which quorum/replication strategy is strongest? Retry patterns increased read inconsistency exposure.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Increase replication observability (lag, read source, quorum success) and gate routing on health."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-015",
+      "type": "multiple-choice",
+      "question": "A message thread index store must handle cross-region replica lag spikes. Which quorum/replication strategy is strongest? A follow-up design review requires measurable guarantees.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Use quorum overlap (R+W>N) for entities requiring low stale-read risk.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-016",
+      "type": "multiple-choice",
+      "question": "A ad campaign config store must handle availability priority during partitions. Which quorum/replication strategy is strongest? Follower reads dominate steady-state traffic today.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Separate degraded-mode policy for availability-priority endpoints under partition.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-017",
+      "type": "multiple-choice",
+      "question": "A ride dispatch assignment store must handle critical invariant on stock decrement. Which quorum/replication strategy is strongest? Availability goals remain strict during partitions.",
+      "options": [
+        "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-018",
+      "type": "multiple-choice",
+      "question": "A content moderation policy store must handle cost pressure on quorum reads. Which quorum/replication strategy is strongest? The team must avoid global strongest-consistency defaults.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Introduce endpoint-level consistency contracts tied to business correctness impact."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-019",
+      "type": "multiple-choice",
+      "question": "A API rate-limit config store must handle mixed critical/non-critical entity classes. Which quorum/replication strategy is strongest? Lag-aware routing support is already available in platform.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Use region-aware quorum policy to avoid unhealthy replica participation.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-020",
+      "type": "multiple-choice",
+      "question": "A identity claims store must handle stale-read incidents reported by users. Which quorum/replication strategy is strongest? Post-incident action requires endpoint-level policy clarity.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Bound follower-read staleness with freshness checks and leader fallback.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-021",
+      "type": "multiple-choice",
+      "question": "A global user profile store must handle strict read-after-write for critical fields. Which quorum/replication strategy is strongest? Current stale-read alerts are too coarse-grained.",
+      "options": [
+        "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-022",
+      "type": "multiple-choice",
+      "question": "A order state service must handle latency-sensitive read path with occasional stale tolerance. Which quorum/replication strategy is strongest? The service must preserve write throughput on hot keys.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Route critical reads to leader/quorum while keeping tolerant reads on follower paths."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-023",
+      "type": "multiple-choice",
+      "question": "A inventory availability store must handle regional failover with degraded links. Which quorum/replication strategy is strongest? Some paths can tolerate bounded staleness when explicit.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-024",
+      "type": "multiple-choice",
+      "question": "A notification preference DB must handle high write burst followed by heavy reads. Which quorum/replication strategy is strongest? Critical invariant checks occur during peak load windows.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Increase replication observability (lag, read source, quorum success) and gate routing on health.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-025",
+      "type": "multiple-choice",
+      "question": "A feed metadata service must handle cross-region replica lag spikes. Which quorum/replication strategy is strongest? Canary rollout is required for any policy changes.",
+      "options": [
+        "Use quorum overlap (R+W>N) for entities requiring low stale-read risk.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-026",
+      "type": "multiple-choice",
+      "question": "A session token store must handle availability priority during partitions. Which quorum/replication strategy is strongest? Regional health asymmetry appears during brownouts.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Separate degraded-mode policy for availability-priority endpoints under partition."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-027",
+      "type": "multiple-choice",
+      "question": "A checkout cart store must handle critical invariant on stock decrement. Which quorum/replication strategy is strongest? Previous mitigations overcorrected and increased latency.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-028",
+      "type": "multiple-choice",
+      "question": "A pricing catalog store must handle cost pressure on quorum reads. Which quorum/replication strategy is strongest? The team needs clearer leader/follower selection logic.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Introduce endpoint-level consistency contracts tied to business correctness impact.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-029",
+      "type": "multiple-choice",
+      "question": "A fraud rule repository must handle mixed critical/non-critical entity classes. Which quorum/replication strategy is strongest? Read-repair is enabled but strict paths still fail occasionally.",
+      "options": [
+        "Use region-aware quorum policy to avoid unhealthy replica participation.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-030",
+      "type": "multiple-choice",
+      "question": "A ticket reservation store must handle stale-read incidents reported by users. Which quorum/replication strategy is strongest? Freshness SLOs are now part of quarterly goals.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Bound follower-read staleness with freshness checks and leader fallback."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-031",
+      "type": "multiple-choice",
+      "question": "A support conversation metadata store must handle strict read-after-write for critical fields. Which quorum/replication strategy is strongest? Tenant-priority traffic requires differentiated behavior.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-032",
+      "type": "multiple-choice",
+      "question": "A device registration store must handle latency-sensitive read path with occasional stale tolerance. Which quorum/replication strategy is strongest? The architecture must support fast incident containment.",
+      "options": [
+        "Ignore replica health and choose read targets randomly.",
+        "Route critical reads to leader/quorum while keeping tolerant reads on follower paths.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile."
+      ],
+      "correct": 1,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-033",
+      "type": "multiple-choice",
+      "question": "A shipping option cache-backed store must handle regional failover with degraded links. Which quorum/replication strategy is strongest? Data convergence eventually succeeds but user trust is impacted.",
+      "options": [
+        "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes.",
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly."
+      ],
+      "correct": 0,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-034",
+      "type": "multiple-choice",
+      "question": "A feature toggle store must handle high write burst followed by heavy reads. Which quorum/replication strategy is strongest? Leadership requested explicit trade-off rationale per endpoint.",
+      "options": [
+        "Use identical weakest consistency for all entities to simplify operations.",
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Increase replication observability (lag, read source, quorum success) and gate routing on health."
+      ],
+      "correct": 3,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-035",
+      "type": "multiple-choice",
+      "question": "A message thread index store must handle cross-region replica lag spikes. Which quorum/replication strategy is strongest? Future chapters depend on a clean consistency baseline.",
+      "options": [
+        "Force strongest quorum on every endpoint regardless latency/cost profile.",
+        "Ignore replica health and choose read targets randomly.",
+        "Use quorum overlap (R+W>N) for entities requiring low stale-read risk.",
+        "Use identical weakest consistency for all entities to simplify operations."
+      ],
+      "correct": 2,
+      "explanation": "Quorum and read/write-path choices should reflect endpoint criticality, health state, and latency/freshness trade-offs."
+    },
+    {
+      "id": "cc-qr-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: inventory availability store is experiencing issues under high write burst followed by heavy reads. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for inventory availability store is mismatched to high write burst followed by heavy reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving p99 latency goals?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use quorum overlap (R+W>N) for entities requiring low stale-read risk."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: notification preference DB is experiencing issues under cross-region replica lag spikes. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for notification preference DB is mismatched to cross-region replica lag spikes, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under replica lag spikes?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Separate degraded-mode policy for availability-priority endpoints under partition.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feed metadata service is experiencing issues under availability priority during partitions. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for feed metadata service is mismatched to availability priority during partitions, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during regional failover?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: session token store is experiencing issues under critical invariant on stock decrement. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for session token store is mismatched to critical invariant on stock decrement, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with strict invariant protection?",
+          "options": [
+            "Introduce endpoint-level consistency contracts tied to business correctness impact.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: checkout cart store is experiencing issues under cost pressure on quorum reads. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for checkout cart store is mismatched to cost pressure on quorum reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change without overpaying quorum cost?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use region-aware quorum policy to avoid unhealthy replica participation."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: pricing catalog store is experiencing issues under mixed critical/non-critical entity classes. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for pricing catalog store is mismatched to mixed critical/non-critical entity classes, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under partitioned network conditions?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Bound follower-read staleness with freshness checks and leader fallback.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: fraud rule repository is experiencing issues under stale-read incidents reported by users. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for fraud rule repository is mismatched to stale-read incidents reported by users, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with mixed endpoint criticality?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ticket reservation store is experiencing issues under strict read-after-write for critical fields. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for ticket reservation store is mismatched to strict read-after-write for critical fields, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while minimizing stale-read risk?",
+          "options": [
+            "Route critical reads to leader/quorum while keeping tolerant reads on follower paths.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: support conversation metadata store is experiencing issues under latency-sensitive read path with occasional stale tolerance. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for support conversation metadata store is mismatched to latency-sensitive read path with occasional stale tolerance, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with constrained replica health?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: device registration store is experiencing issues under regional failover with degraded links. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for device registration store is mismatched to regional failover with degraded links, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change before broad rollout?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Increase replication observability (lag, read source, quorum success) and gate routing on health.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: shipping option cache-backed store is experiencing issues under high write burst followed by heavy reads. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for shipping option cache-backed store is mismatched to high write burst followed by heavy reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while preserving write throughput?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use quorum overlap (R+W>N) for entities requiring low stale-read risk.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feature toggle store is experiencing issues under cross-region replica lag spikes. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for feature toggle store is mismatched to cross-region replica lag spikes, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during heavy read fanout?",
+          "options": [
+            "Separate degraded-mode policy for availability-priority endpoints under partition.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: message thread index store is experiencing issues under availability priority during partitions. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for message thread index store is mismatched to availability priority during partitions, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under degraded control-plane telemetry?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ad campaign config store is experiencing issues under critical invariant on stock decrement. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for ad campaign config store is mismatched to critical invariant on stock decrement, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with explicit degradation semantics?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Introduce endpoint-level consistency contracts tied to business correctness impact.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: ride dispatch assignment store is experiencing issues under cost pressure on quorum reads. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for ride dispatch assignment store is mismatched to cost pressure on quorum reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while protecting checkout correctness?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use region-aware quorum policy to avoid unhealthy replica participation.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: content moderation policy store is experiencing issues under mixed critical/non-critical entity classes. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for content moderation policy store is mismatched to mixed critical/non-critical entity classes, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under temporary capacity shortage?",
+          "options": [
+            "Bound follower-read staleness with freshness checks and leader fallback.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: API rate-limit config store is experiencing issues under stale-read incidents reported by users. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for API rate-limit config store is mismatched to stale-read incidents reported by users, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with clear runbook ownership?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use stronger write quorum for invariant-critical writes and tune read quorum per endpoint."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: identity claims store is experiencing issues under strict read-after-write for critical fields. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for identity claims store is mismatched to strict read-after-write for critical fields, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during recovery from backlog?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Route critical reads to leader/quorum while keeping tolerant reads on follower paths.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: global user profile store is experiencing issues under latency-sensitive read path with occasional stale tolerance. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for global user profile store is mismatched to latency-sensitive read path with occasional stale tolerance, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while limiting operational complexity?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Adopt tunable consistency with explicit per-entity R/W quorum policies and fallback modes.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: order state service is experiencing issues under regional failover with degraded links. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for order state service is mismatched to regional failover with degraded links, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change for multi-region traffic shifts?",
+          "options": [
+            "Increase replication observability (lag, read source, quorum success) and gate routing on health.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: inventory availability store is experiencing issues under high write burst followed by heavy reads. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for inventory availability store is mismatched to high write burst followed by heavy reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with bounded freshness SLOs?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use quorum overlap (R+W>N) for entities requiring low stale-read risk."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: notification preference DB is experiencing issues under cross-region replica lag spikes. What is the primary diagnosis?",
+          "options": [
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for notification preference DB is mismatched to cross-region replica lag spikes, causing freshness/correctness incidents."
+          ],
+          "correct": 3,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change under noisy retry patterns?",
+          "options": [
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Separate degraded-mode policy for availability-priority endpoints under partition.",
+            "Disable all follower reads and keep one universal policy forever."
+          ],
+          "correct": 2,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: feed metadata service is experiencing issues under availability priority during partitions. What is the primary diagnosis?",
+          "options": [
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for feed metadata service is mismatched to availability priority during partitions, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice."
+          ],
+          "correct": 2,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change during peak campaign load?",
+          "options": [
+            "Delay all policy changes until all incidents stop naturally.",
+            "Apply read-repair/anti-entropy for eventual paths while preserving strict paths for invariants.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies."
+          ],
+          "correct": 1,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: session token store is experiencing issues under critical invariant on stock decrement. What is the primary diagnosis?",
+          "options": [
+            "Only average CPU can diagnose replication-path problems.",
+            "Current read/write path design for session token store is mismatched to critical invariant on stock decrement, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions."
+          ],
+          "correct": 1,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change with tenant-priority controls?",
+          "options": [
+            "Introduce endpoint-level consistency contracts tied to business correctness impact.",
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally."
+          ],
+          "correct": 0,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Scenario: checkout cart store is experiencing issues under cost pressure on quorum reads. What is the primary diagnosis?",
+          "options": [
+            "Current read/write path design for checkout cart store is mismatched to cost pressure on quorum reads, causing freshness/correctness incidents.",
+            "Quorum policy never affects stale-read outcomes in practice.",
+            "Replica health should not influence routing decisions.",
+            "Only average CPU can diagnose replication-path problems."
+          ],
+          "correct": 0,
+          "explanation": "The symptoms indicate read/write-path and quorum-policy mismatch with business consistency requirements."
+        },
+        {
+          "question": "After confirming diagnosis, what is the strongest next change while containing blast radius?",
+          "options": [
+            "Disable all follower reads and keep one universal policy forever.",
+            "Use random replica selection and rely on retries to mask anomalies.",
+            "Delay all policy changes until all incidents stop naturally.",
+            "Use region-aware quorum policy to avoid unhealthy replica participation."
+          ],
+          "correct": 3,
+          "explanation": "Targeted quorum/path adjustments by endpoint criticality usually outperform blanket one-size policies."
+        }
+      ]
+    },
+    {
+      "id": "cc-qr-061",
+      "type": "multi-select",
+      "question": "Which are common reasons to use tunable consistency? (Select all that apply)",
+      "options": [
+        "Different endpoints have different correctness needs",
+        "Latency/cost differs by quorum level",
+        "All entities require identical guarantees",
+        "Need explicit degraded-mode behavior"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Tunable consistency lets teams align guarantees to entity/endpoint semantics."
+    },
+    {
+      "id": "cc-qr-062",
+      "type": "multi-select",
+      "question": "R+W>N quorum overlap helps with which outcomes? (Select all that apply)",
+      "options": [
+        "Lower stale-read risk",
+        "Higher chance latest write is observed",
+        "Guaranteed zero latency",
+        "Stronger read-after-write behavior"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Overlap improves freshness confidence but does not eliminate latency costs."
+    },
+    {
+      "id": "cc-qr-063",
+      "type": "multi-select",
+      "question": "Follower-read safety can be improved by which controls? (Select all that apply)",
+      "options": [
+        "Replica lag checks before serving",
+        "Bounded staleness thresholds",
+        "Ignoring read source metadata",
+        "Leader fallback for critical reads"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Lag-aware routing and fallback controls reduce stale-read incidents."
+    },
+    {
+      "id": "cc-qr-064",
+      "type": "multi-select",
+      "question": "Which are valid replication read-path strategies? (Select all that apply)",
+      "options": [
+        "Leader-only for critical entities",
+        "Follower/replica reads for tolerant paths",
+        "Random unhealthy replica selection",
+        "Hybrid path by endpoint criticality"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Read paths should be intentionally mapped to endpoint consistency requirements."
+    },
+    {
+      "id": "cc-qr-065",
+      "type": "multi-select",
+      "question": "During partitions, availability-priority mode may include which? (Select all that apply)",
+      "options": [
+        "Serve bounded-stale non-critical reads",
+        "Protect invariant-critical write paths",
+        "Disable all correctness checks",
+        "Expose degraded semantics explicitly"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Graceful degradation should preserve critical correctness and communicate semantics."
+    },
+    {
+      "id": "cc-qr-066",
+      "type": "multi-select",
+      "question": "Useful replication observability dimensions include which? (Select all that apply)",
+      "options": [
+        "Replica lag distribution",
+        "Read source breakdown (leader/follower)",
+        "Only host uptime",
+        "Quorum success/failure rates"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Freshness and quorum behavior need direct telemetry."
+    },
+    {
+      "id": "cc-qr-067",
+      "type": "multi-select",
+      "question": "Which anti-patterns cause stale-read incidents? (Select all that apply)",
+      "options": [
+        "Replica routing with no lag gates",
+        "No endpoint-level guarantee mapping",
+        "Leader fallback for critical reads",
+        "Assuming lag is always negligible"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Implicit assumptions and ungated replica reads commonly break user expectations."
+    },
+    {
+      "id": "cc-qr-068",
+      "type": "multi-select",
+      "question": "Read-repair and anti-entropy primarily help with which? (Select all that apply)",
+      "options": [
+        "Convergence of eventually consistent replicas",
+        "Repairing divergent copies over time",
+        "Immediate strict serial ordering",
+        "Reducing long-lived divergence"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "These mechanisms improve eventual convergence, not instant strictness."
+    },
+    {
+      "id": "cc-qr-069",
+      "type": "multi-select",
+      "question": "When should leader reads be preferred? (Select all that apply)",
+      "options": [
+        "Post-write critical confirmation",
+        "Double-spend/oversell-sensitive checks",
+        "Low-stakes analytics dashboards",
+        "Invariant validation paths"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Leader/quorum reads fit paths where stale data is high risk."
+    },
+    {
+      "id": "cc-qr-070",
+      "type": "multi-select",
+      "question": "Which strategies reduce quorum cost without harming critical correctness? (Select all that apply)",
+      "options": [
+        "Scope strict quorums to critical entities",
+        "Use weaker reads on tolerant endpoints",
+        "Apply strongest quorum globally by default",
+        "Document endpoint-specific policies"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Targeted strictness controls cost while preserving critical guarantees."
+    },
+    {
+      "id": "cc-qr-071",
+      "type": "multi-select",
+      "question": "Regional health-aware routing should account for which? (Select all that apply)",
+      "options": [
+        "Replica lag and error rates",
+        "Quorum reachability in current region state",
+        "Only static host count",
+        "Dependency health for read paths"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Routing decisions should include dynamic health and quorum viability."
+    },
+    {
+      "id": "cc-qr-072",
+      "type": "multi-select",
+      "question": "Which incidents often indicate quorum settings are too weak? (Select all that apply)",
+      "options": [
+        "Frequent read-after-write misses",
+        "Inconsistent cross-device state views",
+        "Zero stale-read complaints despite lag",
+        "Invariant drift under concurrent writes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "These symptoms signal insufficient overlap/guarantees for required semantics."
+    },
+    {
+      "id": "cc-qr-073",
+      "type": "multi-select",
+      "question": "Good endpoint consistency contracts include which? (Select all that apply)",
+      "options": [
+        "Freshness/ordering expectation",
+        "Error semantics under degradation",
+        "Ambiguous “eventually updated” wording only",
+        "Routing/quorum behavior summary"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Contracts should make behavior explicit for clients and operators."
+    },
+    {
+      "id": "cc-qr-074",
+      "type": "multi-select",
+      "question": "Which are realistic costs of stronger write quorums? (Select all that apply)",
+      "options": [
+        "Higher write latency",
+        "Potential lower availability during failures",
+        "Guaranteed lower cloud bill",
+        "Higher tail under stressed links"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Stronger writes improve correctness but increase latency/availability pressure."
+    },
+    {
+      "id": "cc-qr-075",
+      "type": "multi-select",
+      "question": "For mixed criticality data, useful design patterns include which? (Select all that apply)",
+      "options": [
+        "Separate strict and tolerant endpoints",
+        "Entity-tiered consistency policy",
+        "One global policy with no exceptions",
+        "Freshness metadata in responses"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Tiered policies and explicit metadata support nuanced behavior safely."
+    },
+    {
+      "id": "cc-qr-076",
+      "type": "multi-select",
+      "question": "During failover recovery, which checks are high value? (Select all that apply)",
+      "options": [
+        "Replica lag convergence",
+        "Quorum success normalization",
+        "Ignoring stale-read metrics",
+        "Invariant validation samples"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Recovery should verify freshness, quorum health, and invariant integrity."
+    },
+    {
+      "id": "cc-qr-077",
+      "type": "multi-select",
+      "question": "Which practices reduce consistency bugs in client behavior? (Select all that apply)",
+      "options": [
+        "Version tokens in follow-up requests",
+        "Retry semantics aware of stale/unavailable responses",
+        "Blind retry to random replicas",
+        "Monotonic-session routing where needed"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Client semantics and routing choices can preserve or break consistency guarantees."
+    },
+    {
+      "id": "cc-qr-078",
+      "type": "numeric-input",
+      "question": "Replication write rate is 7,500 ops/sec with 1.8s lag. Approximate unreplicated ops in lag window?",
+      "answer": 13500,
+      "unit": "ops",
+      "tolerance": 0.02,
+      "explanation": "7,500 * 1.8 = 13,500 ops."
+    },
+    {
+      "id": "cc-qr-079",
+      "type": "numeric-input",
+      "question": "Service handles 3,200,000 reads/day. Stale-read rate is 0.25%. Stale reads/day?",
+      "answer": 8000,
+      "unit": "reads",
+      "tolerance": 0.02,
+      "explanation": "0.0025 * 3,200,000 = 8,000."
+    },
+    {
+      "id": "cc-qr-080",
+      "type": "numeric-input",
+      "question": "Quorum cluster has N=7. Minimum R+W sum to satisfy overlap condition R+W>N?",
+      "answer": 8,
+      "unit": "quorum-sum",
+      "tolerance": 0,
+      "explanation": "Need sum greater than 7, minimum is 8."
+    },
+    {
+      "id": "cc-qr-081",
+      "type": "numeric-input",
+      "question": "Leader read p99 is 420ms, follower read p99 is 260ms. Percent latency increase using leader reads?",
+      "answer": 61.54,
+      "unit": "%",
+      "tolerance": 0.5,
+      "explanation": "(420-260)/260 = 61.54% increase."
+    },
+    {
+      "id": "cc-qr-082",
+      "type": "numeric-input",
+      "question": "Read-after-write flows are 90,000/hour. Success rate is 98.4%. Failures/hour?",
+      "answer": 1440,
+      "unit": "flows",
+      "tolerance": 0.03,
+      "explanation": "1.6% of 90,000 = 1,440."
+    },
+    {
+      "id": "cc-qr-083",
+      "type": "numeric-input",
+      "question": "Bounded staleness target is 1.2s. Observed lag is 0.9s. Remaining freshness budget?",
+      "answer": 0.3,
+      "unit": "seconds",
+      "tolerance": 0.05,
+      "explanation": "1.2 - 0.9 = 0.3s."
+    },
+    {
+      "id": "cc-qr-084",
+      "type": "numeric-input",
+      "question": "A cluster has 15 replicas and 2 unavailable. What percent replicas are available?",
+      "answer": 86.67,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "13/15 = 86.67% available."
+    },
+    {
+      "id": "cc-qr-085",
+      "type": "numeric-input",
+      "question": "Strict endpoint traffic is 12,000 req/min at $0.00035 per request. Cost per hour?",
+      "answer": 252,
+      "unit": "USD",
+      "tolerance": 0.02,
+      "explanation": "12,000*60 = 720,000; *0.00035 = $252."
+    },
+    {
+      "id": "cc-qr-086",
+      "type": "numeric-input",
+      "question": "Catch-up process replays 2,400 ops/sec with backlog 1,200,000 ops. Seconds to catch up (no new writes)?",
+      "answer": 500,
+      "unit": "seconds",
+      "tolerance": 0,
+      "explanation": "1,200,000 / 2,400 = 500 seconds."
+    },
+    {
+      "id": "cc-qr-087",
+      "type": "numeric-input",
+      "question": "Monotonic-read violation rate is 0.12% over 5,000,000 reads/day. Violations/day?",
+      "answer": 6000,
+      "unit": "reads",
+      "tolerance": 0.03,
+      "explanation": "0.0012 * 5,000,000 = 6,000."
+    },
+    {
+      "id": "cc-qr-088",
+      "type": "numeric-input",
+      "question": "A policy shifts 30% of critical reads to leader path from follower at 40,000 reads/min. Leader reads/min added?",
+      "answer": 12000,
+      "unit": "reads/min",
+      "tolerance": 0.02,
+      "explanation": "0.30 * 40,000 = 12,000 reads/min."
+    },
+    {
+      "id": "cc-qr-089",
+      "type": "numeric-input",
+      "question": "Quorum success is 99.7% across 4,200,000 operations/day. Failed quorum ops/day?",
+      "answer": 12600,
+      "unit": "ops",
+      "tolerance": 0.03,
+      "explanation": "0.3% of 4,200,000 = 12,600."
+    },
+    {
+      "id": "cc-qr-090",
+      "type": "ordering",
+      "question": "Order a read/write path design process.",
+      "items": [
+        "Classify endpoint/entity criticality",
+        "Define per-class consistency guarantees",
+        "Implement routing/quorum policy",
+        "Measure anomalies and tune"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Design should flow from semantics to implementation and validation."
+    },
+    {
+      "id": "cc-qr-091",
+      "type": "ordering",
+      "question": "Order by increasing stale-read risk (typical).",
+      "items": [
+        "Leader read after write",
+        "Version-checked follower read",
+        "Ungated follower read",
+        "Cross-region ungated follower read under lag"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk increases as routing/version safeguards weaken."
+    },
+    {
+      "id": "cc-qr-092",
+      "type": "ordering",
+      "question": "Order by increasing write-path coordination cost.",
+      "items": [
+        "Single-replica ack",
+        "Weak quorum write",
+        "Strong quorum write",
+        "Global synchronous multi-region write"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Stronger/ broader coordination usually raises latency and failure sensitivity."
+    },
+    {
+      "id": "cc-qr-093",
+      "type": "ordering",
+      "question": "Order stale-read incident response steps.",
+      "items": [
+        "Scope affected endpoints and entities",
+        "Correlate with lag/read-source telemetry",
+        "Apply targeted routing/quorum change",
+        "Add regression tests and alerts"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Scope, diagnose, mitigate, then harden."
+    },
+    {
+      "id": "cc-qr-094",
+      "type": "ordering",
+      "question": "Order by strongest fit for invariant-critical operations.",
+      "items": [
+        "Leader/quorum strict path",
+        "Bounded-staleness with fallback",
+        "Session-only guarantees",
+        "Best-effort eventual follower reads"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Critical invariants require stronger guarantees."
+    },
+    {
+      "id": "cc-qr-095",
+      "type": "ordering",
+      "question": "Order consistency policy maturity.",
+      "items": [
+        "Implicit defaults",
+        "Ad hoc team conventions",
+        "Documented endpoint contracts",
+        "Documented + automated conformance validation"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity grows with explicit, testable contracts."
+    },
+    {
+      "id": "cc-qr-096",
+      "type": "ordering",
+      "question": "Order failover read-path safety from weakest to strongest.",
+      "items": [
+        "Random replica selection",
+        "Health-only routing",
+        "Health+lag-gated routing",
+        "Health+lag+criticality-aware routing"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Safety improves as routing includes more correctness-relevant signals."
+    },
+    {
+      "id": "cc-qr-097",
+      "type": "ordering",
+      "question": "Order by increasing operational complexity.",
+      "items": [
+        "Single global consistency mode",
+        "Two-tier criticality policy",
+        "Per-endpoint tunable policy",
+        "Per-endpoint + per-region dynamic policy"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "More granular adaptivity increases policy complexity."
+    },
+    {
+      "id": "cc-qr-098",
+      "type": "ordering",
+      "question": "Order rollout safety for quorum policy changes.",
+      "items": [
+        "Canary subset",
+        "Gradual traffic expansion",
+        "Observe anomaly/freshness SLOs",
+        "Finalize contracts and runbooks"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Progressive rollout with verification reduces risk."
+    },
+    {
+      "id": "cc-qr-099",
+      "type": "ordering",
+      "question": "Order by increasing partition tolerance (availability-biased).",
+      "items": [
+        "Global sync strict path",
+        "Strong quorum path",
+        "Session + bounded staleness mode",
+        "Eventual tolerant mode with explicit degradation"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Availability under partitions generally increases as strict coordination decreases."
+    },
+    {
+      "id": "cc-qr-100",
+      "type": "ordering",
+      "question": "Order mitigation options from tactical to strategic.",
+      "items": [
+        "Temporary leader-read routing for critical endpoint",
+        "Add lag gates for follower reads",
+        "Define endpoint-tiered consistency policy",
+        "Rework data ownership and replication topology"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Immediate routing changes are fastest; topology redesign is longer-term."
+    }
+  ]
+}

@@ -16,7 +16,7 @@
   - [x] Chapter 1: Consistency Models Fundamentals — 100 problems (read/write consistency guarantees, user-visible anomaly diagnosis, session guarantees, bounded staleness, endpoint-level consistency trade-offs)
         Scope: Core read/write consistency guarantees and how they affect user-visible behavior under replication.
         Key concepts: linearizability, sequential consistency, causal consistency, eventual consistency, session guarantees.
-  - [ ] Chapter 2: Quorums, Replication & Read/Write Paths
+  - [x] Chapter 2: Quorums, Replication & Read/Write Paths — 100 problems (quorum overlap trade-offs, leader/follower read-path design, tunable consistency by endpoint criticality, lag-aware routing, failover/degraded-mode consistency policy)
         Scope: Replicated data-path choices and how quorum math impacts latency, durability, and stale-read risk.
         Key concepts: leader/follower replication, quorum reads/writes, tunable consistency, read repair, anti-entropy.
   - [ ] Chapter 3: Time, Ordering & Causality

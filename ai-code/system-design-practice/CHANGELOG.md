@@ -8,12 +8,15 @@
 - Fixed root `package.json` from `"type": "commonjs"` to `"type": "module"` so ES module test files load correctly under Node v24.
 - Test count: 100 engine + UI wiring, 6 config, 2 bootstrap (108 total).
 
-## Unit 8: Consistency & Coordination (in progress — 100 problems so far)
+## Unit 8: Consistency & Coordination (in progress — 200 problems so far)
 
 1. Consistency Models Fundamentals (100 problems) — Linearizability/sequential/causal/eventual consistency trade-offs, user-visible anomaly diagnosis, session guarantees, bounded staleness, and endpoint-level guarantee selection by invariant criticality
+2. Quorums, Replication & Read/Write Paths (100 problems) — Leader/follower read-path design, quorum overlap math, endpoint-tiered tunable consistency, lag-aware routing, degraded-mode replication policy, and stale-read mitigation controls
 
 - Chapter 1 completed and validated with config/content tests: added 100 mixed-type problems (`cc-cm-001` to `cc-cm-100`) and marked the chapter as ready in `config.js`.
 - Chapter 1 review/fix pass completed: removed duplicate prompt patterns in multiple-choice items, eliminated uncertainty-marker wording artifacts, and tightened consistency-model mitigation framing for endpoint-level guarantee selection.
+- Chapter 2 completed and validated with config/content tests: added 100 mixed-type problems (`cc-qr-001` to `cc-qr-100`) and marked the chapter as ready in `config.js`.
+- Chapter 2 review/fix pass completed: removed duplicate prompt patterns in multiple-choice items, diversified quorum/replication scenario framing, and tightened mitigation explanations around endpoint-tiered read/write-path policy choices.
 
 ## Unit 7: Scaling Compute (complete — 800 problems)
 
