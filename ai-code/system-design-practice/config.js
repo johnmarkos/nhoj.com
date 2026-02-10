@@ -164,7 +164,7 @@ export const CONFIG = {
         {
           num: 4,
           title: "Redundancy, Replication & Failover Strategy",
-          ready: false,
+          ready: true,
         },
         {
           num: 5,

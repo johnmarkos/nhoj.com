@@ -2,6 +2,11 @@
 
 ## Unit 9: Reliability (in progress)
 
+- Chapter 4 completed and validated with config/content tests: added 100 mixed-type problems (`rel-rf-001` to `rel-rf-100`) and marked the chapter as ready in `config.js`.
+- Chapter 4 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
+
+4. Redundancy, Replication & Failover Strategy (100 problems)
+
 - Chapter 3 completed and validated with config/content tests: added 100 mixed-type problems (`rel-ca-001` to `rel-ca-100`) and marked the chapter as ready in `config.js`.
 - Chapter 3 review/fix pass completed: removed repetitive prompt patterns, verified answer-key correctness, and tightened explanations for stronger reliability trade-off reasoning.
 

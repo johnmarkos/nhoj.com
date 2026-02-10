@@ -23,7 +23,7 @@
   - [x] Chapter 3: Circuit Breakers, Load Shedding & Admission Control
         Scope: Protecting systems under stress by bounding concurrency and failing safely before saturation cascades.
         Key concepts: circuit states, fail-open/fail-closed trade-offs, token/leaky-bucket admission, priority shedding, brownout control.
-  - [ ] Chapter 4: Redundancy, Replication & Failover Strategy
+  - [x] Chapter 4: Redundancy, Replication & Failover Strategy
         Scope: Building availability with N+1 capacity, multi-AZ/region redundancy, and safe failover/failback procedures.
         Key concepts: active-active vs active-passive reliability trade-offs, hot/warm/cold standby, failover runbooks, quorum-aware failback.
   - [ ] Chapter 5: Graceful Degradation & Dependency Isolation
