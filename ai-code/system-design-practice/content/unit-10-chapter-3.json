@@ -1,0 +1,1636 @@
+{
+  "unit": 10,
+  "unitTitle": "Classic Designs Decomposed",
+  "chapter": 3,
+  "chapterTitle": "URL Shortener Core Architecture",
+  "chapterDescription": "Decompose short-link creation and redirect serving paths with key generation, correctness, and safety constraints.",
+  "problems": [
+    {
+      "id": "cd-us-001",
+      "type": "multiple-choice",
+      "question": "Case Alpha: short-link creation API. Dominant risk is key collision under concurrent create requests. Which next move is strongest? The team needs a mitigation that can be canaried in under an hour.",
+      "options": [
+        "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-002",
+      "type": "multiple-choice",
+      "question": "Case Beta: key generation service. Dominant risk is redirect latency spikes from cold metadata fetches. Which next move is strongest? Recent traffic growth exposed this bottleneck repeatedly.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Cache redirect metadata at edge with short TTL and explicit invalidation hooks.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-003",
+      "type": "multiple-choice",
+      "question": "Case Gamma: redirect resolver. Dominant risk is abuse links bypassing validation path. Which next move is strongest? Leadership asked for a fix that reduces recurrence, not just MTTR.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Run synchronous abuse/security guardrails on creation before key persistence.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-004",
+      "type": "multiple-choice",
+      "question": "Case Delta: alias reservation path. Dominant risk is expired links served due to stale edge cache. Which next move is strongest? A previous rollback fixed averages but not tail impact.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Separate hot-link routing from long-tail storage reads using tiered cache strategy."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-005",
+      "type": "multiple-choice",
+      "question": "Case Epsilon: link metadata store. Dominant risk is hot-key traffic on viral links overloading origin. Which next move is strongest? User trust risk is highest on this path.",
+      "options": [
+        "Enforce alias reservation with transactional uniqueness and ownership verification.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-006",
+      "type": "multiple-choice",
+      "question": "Case Zeta: abuse detection pre-check. Dominant risk is alias race conditions causing ownership conflicts. Which next move is strongest? A shared dependency has uncertain health right now.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Decouple analytics writes from redirect critical path with async durable queue.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-007",
+      "type": "multiple-choice",
+      "question": "Case Eta: TTL/expiration scheduler. Dominant risk is write path blocking on slow analytics dependencies. Which next move is strongest? The change must preserve cost discipline during peak.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-008",
+      "type": "multiple-choice",
+      "question": "Case Theta: global redirect edge layer. Dominant risk is eventual consistency causing transient 404 after creation. Which next move is strongest? Telemetry shows risk concentrated in one partition class.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Shard key generation and avoid single sequencer dependence for global scale."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-009",
+      "type": "multiple-choice",
+      "question": "Case Iota: custom domain mapping service. Dominant risk is counter-based key service becoming single bottleneck. Which next move is strongest? The product team accepts graceful degradation, not silent corruption.",
+      "options": [
+        "Treat expiration/deletion updates as high-priority cache invalidation events.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-010",
+      "type": "multiple-choice",
+      "question": "Case Kappa: link ownership management path. Dominant risk is inconsistent policy enforcement across custom domains. Which next move is strongest? Current runbooks are missing explicit ownership for this boundary.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Define policy engine contracts consistently across default and custom domains.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-011",
+      "type": "multiple-choice",
+      "question": "Case Lambda: short-link creation API. Dominant risk is key collision under concurrent create requests. Which next move is strongest? A cross-region path recently changed behavior after migration.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-012",
+      "type": "multiple-choice",
+      "question": "Case Mu: key generation service. Dominant risk is redirect latency spikes from cold metadata fetches. Which next move is strongest? Client retries are already elevated and can amplify mistakes.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Cache redirect metadata at edge with short TTL and explicit invalidation hooks."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-013",
+      "type": "multiple-choice",
+      "question": "Case Nu: redirect resolver. Dominant risk is abuse links bypassing validation path. Which next move is strongest? Capacity headroom exists but only in specific pools.",
+      "options": [
+        "Run synchronous abuse/security guardrails on creation before key persistence.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-014",
+      "type": "multiple-choice",
+      "question": "Case Xi: alias reservation path. Dominant risk is expired links served due to stale edge cache. Which next move is strongest? A partial failure is masking itself as success in metrics.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Separate hot-link routing from long-tail storage reads using tiered cache strategy.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-015",
+      "type": "multiple-choice",
+      "question": "Case Omicron: link metadata store. Dominant risk is hot-key traffic on viral links overloading origin. Which next move is strongest? This fix must hold under celebrity or campaign spike conditions.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Enforce alias reservation with transactional uniqueness and ownership verification.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-016",
+      "type": "multiple-choice",
+      "question": "Case Pi: abuse detection pre-check. Dominant risk is alias race conditions causing ownership conflicts. Which next move is strongest? SLO burn suggests immediate containment plus follow-up hardening.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Decouple analytics writes from redirect critical path with async durable queue."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-017",
+      "type": "multiple-choice",
+      "question": "Case Rho: TTL/expiration scheduler. Dominant risk is write path blocking on slow analytics dependencies. Which next move is strongest? On-call requested a reversible operational first step.",
+      "options": [
+        "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-018",
+      "type": "multiple-choice",
+      "question": "Case Sigma: global redirect edge layer. Dominant risk is eventual consistency causing transient 404 after creation. Which next move is strongest? The system mixes strict and eventual paths with unclear contracts.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Shard key generation and avoid single sequencer dependence for global scale.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-019",
+      "type": "multiple-choice",
+      "question": "Case Tau: custom domain mapping service. Dominant risk is counter-based key service becoming single bottleneck. Which next move is strongest? A hot-key pattern is likely from real traffic skew.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Treat expiration/deletion updates as high-priority cache invalidation events.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-020",
+      "type": "multiple-choice",
+      "question": "Case Upsilon: link ownership management path. Dominant risk is inconsistent policy enforcement across custom domains. Which next move is strongest? The path must remain mobile-latency friendly under stress.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Define policy engine contracts consistently across default and custom domains."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-021",
+      "type": "multiple-choice",
+      "question": "Case Phi: short-link creation API. Dominant risk is key collision under concurrent create requests. Which next move is strongest? Compliance requires explicit behavior for edge-case failures.",
+      "options": [
+        "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-022",
+      "type": "multiple-choice",
+      "question": "Case Chi: key generation service. Dominant risk is redirect latency spikes from cold metadata fetches. Which next move is strongest? This boundary has failed during the last two game days.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Cache redirect metadata at edge with short TTL and explicit invalidation hooks.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-023",
+      "type": "multiple-choice",
+      "question": "Case Psi: redirect resolver. Dominant risk is abuse links bypassing validation path. Which next move is strongest? A cache invalidation gap has customer-visible impact.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Run synchronous abuse/security guardrails on creation before key persistence.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-024",
+      "type": "multiple-choice",
+      "question": "Case Omega: alias reservation path. Dominant risk is expired links served due to stale edge cache. Which next move is strongest? Dependency retries currently exceed safe server limits.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Separate hot-link routing from long-tail storage reads using tiered cache strategy."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-025",
+      "type": "multiple-choice",
+      "question": "Case Atlas: link metadata store. Dominant risk is hot-key traffic on viral links overloading origin. Which next move is strongest? The fix should avoid broad architectural rewrites this quarter.",
+      "options": [
+        "Enforce alias reservation with transactional uniqueness and ownership verification.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-026",
+      "type": "multiple-choice",
+      "question": "Case Nova: abuse detection pre-check. Dominant risk is alias race conditions causing ownership conflicts. Which next move is strongest? Current metrics hide per-tenant variance that matters.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Decouple analytics writes from redirect critical path with async durable queue.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-027",
+      "type": "multiple-choice",
+      "question": "Case Orion: TTL/expiration scheduler. Dominant risk is write path blocking on slow analytics dependencies. Which next move is strongest? The fallback path is under-tested in production-like load.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-028",
+      "type": "multiple-choice",
+      "question": "Case Vega: global redirect edge layer. Dominant risk is eventual consistency causing transient 404 after creation. Which next move is strongest? A control-plane issue is bleeding into data-plane reliability.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Shard key generation and avoid single sequencer dependence for global scale."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-029",
+      "type": "multiple-choice",
+      "question": "Case Helios: custom domain mapping service. Dominant risk is counter-based key service becoming single bottleneck. Which next move is strongest? The system must preserve critical events over bulk traffic.",
+      "options": [
+        "Treat expiration/deletion updates as high-priority cache invalidation events.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-030",
+      "type": "multiple-choice",
+      "question": "Case Aurora: link ownership management path. Dominant risk is inconsistent policy enforcement across custom domains. Which next move is strongest? Recent deploys changed queue and timeout settings together.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Define policy engine contracts consistently across default and custom domains.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-031",
+      "type": "multiple-choice",
+      "question": "Case Nimbus: short-link creation API. Dominant risk is key collision under concurrent create requests. Which next move is strongest? The edge layer is healthy but origin saturation is growing.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-032",
+      "type": "multiple-choice",
+      "question": "Case Pulse: key generation service. Dominant risk is redirect latency spikes from cold metadata fetches. Which next move is strongest? Operational complexity is rising faster than team onboarding.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents.",
+        "Cache redirect metadata at edge with short TTL and explicit invalidation hooks."
+      ],
+      "correct": 3,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-033",
+      "type": "multiple-choice",
+      "question": "Case Forge: redirect resolver. Dominant risk is abuse links bypassing validation path. Which next move is strongest? Stakeholders need clear trade-off rationale in the postmortem.",
+      "options": [
+        "Run synchronous abuse/security guardrails on creation before key persistence.",
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 0,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-034",
+      "type": "multiple-choice",
+      "question": "Case Harbor: alias reservation path. Dominant risk is expired links served due to stale edge cache. Which next move is strongest? A localized failure is at risk of becoming cross-region.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Separate hot-link routing from long-tail storage reads using tiered cache strategy.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 1,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-035",
+      "type": "multiple-choice",
+      "question": "Case Vector: link metadata store. Dominant risk is hot-key traffic on viral links overloading origin. Which next move is strongest? Recovery sequencing matters as much as immediate containment.",
+      "options": [
+        "Apply a single global policy across all paths without boundary differentiation.",
+        "Optimize only average latency and defer reliability controls until later.",
+        "Enforce alias reservation with transactional uniqueness and ownership verification.",
+        "Rely on manual intervention as the primary mitigation for repeated incidents."
+      ],
+      "correct": 2,
+      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals."
+    },
+    {
+      "id": "cd-us-036",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for short-link creation API: signal points to expired links served due to stale edge cache. Support tickets confirm this pattern is recurring. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around short-link creation API mismatches expired links served due to stale edge cache, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Decouple analytics writes from redirect critical path with async durable queue.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-037",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for key generation service: signal points to hot-key traffic on viral links overloading origin. The incident timeline shows policy mismatch across services. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around key generation service mismatches hot-key traffic on viral links overloading origin, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-038",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for redirect resolver: signal points to alias race conditions causing ownership conflicts. Last failover drill reproduced the same weakness. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around redirect resolver mismatches alias race conditions causing ownership conflicts, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Shard key generation and avoid single sequencer dependence for global scale."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-039",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for alias reservation path: signal points to write path blocking on slow analytics dependencies. A recent schema change increased failure surface area. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around alias reservation path mismatches write path blocking on slow analytics dependencies, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Treat expiration/deletion updates as high-priority cache invalidation events.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-040",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for link metadata store: signal points to eventual consistency causing transient 404 after creation. A dependency team changed defaults without shared review. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around link metadata store mismatches eventual consistency causing transient 404 after creation, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Define policy engine contracts consistently across default and custom domains.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-041",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for abuse detection pre-check: signal points to counter-based key service becoming single bottleneck. Alert noise is obscuring root-cause signals. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around abuse detection pre-check mismatches counter-based key service becoming single bottleneck, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-042",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for TTL/expiration scheduler: signal points to inconsistent policy enforcement across custom domains. Backlog growth started before CPU looked saturated. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around TTL/expiration scheduler mismatches inconsistent policy enforcement across custom domains, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Cache redirect metadata at edge with short TTL and explicit invalidation hooks."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-043",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for global redirect edge layer: signal points to key collision under concurrent create requests. Canary data points already indicate partial regression. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around global redirect edge layer mismatches key collision under concurrent create requests, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Run synchronous abuse/security guardrails on creation before key persistence.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-044",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for custom domain mapping service: signal points to redirect latency spikes from cold metadata fetches. A single hot tenant now dominates this workload. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around custom domain mapping service mismatches redirect latency spikes from cold metadata fetches, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Separate hot-link routing from long-tail storage reads using tiered cache strategy.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-045",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for link ownership management path: signal points to abuse links bypassing validation path. The current fallback behavior is undocumented for clients. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around link ownership management path mismatches abuse links bypassing validation path, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Enforce alias reservation with transactional uniqueness and ownership verification.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-046",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for short-link creation API: signal points to expired links served due to stale edge cache. Traffic composition changed after a mobile release. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around short-link creation API mismatches expired links served due to stale edge cache, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Decouple analytics writes from redirect critical path with async durable queue."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-047",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for key generation service: signal points to hot-key traffic on viral links overloading origin. This path is business-critical during daily peaks. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around key generation service mismatches hot-key traffic on viral links overloading origin, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-048",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for redirect resolver: signal points to alias race conditions causing ownership conflicts. The same class of issue appeared in a prior quarter. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around redirect resolver mismatches alias race conditions causing ownership conflicts, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Shard key generation and avoid single sequencer dependence for global scale.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-049",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for alias reservation path: signal points to write path blocking on slow analytics dependencies. Error budget policy now requires corrective action. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around alias reservation path mismatches write path blocking on slow analytics dependencies, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Treat expiration/deletion updates as high-priority cache invalidation events.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-050",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for link metadata store: signal points to eventual consistency causing transient 404 after creation. The mitigation needs explicit rollback checkpoints. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around link metadata store mismatches eventual consistency causing transient 404 after creation, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Define policy engine contracts consistently across default and custom domains."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-051",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for abuse detection pre-check: signal points to counter-based key service becoming single bottleneck. Some retries are deterministic failures and should not repeat. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around abuse detection pre-check mismatches counter-based key service becoming single bottleneck, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Use collision-resistant IDs with retry-safe uniqueness checks at write time.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-052",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for TTL/expiration scheduler: signal points to inconsistent policy enforcement across custom domains. A read/write boundary is currently coupled too tightly. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around TTL/expiration scheduler mismatches inconsistent policy enforcement across custom domains, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Cache redirect metadata at edge with short TTL and explicit invalidation hooks.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-053",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for global redirect edge layer: signal points to key collision under concurrent create requests. Global averages hide one region with severe tail latency. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around global redirect edge layer mismatches key collision under concurrent create requests, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Run synchronous abuse/security guardrails on creation before key persistence.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-054",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for custom domain mapping service: signal points to redirect latency spikes from cold metadata fetches. Multiple teams are changing this path concurrently. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around custom domain mapping service mismatches redirect latency spikes from cold metadata fetches, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Separate hot-link routing from long-tail storage reads using tiered cache strategy."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-055",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for link ownership management path: signal points to abuse links bypassing validation path. Only one zone currently has reliable spare capacity. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around link ownership management path mismatches abuse links bypassing validation path, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Enforce alias reservation with transactional uniqueness and ownership verification.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-056",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for short-link creation API: signal points to expired links served due to stale edge cache. Observability exists, but ownership on action is unclear. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around short-link creation API mismatches expired links served due to stale edge cache, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Decouple analytics writes from redirect critical path with async durable queue.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-057",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for key generation service: signal points to hot-key traffic on viral links overloading origin. This risk compounds when demand spikes suddenly. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "The current decomposition around key generation service mismatches hot-key traffic on viral links overloading origin, creating repeated failures.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 1,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Provide read-after-write guarantees for create-to-first-redirect user flow.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 2,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-058",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for redirect resolver: signal points to alias race conditions causing ownership conflicts. The team prefers smallest high-leverage change first. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The current decomposition around redirect resolver mismatches alias race conditions causing ownership conflicts, creating repeated failures.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 2,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward.",
+            "Shard key generation and avoid single sequencer dependence for global scale."
+          ],
+          "correct": 3,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-059",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for alias reservation path: signal points to write path blocking on slow analytics dependencies. Known unknowns remain around stale cache windows. What is the primary diagnosis?",
+          "options": [
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible.",
+            "The current decomposition around alias reservation path mismatches write path blocking on slow analytics dependencies, creating repeated failures."
+          ],
+          "correct": 3,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Treat expiration/deletion updates as high-priority cache invalidation events.",
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 0,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-060",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Incident review for link metadata store: signal points to eventual consistency causing transient 404 after creation. A rollback is possible but expensive if used too broadly. What is the primary diagnosis?",
+          "options": [
+            "The current decomposition around link metadata store mismatches eventual consistency causing transient 404 after creation, creating repeated failures.",
+            "This is normal variance and not a design/control issue.",
+            "More retries alone will resolve this reliably without architectural changes.",
+            "The root cause is unknown, so no targeted diagnosis is possible."
+          ],
+          "correct": 0,
+          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load."
+        },
+        {
+          "question": "After diagnosis, what is the strongest next change?",
+          "options": [
+            "Disable safeguards temporarily to increase short-term throughput.",
+            "Define policy engine contracts consistently across default and custom domains.",
+            "Delay design changes and rely on current runbook only.",
+            "Expand traffic first, then analyze incidents afterward."
+          ],
+          "correct": 1,
+          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap."
+        }
+      ]
+    },
+    {
+      "id": "cd-us-061",
+      "type": "multi-select",
+      "question": "Which signals best identify decomposition boundary mistakes? (Select all that apply)",
+      "options": [
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards",
+        "Dependency saturation by class",
+        "Only global averages without segmentation"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-062",
+      "type": "multi-select",
+      "question": "Which controls improve safety on critical write paths? (Select all that apply)",
+      "options": [
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls",
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-063",
+      "type": "multi-select",
+      "question": "Which practices reduce hot-key or hot-partition impact? (Select all that apply)",
+      "options": [
+        "Queue isolation for heavy producers",
+        "Single partition for all traffic classes",
+        "Adaptive sharding for hot entities",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-064",
+      "type": "multi-select",
+      "question": "What improves reliability when mixing sync and async paths? (Select all that apply)",
+      "options": [
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes",
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-065",
+      "type": "multi-select",
+      "question": "Which choices usually lower operational risk at scale? (Select all that apply)",
+      "options": [
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria",
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-066",
+      "type": "multi-select",
+      "question": "What should be explicit in API/service contracts for this design? (Select all that apply)",
+      "options": [
+        "Per-endpoint consistency/freshness policy",
+        "Explicit fallback behavior matrix",
+        "Implicit behavior based on team memory",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-067",
+      "type": "multi-select",
+      "question": "Which anti-patterns often cause incident recurrence? (Select all that apply)",
+      "options": [
+        "Dependency saturation by class",
+        "Only global averages without segmentation",
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-068",
+      "type": "multi-select",
+      "question": "What increases confidence before broad traffic rollout? (Select all that apply)",
+      "options": [
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries",
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-069",
+      "type": "multi-select",
+      "question": "Which controls protect high-priority traffic during spikes? (Select all that apply)",
+      "options": [
+        "Adaptive sharding for hot entities",
+        "Key-level replication for skewed load",
+        "Queue isolation for heavy producers",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-070",
+      "type": "multi-select",
+      "question": "Which telemetry dimensions are most actionable for design triage? (Select all that apply)",
+      "options": [
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing",
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-071",
+      "type": "multi-select",
+      "question": "Which governance actions improve cross-team reliability ownership? (Select all that apply)",
+      "options": [
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only",
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria"
+      ],
+      "correctIndices": [0, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-072",
+      "type": "multi-select",
+      "question": "What helps prevent retry amplification cascades? (Select all that apply)",
+      "options": [
+        "Implicit behavior based on team memory",
+        "Contracted degraded-mode semantics",
+        "Per-endpoint consistency/freshness policy",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-073",
+      "type": "multi-select",
+      "question": "Which fallback strategies are strong when dependencies degrade? (Select all that apply)",
+      "options": [
+        "Per-boundary latency/error telemetry",
+        "Fault-domain segmented dashboards",
+        "Dependency saturation by class",
+        "Only global averages without segmentation"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-074",
+      "type": "multi-select",
+      "question": "What reduces data-quality regressions in eventual pipelines? (Select all that apply)",
+      "options": [
+        "Explicit timeout budgets per hop",
+        "Priority-aware admission controls",
+        "Unbounded retries during overload",
+        "Idempotency enforcement on retries"
+      ],
+      "correctIndices": [0, 1, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-075",
+      "type": "multi-select",
+      "question": "Which runbook components improve incident execution quality? (Select all that apply)",
+      "options": [
+        "Queue isolation for heavy producers",
+        "Single partition for all traffic classes",
+        "Adaptive sharding for hot entities",
+        "Assume healthy behavior globally without domain-specific evidence"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-076",
+      "type": "multi-select",
+      "question": "Which architecture choices improve blast-radius containment? (Select all that apply)",
+      "options": [
+        "Direct dual-write without reconciliation",
+        "Transactional boundaries for critical writes",
+        "Async outbox for side effects",
+        "Replay-safe dedupe processing"
+      ],
+      "correctIndices": [1, 2, 3],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-077",
+      "type": "multi-select",
+      "question": "What evidence demonstrates a fix worked beyond short-term recovery? (Select all that apply)",
+      "options": [
+        "Canary rollout with rollback gates",
+        "Runbook ownership and abort criteria",
+        "Capacity headroom by priority class",
+        "Manual ad hoc response only"
+      ],
+      "correctIndices": [0, 1, 2],
+      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety."
+    },
+    {
+      "id": "cd-us-078",
+      "type": "numeric-input",
+      "question": "A critical path handles 5,400,000 requests/day and 0.18% fail SLO. Failures/day?",
+      "answer": 9720,
+      "unit": "requests",
+      "tolerance": 0.03,
+      "explanation": "0.0018*5,400,000=9,720."
+    },
+    {
+      "id": "cd-us-079",
+      "type": "numeric-input",
+      "question": "Queue ingest is 2,200 events/min and drain is 2,530 events/min. Net drain rate?",
+      "answer": 330,
+      "unit": "events/min",
+      "tolerance": 0,
+      "explanation": "2,530-2,200=330."
+    },
+    {
+      "id": "cd-us-080",
+      "type": "numeric-input",
+      "question": "Retries add 0.28 extra attempts at 75,000 req/sec. Effective attempts/sec?",
+      "answer": 96000,
+      "unit": "attempts/sec",
+      "tolerance": 0.02,
+      "explanation": "75,000*1.28=96,000."
+    },
+    {
+      "id": "cd-us-081",
+      "type": "numeric-input",
+      "question": "Failover takes 16s and occurs 24 times/day. Total failover seconds/day?",
+      "answer": 384,
+      "unit": "seconds",
+      "tolerance": 0,
+      "explanation": "16*24=384."
+    },
+    {
+      "id": "cd-us-082",
+      "type": "numeric-input",
+      "question": "Target p99 is 650ms; observed p99 is 845ms. Percent over target?",
+      "answer": 30,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(845-650)/650=30%."
+    },
+    {
+      "id": "cd-us-083",
+      "type": "numeric-input",
+      "question": "If 34% of 130,000 req/min are high-priority, how many high-priority req/min?",
+      "answer": 44200,
+      "unit": "requests/min",
+      "tolerance": 0.02,
+      "explanation": "0.34*130,000=44,200."
+    },
+    {
+      "id": "cd-us-084",
+      "type": "numeric-input",
+      "question": "Error rate drops from 1.0% to 0.22%. Percent reduction?",
+      "answer": 78,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(1.0-0.22)/1.0=78%."
+    },
+    {
+      "id": "cd-us-085",
+      "type": "numeric-input",
+      "question": "A 9-node quorum cluster requires majority writes. Minimum acknowledgements?",
+      "answer": 5,
+      "unit": "acks",
+      "tolerance": 0,
+      "explanation": "Majority of 9 is 5."
+    },
+    {
+      "id": "cd-us-086",
+      "type": "numeric-input",
+      "question": "Backlog is 56,000 tasks with net drain 350 tasks/min. Minutes to clear?",
+      "answer": 160,
+      "unit": "minutes",
+      "tolerance": 0,
+      "explanation": "56,000/350=160."
+    },
+    {
+      "id": "cd-us-087",
+      "type": "numeric-input",
+      "question": "A fleet has 18 zones and 3 are unavailable. Percent remaining available?",
+      "answer": 83.33,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "15/18=83.33%."
+    },
+    {
+      "id": "cd-us-088",
+      "type": "numeric-input",
+      "question": "MTTR improved from 52 min to 34 min. Percent reduction?",
+      "answer": 34.62,
+      "unit": "%",
+      "tolerance": 0.3,
+      "explanation": "(52-34)/52=34.62%."
+    },
+    {
+      "id": "cd-us-089",
+      "type": "numeric-input",
+      "question": "If 11% of 2,800,000 daily ops need manual checks, checks/day?",
+      "answer": 308000,
+      "unit": "operations",
+      "tolerance": 0.02,
+      "explanation": "0.11*2,800,000=308,000."
+    },
+    {
+      "id": "cd-us-090",
+      "type": "ordering",
+      "question": "Order a classic-design decomposition workflow.",
+      "items": [
+        "Identify critical user journey and invariants",
+        "Split request path into atomic components",
+        "Assign reliability/scale controls per boundary",
+        "Validate with load/failure drills and refine"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Start with outcomes/invariants, then decompose, control, and validate."
+    },
+    {
+      "id": "cd-us-091",
+      "type": "ordering",
+      "question": "Order by increasing design risk.",
+      "items": [
+        "Explicit boundaries with contracts",
+        "Shared dependency with safeguards",
+        "Shared dependency without safeguards",
+        "Implicit coupling with no ownership"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Risk rises as boundaries and ownership degrade."
+    },
+    {
+      "id": "cd-us-092",
+      "type": "ordering",
+      "question": "Order safe incident mitigation steps.",
+      "items": [
+        "Scope blast radius and affected flows",
+        "Contain with guardrails and admission controls",
+        "Apply targeted root-cause fix",
+        "Run recurrence checks and hardening actions"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Scope, contain, fix, then harden."
+    },
+    {
+      "id": "cd-us-093",
+      "type": "ordering",
+      "question": "Order by increasing retry-control maturity.",
+      "items": [
+        "Fixed immediate retries",
+        "Capped exponential retries",
+        "Capped retries with jitter",
+        "Jittered retries with retry budgets and telemetry"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Maturity improves with safeguards and observability."
+    },
+    {
+      "id": "cd-us-094",
+      "type": "ordering",
+      "question": "Order fallback sophistication.",
+      "items": [
+        "Implicit fallback behavior",
+        "Manual fallback toggles",
+        "Documented fallback matrix",
+        "Policy-driven automated fallback with tests"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Sophistication rises with explicit policy and automation."
+    },
+    {
+      "id": "cd-us-095",
+      "type": "ordering",
+      "question": "Order failover validation rigor.",
+      "items": [
+        "Host health check only",
+        "Health plus freshness checks",
+        "Health/freshness plus staged traffic shift",
+        "Staged shift plus failback rehearsal and rollback gates"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Rigor increases with validation and reversible control."
+    },
+    {
+      "id": "cd-us-096",
+      "type": "ordering",
+      "question": "Order by increasing blast radius.",
+      "items": [
+        "Single process failure",
+        "Single node failure",
+        "Single zone failure",
+        "Cross-region control-plane failure"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Blast radius expands from local failures to regional control issues."
+    },
+    {
+      "id": "cd-us-097",
+      "type": "ordering",
+      "question": "Order data-path durability confidence.",
+      "items": [
+        "In-memory only acknowledgment",
+        "Single durable write",
+        "Replicated durable write",
+        "Replicated durable write plus replay/integrity verification"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Durability confidence grows with replication and verification."
+    },
+    {
+      "id": "cd-us-098",
+      "type": "ordering",
+      "question": "Order by increasing operational discipline.",
+      "items": [
+        "Ad hoc incident response",
+        "Named responder roles",
+        "Role-based response with timeline",
+        "Role-based response plus action closure tracking"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Discipline improves with structure and accountability."
+    },
+    {
+      "id": "cd-us-099",
+      "type": "ordering",
+      "question": "Order rollout safety for major design changes.",
+      "items": [
+        "Canary small cohort",
+        "Monitor guardrail metrics",
+        "Expand traffic gradually",
+        "Finalize runbook and ownership updates"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Rollout should progress from limited exposure to institutionalization."
+    },
+    {
+      "id": "cd-us-100",
+      "type": "ordering",
+      "question": "Order evidence strength for fix success.",
+      "items": [
+        "Single successful test run",
+        "Short canary stability",
+        "Sustained SLO recovery in production",
+        "Sustained recovery plus failure-drill pass"
+      ],
+      "correctOrder": [0, 1, 2, 3],
+      "explanation": "Evidence strength rises with sustained production and drill results."
+    }
+  ]
+}

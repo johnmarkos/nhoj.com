@@ -21,7 +21,7 @@
   - [x] Chapter 2: Twitter/X Timeline Ranking, Serving & Reliability
         Scope: Ranking pipeline decomposition, cache policy, freshness/consistency boundaries, and operational controls.
         Key concepts: ranking stages, cache layering, freshness SLA, invalidation, feed-serving fault containment.
-  - [ ] Chapter 3: URL Shortener Core Architecture
+  - [x] Chapter 3: URL Shortener Core Architecture
         Scope: Atomic design of short-link creation, key generation, redirect serving, and correctness constraints.
         Key concepts: ID generation (counter/hash/snowflake), collision handling, redirect latency path, abuse controls.
   - [ ] Chapter 4: URL Shortener Scale, Analytics & Operations
