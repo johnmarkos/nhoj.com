@@ -48,7 +48,7 @@ Features that go beyond what OpenQuizzer provides generically.
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [ ] **Source citations** — Link problems to DDIA chapters, papers, or blog posts where relevant
+- [ ] **Expandable mini-lessons** — Add a `detailedExplanation` field to each problem with a 2-4 sentence mini-lesson and an optional reference link (DDIA chapter, blog post, Wikipedia, etc.). The existing short `explanation` stays as-is for quick feedback. The engine shows a "Learn more" toggle that expands the detailed explanation on demand. Two-part effort: (1) OpenQuizzer engine support for the new field + toggle UI, (2) bulk-generate detailed explanations for ~8,000 problems.
 
 ## Maybe
 
