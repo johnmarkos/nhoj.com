@@ -143,8 +143,10 @@ class FakeElement {
 
 function matchesSelector(element, selector) {
   if (selector === ".chapter-btn[data-original-text]") {
-    return element.classList.contains("chapter-btn") &&
-      Object.prototype.hasOwnProperty.call(element.dataset, "originalText");
+    return (
+      element.classList.contains("chapter-btn") &&
+      Object.prototype.hasOwnProperty.call(element.dataset, "originalText")
+    );
   }
   if (selector === ".option-btn") {
     return element.classList.contains("option-btn");
@@ -155,7 +157,7 @@ function matchesSelector(element, selector) {
       element.classList.contains("multi-select")
     );
   }
-  if (selector.startsWith("[data-index=\"")) {
+  if (selector.startsWith('[data-index="')) {
     const expected = selector.slice(13, -2);
     return element.dataset.index === expected;
   }
@@ -263,19 +265,38 @@ function extractModuleScript(html) {
   return match[1];
 }
 
-function runIndexScript({ config, document, window, navigator }) {
+function stripImports(code) {
+  // Strip single-line imports and multi-line import { ... } from "..." blocks
+  return code
+    .replace(
+      /^\s*import\s+(?:\{[^}]*\}|\w+)\s+from\s+["'][^"']*["'];?\s*$/gm,
+      "",
+    )
+    .replace(/^\s*import\s*\{[\s\S]*?\}\s*from\s*["'][^"']*["'];?\s*$/gm, "");
+}
+
+function runIndexScript({
+  config,
+  document,
+  window,
+  navigator,
+  localStorage,
+  confirm,
+}) {
   const html = readFileSync(join(__dirname, "index.html"), "utf8");
-  const moduleBody = extractModuleScript(html).replace(
-    /^\s*import\s+.*$/gm,
-    "",
-  );
+  const moduleBody = stripImports(extractModuleScript(html));
 
   const run = new Function(
     "OpenQuizzer",
+    "validateSessionSummary",
+    "deduplicateSessions",
+    "computeAggregateStats",
     "CONFIG",
     "document",
     "window",
     "navigator",
+    "localStorage",
+    "confirm",
     "fetch",
     "setTimeout",
     "clearTimeout",
@@ -285,10 +306,27 @@ function runIndexScript({ config, document, window, navigator }) {
 
   run(
     MockOpenQuizzer,
+    (obj) => ({ valid: true, errors: [] }),
+    (sessions) => sessions,
+    (sessions) => ({
+      sessionCount: sessions.length,
+      totalAnswered: 0,
+      totalCorrect: 0,
+      overallPercentage: 0,
+      totalSkipped: 0,
+      byType: {},
+      byTag: {},
+      byUnit: {},
+      byChapter: {},
+      trend: [],
+      mostMissed: [],
+    }),
     config,
     document,
     window,
     navigator,
+    localStorage,
+    confirm,
     async () => ({ ok: true, json: async () => ({}) }),
     (fn) => fn(),
     () => {},
@@ -343,12 +381,47 @@ describe("index bootstrap smoke test", () => {
     "landing-title",
     "landing-description",
     "back-link-container",
+    // v2.8: dashboard and history elements
+    "dashboard",
+    "dashboard-overview",
+    "dashboard-trend",
+    "dashboard-by-type",
+    "dashboard-by-tag",
+    "dashboard-by-unit",
+    "dashboard-most-missed",
+    "dashboard-back-btn",
+    "export-all-btn",
+    "clear-history-btn",
+    "dashboard-export-status",
+    "results-dashboard-btn",
+    "history-section",
+    "history-summary-text",
+    "dashboard-btn",
+    "load-history-btn",
+    "import-area",
+    "import-textarea",
+    "import-submit-btn",
+    "import-cancel-btn",
+    "import-status",
   ];
 
-function buildTestContext() {
+  function buildTestContext() {
     const { document, byId } = createFakeDocument(requiredIds);
     const window = { scrollTo() {} };
     const navigator = { clipboard: { writeText: async () => {} } };
+    const localStorage = {
+      _store: new Map(),
+      getItem(key) {
+        return this._store.get(key) ?? null;
+      },
+      setItem(key, value) {
+        this._store.set(key, String(value));
+      },
+      removeItem(key) {
+        this._store.delete(key);
+      },
+    };
+    const confirm = () => true;
     const config = {
       title: "System Design Practice",
       description: "Practice",
@@ -366,14 +439,22 @@ function buildTestContext() {
         },
       ],
     };
-    return { document, byId, window, navigator, config };
+    return { document, byId, window, navigator, localStorage, confirm, config };
   }
 
   it("initializes without throwing and binds critical controls", () => {
-    const { document, byId, window, navigator, config } = buildTestContext();
+    const { document, byId, window, navigator, localStorage, confirm, config } =
+      buildTestContext();
 
     assert.doesNotThrow(() => {
-      runIndexScript({ config, document, window, navigator });
+      runIndexScript({
+        config,
+        document,
+        window,
+        navigator,
+        localStorage,
+        confirm,
+      });
     });
 
     const backHandlers = byId.get("back-btn").listeners.get("click") || [];
@@ -383,8 +464,16 @@ function buildTestContext() {
   });
 
   it("handles quit flow for a partial session without throwing", () => {
-    const { document, byId, window, navigator, config } = buildTestContext();
-    runIndexScript({ config, document, window, navigator });
+    const { document, byId, window, navigator, localStorage, confirm, config } =
+      buildTestContext();
+    runIndexScript({
+      config,
+      document,
+      window,
+      navigator,
+      localStorage,
+      confirm,
+    });
 
     const quiz = MockOpenQuizzer.lastInstance;
     quiz.state = "practicing";

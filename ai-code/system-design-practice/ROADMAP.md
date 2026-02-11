@@ -23,15 +23,15 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 - [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
   - Tagging taxonomy: align with the 10 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
 
-### OpenQuizzer v2.8: Session Import & Aggregate View
+### OpenQuizzer v2.8: Session History & Aggregate Dashboard
 
-- [ ] **Upgrade engine/UI** — Copy from upstream after v2.8 ships
-- [ ] No instance-specific work expected — session summaries already include chapter/unit context from v2.7. Aggregate dashboard shows per-unit and per-tag accuracy percentages automatically.
+- [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8. Updated bootstrap test for new DOM elements and globals.
+- [x] No instance-specific work needed — session history with localStorage auto-save, paste-back import/export, and aggregate dashboard (per-unit/tag accuracy) work with existing content out of the box.
 
-### OpenQuizzer v2.9: localStorage Persistence & Elo Scores
+### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
 - [ ] **Upgrade engine/UI** — Copy from upstream after v2.9 ships
-- [ ] No instance-specific work expected — auto-save, spaced repetition, and Elo proficiency scores per unit/tag work with existing content. The aggregate dashboard upgrades from simple accuracy % to difficulty-weighted Elo ratings.
+- [ ] No instance-specific work expected — per-problem tracking, Elo proficiency scores, and spaced repetition work with existing content.
 
 ### OpenQuizzer v3.0: File Import/Export
 
