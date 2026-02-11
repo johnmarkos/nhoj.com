@@ -6,6 +6,7 @@ import {
   deduplicateSessions,
   computeAggregateStats,
 } from "./openquizzer.js";
+import { CONFIG } from "./config.js";
 
 // =============================================
 // Test fixtures
@@ -1945,27 +1946,27 @@ describe("index.html UI wiring contracts", () => {
   });
 
   // -----------------------------------------
-  // Instance meta tag customization
+  // Static meta tags match CONFIG
   // -----------------------------------------
   //
-  // The static <title> and <meta description> must match this instance's
-  // CONFIG values so that link preview crawlers (which don't run JS) show
-  // the correct title and description.
+  // The static <title> and <meta description> must match CONFIG values
+  // so link preview crawlers (which don't run JS) show the correct info.
+  // In the template repo, CONFIG has the generic defaults; in instances,
+  // CONFIG has instance-specific values. Either way, the static HTML
+  // must agree with CONFIG.
 
-  describe("instance meta tag customization", () => {
+  describe("static meta tags match CONFIG", () => {
     it("static <title> matches CONFIG.title", () => {
       assert.ok(
-        html.includes("<title>System Design Practice</title>"),
-        "static <title> must match CONFIG.title for link preview crawlers",
+        html.includes(`<title>${CONFIG.title}</title>`),
+        `static <title> does not match CONFIG.title ("${CONFIG.title}") — update the <title> tag in index.html`,
       );
     });
 
     it("static meta description matches CONFIG.description", () => {
       assert.ok(
-        html.includes(
-          'content="Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes."',
-        ),
-        "static meta description must match CONFIG.description for link preview crawlers",
+        html.includes(`content="${CONFIG.description}"`),
+        `static meta description does not match CONFIG.description — update the <meta description> tag in index.html`,
       );
     });
   });

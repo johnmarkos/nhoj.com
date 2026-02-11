@@ -39,9 +39,8 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 
 **Tests:**
 
-- `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing) and UI wiring contract tests (function definitions, event bindings, DOM references, meta tag customization)
+- `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing) and UI wiring contract tests (function definitions, event bindings, DOM references, meta tag verification against CONFIG)
 - `node --test config.test.js` — Config and content validation (syntax, structure, duplicate IDs)
-- `node --test index.bootstrap.test.js` — UI bootstrap smoke test for `index.html` wiring (DOM bindings, no init-time reference errors)
 
 **Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs all three test suites plus Prettier when SDP files are staged. This catches syntax errors, invalid content, and formatting issues before they reach production.
 
@@ -51,10 +50,10 @@ This is an **OpenQuizzer instance**. Three files come from the OpenQuizzer templ
 
 - **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently. Copied verbatim from OpenQuizzer.
 - **`index.html`** — All HTML, CSS, and UI logic. Imports the engine and config, renders questions based on engine events, delegates user actions to engine methods. Copied from OpenQuizzer, then the static `<title>` and `<meta description>` tags are customized for this instance (crawlers like Slack don't run JS, so the static HTML must have the right values).
-- **`openquizzer.test.js`** — Engine and UI wiring contract tests. Copied from OpenQuizzer, then the "template placeholder integrity" tests are replaced with instance-specific tests that verify the meta tags match this instance's config.
+- **`openquizzer.test.js`** — Engine and UI wiring contract tests. Copied verbatim from OpenQuizzer — no instance-specific edits needed. Meta tag tests import CONFIG and verify dynamically.
 - **`config.js`** — Instance-specific: title, description, back-link, and units/chapters catalog. Never overwritten during upgrades.
 
-**Upgrade path:** Copy `openquizzer.js`, `openquizzer.test.js`, and `index.html` from the OpenQuizzer repo (`/home/nhoj/Documents/learning/web/openquizzer/`). Then customize: (1) update the static `<title>` and `<meta description>` in `index.html` to match `config.js`, (2) replace the "template placeholder integrity" tests in `openquizzer.test.js` with instance-specific meta tag checks. `config.js` and `content/` are untouched.
+**Upgrade path:** Copy `openquizzer.js`, `openquizzer.test.js`, and `index.html` from the OpenQuizzer repo (`/home/nhoj/Documents/learning/web/openquizzer/`). Then update the static `<title>` and `<meta description>` in `index.html` to match `config.js`. That's it — all three files are otherwise copy-verbatim. `config.js` and `content/` are untouched.
 
 **OpenQuizzer relationship:** The OpenQuizzer repo is canonical for the engine and generic UI. This project is an instance that consumes those files. When the engine or UI changes in OpenQuizzer, copy the files here.
 
@@ -281,6 +280,6 @@ Insights captured from development:
 
 - Instance-specific content (title, description, units, back-link) belongs in `config.js`, not `index.html`
 - `index.html` is copied from OpenQuizzer with two instance-specific edits: the static `<title>` and `<meta description>` tags (for link preview crawlers that don't run JS). Everything else in `index.html` stays identical to the template.
-- `openquizzer.test.js` is copied from OpenQuizzer with one customization: the "template placeholder integrity" tests are replaced with instance-specific tests that verify meta tags have been updated.
+- `openquizzer.test.js` is copied verbatim — meta tag tests import CONFIG and check dynamically, so no instance-specific edits are needed.
 - `openquizzer.js` is always copied verbatim — no instance edits.
-- When upgrading from OpenQuizzer, copy all three files, apply the two `index.html` meta tag edits, swap the placeholder tests in `openquizzer.test.js`, then verify all tests pass.
+- When upgrading from OpenQuizzer, copy all three files, apply the two `index.html` meta tag edits, then verify all tests pass.

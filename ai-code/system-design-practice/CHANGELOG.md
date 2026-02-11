@@ -1,12 +1,18 @@
 # Changelog
 
+## Simplify upgrade path, remove bootstrap test (2026-02-10)
+
+- Updated `openquizzer.test.js` from upstream — now copy-verbatim (meta tag tests import CONFIG and check dynamically, no instance-specific test swapping needed).
+- Removed `index.bootstrap.test.js` — the UI wiring contract tests in `openquizzer.test.js` cover the regressions this test was meant to catch, and the bootstrap test required manual mock updates on every upstream upgrade.
+- Removed bootstrap test from pre-commit hook.
+- Updated `AGENTS.md` upgrade path: now just copy 3 files + edit 2 lines in `index.html`.
+- Test count: 174 engine + UI wiring, 6 config (180 total).
+
 ## OpenQuizzer upgrade — v2.8 session history & aggregate dashboard (2026-02-10)
 
 - Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.8 (session history with localStorage persistence, paste-back import/export, aggregate dashboard, session validation/deduplication).
 - Customized static `<title>` and `<meta description>` in `index.html` for link preview crawlers.
-- Replaced template placeholder integrity tests in `openquizzer.test.js` with instance-specific meta tag checks.
-- Updated `index.bootstrap.test.js` for v2.8: added new DOM element IDs (dashboard, history, import), mocked `localStorage` and `confirm`, fixed multi-line import stripping, and passed standalone utility functions.
-- Test count: 174 engine + UI wiring, 6 config, 2 bootstrap (182 total).
+- Test count: 174 engine + UI wiring, 6 config (180 total).
 
 ## Unit 10: Classic Designs Decomposed (complete — 800 problems)
 
