@@ -41,7 +41,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 Features that go beyond what OpenQuizzer provides generically.
 
-- [ ] **Skill grid** — FitStar-style visual display of Elo scores across all 10 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
+- [ ] **Skill grid** — Visual display of Elo scores across all 10 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
 - [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v3.0).
 
 ## Content Quality
