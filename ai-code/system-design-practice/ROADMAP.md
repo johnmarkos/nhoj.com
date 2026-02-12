@@ -31,7 +31,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 ### OpenQuizzer v2.8.1: Expandable Mini-Lessons
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
-- [ ] **Bulk-generate detailed explanations** — Add `detailedExplanation` to ~8,000 problems with 2-4 sentence mini-lessons and optional reference links. Problems without it degrade gracefully (no toggle shown).
+- [ ] **Bulk-generate detailed explanations** — Add `detailedExplanation` to ~8,000 problems with 2-4 sentence mini-lessons and optional reference links. Problems without it degrade gracefully (no toggle shown). Progress: Unit 1 Chapter 1 done (50 problems). Remaining: ~7,950 problems across 79 chapters.
 
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
@@ -53,7 +53,7 @@ Features that go beyond what OpenQuizzer provides generically.
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [ ] **Expandable mini-lessons** — Bulk-generate `detailedExplanation` for ~8,000 problems with 2-4 sentence HTML mini-lessons and optional reference links. Engine/UI support shipped in v2.8.1 (see above). Problems without `detailedExplanation` degrade gracefully.
+- [ ] **Expandable mini-lessons** — Bulk-generate `detailedExplanation` for ~8,000 problems with 2-4 sentence HTML mini-lessons and optional reference links. Engine/UI support shipped in v2.8.1 (see above). Problems without `detailedExplanation` degrade gracefully. Unit 1 Chapter 1 complete (50 problems); remaining work across 79 chapters.
 
 ## Maybe
 
