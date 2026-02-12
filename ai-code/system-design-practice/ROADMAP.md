@@ -28,6 +28,11 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8. Updated bootstrap test for new DOM elements and globals.
 - [x] No instance-specific work needed — session history with localStorage auto-save, paste-back import/export, and aggregate dashboard (per-unit/tag accuracy) work with existing content out of the box.
 
+### OpenQuizzer v2.8.1: Expandable Mini-Lessons
+
+- [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
+- [ ] **Bulk-generate detailed explanations** — Add `detailedExplanation` to ~8,000 problems with 2-4 sentence mini-lessons and optional reference links. Problems without it degrade gracefully (no toggle shown).
+
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
 - [ ] **Upgrade engine/UI** — Copy from upstream after v2.9 ships
@@ -48,7 +53,7 @@ Features that go beyond what OpenQuizzer provides generically.
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [ ] **Expandable mini-lessons** — Add a `detailedExplanation` field to each problem with a 2-4 sentence mini-lesson and an optional reference link (DDIA chapter, blog post, Wikipedia, etc.). The existing short `explanation` stays as-is for quick feedback. The engine shows a "Learn more" toggle that expands the detailed explanation on demand. Two-part effort: (1) OpenQuizzer engine support for the new field + toggle UI, (2) bulk-generate detailed explanations for ~8,000 problems.
+- [ ] **Expandable mini-lessons** — Bulk-generate `detailedExplanation` for ~8,000 problems with 2-4 sentence HTML mini-lessons and optional reference links. Engine/UI support shipped in v2.8.1 (see above). Problems without `detailedExplanation` degrade gracefully.
 
 ## Maybe
 
