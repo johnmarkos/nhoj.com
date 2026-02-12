@@ -1,5 +1,12 @@
 # Changelog
 
+## OpenQuizzer upgrade — v2.8.1 expandable mini-lessons (2026-02-11)
+
+- Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.8.1 (optional `detailedExplanation` field, "Learn more" toggle UI).
+- Customized static `<title>` and `<meta description>` in `index.html`.
+- No instance-specific work needed — engine and UI are ready. Problems without `detailedExplanation` behave exactly as before; adding the field to any problem will show the toggle automatically.
+- Test count: 182 engine + UI wiring, 6 config (188 total).
+
 ## Simplify upgrade path, remove bootstrap test (2026-02-10)
 
 - Updated `openquizzer.test.js` from upstream — now copy-verbatim (meta tag tests import CONFIG and check dynamically, no instance-specific test swapping needed).
