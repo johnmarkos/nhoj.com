@@ -1,5 +1,12 @@
 # Changelog
 
+## OpenQuizzer upgrade — v2.8.2 references + POC content (2026-02-13)
+
+- Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.8.2 (optional `references` field — array of `{ title, url }` further reading links).
+- Customized static `<title>` and `<meta description>` in `index.html`.
+- Added `references` to 5 problems in Unit 1 Chapter 1 as a POC: ref-010 (latency hierarchy), ref-019 (availability SLOs), ref-022 (Redis benchmarks), ref-025 (UUID RFC), ref-050 (error budgets). Sources include Google SRE Book, Redis docs, IETF RFCs, and Jeff Dean's latency numbers.
+- Test count: 189 engine + UI wiring, 6 config (195 total).
+
 ## OpenQuizzer upgrade — v2.8.1 expandable mini-lessons (2026-02-11)
 
 - Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.8.1 (optional `detailedExplanation` field, "Learn more" toggle UI).
