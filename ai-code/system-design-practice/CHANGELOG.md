@@ -1,5 +1,26 @@
 # Changelog
 
+## Review hardening pass (2026-02-15)
+
+- Ran a full-project audit for duplicate stems, weak type usage, and obvious low-effort quality defects.
+- Fixed concrete content issues:
+  - converted 3 single-answer `multi-select` problems to `multiple-choice`:
+    - `content/unit-1-chapter-2.json` (`time-m007`)
+    - `content/unit-3-chapter-3.json` (`page-056`)
+    - `content/unit-6-chapter-4.json` (`msg-pat-063`)
+  - removed an exact duplicate ordering problem in `content/unit-1-chapter-3.json` by rewriting `stor-o009`
+  - replaced duplicated `*-084` numeric prompts across all Unit 12 chapters with chapter-specific calculations (`int-*-084`)
+  - diversified repeated ordering prompt stems for Unit 11/12 ordering blocks (`*-090` through `*-100`) to eliminate within-chapter stem repetition
+  - added chapter-context qualifiers to Unit 11/12 numeric block prompts (`*-078` through `*-089`) to reduce cross-chapter cloning
+- Quality metrics after pass:
+  - within-file duplicate question stem groups: `0`
+  - exact duplicate problem groups (ignoring IDs): `0`
+  - single-answer multi-select count: `0`
+  - top cross-project duplicate question count reduced to `5` (from `16`)
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+
 ## Unit 11 + Unit 12 completion and quality hardening (2026-02-15)
 
 - Added full content for Unit 11 and Unit 12:
