@@ -206,5 +206,61 @@ export const CONFIG = {
         },
       ],
     },
+    {
+      id: 11,
+      title: "Security, Privacy & Abuse Resistance",
+      chapters: [
+        { num: 1, title: "Threat Modeling & Attack Surfaces", ready: false },
+        { num: 2, title: "AuthN/AuthZ & Identity Boundaries", ready: false },
+        { num: 3, title: "Data Protection & Secrets Management", ready: false },
+        { num: 4, title: "Abuse Prevention & Anti-Automation", ready: false },
+        {
+          num: 5,
+          title: "Fraud Detection Signals & Controls",
+          ready: false,
+        },
+        {
+          num: 6,
+          title: "Privacy, Compliance & Data Governance",
+          ready: false,
+        },
+        {
+          num: 7,
+          title: "Security Operations & Incident Response",
+          ready: false,
+        },
+        {
+          num: 8,
+          title: "Security & Abuse Scenarios",
+          ready: false,
+        },
+      ],
+    },
+    {
+      id: 12,
+      title: "Interview Execution & Design Communication",
+      chapters: [
+        { num: 1, title: "Scoping & Requirement Negotiation", ready: false },
+        { num: 2, title: "Constraint Framing & Assumptions", ready: false },
+        { num: 3, title: "Interface and Data Flow Articulation", ready: false },
+        { num: 4, title: "Trade-off Narratives Under Pressure", ready: false },
+        {
+          num: 5,
+          title: "Capacity Reasoning in Live Whiteboarding",
+          ready: false,
+        },
+        { num: 6, title: "Failure-Mode Discussion Quality", ready: false },
+        {
+          num: 7,
+          title: "Review, Defend, and Iterate the Design",
+          ready: false,
+        },
+        {
+          num: 8,
+          title: "Mock Interview Scenarios",
+          ready: false,
+        },
+      ],
+    },
   ],
 };

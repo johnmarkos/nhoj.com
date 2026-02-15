@@ -82,7 +82,7 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 
 ## Content Structure
 
-**10 units planned** (see `ROADMAP.md` for current progress):
+**12 units in roadmap** (first 10 complete; see `ROADMAP.md` for current progress):
 
 1. Estimation (complete — 1,007 problems, 8 chapters)
 2. Data Modeling (complete — 800 problems, 8 chapters)
@@ -216,7 +216,7 @@ Insights captured from development:
 
 - Use the author/reviewer dialogue pattern — reviewer critiques, author responds, iterate until consensus
 - Check for: inline styles (use CSS classes), proper error handling, accessibility (ARIA labels, focus management), race conditions (disable buttons during async ops)
-- Review code with scale in mind — what works for 1 chapter may not work for 10 units × 8 chapters
+- Review code with scale in mind — what works for 1 chapter may not work for 12 units × 8 chapters
 - When adding state fields, audit all functions that read/write state (especially reset functions like `backToMenu()` and `retry()`)
 
 **Content review:**

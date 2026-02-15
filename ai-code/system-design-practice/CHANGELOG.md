@@ -1,5 +1,19 @@
 # Changelog
 
+## Quality pass — question-level repetition reduction + curriculum scaffold (2026-02-15)
+
+- Ran a targeted question-text repetition audit and rewrite pass:
+  - rewrote high-frequency repeated problem stems (especially reliability chapter template prompts)
+  - rewrote high-frequency repeated two-stage follow-up prompts with scenario/context anchors
+  - ensured repeated stems are varied without changing answer keys/options
+- Repetition metrics after pass (exact string duplicates):
+  - Problem-question max repeat reduced to 5
+  - Stage-question max repeat reduced to 6
+- Added curriculum expansion scaffolding for identified L6 coverage gaps:
+  - Added Unit 11 and Unit 12 to `config.js` as `ready: false` chapter plans
+  - Added matching roadmap items under “Later (Curriculum Expansion)”
+- Tests passed: `config.test.js` and `openquizzer.test.js`
+
 ## Quality pass — detailedExplanation relevance and variation (2026-02-15)
 
 - Re-ran a harsh content quality loop across all chapters with focus on learner experience in random practice mode.

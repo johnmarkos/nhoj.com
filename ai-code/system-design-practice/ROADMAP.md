@@ -54,6 +54,11 @@ Features that go beyond what OpenQuizzer provides generically.
 - [ ] **Skill grid** — Visual display of Elo scores across all 10 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
 - [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v3.0).
 
+## Later (Curriculum Expansion)
+
+- [ ] **Unit 11: Security, Privacy & Abuse Resistance** — Fill a major L6 gap not covered as a first-class unit today. Planned chapters: threat modeling, AuthN/AuthZ boundaries, data protection/secrets, abuse prevention, fraud controls, privacy/compliance, security operations, integrated security scenarios.
+- [ ] **Unit 12: Interview Execution & Design Communication** — Add explicit interview-performance practice beyond technical correctness. Planned chapters: scoping, assumptions, narrative structure, trade-off articulation, live capacity reasoning, failure discussion quality, design defense/iteration, mock interview scenarios.
+
 ## Content Quality
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
