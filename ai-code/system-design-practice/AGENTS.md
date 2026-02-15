@@ -82,7 +82,7 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 
 ## Content Structure
 
-**12 units in roadmap** (first 10 complete; see `ROADMAP.md` for current progress):
+**12 units in roadmap** (all 12 complete; see `ROADMAP.md` for current progress):
 
 1. Estimation (complete — 1,007 problems, 8 chapters)
 2. Data Modeling (complete — 800 problems, 8 chapters)
@@ -90,10 +90,12 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 4. Storage Selection (complete — 800 problems, 8 chapters)
 5. Caching (complete — 800 problems, 8 chapters)
 6. Messaging & Async (complete — 770 problems, 8 chapters)
-7. Scaling Compute (in progress)
-8. Consistency & Coordination
-9. Reliability
-10. Classic Designs Decomposed
+7. Scaling Compute (complete — 800 problems, 8 chapters)
+8. Consistency & Coordination (complete — 800 problems, 8 chapters)
+9. Reliability (complete — 800 problems, 8 chapters)
+10. Classic Designs Decomposed (complete — 800 problems, 8 chapters)
+11. Security, Privacy & Abuse Resistance (complete — 800 problems, 8 chapters)
+12. Interview Execution & Design Communication (complete — 800 problems, 8 chapters)
 
 Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
 

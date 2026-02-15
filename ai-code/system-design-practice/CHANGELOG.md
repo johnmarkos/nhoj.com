@@ -1,5 +1,25 @@
 # Changelog
 
+## Unit 11 + Unit 12 completion and quality hardening (2026-02-15)
+
+- Added full content for Unit 11 and Unit 12:
+  - `unit-11-chapter-1.json` through `unit-11-chapter-8.json`
+  - `unit-12-chapter-1.json` through `unit-12-chapter-8.json`
+  - 1,600 new problems total (100 per chapter, mixed question types)
+- Ran iterative review/fix loops focused on learner experience:
+  - removed templated/robotic `detailedExplanation` phrasing
+  - diversified prompt stems and removed repeated label artifacts (e.g., `Alpha/Beta` prefixes)
+  - tightened explanations to explicitly tie answer choice to scenario risk
+  - upgraded references to chapter-appropriate canonical sources and ensured references are present across problem/stage contexts
+  - normalized two-stage diagnosis/action coherence so stage-2 rationale clearly references stage-1 risk
+- Marked Unit 11 and Unit 12 chapters as `ready: true` in `config.js`.
+- Updated project docs for completion state:
+  - `ROADMAP.md`: Units 11/12 moved to done and totals updated to 9,768 problems
+  - `AGENTS.md`: content structure now reflects all 12 units complete
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+
 ## Quality pass — question-level repetition reduction + curriculum scaffold (2026-02-15)
 
 - Ran a targeted question-text repetition audit and rewrite pass:

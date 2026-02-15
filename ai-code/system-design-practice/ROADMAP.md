@@ -12,6 +12,8 @@
 - [x] **Unit 8: Consistency & Coordination** — 8 chapters, 800 problems
 - [x] **Unit 9: Reliability** — 8 chapters, 800 problems
 - [x] **Unit 10: Classic Designs Decomposed** — 8 chapters, 800 problems
+- [x] **Unit 11: Security, Privacy & Abuse Resistance** — 8 chapters, 800 problems
+- [x] **Unit 12: Interview Execution & Design Communication** — 8 chapters, 800 problems
 
 ## Now (Feedback & Progress — via OpenQuizzer upgrades)
 
@@ -21,7 +23,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 - [x] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
 - [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
-  - Tagging taxonomy: align with the 10 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
+  - Tagging taxonomy: align with the 12 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
 
 ### OpenQuizzer v2.8: Session History & Aggregate Dashboard
 
@@ -31,12 +33,12 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 ### OpenQuizzer v2.8.1: Expandable Mini-Lessons
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
-- [x] **Bulk-generate detailed explanations** — Added `detailedExplanation` across all content files (all units/chapters, 8,168 total problems). Two-stage stage-level detailed explanations are also complete.
+- [x] **Bulk-generate detailed explanations** — Added `detailedExplanation` across all content files (all units/chapters, 9,768 total problems). Two-stage stage-level detailed explanations are also complete.
 
 ### OpenQuizzer v2.8.2: References (Further Reading Links)
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.2. Engine passes optional `references` (array of `{ title, url }`) through all result events; UI renders as a compact link list inside the "Learn more" toggle. Either `references` or `detailedExplanation` triggers the toggle independently.
-- [x] **Bulk-add references** — Added `references` across all content files (all units/chapters, 8,168 total problems), with chapter/domain-appropriate canonical sources.
+- [x] **Bulk-add references** — Added `references` across all content files (all units/chapters, 9,768 total problems), with chapter/domain-appropriate canonical sources.
 
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
@@ -51,20 +53,20 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 Features that go beyond what OpenQuizzer provides generically.
 
-- [ ] **Skill grid** — Visual display of Elo scores across all 10 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
+- [ ] **Skill grid** — Visual display of Elo scores across all 12 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
 - [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v3.0).
 
 ## Later (Curriculum Expansion)
 
-- [ ] **Unit 11: Security, Privacy & Abuse Resistance** — Fill a major L6 gap not covered as a first-class unit today. Planned chapters: threat modeling, AuthN/AuthZ boundaries, data protection/secrets, abuse prevention, fraud controls, privacy/compliance, security operations, integrated security scenarios.
-- [ ] **Unit 12: Interview Execution & Design Communication** — Add explicit interview-performance practice beyond technical correctness. Planned chapters: scoping, assumptions, narrative structure, trade-off articulation, live capacity reasoning, failure discussion quality, design defense/iteration, mock interview scenarios.
+- [x] **Unit 11: Security, Privacy & Abuse Resistance** — Completed (8 chapters, 800 problems) with chapter-level review/fix loops and canonical references.
+- [x] **Unit 12: Interview Execution & Design Communication** — Completed (8 chapters, 800 problems) with chapter-level review/fix loops and canonical references.
 
 ## Content Quality
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [x] **Expandable mini-lessons** — `detailedExplanation` complete for all units and chapters (8,168 problems).
-- [x] **Further reading links** — `references` complete for all units and chapters (8,168 problems).
+- [x] **Expandable mini-lessons** — `detailedExplanation` complete for all units and chapters (9,768 problems).
+- [x] **Further reading links** — `references` complete for all units and chapters (9,768 problems).
 
 ## Maybe
 
