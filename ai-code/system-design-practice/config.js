@@ -263,7 +263,7 @@ export const CONFIG = {
         {
           num: 9,
           title:
-            "Curated L6 Hard Set (Ambiguity, Trade-offs, Failure Narratives)",
+            "Curated Staff-Level Hard Set (Ambiguity, Trade-offs, Failure Narratives)",
           ready: true,
         },
       ],

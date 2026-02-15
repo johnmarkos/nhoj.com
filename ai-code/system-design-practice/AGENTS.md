@@ -95,7 +95,7 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 9. Reliability (complete — 800 problems, 8 chapters)
 10. Classic Designs Decomposed (complete — 800 problems, 8 chapters)
 11. Security, Privacy & Abuse Resistance (complete — 800 problems, 8 chapters)
-12. Interview Execution & Design Communication (complete — 876 problems, 9 chapters including curated L6 hard set)
+12. Interview Execution & Design Communication (complete — 876 problems, 9 chapters including curated staff-level hard set)
 
 Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
 
@@ -125,7 +125,7 @@ To add a chapter: create the JSON file, set `ready: true` in the `units` array i
 
 ## Content Guidelines
 
-- **Difficulty:** L5/L6 system design level
+- **Difficulty:** senior/staff-level system design level
 - **Volume:** 50-150 problems per chapter for variety
 - **Problem types:** multiple-choice, numeric-input, ordering, multi-select, two-stage (all implemented)
 - **Good problems:** Multi-step reasoning, real-world scenarios, genuine tradeoffs
@@ -159,7 +159,7 @@ The loop for each chapter:
    - Wrong answers (verify correct indices, math, ordering)
    - Near-duplicate problems (same concept, same structure)
    - Processing artifacts ("Wait", "Hmm", "Let me")
-   - Too-easy definition questions (should be scenario-based for L5/L6)
+   - Too-easy definition questions (should be scenario-based for senior/staff-level)
    - Multi-select issues (all-correct without distractor, single-correct should be MC)
    - Debatable answers, pure arithmetic, ambiguous orderings
    - Thematic over-saturation (>3 problems on the same narrow concept)
@@ -224,17 +224,17 @@ Insights captured from development:
 **Content review:**
 
 - Verify all math in problems — easy to introduce errors
-- "Cannot determine from this data" is a valid L6 answer (tests understanding of what info is needed) but use sparingly
-- Pure unit conversions (seconds in a day) are too easy for L6 — add systems context or cut them
-- Multi-step problems and "gotcha" questions (where the obvious answer is wrong) are good L6 material
+- "Cannot determine from this data" is a valid staff-level answer (tests understanding of what info is needed) but use sparingly
+- Pure unit conversions (seconds in a day) are too easy for staff-level — add systems context or cut them
+- Multi-step problems and "gotcha" questions (where the obvious answer is wrong) are good staff-level material
 
 **Content generation:**
 
 - Generate more problems than needed, expect to cull 10-20%
 - Run automated checks for uncertainty markers ("Hmm", "Wait", "Let me") in explanations — these often indicate math errors that need fixing
-- "Depends on X" answers are valid L6 content when they test real-world nuance (e.g., "depends on database implementation"), but verify each one
+- "Depends on X" answers are valid staff-level content when they test real-world nuance (e.g., "depends on database implementation"), but verify each one
 - Near-duplicate detection and thematic over-saturation are the most common review findings — the most effective fix is replacing one problem in the pair with a different angle on the concept, not just rewording
-- Definition questions ("What is X?") should be reworked into scenarios ("A team encounters Y. What technique solves this, and why?") for L5/L6 difficulty
+- Definition questions ("What is X?") should be reworked into scenarios ("A team encounters Y. What technique solves this, and why?") for senior/staff-level difficulty
 - Pure arithmetic problems need systems context — instead of "5000 × 2 = ?", ask about the business cost or capacity implication of the number
 
 **Content review process:**
