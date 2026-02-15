@@ -1,5 +1,18 @@
 # Changelog
 
+## Quality pass — detailedExplanation relevance and variation (2026-02-15)
+
+- Re-ran a harsh content quality loop across all chapters with focus on learner experience in random practice mode.
+- Rewrote generated `detailedExplanation` text (except Unit 1 Chapter 1 hand-authored content) to remove repetitive boilerplate starts and improve per-question relevance.
+- New detailed explanations are now:
+  - anchored to question/stage wording,
+  - category-aware (reliability/API/cache/messaging/consistency/data/storage/compute/bandwidth/growth/reasonableness),
+  - less robotic in sentence openers and method guidance,
+  - explicitly separated from `explanation` (no leading-text duplication).
+- Validation checks after rewrite:
+  - `0` entries where `detailedExplanation` starts with the corresponding `explanation`
+  - no syntax/content schema test regressions (`config.test.js`, `openquizzer.test.js` pass)
+
 ## Content pass — detailed explanations + references complete for all units (2026-02-15)
 
 - Added missing `detailedExplanation` and `references` fields across all remaining content files (`content/unit-2-chapter-1.json` through `content/unit-10-chapter-8.json`), completing coverage for every problem in the corpus.

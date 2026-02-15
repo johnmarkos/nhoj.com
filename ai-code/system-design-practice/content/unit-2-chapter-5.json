@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Denormalization deliberately adds redundant data (duplicated columns, precomputed values, merged tables) to avoid expensive joins and speed up reads — at the cost of more complex writes.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"denormalization\". Discard modeling choices that look clean but perform poorly for the target queries. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -41,7 +41,7 @@
       ],
       "correct": 1,
       "explanation": "Denormalization speeds up reads (fewer joins, precomputed data) but makes writes harder — every update must maintain consistency across all copies of the duplicated data.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Use \"the primary tradeoff of denormalization\" as your starting point, then verify tradeoffs carefully. Prefer the option that preserves correctness guarantees for the stated consistency boundary. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -69,7 +69,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Denormalize when read performance is critical, joins are too expensive at scale, or analytical queries need pre-aggregated data. Avoiding joins because you don't understand them is not a valid reason.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"valid reasons to denormalize\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -93,7 +93,7 @@
       ],
       "correct": 1,
       "explanation": "Store precomputed avg_rating and review_count on the Products row. Update them when reviews are added/modified. This avoids a join + aggregation on every product page view.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"e-commerce product page shows: product name, price, average rating, and review count\". Discard modeling choices that look clean but perform poorly for the target queries. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -119,7 +119,7 @@
           ],
           "correct": 0,
           "explanation": "Duplicating author_name onto Posts avoids the join entirely. Each feed query reads from a single table.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Read this as a scenario about \"social media app shows a feed with posts and author names\". Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 10M in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "A user changes their display name. What must happen to maintain consistency?",
@@ -131,10 +131,10 @@
           ],
           "correct": 1,
           "explanation": "Every post by that user has a stale copy of the name. You must update all their posts — typically via an async background job, since updating thousands of rows synchronously would be too slow.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"user changes their display name\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Read this as a scenario about \"denormalization\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -158,7 +158,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Index: no data duplication, just a lookup structure. Materialized view: a precomputed snapshot, refreshed periodically. Column duplication: specific fields copied to another table. Full copy: entire dataset duplicated in a different shape.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"rank these strategies from LEAST to MOST redundancy introduced:\". Build the rank from biggest differences first, then refine with adjacent checks. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -186,7 +186,7 @@
       ],
       "correct": 1,
       "explanation": "A materialized view stores the result of a query physically on disk. Unlike a regular view (which re-runs the query each time), it's precomputed. The tradeoff: data can be stale between refreshes.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Start from \"a materialized view\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -214,7 +214,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Materialized views can go stale, cost storage, and refreshing them (especially incrementally) can be expensive. They don't prevent access to underlying tables — you can still query both.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"downsides of materialized views\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -242,7 +242,7 @@
       ],
       "correct": 1,
       "explanation": "A summary/aggregate table precomputes the result. The dashboard reads a few rows instead of scanning millions. Update it via a nightly batch job or incrementally on each order.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"dashboard shows daily revenue broken down by product category\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -262,7 +262,7 @@
       "unit": "x",
       "tolerance": "exact",
       "explanation": "200ms / 5ms = 40x speedup. This is typical for denormalization of multi-join queries into single-table lookups.",
-      "detailedExplanation": "Start with unit normalization, then verify that the final magnitude passes a quick sanity check. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"normalized query joins 4 tables and takes 200ms\". Keep every transformation in one unit system and check order of magnitude at the end. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 4 and 200ms in aligned units before selecting an answer. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -286,7 +286,7 @@
       ],
       "correct": 1,
       "explanation": "A counter cache (e.g., posts_count on the Users table) avoids running COUNT(*) on the Posts table. Increment/decrement it when posts are created/deleted.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"a 'counter cache' in denormalization\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -316,7 +316,7 @@
           ],
           "correct": 0,
           "explanation": "Add a reply_count column to Threads. This eliminates the join and GROUP BY entirely. Each thread listing becomes a simple SELECT from one table.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"forum shows thread listings with reply_count for each thread\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. If values like 1M appear, convert them into one unit basis before comparison. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "How do you keep reply_count accurate?",
@@ -328,10 +328,10 @@
           ],
           "correct": 1,
           "explanation": "Increment/decrement atomically (UPDATE threads SET reply_count = reply_count + 1 WHERE id = ?). This is cheap per-write and always accurate. A daily batch job would leave counts stale.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"you keep reply_count accurate\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 1 appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The core signal here is \"denormalization\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -355,7 +355,7 @@
       ],
       "correctOrder": [0, 1, 3, 2],
       "explanation": "Application code: simplest, just add an extra UPDATE. Triggers: automatic but harder to debug/test. Async workers: decoupled but need message infrastructure. CDC pipeline: most complex, requires dedicated infrastructure (Debezium, Kafka, etc.).",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"rank these denormalization maintenance strategies from SIMPLEST to MOST COMPLEX:\" in view, the correct answer separates faster. Order by relative scale and bottleneck effect, then validate neighboring items. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -383,7 +383,7 @@
       ],
       "correct": 1,
       "explanation": "A fact table holds quantitative, measurable events — each row is a business event (a sale, a page view) with foreign keys pointing to dimension tables (who, what, when, where).",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"in a star schema, what is a 'fact table'\", then pressure-test the result against the options. Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -411,7 +411,7 @@
       ],
       "correct": 1,
       "explanation": "Dimension tables provide the 'who, what, when, where' context. They're typically wide (many columns) and relatively small compared to fact tables. Examples: dim_customer, dim_product, dim_date.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"in a star schema, what is a 'dimension table'\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -435,7 +435,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Star schemas denormalize dimension tables to be wide and flat, optimizing for analytical reads with fewer joins. They're designed for OLAP (analytics), not OLTP (transactional processing).",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"characteristics of star schema design\". Treat every option as a separate true/false test under the same constraints. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -459,7 +459,7 @@
       ],
       "correct": 1,
       "explanation": "A snowflake schema normalizes dimensions — e.g., instead of a flat dim_product with category_name, you'd have dim_product → dim_category. This saves space but adds joins, partially undoing the denormalization benefit.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"distinguishes a snowflake schema from a star schema\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -485,7 +485,7 @@
           ],
           "correct": 0,
           "explanation": "A star schema with fact_sales (revenue, quantity, category_key, date_key) and dimensions (dim_category, dim_date) is purpose-built for this. The query becomes a simple GROUP BY on one or two joins.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"analytics team needs to query: 'total revenue by product category by month\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Keep quantities like 4 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "Should this analytics star schema live in the same database as the OLTP system?",
@@ -497,10 +497,10 @@
           ],
           "correct": 1,
           "explanation": "Analytics queries (full table scans, heavy aggregations) would compete with production transactions for resources. Use a separate data warehouse (or at minimum a read replica) populated via ETL or CDC.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "The decision turns on \"should this analytics star schema live in the same database as the OLTP system\". Do not reset assumptions between stages; carry forward prior constraints directly. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: misreading quorum behavior during failures."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -524,7 +524,7 @@
       ],
       "correct": 1,
       "explanation": "Embedding means storing related data (e.g., addresses) directly inside a parent document (e.g., user) as a nested object or array. This is denormalization — it avoids 'joins' (lookups) at the cost of potential data duplication.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"'embedding' in the context of document databases (e\" as your starting point, then verify tradeoffs carefully. Discard storage decisions that optimize one dimension while violating another core requirement. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -548,7 +548,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "Embed when data is always read together (one query) and bounded in size (won't grow unbounded). Don't embed if data is shared across documents (duplication nightmare) or changes independently and frequently.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"embedding (nesting) data in a document a good choice\". Validate each option independently; do not select statements that are only partially true. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -572,7 +572,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Addresses: bounded, always read with user — ideal. Line items: bounded per order, always read together — good. Comments: unbounded, can grow to thousands — risky. Categories: shared across products — embedding means duplication nightmares.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"rank these data relationships from BEST to WORST candidates for embedding in a document\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -596,7 +596,7 @@
       ],
       "correct": 1,
       "explanation": "Embed lightweight tag data (name, slug) in posts for read performance, but keep a canonical Tags collection for tag metadata (description, creation date). If a tag name changes, update all posts — acceptable for rare tag renames.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"blog platform stores posts and tags\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 1 and 5 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -620,7 +620,7 @@
       ],
       "correct": 1,
       "explanation": "If author_name is stored in 10,000 posts, changing the name requires 10,000 updates instead of 1. This is write amplification — one logical change fans out to many physical writes.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"the 'write amplification' problem in denormalized schemas\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 10,000 and 1 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -640,7 +640,7 @@
       "unit": "rows",
       "tolerance": "exact",
       "explanation": "1 Users row + 5,000 Posts rows = 5,001 total row updates. This is the write amplification cost of denormalization.",
-      "detailedExplanation": "Reduce the problem to base units, compute, and sanity-check the output scale before finalizing. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"user has authored 5,000 posts\" as your starting point, then verify tradeoffs carefully. Keep every transformation in one unit system and check order of magnitude at the end. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Keep quantities like 5,000 and 1 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -666,7 +666,7 @@
           ],
           "correct": 1,
           "explanation": "A seller with 100K products means updating 100K rows on a name change. With 50M total products, these cascading updates can cause significant write load.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"online store has 50M products\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 50M and 100K should be normalized first so downstream reasoning stays consistent. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "What's a practical mitigation for this write amplification?",
@@ -678,10 +678,10 @@
           ],
           "correct": 1,
           "explanation": "Accept eventual consistency — display the (briefly) stale name, and let a background worker propagate the change. Seller name changes are rare; brief staleness is acceptable.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "The decision turns on \"what's a practical mitigation for this write amplification\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -705,7 +705,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All four are valid strategies with different tradeoffs. Triggers: automatic but hidden logic. App-level: explicit but couples writes. Async: decoupled but eventually consistent. Batch reconciliation: safety net for catching drift.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"strategies help manage consistency in denormalized schemas\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -733,7 +733,7 @@
       ],
       "correct": 1,
       "explanation": "Triggers execute invisibly on every qualifying write. Developers may not know they exist, leading to surprising performance issues, unexpected data changes, and difficulty debugging. The logic is hidden from application code.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"the main risk of using database triggers to maintain denormalized data\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -757,7 +757,7 @@
       ],
       "correct": 1,
       "explanation": "With a 1000:1 read-to-write ratio, each denormalized write saves 1000 joins. The math overwhelmingly favors denormalization. The rare extra write cost is insignificant compared to eliminating joins on every read.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"normalized schema has User(id, name) and Post(id, user_id, title)\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Keep quantities like 100K and 100 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -777,7 +777,7 @@
       "unit": ":1",
       "tolerance": "exact",
       "explanation": "50,000 / 500 = 100:1. This is a read-heavy workload where denormalization is likely worthwhile.",
-      "detailedExplanation": "Use base-unit arithmetic plus a magnitude check to keep the estimate robust under time pressure. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"system does 50K reads/sec and 500 writes/sec\", then pressure-test the result against the options. Keep every transformation in one unit system and check order of magnitude at the end. Choose data shape based on workload paths, not on normalization dogma alone. Keep quantities like 50K and 500 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -796,7 +796,7 @@
       "items": ["1:1 (equal reads and writes)", "10:1", "100:1", "1000:1"],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Higher read-to-write ratios benefit more from denormalization. At 1:1, write amplification may not be worth the read savings. At 1000:1, each redundant write saves 1000 joins — an easy win.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"rank these read-to-write ratios from LEAST to MOST likely to benefit from\". Order by relative scale and bottleneck effect, then validate neighboring items. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 1 and 1000 should be normalized first so downstream reasoning stays consistent. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -820,7 +820,7 @@
       ],
       "correct": 1,
       "explanation": "Summary tables store precomputed aggregations — daily sales totals, monthly user counts, etc. Instead of scanning millions of rows, you read one row from the summary table.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"a 'summary table' (also called an 'aggregate table')\" in view, the correct answer separates faster. Reject options that conflict with the primary access pattern or index strategy. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -850,7 +850,7 @@
           ],
           "correct": 1,
           "explanation": "A summary table with one row per customer per month (total_calls, avg_response_ms, error_count) makes the dashboard query trivial. Update it incrementally as events arrive.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"saaS dashboard shows each customer their API usage: total calls this month, average\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 500M should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "How should the summary table be updated?",
@@ -862,10 +862,10 @@
           ],
           "correct": 1,
           "explanation": "Incremental updates are efficient: on each event, increment total_calls, update running average, etc. Full recompute is a fallback for reconciliation, not the primary update path.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The decision turns on \"the summary table be updated\". Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -889,7 +889,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "total_amount, full_name, and review_count are all derivable from other data — they're redundant for convenience. created_at is an original value, not derived from other data.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"examples of precomputed/denormalized columns\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -913,7 +913,7 @@
       ],
       "correct": 1,
       "explanation": "If line items change (quantity updated, item removed) but the denormalized total isn't recalculated, you have an inconsistency — the total doesn't match reality. This is a classic denormalization bug.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"order has line items: [{product: A, qty: 2, price: $10}, {product: B, qty: 1, price:\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 2 and 10 should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -937,7 +937,7 @@
       ],
       "correct": 1,
       "explanation": "Vertical partitioning separates hot columns (read often) from cold columns (read rarely). Example: User(id, name, email) vs UserProfile(user_id, bio, avatar_url). Reduces row size for hot-path queries.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"'table splitting' (vertical partitioning) as a denormalization technique\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -961,7 +961,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Counter caches and precomputed columns are everyday web app patterns. Materialized views are common in reporting. Star schemas are typically reserved for dedicated data warehouses, not application databases.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"rank these denormalization techniques from MOST COMMON to LEAST COMMON in typical web\", then pressure-test the result against the options. Place obvious extremes first, then sort the middle by pairwise comparison. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -985,7 +985,7 @@
       ],
       "correct": 1,
       "explanation": "String concatenation is negligible CPU work. Adding full_name creates a consistency risk (what if first_name changes but full_name doesn't?) for almost zero performance gain. This is over-denormalization.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "The key clue in this question is \"normalized Users table has first_name and last_name\". Discard choices that violate required invariants during concurrent or failed states. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1013,7 +1013,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Frequent inconsistencies mean maintenance isn't keeping up. Multi-table updates indicate too much duplication. Marginal read improvement means the join wasn't the bottleneck. A 5-10% write throughput decrease is a normal, expected tradeoff of denormalization — not a sign of over-denormalization.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"signs you've OVER-denormalized\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Schema and index choices should follow access patterns and write/read amplification constraints. If values like 5 and 10 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1039,7 +1039,7 @@
           ],
           "correct": 1,
           "explanation": "The old email lives in Orders, Comments, and Notifications. Updating just Users leaves stale personal data scattered across the database — a GDPR/privacy issue and a consistency bug.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "The key clue in this question is \"team denormalized user_email onto Orders, Comments, and Notifications tables for\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "What design would have avoided this?",
@@ -1051,10 +1051,10 @@
           ],
           "correct": 0,
           "explanation": "Don't duplicate PII (personally identifiable information) across tables. Keep it in one authoritative location. Join when needed. This is a case where the consistency requirement outweighs the read performance benefit.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "Read this as a scenario about \"design would have avoided this\". Do not reset assumptions between stages; carry forward prior constraints directly. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: using weak consistency for strict invariants."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "If you keep \"denormalization\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1078,7 +1078,7 @@
       ],
       "correct": 1,
       "explanation": "Computed columns (supported by PostgreSQL, MySQL, SQL Server) let the database auto-calculate values like full_name = first_name || ' ' || last_name. Virtual ones compute on read; stored ones persist to disk.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The decision turns on \"a 'computed column' (also called 'generated column' or 'virtual column')\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1106,7 +1106,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Stored computed columns are automatically kept in sync by the database (no stale data), need no app-level maintenance code, and can be indexed. They don't always outperform app caching (Redis, etc.) — that depends on the workload.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"benefits do stored computed columns have over manual denormalization\". Treat every option as a separate true/false test under the same constraints. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1134,7 +1134,7 @@
       ],
       "correct": 1,
       "explanation": "When using async updates for denormalized data, there's a window where the source and copies disagree. The system is 'eventually consistent' — the copies will catch up, but not instantaneously.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"'eventual consistency' in the context of denormalized data\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1162,7 +1162,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Same-transaction: immediate, ACID-guaranteed. Distributed transaction: strong but fragile. Async queue: eventual but reliable. Batch reconciliation: weakest — stale for up to an hour between runs.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"rank these consistency guarantees from STRONGEST to WEAKEST when maintaining\", then pressure-test the result against the options. Place obvious extremes first, then sort the middle by pairwise comparison. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1190,7 +1190,7 @@
       ],
       "correct": 1,
       "explanation": "Same-transaction updates work when both tables are in the same database (no distributed coordination needed) and the added write latency is acceptable. For cross-service or high-throughput writes, async is usually better.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"synchronous denormalized update (same transaction) appropriate\" in view, the correct answer separates faster. Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1220,7 +1220,7 @@
           ],
           "correct": 1,
           "explanation": "In microservices, each service owns its data. The Order Service stores a denormalized copy of customer_name to avoid runtime dependencies on the User Service (which could be down or slow).",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"microservices system has a User Service and an Order Service, each with their own\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "How does the Order Service learn about name changes in the User Service?",
@@ -1232,10 +1232,10 @@
           ],
           "correct": 1,
           "explanation": "Event-driven architecture: User Service publishes domain events. Order Service subscribes to UserNameChanged and updates its local copy. This is the standard pattern for cross-service data synchronization.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"the Order Service learn about name changes in the User Service\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The core signal here is \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1259,7 +1259,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Analytics systems are read-only — no write amplification concern. Caches are inherently denormalized copies. High-traffic count displays (likes, views) need precomputation. Equal read/write OLTP may not benefit enough to justify the complexity.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"in which scenarios is denormalization almost ALWAYS the right choice\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1283,7 +1283,7 @@
       ],
       "correct": 1,
       "explanation": "Columnar data warehouses scan columns efficiently. Wide, flat tables minimize joins (which are expensive at warehouse scale). Their architecture is built for bulk analytical reads of denormalized data.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"data warehouses like Snowflake, BigQuery, and Redshift favor denormalized schemas\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1303,7 +1303,7 @@
       "unit": "rows",
       "tolerance": "exact",
       "explanation": "365 × 10,000 = 3,650,000 rows. This is small — easily handled by any database. Compare this to scanning the raw events table which might have billions of rows.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"summary table has one row per day per product (365 days × 10,000 products)\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 365 days and 10,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1327,7 +1327,7 @@
       ],
       "correct": 1,
       "explanation": "CQRS separates the write model (normalized, optimized for consistency) from the read model (denormalized, optimized for queries). This is formalized denormalization — the read model is a denormalized projection of the write model.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Read this as a scenario about \"pattern does CQRS (Command Query Responsibility Segregation) formalize\". Eliminate approaches that hand-wave conflict resolution or quorum behavior. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1357,7 +1357,7 @@
           ],
           "correct": 1,
           "explanation": "A change stream (CDC via Debezium, or application-level events) captures writes from PostgreSQL and updates the Elasticsearch read model. This is the standard CQRS sync pattern.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "This prompt is really about \"team implements CQRS: writes go to a normalized PostgreSQL database, reads come from a\". Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "What consistency guarantee does this CQRS setup provide?",
@@ -1369,10 +1369,10 @@
           ],
           "correct": 1,
           "explanation": "There's propagation delay between the write to PostgreSQL and the update to Elasticsearch. During this window, reads may return stale data. The system is eventually consistent.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "If you keep \"consistency guarantee does this CQRS setup provide\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Start from \"denormalization\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1396,7 +1396,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Always measure first — don't denormalize based on gut feeling. Try indexes (cheaper solution). Only denormalize if proven necessary. Then implement the consistency logic to keep denormalized data accurate.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "The key clue in this question is \"deciding whether to denormalize, rank these steps in the correct order:\". Place obvious extremes first, then sort the middle by pairwise comparison. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1424,7 +1424,7 @@
       ],
       "correct": 1,
       "explanation": "50K rows is tiny. A 15ms join is fast for most applications. Denormalizing here adds complexity for negligible gain. Save denormalization for when you've exhausted indexing and the performance problem is measured and real.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"team wants to denormalize because 'joins are slow\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 50,000 and 15ms should be normalized first so downstream reasoning stays consistent. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1448,7 +1448,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Frequently changing data has high write amplification cost. Compliance-sensitive data shouldn't be scattered across tables. Complex update chains are error-prone. Static reference data is actually a great denormalization candidate — it rarely changes.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"types of data are POOR candidates for denormalization\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1472,7 +1472,7 @@
       ],
       "correct": 1,
       "explanation": "Classic race condition: both transactions read follower_count=100, both increment to 101, both write 101. One follow is lost. Fix: use atomic increment (SET count = count + 1) instead of read-modify-write.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"in a social media app, a user's follower_count is denormalized onto their profile\". Discard modeling choices that look clean but perform poorly for the target queries. Modeling quality is measured by query fit, cardinality behavior, and operational cost. If values like 100 and 101 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1498,7 +1498,7 @@
           ],
           "correct": 1,
           "explanation": "SET follower_count = follower_count + 1 is atomic — the database handles the read-increment-write in a single operation. No application-level race condition possible.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"sQL statement safely increments a denormalized counter without race conditions\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "For extremely high-contention counters (millions of increments/sec, e.g., a viral video's view count), what additional technique helps?",
@@ -1510,10 +1510,10 @@
           ],
           "correct": 1,
           "explanation": "At extreme scale, even atomic increments create row-level lock contention. Buffer increments in application memory (or Redis) and flush them to the database in batches (e.g., every 5 seconds). Accept slight display inaccuracy.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"for extremely high-contention counters (millions of increments/sec, e\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. If values like 5 seconds appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"denormalization\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1537,7 +1537,7 @@
       ],
       "correct": 1,
       "explanation": "Lookup tables store precomputed mappings — e.g., a user_id → {name, email, avatar_url} table for fast retrieval without joining multiple tables. Common in caching and materialized view patterns.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"a 'lookup table' pattern in denormalization\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1561,7 +1561,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Single table: one index lookup. Two-table join: still fast. Three-table with aggregation: moderate. Four-table with subquery: slowest. Each additional join/aggregation adds latency.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"rank these approaches from FASTEST READ to SLOWEST READ for displaying a product page\" in view, the correct answer separates faster. Order by relative scale and bottleneck effect, then validate neighboring items. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1585,7 +1585,7 @@
       ],
       "correct": 1,
       "explanation": "Store last_message_text, last_message_at, and unread_count directly on Conversations. This makes the conversation list query trivial — one table scan with no joins or aggregations.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"chat application shows conversation lists with the last message preview and unread count\", then pressure-test the result against the options. Prefer the schema/index decision that minimizes query and write amplification for this workload. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1609,7 +1609,7 @@
       ],
       "correctIndices": [1, 2],
       "explanation": "last_message_text is duplicated from the Messages table. unread_count is a precomputed aggregate. conversation_id and created_at are original data, not derived from elsewhere.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"fields on a Conversations table are denormalized\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1635,7 +1635,7 @@
           ],
           "correct": 0,
           "explanation": "A Leaderboard table (or sorted set in Redis) stores precomputed rankings. Update it when scores change — only needs to check if the new score enters the top N.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"leaderboard shows the top 100 users by score\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. If values like 100 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "A user's score increases. How do you efficiently update the leaderboard?",
@@ -1647,10 +1647,10 @@
           ],
           "correct": 1,
           "explanation": "Compare with the minimum score in the top 100. If the new score is higher, insert the user and remove the previous #100. This is O(1) per update instead of O(N log N) for full recomputation.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"user's score increases\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. If values like 100 and 1 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"denormalization\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1674,7 +1674,7 @@
       ],
       "correct": 1,
       "explanation": "It's a design heuristic: for each piece of data, decide how many copies you're willing to maintain. More copies = faster reads but harder consistency. Set a limit to avoid uncontrollable duplication.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "This prompt is really about \"'data duplication budget' — a concept for deciding how much denormalization is\". Prefer the option that preserves correctness guarantees for the stated consistency boundary. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1698,7 +1698,7 @@
       "unit": "statements",
       "tolerance": "exact",
       "explanation": "One UPDATE per table: Products, OrderItems (all rows with that product), CartItems (all rows with that product). Three statements minimum, though each may affect multiple rows.",
-      "detailedExplanation": "Convert to base units first, then track powers of ten so arithmetic mistakes are easier to catch. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"denormalized column (product_name) exists in 3 tables: Products, OrderItems, and\" in view, the correct answer separates faster. Normalize units before computing so conversion mistakes do not propagate. Modeling quality is measured by query fit, cardinality behavior, and operational cost. If values like 3 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1722,7 +1722,7 @@
       ],
       "correct": 1,
       "explanation": "The normalized database remains the source of truth. Changes are propagated to Elasticsearch (via CDC, events, or application-level sync) where data is stored in a denormalized, search-optimized format.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"denormalizing for a search index (e\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1746,7 +1746,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Computed columns: database guarantees consistency. Same-transaction: app manages it but it's ACID. Async index: eventually consistent, needs monitoring. Data warehouse: ETL pipelines are complex and can fail silently.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"rank these from EASIEST to HARDEST to keep consistent with the source of truth:\". Order by relative scale and bottleneck effect, then validate neighboring items. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1774,7 +1774,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "JSON is good for: frozen snapshots (order receipt data), flexible/varying structures (preferences), and cached display data. Replacing foreign keys with JSON loses referential integrity and query ability — that's not denormalization, it's schema destruction.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"valid uses of JSON columns as denormalization\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1798,7 +1798,7 @@
           ],
           "correct": 1,
           "explanation": "Order addresses are intentionally frozen at purchase time. The order was fulfilled using that address. Updating it would be historically incorrect. This is a case where 'stale' data is actually correct.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"e-commerce system stores shipping_address on Orders as a JSON snapshot: {street, city,\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "What design pattern is this an example of?",
@@ -1810,10 +1810,10 @@
           ],
           "correct": 1,
           "explanation": "Point-in-time snapshots intentionally freeze data as it was when an event occurred. Common in orders, invoices, contracts — anywhere the historical record matters more than current state.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"design pattern is this an example of\". Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The decision turns on \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1837,7 +1837,7 @@
       ],
       "correct": 1,
       "explanation": "Intentional denormalization is a conscious design decision with documented consistency guarantees. Accidental denormalization happens when data gets duplicated without a plan — leading to silent inconsistencies and data quality issues.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Read this as a scenario about \"the difference between 'intentional denormalization' and 'accidental denormalization'\". Prefer the option that preserves correctness guarantees for the stated consistency boundary. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1861,7 +1861,7 @@
       "unit": "MB",
       "tolerance": 0.1,
       "explanation": "1,000,000 rows × 500 bytes = 500,000,000 bytes = ~500 MB per refresh. Not huge, but it grows with the table. Incremental refresh (only changed rows) would be more efficient.",
-      "detailedExplanation": "Reduce the problem to base units, compute, and sanity-check the output scale before finalizing. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"products table has 1M rows\" as your starting point, then verify tradeoffs carefully. Keep every transformation in one unit system and check order of magnitude at the end. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Keep quantities like 1M and 500 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1885,7 +1885,7 @@
       ],
       "correct": 1,
       "explanation": "Incremental refresh tracks changes (inserts, updates, deletes) since the last refresh and only recomputes affected portions. Full refresh rebuilds from scratch. Incremental is faster but more complex to implement.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"an 'incremental materialized view refresh' compared to a 'full refresh'\". Reject options that conflict with the primary access pattern or index strategy. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1904,7 +1904,7 @@
       "options": ["PostgreSQL", "MySQL (as of 8.0)", "Oracle", "MongoDB"],
       "correctIndices": [0, 2],
       "explanation": "PostgreSQL and Oracle have native materialized view support (CREATE MATERIALIZED VIEW). MySQL 8.0 does not have native materialized views — you simulate them with tables + triggers/events. MongoDB has $merge for a similar pattern but not traditional materialized views.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"databases natively support materialized views\". Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 8.0 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1928,7 +1928,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Generated columns: fully database-managed, zero app code. Materialized views: database handles refresh (you set the schedule). Triggers: database-managed but you write the trigger logic. Application code: fully app-managed, most flexible but most work.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"rank these denormalization approaches from MOST to LEAST database-managed (least\". Build the rank from biggest differences first, then refine with adjacent checks. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1952,7 +1952,7 @@
       ],
       "correct": 1,
       "explanation": "A monthly_revenue summary table turns a 50M-row scan into a 12-row lookup. Update it incrementally as orders come in. Partitioning helps but still requires aggregation; a summary table eliminates it.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"reporting query aggregates data across 12 months: SELECT month, SUM(revenue) FROM\", then pressure-test the result against the options. Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 12 and 2024 should be normalized first so downstream reasoning stays consistent. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1978,7 +1978,7 @@
           ],
           "correct": 0,
           "explanation": "A trending_tags table with (tag_id, tag_name, article_count, period) precomputes the result. Update it hourly (or on each article publish). The homepage reads 10 rows from one table.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"news site has Articles and Tags (M:N via ArticleTags junction)\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Keep quantities like 10 and 3 in aligned units before selecting an answer. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "Is hourly refresh acceptable for 'trending tags'?",
@@ -1990,10 +1990,10 @@
           ],
           "correct": 1,
           "explanation": "Trending tags are inherently approximate — a 1-hour lag is imperceptible to users. This is a case where eventual consistency perfectly fits the use case. Real-time would add complexity for no user-visible benefit.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "This prompt is really about \"is hourly refresh acceptable for 'trending tags'\". Do not reset assumptions between stages; carry forward prior constraints directly. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: misreading quorum behavior during failures."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The key clue in this question is \"denormalization\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2017,7 +2017,7 @@
       ],
       "correct": 1,
       "explanation": "Microservices enforce database-per-service. You can't JOIN across service boundaries. If the Order Service needs customer names, it must store a local copy — denormalization is architecturally mandatory, not optional.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"in a microservices architecture, why is denormalization (local data copies) often\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2041,7 +2041,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are used in practice. Events: standard async sync. API calls: simpler but creates runtime coupling. CDC: captures database changes as a stream. Shared database: violates microservice principles but pragmatically exists.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"common patterns for cross-service data synchronization in microservices\" in view, the correct answer separates faster. Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2069,7 +2069,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Shared database: maximum coupling (shared schema). Sync API call: runtime dependency (service must be up). Async events: decoupled, handles service downtime. Batch sync: most decoupled but most stale.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"rank these cross-service data strategies from MOST COUPLED to LEAST COUPLED:\". Place obvious extremes first, then sort the middle by pairwise comparison. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2097,7 +2097,7 @@
       ],
       "correct": 1,
       "explanation": "Fan-out on write: when a user posts, immediately push the post to all followers' feeds (precomputed). Reads are trivial — just fetch the precomputed feed. Twitter's original fanout model. Opposite of fan-out on read (compute feed at read time).",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"'fan-out on write' mean\" as your starting point, then verify tradeoffs carefully. Discard modeling choices that look clean but perform poorly for the target queries. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2123,7 +2123,7 @@
           ],
           "correct": 1,
           "explanation": "Fan-out on write: the tweet is pushed into each follower's precomputed feed (10,000 inserts). This makes reading feeds fast (just read your precomputed timeline) but writes are expensive.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Read this as a scenario about \"twitter-style feed: User A has 10,000 followers and posts a tweet\". Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 10,000 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "A celebrity has 50 million followers. Why is pure fan-out on write problematic for them?",
@@ -2135,10 +2135,10 @@
           ],
           "correct": 1,
           "explanation": "50M timeline inserts per tweet is extreme write amplification. The solution: hybrid approach — fan-out on write for normal users, fan-out on read (merge at query time) for celebrities.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The key clue in this question is \"celebrity has 50 million followers\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 50 and 50M should be normalized first so downstream reasoning stays consistent. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Read this as a scenario about \"denormalization\". Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2162,7 +2162,7 @@
       ],
       "correct": 1,
       "explanation": "Fan-out on read: compute results at query time. For a feed: query all followed users' posts and merge. Always fresh, but expensive — requires joins/unions across many users' posts on every feed load.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"'fan-out on read'\". Eliminate options that fail under peak load or saturation conditions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2190,7 +2190,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Fan-out on write: max write work (push to all followers). Hybrid: moderate write, moderate read. Fan-out on read: no write work, max read work. No feed: minimal work on both sides.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"rank these from MOST WRITE WORK to MOST READ WORK:\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2214,7 +2214,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Embedding, computed fields, and duplicated attributes are all denormalization — trading write complexity for read performance. Secondary indexes are an access optimization, not data duplication.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"examples of denormalization in NoSQL/document databases\". Treat every option as a separate true/false test under the same constraints. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2238,7 +2238,7 @@
       ],
       "correct": 1,
       "explanation": "DynamoDB (and most key-value/wide-column stores) cannot JOIN. Every query accesses one table (or index). Data must be modeled for your access patterns, which inherently means denormalization — storing related data together.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"in DynamoDB, why is denormalization the STANDARD approach rather than an optimization\" as your starting point, then verify tradeoffs carefully. Reject options that conflict with the primary access pattern or index strategy. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2264,7 +2264,7 @@
           ],
           "correct": 0,
           "explanation": "PK=USER#123 groups all of user 123's data. SK begins_with ORDER# retrieves just their orders. This single-table pattern is inherently denormalized — user, order, and item data coexist in one table.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"in DynamoDB single-table design, an e-commerce app stores Users, Orders, and OrderItems\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes."
         },
         {
           "question": "What's the main drawback of DynamoDB single-table design?",
@@ -2276,10 +2276,10 @@
           ],
           "correct": 2,
           "explanation": "Single-table design is powerful but brittle. Adding a new access pattern may require restructuring the entire table. The schema is driven by queries, not data relationships — changing requirements can mean expensive migrations.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"what's the main drawback of DynamoDB single-table design\". Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"denormalization\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2299,7 +2299,7 @@
       "unit": "operations",
       "tolerance": 0.1,
       "explanation": "log2(1,000,000) ≈ 20. Redis sorted sets use skip lists, which provide O(log N) insert/lookup. Even at 1M entries, updates are ~20 comparisons — microseconds.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"redis sorted set maintains a leaderboard\". Keep every transformation in one unit system and check order of magnitude at the end. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 1 and 1,000 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2327,7 +2327,7 @@
       ],
       "correct": 1,
       "explanation": "Write-behind (write-back): the application writes to cache, and the cache asynchronously persists to the database. This absorbs write spikes but risks data loss if the cache crashes before flushing.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"a 'write-behind cache' pattern\". Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2355,7 +2355,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Write-behind risks: data loss (unflushed writes lost on crash), inconsistency (cache is ahead of database), durability concerns (reads see not-yet-persisted data). The cache can absolutely be invalidated — that's a separate concern.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"risks of write-behind caching\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2383,7 +2383,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Cache-aside: app manages cache manually (check cache, miss → query DB, populate cache). Read-through: cache handles misses automatically. Write-through: writes go to cache + DB synchronously. Write-behind: writes buffer in cache and async-flush — most complex.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"rank these caching strategies from SIMPLEST to MOST COMPLEX:\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2411,7 +2411,7 @@
       ],
       "correct": 0,
       "explanation": "Delete-on-write is the standard cache-aside invalidation: delete the stale cache entry when the underlying data changes. The next read will miss, fetch fresh data from the database, and repopulate the cache.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"system uses cache-aside with Redis\" in view, the correct answer separates faster. Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2441,7 +2441,7 @@
           ],
           "correct": 0,
           "explanation": "A short TTL (e.g., 30 seconds) ensures stale cache entries expire quickly even if repopulated with old data. This is the simplest mitigation for replica lag + cache repopulation races.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"application has a race condition: Thread A deletes the cache key after a database update\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 30 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "What's the fundamental cause of this race condition?",
@@ -2453,10 +2453,10 @@
           ],
           "correct": 1,
           "explanation": "Replication lag: the write goes to the primary, the cache is deleted, but Thread B reads from a replica that hasn't received the write yet. The replica returns stale data, which gets cached. This is inherent in async replication + caching.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"what's the fundamental cause of this race condition\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The core signal here is \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2476,7 +2476,7 @@
       "unit": "req/sec",
       "tolerance": "exact",
       "explanation": "10,000 × (1 - 0.95) = 10,000 × 0.05 = 500 database hits per second. A 95% hit rate reduces database load by 20x.",
-      "detailedExplanation": "Start with unit normalization, then verify that the final magnitude passes a quick sanity check. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"cache has a 95% hit rate\". Keep every transformation in one unit system and check order of magnitude at the end. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 95 and 10,000 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2504,7 +2504,7 @@
       ],
       "correct": 1,
       "explanation": "Cache warming preloads the cache with expected hot data — at deploy time, after a cache flush, or during startup. Without it, the first requests after a cold start all hit the database (thundering herd).",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'cache warming' (or 'cache priming')\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2532,7 +2532,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Warm the cache after events that empty it (deployments, restarts) and before expected traffic spikes. During normal steady state with high hit rates, the cache is already warm — no action needed.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"situations require cache warming\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2562,7 +2562,7 @@
           ],
           "correct": 1,
           "explanation": "Follow the Pareto principle: a small subset drives most traffic. Cache the hot set (~50K products). The remaining 9.95M are accessed rarely and can tolerate a database hit.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"product catalog has 10M products\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 10M and 50K in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "How do you ensure the hot 50K stay cached while cold products don't consume cache memory?",
@@ -2574,10 +2574,10 @@
           ],
           "correct": 1,
           "explanation": "LRU eviction naturally keeps hot data in cache. Frequently accessed products are always 'recently used' and won't be evicted. Rarely accessed products fall off. No manual management needed.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"you ensure the hot 50K stay cached while cold products don't consume cache memory\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 50K appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "If you keep \"denormalization\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2597,7 +2597,7 @@
       "unit": "ms",
       "tolerance": 0.1,
       "explanation": "Average = (0.90 × 1ms) + (0.10 × 50ms) = 0.9 + 5.0 = 5.9ms. Even with 10% misses, the average is much closer to the cache latency.",
-      "detailedExplanation": "Use base-unit arithmetic plus a magnitude check to keep the estimate robust under time pressure. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"cache hit takes 1ms\", then pressure-test the result against the options. Normalize units before computing so conversion mistakes do not propagate. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 1ms and 50ms appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2625,7 +2625,7 @@
       ],
       "correctOrder": [0, 2, 3, 1],
       "explanation": "Dashboard aggregations: classic denormalization case. Product catalog: high read traffic justifies it. User authentication: moderate case (login is a single-row lookup anyway). Financial ledger: accuracy and auditability are paramount — denormalization adds risk.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"rank these scenarios from MOST APPROPRIATE to LEAST APPROPRIATE for denormalization:\". Order by relative scale and bottleneck effect, then validate neighboring items. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2649,7 +2649,7 @@
       ],
       "correct": 1,
       "explanation": "Even in denormalized systems, one version is canonical. Denormalized copies are derived projections. If they drift, the source of truth wins. This principle lets you rebuild denormalized data from scratch if needed.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"the 'single source of truth' principle in denormalized systems\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2679,7 +2679,7 @@
           ],
           "correct": 1,
           "explanation": "Reconcile by recomputing from the source of truth (the Reviews table). This is why maintaining a single source of truth matters — you can always rebuild denormalized data from the canonical version.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"team discovers that their denormalized review_count on Products is wrong for 5% of\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. If values like 5 appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "How do you prevent this drift from recurring?",
@@ -2691,10 +2691,10 @@
           ],
           "correct": 1,
           "explanation": "Fix the root cause (find the write path that skips the counter update). Add periodic reconciliation as a safety net (e.g., nightly batch that compares counts and fixes drift). Both are needed — fix + verify.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"you prevent this drift from recurring\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The decision turns on \"denormalization\". Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2718,7 +2718,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Document your denormalization strategy. Measure the gains (was it worth the complexity?). Monitor for drift. Don't denormalize everything at once — be surgical, target specific bottlenecks.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"good practices when introducing denormalization\". Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2742,7 +2742,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Don't denormalize speculatively. Start with a real bottleneck, exhaust simpler solutions, design carefully (including consistency maintenance), then implement with measurement and monitoring.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Use \"rank the lifecycle of a denormalization decision from FIRST to LAST step:\" as your starting point, then verify tradeoffs carefully. Build the rank from biggest differences first, then refine with adjacent checks. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2772,7 +2772,7 @@
           ],
           "correct": 1,
           "explanation": "Start normalized. At 100 users, joins are trivial. Denormalization adds write complexity and consistency risk for zero measurable benefit. Optimize when you have real performance data from real scale.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "The core signal here is \"startup is building their v1 product\". Solve this as chained reasoning where stage two must respect stage one assumptions. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Keep quantities like 100 in aligned units before selecting an answer. Common pitfall: misreading quorum behavior during failures."
         },
         {
           "question": "At what point should this startup reconsider denormalization?",
@@ -2784,10 +2784,10 @@
           ],
           "correct": 1,
           "explanation": "Denormalize when you have evidence: measured slow queries that indexes can't fix. User count alone isn't the trigger — a well-indexed normalized schema can serve millions of users for many access patterns.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"at what point should this startup reconsider denormalization\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The core signal here is \"denormalization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",

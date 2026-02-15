@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Rate limiting protects the service from being overwhelmed (intentionally or accidentally) and ensures fair access for all clients. Billing and analytics are secondary benefits.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"what's the primary purpose of API rate limiting\". Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -45,7 +45,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Rate limiting protects against DoS, ensures fairness, and shields backends. While rate limits can encourage upgrades, that's a business decision, not a technical reason for rate limiting.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"valid reasons to implement rate limiting\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -73,7 +73,7 @@
       ],
       "correct": 2,
       "explanation": "429 Too Many Requests is specifically designed for rate limiting. 503 indicates server overload (not client-specific). 403 is for authorization failures.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"hTTP status code indicates a client has exceeded their rate limit\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 429 and 503 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -101,7 +101,7 @@
       ],
       "correct": 3,
       "explanation": "Retry-After is the standard HTTP header (seconds or date). X-RateLimit-Reset is a common convention (usually Unix timestamp). Many APIs include both for compatibility.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"header should accompany a 429 response to tell clients when to retry\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 429 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -129,7 +129,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Limit, Remaining, and Reset are the standard trio implemented by most APIs. Policy descriptions are less common but helpful for documentation.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"rank these rate limit headers from most to least commonly implemented:\" in view, the correct answer separates faster. Order by relative scale and bottleneck effect, then validate neighboring items. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Token bucket",
@@ -155,7 +155,7 @@
           ],
           "correct": 1,
           "explanation": "The client can make 100 requests per window, has 23 left, and the window resets at Unix timestamp 1705320000. They've used 77 requests (100 - 23) so far.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"aPI returns: X-RateLimit-Limit: 100, X-RateLimit-Remaining: 23, X-RateLimit-Reset:\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 100 and 23 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "The client needs to make 30 more requests before the reset. What should they do?",
@@ -167,10 +167,10 @@
           ],
           "correct": 3,
           "explanation": "Use the 23 remaining requests now, then wait for reset and use 7 more. This maximizes throughput while respecting limits. Making all 30 immediately wastes 7 requests to rate limiting.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "The decision turns on \"client needs to make 30 more requests before the reset\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. If values like 30 and 23 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "This prompt is really about \"rate Limiting & Quotas\". Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -198,7 +198,7 @@
       ],
       "correct": 1,
       "explanation": "Token bucket: a bucket holds tokens (up to a max). Tokens are added at a fixed rate. Each request removes a token. If the bucket is empty, the request is rejected. This allows bursts up to bucket size.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"what's the 'token bucket' algorithm\" as your starting point, then verify tradeoffs carefully. Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 7519: JSON Web Token (JWT)",
@@ -222,7 +222,7 @@
       ],
       "correct": 0,
       "explanation": "After 30 seconds the bucket is full at 100 tokens (it doesn't exceed capacity). The client can burst 100 requests, then must wait for refills. 50 requests are rejected.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"token bucket has capacity 100 and refills at 10 tokens/second\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 100 and 10 appear, convert them into one unit basis before comparison. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Little's law",
@@ -250,7 +250,7 @@
       ],
       "correctOrder": [0, 2, 3, 1],
       "explanation": "Fixed window is simplest (one counter per window). Sliding counter approximates between windows. Token bucket adds continuous refill. Sliding log is most accurate but stores every request timestamp — memory intensive.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"rank these rate limiting algorithms from simplest to most sophisticated:\". Build the rank from biggest differences first, then refine with adjacent checks. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 7519: JSON Web Token (JWT)",
@@ -276,7 +276,7 @@
           ],
           "correct": 1,
           "explanation": "The client made 200 requests in ~2 seconds by hitting the boundary between windows. Fixed windows have this edge case — the effective rate can double at window boundaries.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"fixed window rate limiting: 100 requests/minute\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 100 and 0 should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "How does sliding window rate limiting address this?",
@@ -288,10 +288,10 @@
           ],
           "correct": 3,
           "explanation": "Sliding window counter weights previous window's count by overlap (e.g., at 1:30, count = 50% of prev window + 100% of current). Sliding log tracks exact timestamps. Both prevent the boundary spike.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"sliding window rate limiting address this\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 1 and 30 in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Use \"rate Limiting & Quotas\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -319,7 +319,7 @@
       ],
       "correct": 1,
       "explanation": "Leaky bucket queues incoming requests and processes them at a constant rate. Unlike token bucket (which allows bursts), leaky bucket smooths traffic to a steady flow. Excess requests queue or are dropped.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"what's the 'leaky bucket' algorithm\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -347,7 +347,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Token bucket allows bursts up to capacity, then rate-limits. Leaky bucket enforces a constant output rate (smoothing). They're related but not equivalent — token bucket is more permissive of bursts.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"what's the difference between token bucket and leaky bucket\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Little's law",
@@ -375,7 +375,7 @@
       ],
       "correct": 1,
       "explanation": "Token bucket is ideal when bursts are acceptable (e.g., a client batch-uploading files) but sustained high rates are not. Leaky bucket is better when you need smooth, constant-rate processing.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"you prefer token bucket over leaky bucket\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 7519: JSON Web Token (JWT)",
@@ -399,7 +399,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Leaky bucket allows no bursts (constant rate). Small-capacity token bucket allows small bursts. Fixed window allows up to N at once. Large-capacity token bucket allows the largest bursts.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"rank these by how much traffic burst they allow (least to most):\". Order by relative scale and bottleneck effect, then validate neighboring items. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Little's law",
@@ -427,7 +427,7 @@
       ],
       "correct": 3,
       "explanation": "'Throttling' is often used interchangeably with rate limiting. Strictly, it can mean slowing (adding latency) rather than rejecting, or dynamically adjusting limits. Context matters.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"what's 'throttling' in the context of rate limiting\", then pressure-test the result against the options. Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -457,7 +457,7 @@
           ],
           "correct": 3,
           "explanation": "For interactive/real-time APIs, fail fast (429) is usually better — users can't wait. For batch/background jobs, queueing might be acceptable. The choice depends on client expectations.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"aPI could either: (A) return 429 immediately when rate limited, or (B) queue the\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 429 in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "If you queue requests, what's the risk?",
@@ -469,10 +469,10 @@
           ],
           "correct": 3,
           "explanation": "Queuing without bounds risks memory issues. Long waits cause client timeouts. If you queue everything, the backend still processes at capacity — you're just adding latency. Queuing needs limits too.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The core signal here is \"if you queue requests, what's the risk\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The decision turns on \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -500,7 +500,7 @@
       ],
       "correct": 1,
       "explanation": "Rate limits are typically short-term (100 requests/minute). Quotas are longer-term allocations (10,000 requests/month). An API might have both: rate limit prevents bursts, quota caps total usage.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"what's the difference between 'rate limit' and 'quota'\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 100 and 10,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -528,7 +528,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "Monthly API calls and storage are quotas — long-term resource allocations. Requests per minute is a rate limit. Concurrent connections is a concurrency limit (different from both).",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"examples of quotas (not rate limits)\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -556,7 +556,7 @@
       ],
       "correct": 2,
       "explanation": "Per-key limits work for authenticated APIs. Per-IP helps for anonymous access but is fooled by NAT/proxies. Per-user is fairest for authenticated users. Global limits protect the service. Often use multiple layers.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"rate limits be applied: per API key, per user, per IP, or globally\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -584,7 +584,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "IP is least reliable (NAT, proxies, mobile networks share IPs). Session cookies can be cleared. API keys are reliable but can be shared. User ID (authenticated) is most reliable for per-user limiting.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"rank these rate limit identifiers from least to most reliable for identifying unique\", then pressure-test the result against the options. Order by relative scale and bottleneck effect, then validate neighboring items. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -614,7 +614,7 @@
           ],
           "correct": 1,
           "explanation": "If 1000 users share one key and the limit is 100/minute per key, they'll constantly hit rate limits. This is a common enterprise pain point with per-key limits.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"large enterprise uses your API\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 1000 and 100 should be normalized first so downstream reasoning stays consistent. Common pitfall: ambiguous contracts that hide behavior changes."
         },
         {
           "question": "How should this be addressed?",
@@ -626,10 +626,10 @@
           ],
           "correct": 3,
           "explanation": "Options: limit per user (if auth provides user ID), higher enterprise tiers, multiple keys. Many APIs offer enterprise plans with custom limits. The right solution depends on your business model.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"this be addressed\". Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The key clue in this question is \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -657,7 +657,7 @@
       ],
       "correct": 3,
       "explanation": "Adaptive rate limiting adjusts limits dynamically. This could be based on time (lower limits during peak hours), system load (tighten when overloaded), or client behavior (more lenient for well-behaved clients).",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"what's 'adaptive rate limiting'\". Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Little's law",
@@ -685,7 +685,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Different endpoints have different costs. Write operations may need stricter limits. Endpoints calling expensive services need protection. While uniform limits are simpler, tiered limits often make more sense.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"might you use different rate limits for different endpoints\". Validate each option independently; do not select statements that are only partially true. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -713,7 +713,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Payment is highly sensitive — very low limits. Login attempts are limited to prevent brute force. Normal reads have moderate limits. Health checks should be very permissive (monitoring needs frequent checks).",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"rank these endpoints from most to least restrictive rate limits (typically):\". Order by relative scale and bottleneck effect, then validate neighboring items. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -743,7 +743,7 @@
           ],
           "correct": 3,
           "explanation": "If each of 5 servers allows 100/min, a client could potentially make 500/min by hitting all servers. Local rate limiting doesn't work correctly in a distributed system.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"your API is deployed across multiple servers\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 5 and 100 in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "How do you implement rate limiting correctly in a distributed system?",
@@ -755,10 +755,10 @@
           ],
           "correct": 3,
           "explanation": "A centralized store (Redis) for counters is the standard solution. Sticky sessions work but reduce load balancing benefits. Synchronizing between servers is complex. Redis with atomic increments is simple and fast.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"you implement rate limiting correctly in a distributed system\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Use \"rate Limiting & Quotas\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -786,7 +786,7 @@
       ],
       "correct": 1,
       "explanation": "Redis offers atomic INCR operations, low latency, and TTL-based expiry (keys auto-delete when the window ends). This makes token bucket and sliding window implementations straightforward.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"redis commonly used for distributed rate limiting\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -814,7 +814,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "INCR counts requests. EXPIRE auto-deletes keys after the window. MULTI/EXEC ensures atomic check-and-increment. Sorted sets (ZADD) can store request timestamps for sliding window log.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"redis commands are useful for rate limiting\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -842,7 +842,7 @@
       ],
       "correct": 2,
       "explanation": "You must decide: fail open (allow requests, risking overload) or fail closed (reject requests, risking availability). Fail open is more common — a brief Redis outage shouldn't take down the API.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"happens if Redis is unavailable and you're using it for rate limiting\", then pressure-test the result against the options. Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -872,7 +872,7 @@
           ],
           "correct": 1,
           "explanation": "Respect Retry-After. Retrying immediately makes things worse (more 429s). Giving up might be premature. Switching keys might work but could be against ToS. then retry.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "If you keep \"client receives a 429 response\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 429 and 429s appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "What if the 429 response doesn't include Retry-After?",
@@ -884,10 +884,10 @@
           ],
           "correct": 1,
           "explanation": "Exponential backoff (1s, then 2s, then 4s...) with random jitter prevents thundering herd. If many clients retry at exactly the same time, they'll all hit limits again. Jitter spreads retries out.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"if the 429 response doesn't include Retry-After\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. If values like 429 and 1s appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The key clue in this question is \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -915,7 +915,7 @@
       ],
       "correct": 1,
       "explanation": "Exponential backoff means increasing wait times between retries exponentially. After failure, wait 1s; if still failing, wait 2s, then 4s, etc. This reduces load on an overloaded system and increases chance of success.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"what's 'exponential backoff'\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 1s and 2s should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -943,7 +943,7 @@
       ],
       "correct": 0,
       "explanation": "Jitter adds randomness to retry delays. Instead of all clients retrying at exactly 1s, 2s, 4s, they retry at 1.2s, 2.7s, 3.8s. This prevents 'thundering herd' where synchronized retries overwhelm the server.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"what's 'jitter' in the context of retry strategies\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. If values like 1s and 2s appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -971,7 +971,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Tight loops make overload worse. Fixed delay is better but can still synchronize. Exponential backoff spreads load over time. Adding jitter prevents synchronized retries — best practice.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"rank these retry strategies from worst to best for handling rate limits:\". Order by relative scale and bottleneck effect, then validate neighboring items. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -999,7 +999,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Caching and batching reduce request count. Monitoring headers lets clients back off before hitting limits. Using multiple keys to bypass limits is typically against ToS and may get you banned.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"clients do to minimize hitting rate limits\", then pressure-test the result against the options. Validate each option independently; do not select statements that are only partially true. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1029,7 +1029,7 @@
           ],
           "correct": 3,
           "explanation": "Making 10 then waiting works but wastes time. Spreading evenly (if you have the full window available) is friendlier to the server. Option C is inefficient — you'll make 10, get forty 429s, then retry.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"x-RateLimit-Remaining: 10\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 10 and 50 appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "The rate limit is 100/minute. How long should you wait between each request to pace 50 requests without hitting limits?",
@@ -1041,10 +1041,10 @@
           ],
           "correct": 3,
           "explanation": "50 requests fit in the 100/min limit, so no waiting is strictly needed. But pacing at 0.6s (the rate limit pace) gives headroom for retries and is gentler. The best strategy depends on time constraints.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"rate limit is 100/minute\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 100 and 50 should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "If you keep \"rate Limiting & Quotas\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1072,7 +1072,7 @@
       ],
       "correct": 3,
       "explanation": "Client-side rate limiting means clients track and limit their own requests to stay under limits. This is more efficient than hitting server limits and getting 429s. Well-designed clients respect rate limits proactively.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"what's 'client-side rate limiting'\". Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 429s in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1100,7 +1100,7 @@
       ],
       "correct": 2,
       "explanation": "The client has 100 requests left in their monthly quota. They can still make 100/min, but only 100 total for the month. Both constraints apply — you can hit either limit.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"aPI has both rate limits (100/min) and quotas (10,000/month)\" as your starting point, then verify tradeoffs carefully. Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 100 and 10,000 in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1128,7 +1128,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Distinguishing helps clients respond appropriately. 429 means 'wait and retry'; 403/quota exhaustion means 'upgrade or wait for monthly reset.' Quota headers and a status endpoint let clients plan ahead.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"quota exhaustion be communicated differently from rate limiting\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 429 and 403 appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1156,7 +1156,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Per-minute resets every 60 seconds. Per-hour every 3600 seconds. Daily every 86400 seconds. Monthly every ~2.6 million seconds. More frequent resets = more bursty usage allowed over time.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly.",
+      "detailedExplanation": "The decision turns on \"rank these by how often the limit window resets (most frequent to least):\". Build the rank from biggest differences first, then refine with adjacent checks. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 60 seconds and 3600 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Compound annual growth rate",
@@ -1186,7 +1186,7 @@
           ],
           "correct": 3,
           "explanation": "Paid users typically get higher limits and priority. This is fair — they're paying for better service. Free tiers have lower limits to encourage upgrades and prevent abuse.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"your API serves both free and paid users\". Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "The system is overloaded. Should paid users be exempt from rate limiting?",
@@ -1198,10 +1198,10 @@
           ],
           "correct": 3,
           "explanation": "Even paid users need limits. One misbehaving paid client could take down the system for everyone. Higher limits yes, but not unlimited. 'Unlimited' plans typically still have fair use policies.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"system is overloaded\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Read this as a scenario about \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1229,7 +1229,7 @@
       ],
       "correct": 1,
       "explanation": "Burst limit is the maximum requests allowed in a short burst (often equals token bucket capacity). E.g., '100 requests/minute with burst of 20' means 20 instant, then 80 more spread over the minute.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"what's a 'burst limit'\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. If values like 100 and 20 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Little's law",
@@ -1257,7 +1257,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Bursts help batch operations, parallel fetches on page load, and initialization. Polling is typically low-frequency and steady — doesn't need bursts. Token bucket naturally supports burst then steady-state.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"scenarios benefit from allowing bursts\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Little's law",
@@ -1285,7 +1285,7 @@
       ],
       "correct": 3,
       "explanation": "Include rate limit headers on every response. This lets clients monitor usage and slow down before hitting limits. Only showing on 429s means clients can't plan ahead.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"should rate limit headers be included on every response, or only on 429s\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 429s in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Token bucket",
@@ -1311,7 +1311,7 @@
           ],
           "correct": 1,
           "explanation": "If Redis can't respond, you can't check or update limits. You must choose a fallback: fail open (allow requests, risk overload) or fail closed (reject all, risk availability). This should be a conscious design decision.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The decision turns on \"your rate limiter uses Redis\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "You choose fail-open (allow all requests when Redis is down). What should you do?",
@@ -1323,10 +1323,10 @@
           ],
           "correct": 3,
           "explanation": "Alert on Redis failure (it's a risk). Local rate limiting (even if imprecise) is better than none. Log the event for investigation. Have a plan for degraded operation — don't just hope Redis stays up.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"you choose fail-open (allow all requests when Redis is down)\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Use \"rate Limiting & Quotas\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1354,7 +1354,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Protecting the backend is paramount (if it goes down, everything fails). Preventing abuse is critical for security. Fair allocation keeps customers happy. Revenue optimization is valid but secondary.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"rank these rate limiting concerns from most to least important for a public API:\". Place obvious extremes first, then sort the middle by pairwise comparison. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1382,7 +1382,7 @@
       ],
       "correct": 1,
       "explanation": "Thundering herd: many clients hit rate limits, all wait for reset, all retry at exactly the reset time, causing another spike. Jitter and staggered resets help prevent this synchronized retry storm.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"what's the 'thundering herd' problem in the context of rate limiting\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1410,7 +1410,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Sliding windows don't have sharp resets. Client jitter spreads retries. Staggered per-client resets (based on client ID hash) prevent synchronized expiry. Increasing limits just defers the problem.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"you prevent thundering herd from rate limit resets\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Token bucket",
@@ -1436,7 +1436,7 @@
           ],
           "correct": 3,
           "explanation": "Rate limiting protects the service short-term, but you need to understand why. Is it a viral moment (scale up)? A misconfigured client? An attack? Alert and investigate while rate limiting holds the line.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"popular endpoint suddenly gets 10x traffic\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 10x and 429s in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "The spike is from one client with a bug in their code. How should you handle it?",
@@ -1448,10 +1448,10 @@
           ],
           "correct": 3,
           "explanation": "Proactively helping clients fix bugs is good customer service. If they're unresponsive and causing issues, you might need to temporarily block them. Rate limiting alone might not be enough if they're consuming excessive resources even with 429s.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"spike is from one client with a bug in their code\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 429s in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The key clue in this question is \"rate Limiting & Quotas\". Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1479,7 +1479,7 @@
       ],
       "correct": 1,
       "explanation": "Weighted rate limiting: expensive operations cost more against your limit. A complex query might cost 10 points; a simple GET costs 1. This protects expensive endpoints while being generous with cheap ones.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"what's the purpose of rate limit 'cost' or 'weight' per endpoint\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 10 and 1 in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1507,7 +1507,7 @@
       ],
       "correctOrder": [0, 1, 3, 2],
       "explanation": "Single resource fetch is cheapest. Paginated lists cost more (more data). Search is expensive (full-text query). Report generation is heaviest (long computation). Weight limits accordingly.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. A good sanity check compares against anchor numbers and names which assumption must change if the result looks implausible.",
+      "detailedExplanation": "If you keep \"rank these operations by reasonable rate limit cost (lowest to highest):\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Token bucket",
@@ -1531,7 +1531,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are helpful. Headers give real-time info. Reset time helps planning. Documentation sets expectations. A status endpoint lets clients check limits without making real requests.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"information should be available for clients to understand their rate limits\". Treat every option as a separate true/false test under the same constraints. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1561,7 +1561,7 @@
           ],
           "correct": 3,
           "explanation": "A dedicated endpoint lets clients check limits proactively, see all limit types (core API, search, graphql), and check limits for tokens without making a real request. It's a convenience for clients.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"gitHub's API has a /rate_limit endpoint that returns current limits\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "Should the /rate_limit endpoint itself be rate limited?",
@@ -1573,10 +1573,10 @@
           ],
           "correct": 3,
           "explanation": "A very high limit or a separate lightweight limit makes sense. You want clients to check often, but not infinitely. GitHub's rate_limit endpoint doesn't count against the main limit but is still protected.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"should the /rate_limit endpoint itself be rate limited\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Start from \"rate Limiting & Quotas\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1604,7 +1604,7 @@
       ],
       "correct": 3,
       "explanation": "Dynamic rate limiting adjusts limits based on various factors: client tier, system health, time of day, or admin overrides. This is more sophisticated than static limits but harder to implement and explain.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"what's 'dynamic rate limiting'\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1632,7 +1632,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Gateway-level limiting stops requests early (saving backend resources), provides consistency, and centralizes config. Performance is similar — you still need to check limits, just at a different layer.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"benefits of implementing rate limiting at the API gateway level\". Treat every option as a separate true/false test under the same constraints. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1660,7 +1660,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "CDN is first (global edge). Load balancer is next. API gateway handles routing and policies. Application server is last. Earlier limiting protects more downstream resources but has less context.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"rank these points in a request flow where rate limiting could be applied (earliest to\" as your starting point, then verify tradeoffs carefully. Place obvious extremes first, then sort the middle by pairwise comparison. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1690,7 +1690,7 @@
           ],
           "correct": 3,
           "explanation": "The request was rate limited, just at a different layer. Return 429 with appropriate headers. The client doesn't need to know which layer enforced the limit. From their perspective, they're rate limited.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"you rate limit at the API gateway\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 429 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "How can you avoid this gateway-vs-microservice limit conflict?",
@@ -1702,10 +1702,10 @@
           ],
           "correct": 3,
           "explanation": "Either make gateway limits stricter (so you never hit microservice limits), or pass remaining budget through (gateway used 5 of 10, microservice has 5 left). Incoherent limits across layers create confusing behavior.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"you avoid this gateway-vs-microservice limit conflict\". Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 5 and 10 in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "This prompt is really about \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1733,7 +1733,7 @@
       ],
       "correct": 2,
       "explanation": "Request coalescing: if multiple clients request the same thing simultaneously, make one backend call and share the result. This reduces load and is often combined with caching. It's an optimization, not rate limiting per se.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"what's 'request coalescing' in the context of rate limiting\" in view, the correct answer separates faster. Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Little's law",
@@ -1761,7 +1761,7 @@
       ],
       "correctIndices": [1, 2, 3],
       "explanation": "Immediate retry (ignoring backoff) wastes resources. Requests from many IPs might indicate key sharing or proxied attacks. Hammering 404s suggests scanning. Hitting limits isn't bad per se — that's what limits are for.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"signs of a client behaving badly (potential abuse)\". Treat every option as a separate true/false test under the same constraints. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 404s in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1791,7 +1791,7 @@
           ],
           "correct": 3,
           "explanation": "Rate limiting costs resources even when rejecting (check limit, log, respond). A client in a tight retry loop wastes resources. Temporarily blocking them (longer ban, or require captcha) is reasonable.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "If you keep \"client is hitting rate limits and ignoring Retry-After (retrying immediately in a loop)\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "How might you implement progressive penalties for misbehavior?",
@@ -1803,10 +1803,10 @@
           ],
           "correct": 3,
           "explanation": "Progressive penalties: first offense gets normal Retry-After. Continued abuse gets longer delays, reduced limits, or harder auth requirements. This discourages abuse while giving legitimate clients a chance to fix bugs.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"might you implement progressive penalties for misbehavior\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The key clue in this question is \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1834,7 +1834,7 @@
       ],
       "correct": 3,
       "explanation": "Rate limiting typically means short-term throttling (requests per second/minute). Quota management is about long-term resource allocation (10,000 API calls per month, 50GB storage). Both involve limits, but at different timescales.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"what's 'quota management' vs 'rate limiting'\", then pressure-test the result against the options. Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 10,000 and 50GB should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1862,7 +1862,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Token buckets refill continuously (per second typically). Sliding windows update with each request. Daily quotas reset once per day. Billing cycles are monthly. Different timescales for different purposes.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly.",
+      "detailedExplanation": "This prompt is really about \"rank these by typical reset frequency (most to least frequent):\". Order by relative scale and bottleneck effect, then validate neighboring items. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Compound annual growth rate",
@@ -1890,7 +1890,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "The IETF draft (RFC 9110 related) proposes standardized headers: RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and RateLimit-Policy. Many APIs use X-RateLimit-* variants; the standard aims to unify this.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"headers are part of the IETF RateLimit header fields draft standard\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 9110 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1920,7 +1920,7 @@
           ],
           "correct": 3,
           "explanation": "GraphQL queries vary hugely in cost. One query might request 1 field, another might request 10,000 nested records. Complexity-based limits (scoring each field/connection) are more accurate than simple per-query limits.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The core signal here is \"graphQL API: should rate limits be per query, per operation, or per field\". Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 1 and 10,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "How do you calculate GraphQL query complexity?",
@@ -1932,10 +1932,10 @@
           ],
           "correct": 3,
           "explanation": "Assigning complexity scores lets you reject expensive queries before execution. Measuring actual execution time is more accurate but only works post-hoc. Most implementations use pre-calculated complexity with some actual-cost tracking.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"you calculate GraphQL query complexity\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The core signal here is \"rate Limiting & Quotas\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1963,7 +1963,7 @@
       ],
       "correct": 1,
       "explanation": "Backpressure: when a downstream service is overwhelmed, it signals upstream to slow down. This propagates through the system, preventing overload. Rate limiting is one way to implement backpressure at the API level.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"what's 'backpressure' in API systems\" in view, the correct answer separates faster. Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1991,7 +1991,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are forms of backpressure. 429 and 503 tell clients to slow down. Added latency naturally slows clients. Degraded responses (graceful degradation) let you serve more requests at lower quality.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"forms of backpressure an API might apply\", then pressure-test the result against the options. Validate each option independently; do not select statements that are only partially true. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 429 and 503 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2019,7 +2019,7 @@
       ],
       "correctOrder": [0, 3, 1, 2],
       "explanation": "429 with Retry-After is clear and actionable. Degraded 200 keeps things working (if clients handle it). 503 at least indicates server trouble. Timeout is worst — clients don't know what happened or whether to retry.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"rank these responses from most to least preferred when the API is overloaded:\". Place obvious extremes first, then sort the middle by pairwise comparison. Tie the decision to concrete operational outcomes, not abstract reliability language. Numbers such as 429 and 200 should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2049,7 +2049,7 @@
           ],
           "correct": 3,
           "explanation": "DDoS requires multiple defenses. Rate limiting helps. Blocking known-bad actors helps. DDoS services specialize in absorbing attack traffic. Scaling helps handle what gets through. No single solution is enough.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"your API is under DDoS attack\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "The attack is using many IPs (botnet). Per-IP rate limits are ineffective. What next?",
@@ -2061,10 +2061,10 @@
           ],
           "correct": 3,
           "explanation": "Botnets rotate IPs, so per-IP limits fail. Look for patterns: specific user agents, request paths, timing patterns. Behavioral analysis (CAPTCHA, JavaScript challenges) can distinguish bots. This is beyond simple rate limiting.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"attack is using many IPs (botnet)\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Read this as a scenario about \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2092,7 +2092,7 @@
       ],
       "correct": 1,
       "explanation": "Circuit breaker: if a downstream service is failing, stop calling it temporarily. This prevents wasting resources on doomed requests and gives the service time to recover. Like an electrical circuit breaker preventing overload.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"what's 'circuit breaking' in distributed systems\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Circuit Breaker",
@@ -2116,7 +2116,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Rate limiters face clients (limit incoming requests). Circuit breakers face downstream (limit outgoing requests to failing services). Both prevent cascade failures — one from the demand side, one from the supply side.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"circuit breakers and rate limiters complement each other\". Treat every option as a separate true/false test under the same constraints. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2143,7 +2143,7 @@
       ],
       "correctOrder": [0, 1, 2],
       "explanation": "Closed: normal operation, requests flow. Failures accumulate → Open: rejecting requests, not calling failing service. After timeout → Half-Open: let a few requests through to test. If they succeed → Closed again.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"rank these circuit breaker states in their typical lifecycle order:\" as your starting point, then verify tradeoffs carefully. Build the rank from biggest differences first, then refine with adjacent checks. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Circuit Breaker",
@@ -2169,7 +2169,7 @@
           ],
           "correct": 3,
           "explanation": "Rate limiting on critical paths (payments, auth) causes lost revenue and poor UX. Careless retries can cause duplicate charges. Critical endpoints often need higher limits, queuing, or different strategies.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"payment gateway is rate limited\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "How should you handle rate limiting on critical payment endpoints?",
@@ -2181,10 +2181,10 @@
           ],
           "correct": 3,
           "explanation": "Critical paths deserve careful treatment: higher limits, queuing (if latency is acceptable), and idempotency keys for safe retries. Never leave customers wondering if their payment went through.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Read this as a scenario about \"you handle rate limiting on critical payment endpoints\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "If you keep \"rate Limiting & Quotas\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2212,7 +2212,7 @@
       ],
       "correct": 1,
       "explanation": "Load shedding: when the system is overwhelmed, intentionally drop some requests to keep the system responsive for others. Better to serve 80% of requests well than 100% badly. It's an extreme form of rate limiting.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"what's 'load shedding'\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 80 and 100 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Little's law",
@@ -2240,7 +2240,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are candidates for prioritization. Premium customers paid for reliability. Health checks keep routing correct. Completing in-flight work avoids waste. Internal services might be critical. Priority shedding is nuanced.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"requests might be prioritized (not shed) during overload\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2270,7 +2270,7 @@
           ],
           "correct": 3,
           "explanation": "Clients need to understand effective limits. If the SDK uses 5 calls/action, the limit is really 20 actions/minute. Better: optimize the SDK to batch, reducing calls per action. Documentation + optimization.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"your API has a limit of 100 requests/minute\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 100 and 5 in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "What's the impact of SDK overhead on rate limits?",
@@ -2282,10 +2282,10 @@
           ],
           "correct": 3,
           "explanation": "Every HTTP request counts, whether from an SDK or direct. Clients using SDKs with multiple calls per operation hit limits faster. SDKs should minimize calls and handle rate limiting gracefully.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"what's the impact of SDK overhead on rate limits\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "This prompt is really about \"rate Limiting & Quotas\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2313,7 +2313,7 @@
       ],
       "correct": 3,
       "explanation": "Priority queuing can mean any of these: processing queued requests by priority, varying limits by priority, or letting high-priority requests skip limits. The goal is treating important requests better.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"what's 'priority queuing' for rate limiting\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2341,7 +2341,7 @@
       ],
       "correctOrder": [2, 0, 1, 3],
       "explanation": "Rejection ratio shows how much traffic is being limited. 429 count is related. P99 of rate limit checks ensures limiting isn't adding latency. Implementation time is a one-time cost, not ongoing metric.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"rank these metrics from most to least useful for understanding rate limiting\". Order by relative scale and bottleneck effect, then validate neighboring items. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 429 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Percentile",
@@ -2369,7 +2369,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All warrant alerting. 429 spikes may indicate issues. Redis down means rate limiting is failing. Repeated hits from one client could be a bug or abuse. Approaching capacity is a scaling signal.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"trigger alerts related to rate limiting\". Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 429 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2399,7 +2399,7 @@
           ],
           "correct": 3,
           "explanation": "Traffic patterns inform normal vs burst limits. Backend capacity sets upper bounds. Customer segments guide tiered limits. Without these inputs, you're guessing. Start with conservative limits and adjust.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"you're designing rate limits for a new API\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "You launched with 100 requests/minute. Users complain it's too low. What should you do?",
@@ -2411,10 +2411,10 @@
           ],
           "correct": 3,
           "explanation": "Understand why first. Are they doing something inefficient? Do they genuinely need more? Then adjust incrementally. A 10x jump might overwhelm your backend. Data-driven adjustments are safest.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"you launched with 100 requests/minute\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 100 and 10x should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Start from \"rate Limiting & Quotas\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2442,7 +2442,7 @@
       ],
       "correct": 3,
       "explanation": "Soft limits might log a warning or add a header but allow the request. Hard limits reject with 429. Soft limits are useful for monitoring before enforcing, or for gently nudging clients without breaking them.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"what's a 'soft' vs 'hard' rate limit\" in view, the correct answer separates faster. Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 429 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Token bucket",
@@ -2466,7 +2466,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Soft limits help with rollout (see who would be affected), trusted internal services (alert but don't block), and proactive warnings. If you can't handle load, you need hard limits eventually.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"might you use soft (non-enforcing) rate limits\". Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Little's law",
@@ -2494,7 +2494,7 @@
       ],
       "correctOrder": [1, 0, 3, 2],
       "explanation": "Soft limit first is safest (no impact, just logging). Percentage rollout catches issues early. Internal-first protects external customers. All traffic immediately is riskiest (any issue affects everyone).",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"rank these rollout strategies for a new rate limit (safest to riskiest):\". Place obvious extremes first, then sort the middle by pairwise comparison. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Token bucket",
@@ -2520,7 +2520,7 @@
           ],
           "correct": 3,
           "explanation": "Per-account limits ignore key count. Verification raises the cost of creating fake accounts. Monitoring catches abuse patterns. Layered defenses make abuse harder.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"rate limits are per API key\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 100 and 100x should be normalized first so downstream reasoning stays consistent. Common pitfall: ambiguous contracts that hide behavior changes."
         },
         {
           "question": "What if they create 100 accounts?",
@@ -2532,10 +2532,10 @@
           ],
           "correct": 3,
           "explanation": "Identity-based limits fail against fake identities. Behavioral analysis looks at patterns: same IP, same timing, same requests. Fingerprinting tracks devices. CAPTCHA proves humanity. It's an arms race.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The core signal here is \"if they create 100 accounts\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 100 should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The decision turns on \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2563,7 +2563,7 @@
       ],
       "correct": 1,
       "explanation": "Graceful degradation: instead of 429, return a partial or cached response. Serve something useful rather than nothing. This can be combined with rate limiting — reserve full processing for within-limit requests.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"what's 'graceful degradation' in the context of rate limiting\", then pressure-test the result against the options. Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Tie the decision to concrete operational outcomes, not abstract reliability language. Keep quantities like 429 in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2591,7 +2591,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Caching, omitting expensive fields, and lower resolution are degradation strategies that still provide value. Adding latency is backpressure, not degradation — the response is the same, just slower.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"forms of graceful degradation when approaching limits\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2621,7 +2621,7 @@
           ],
           "correct": 3,
           "explanation": "Rate limiting protects you from your clients. External webhook senders aren't your clients — they push to you. You can return 429, but they might not respect it. You need queuing or load shedding for incoming webhooks.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The core signal here is \"webhook endpoint receives events from an external service\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Numbers such as 10x and 429 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "How should you handle incoming webhooks from external services?",
@@ -2633,10 +2633,10 @@
           ],
           "correct": 3,
           "explanation": "Queuing decouples ingestion from processing — accept quickly, process sustainably. 429 might work if the sender respects it. For important integrations, negotiate mutual rate limits. Design webhook endpoints for resilience.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"you handle incoming webhooks from external services\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 429 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "The core signal here is \"rate Limiting & Quotas\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2664,7 +2664,7 @@
       ],
       "correct": 3,
       "explanation": "Rate limit windows define the measurement period: 100 requests per minute means the window is 1 minute. Limits reset when the window expires. Window choice affects burst allowance and implementation complexity.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"what's the purpose of rate limit 'windows'\" in view, the correct answer separates faster. Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 100 and 1 minute appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Token bucket",
@@ -2688,7 +2688,7 @@
       ],
       "correctOrder": [3, 2, 1, 0],
       "explanation": "Longer windows allow bigger bursts. A day limit of 8.64M allows using most of it in an hour if needed. A 1-second limit of 100 enforces a constant rate. Same overall rate, very different burst behavior.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"rank these window sizes from most to least burst-friendly:\". Order by relative scale and bottleneck effect, then validate neighboring items. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 8.64M and 1 appear, convert them into one unit basis before comparison. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2716,7 +2716,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Retry-After tells when to retry. RateLimit headers show current status. A human-readable message helps developers. Stack traces expose internals and aren't useful — this is a policy rejection, not a bug.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"what's included in a well-designed 429 response\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. If values like 429 appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2746,7 +2746,7 @@
           ],
           "correct": 3,
           "explanation": "Errors still consume server resources (validate, process, respond). Counting only successes allows clients to spam invalid requests for free. Some APIs have separate limits for errors (e.g., login failures).",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Read this as a scenario about \"should rate limits apply to successful responses only, or also to errors (4xx/5xx)\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "Why might you specifically rate limit failed login attempts?",
@@ -2758,10 +2758,10 @@
           ],
           "correct": 3,
           "explanation": "Failed logins might be brute force attacks trying passwords. Stricter limits on failures (e.g., 5 failures per minute) prevent this while allowing normal typos. This is different from general rate limiting.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"might you specifically rate limit failed login attempts\". Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 5 in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Read this as a scenario about \"rate Limiting & Quotas\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2789,7 +2789,7 @@
       ],
       "correct": 0,
       "explanation": "Concurrent limiting caps how many requests from a client can be processing simultaneously, not per time unit. E.g., max 10 in-flight requests. This prevents clients from opening thousands of connections and overwhelming the server.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"what's 'concurrent request limiting'\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. If values like 10 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Little's law",
@@ -2817,7 +2817,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "Rate limits time-based throughput. Concurrency limits simultaneous connections. Implementation differs (counters vs semaphores). Rate limiting is more common, but concurrency limits prevent connection exhaustion.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Use \"differences between rate limiting and concurrency limiting\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Little's law",
@@ -2845,7 +2845,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Concurrent connections might be 5-20. Requests/second might be 10-100. Requests/minute would be higher (600-6000). Monthly quota is highest (100K-10M). Different scales for different limits.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"rank these by typical limit values (lowest to highest) for a public API:\". Place obvious extremes first, then sort the middle by pairwise comparison. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 5 and 20 in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2875,7 +2875,7 @@
           ],
           "correct": 3,
           "explanation": "Legitimate bulk sync needs shouldn't be impossible. Higher tier limits, a bulk export API, or a different architecture (webhooks, change feeds) might be better than millions of individual requests.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"aPI consumer complains that rate limits hurt their use case\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "What's a 'bulk export' endpoint?",
@@ -2887,10 +2887,10 @@
           ],
           "correct": 3,
           "explanation": "Bulk export: client requests an export, gets a job ID. Server generates the file (possibly large). Client polls or gets notified when ready, then downloads. This is more efficient than millions of API calls and avoids rate limits.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"what's a 'bulk export' endpoint\". Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "If you keep \"rate Limiting & Quotas\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2918,7 +2918,7 @@
       ],
       "correct": 1,
       "explanation": "Admission control: deciding whether to accept a request based on current system state. Rate limiting is a form of admission control. More sophisticated versions consider request cost, system load, and priorities.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"what's 'admission control' in distributed systems\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Little's law",
@@ -2946,7 +2946,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "Sophisticated admission control considers system health (CPU, memory), current load (in-flight requests), request importance (priority), and expected cost. Simple rate limiting only counts requests; admission control is more nuanced.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"factors might influence admission control decisions\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Little's law",
@@ -2976,7 +2976,7 @@
           ],
           "correct": 3,
           "explanation": "Internal services often need higher limits (machine-to-machine is more intense). But no limits is risky — bugs can cause internal DDoS. Higher limits with monitoring and circuit breakers is typical.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"you need to rate limit an API called by thousands of microservices internally\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "An internal service has a bug causing a request loop. How should this be handled differently than external abuse?",
@@ -2988,10 +2988,10 @@
           ],
           "correct": 3,
           "explanation": "Internal bugs warrant faster response than external abuse. Alert immediately (PagerDuty, Slack). Rate limit to protect the system. Don't auto-kill without human oversight. The goal is to fix, not punish.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"internal service has a bug causing a request loop\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "Start from \"rate Limiting & Quotas\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -3019,7 +3019,7 @@
       ],
       "correct": 1,
       "explanation": "Exposing internal architecture (which microservice is overloaded) is a security risk and unnecessary. Clients need to know their limits and when to retry, not your internal system structure.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"information should NOT be in rate limit error responses\". Prioritize the option that best protects the reliability objective under the stated failure conditions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -3047,7 +3047,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Fixed window is just increment a counter. Token bucket adds refill logic. Sliding window needs window overlap calculations. Adaptive needs system health monitoring and dynamic adjustment — most complex.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"rank these from easiest to hardest to implement correctly:\". Build the rank from biggest differences first, then refine with adjacent checks. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 7519: JSON Web Token (JWT)",
@@ -3071,7 +3071,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "Test the algorithm logic (unit). Verify enforcement under real load (integration). Test client SDKs handle 429s gracefully. Test failure modes (what happens when Redis goes down). Comprehensive testing prevents surprises.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"valid testing strategies for rate limiting\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 429s appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3101,7 +3101,7 @@
           ],
           "correct": 3,
           "explanation": "Document limits, what counts against them (errors, batch elements, retries?), headers clients should use, retry strategies, and how to request higher limits. Clear documentation prevents frustration.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"you're documenting rate limits\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "Should you document exactly how rate limiting is implemented (algorithm, Redis, etc.)?",
@@ -3113,10 +3113,10 @@
           ],
           "correct": 3,
           "explanation": "Clients need to understand behavior (bursts allowed? window type?), not implementation (Redis key structure). High-level algorithm description helps set expectations without tying you to specific implementations.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"should you document exactly how rate limiting is implemented (algorithm, Redis, etc\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Call out compatibility and client impact explicitly; strong API design answers show how the interface evolves without breaking existing consumers.",
+      "detailedExplanation": "This prompt is really about \"rate Limiting & Quotas\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -3144,7 +3144,7 @@
       ],
       "correct": 1,
       "explanation": "Rate limiting protects shared resources (servers, databases, dependencies) from any single consumer using too much. It's about fairness and stability. Security, revenue, and abuse prevention are benefits, but resource protection is the core principle.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"what's the key principle behind rate limiting\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "Apache Kafka documentation",

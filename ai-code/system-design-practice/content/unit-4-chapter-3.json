@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Key-value stores provide simple operations: GET(key) → value, SET(key, value), DELETE(key). Lookups are O(1) hash-based. This simplicity enables extremely high performance but limits query flexibility.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"the fundamental operation model of a key-value store\". Prefer the choice that fits durability and cost requirements for the workload shape. Capacity answers are more defensible when growth and replication are modeled explicitly. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -40,7 +40,7 @@
       "options": ["Redis", "DynamoDB", "PostgreSQL", "Memcached"],
       "correctIndices": [0, 1, 3],
       "explanation": "Redis, DynamoDB, and Memcached are key-value stores. PostgreSQL is a relational database. While DynamoDB supports more than basic key-value (with sort keys and secondary indexes), it's fundamentally key-value oriented.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"key-value stores\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -68,7 +68,7 @@
       ],
       "correct": 1,
       "explanation": "Key-value stores excel at speed and scale. Simple operations (GET/SET) on a hash table are extremely fast — often sub-millisecond. Horizontal scaling is easier because data partitions by key. They sacrifice query flexibility for performance.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"the primary advantage of key-value stores over relational databases\". Discard modeling choices that look clean but perform poorly for the target queries. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -92,7 +92,7 @@
       ],
       "correct": 1,
       "explanation": "Redis is an in-memory data structure store. It's primarily used as a cache, session store, and real-time data store. Unlike simple key-value stores, Redis supports rich data structures (lists, sets, hashes, sorted sets).",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"redis\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -120,7 +120,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "Redis supports: strings (basic key-value), lists (queues), sets (unique collections), sorted sets (ranked data like leaderboards), hashes (field-value maps for objects). This makes Redis more than a simple key-value store.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"data structures does Redis support\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -148,7 +148,7 @@
       ],
       "correct": 1,
       "explanation": "Redis hashes store field-value pairs under a single key: HSET user:123 name 'Alice' email 'a@b.com'. They're efficient for objects — you can get/set individual fields without fetching the entire object. Memory-efficient compared to many string keys.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"a Redis hash\". Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -178,7 +178,7 @@
           ],
           "correct": 1,
           "explanation": "A hash is ideal: HSET session:abc123 user_id 42 name 'Alice' email '...' last_active 1234567890. You can update individual fields (HSET session:abc123 last_active ...) without reading and rewriting the entire session.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you need to store user session data: user_id, name, email, last_active\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 42 and 1234567890 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "You want the session to expire after 30 minutes of inactivity. How do you implement this?",
@@ -190,10 +190,10 @@
           ],
           "correct": 1,
           "explanation": "Use EXPIRE session:abc123 1800 (30 minutes in seconds). On each user activity, call EXPIRE again to reset the countdown. Redis automatically deletes expired keys. This is the standard session expiration pattern.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"you want the session to expire after 30 minutes of inactivity\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 30 minutes and 1800 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Start from \"key-Value Stores\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -221,7 +221,7 @@
       ],
       "correct": 1,
       "explanation": "Sorted sets (ZSET) associate a score with each member. Members are unique; scores can repeat. You can query by rank (ZRANGE), by score range, or get a member's rank. Perfect for leaderboards, rate limiting windows, priority queues.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"a Redis sorted set\" in view, the correct answer separates faster. Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -249,7 +249,7 @@
       ],
       "correct": 1,
       "explanation": "Sorted sets are perfect: ZADD leaderboard 1000 'player:1' 1500 'player:2'. Get top 10 with ZREVRANGE leaderboard 0 9 WITHSCORES. Updates are O(log N); rank queries are O(log N). Much more efficient than re-sorting a list.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"you're building a real-time leaderboard showing top 10 players by score\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 10 and 1000 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -277,7 +277,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Sorted sets excel at: leaderboards (rank by score), rate limiting (score = timestamp, remove old entries), priority queues (score = priority, pop lowest). Simple caching uses strings — sorted sets are for ranked or time-windowed data.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"common use cases for Redis sorted sets\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -305,7 +305,7 @@
       ],
       "correct": 1,
       "explanation": "Redis lists are linked lists. LPUSH/RPUSH add to left/right ends; LPOP/RPOP remove. This makes them ideal for queues (RPUSH to enqueue, LPOP to dequeue) or stacks. Blocking operations (BLPOP) enable consumer patterns.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"a Redis list\" as your starting point, then verify tradeoffs carefully. Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -335,7 +335,7 @@
           ],
           "correct": 1,
           "explanation": "Use a list: producers RPUSH jobs '{...job data...}'. Workers BLPOP jobs 0 (blocking pop with infinite timeout) — blocks until a job is available, then returns and removes it. Simple, reliable queue pattern.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"you need a simple job queue: producers add jobs, workers consume them\". Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. If values like 0 appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "A worker pops a job but crashes before completing it. The job is lost. How do you make this reliable?",
@@ -347,10 +347,10 @@
           ],
           "correct": 1,
           "explanation": "RPOPLPUSH (or BRPOPLPUSH for blocking) atomically moves the job to a processing list. If the worker completes, it removes from processing. If it crashes, a monitor can move stale jobs back to the queue. This is the reliable queue pattern.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"worker pops a job but crashes before completing it\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The core signal here is \"key-Value Stores\". Do not reset assumptions between stages; carry forward prior constraints directly. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -378,7 +378,7 @@
       ],
       "correct": 0,
       "explanation": "BLPOP is blocking left pop: the client blocks (waits) until an element is available in the list or timeout expires. Perfect for worker processes consuming from a queue — they sleep until work arrives, avoiding polling.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"bLPOP in Redis\" in view, the correct answer separates faster. Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -406,7 +406,7 @@
       ],
       "correct": 1,
       "explanation": "Sets (SET) are unordered collections of unique strings. Sorted sets (ZSET) add a score to each member, enabling queries by rank or score range. Use sets for membership tests; sorted sets when ordering/ranking matters.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"the difference between Redis sets and sorted sets\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -434,7 +434,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "SADD adds, SISMEMBER tests membership (O(1)), SINTER computes intersection. ZRANK is for sorted sets, not regular sets. Sets also support union (SUNION), difference (SDIFF), and random member (SRANDMEMBER).",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"operations can you perform on Redis sets\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -462,7 +462,7 @@
       ],
       "correct": 1,
       "explanation": "Redis pub/sub enables real-time messaging. Publishers PUBLISH to channels; subscribers SUBSCRIBE to channels and receive messages. It's fire-and-forget — if no subscriber is listening, the message is lost. Good for real-time notifications, not reliable queuing.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"redis pub/sub\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -492,7 +492,7 @@
           ],
           "correct": 0,
           "explanation": "Redis pub/sub is perfect for fan-out: one publish, many subscribers receive. Each subscriber gets the message. It's used for real-time notifications, cache invalidation broadcasts, and live updates.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"you need to broadcast events to multiple subscribers in real-time\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "A subscriber disconnects briefly and misses messages. What happens?",
@@ -504,10 +504,10 @@
           ],
           "correct": 1,
           "explanation": "Redis pub/sub doesn't persist messages. If no subscriber is listening, the message is gone. For reliable delivery, use Redis Streams or a proper message queue (RabbitMQ, Kafka). Pub/sub is for real-time, not guaranteed delivery.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"subscriber disconnects briefly and misses messages\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The decision turns on \"key-Value Stores\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -535,7 +535,7 @@
       ],
       "correct": 1,
       "explanation": "Redis Streams (5.0+) are append-only logs with consumer groups. Unlike pub/sub, messages persist. Consumer groups track acknowledgments — if a consumer crashes, another can take over. Think lightweight Kafka.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"redis Streams\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 5.0 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -563,7 +563,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Streams provide: persistence (messages are stored), consumer groups (distributed processing), and acknowledgments (at-least-once delivery). The API is more complex than pub/sub, but reliability is much better.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"advantages do Redis Streams have over pub/sub\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -591,7 +591,7 @@
       ],
       "correct": 1,
       "explanation": "Redis is in-memory by default. Persistence options (RDB snapshots, AOF logs) write data to disk. Without persistence, a restart loses all data. Enable persistence if Redis stores authoritative data, not just a cache of data stored elsewhere.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"redis persistence and why might you want it\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -619,7 +619,7 @@
       ],
       "correct": 1,
       "explanation": "RDB (Redis Database) creates point-in-time snapshots. Configured like 'save 900 1' (snapshot if 1+ key changed in 900 seconds). Fast recovery (load the snapshot), but you can lose data since the last snapshot on crash.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"rDB persistence in Redis\", then pressure-test the result against the options. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 900 and 1 in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -647,7 +647,7 @@
       ],
       "correct": 0,
       "explanation": "AOF logs each write command to a file. On restart, Redis replays the log to rebuild state. More durable than RDB (can sync every write), but slower recovery and larger files. Can be compacted (rewritten) to reduce size.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"aOF persistence in Redis\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -677,7 +677,7 @@
           ],
           "correct": 1,
           "explanation": "For a pure cache, no persistence is needed — the source of truth is PostgreSQL. If Redis restarts, it starts empty and cache misses repopulate it. This is simpler and faster. Persistence adds I/O overhead for no benefit.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"you use Redis as a cache for data stored in PostgreSQL\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "Now Redis stores session data — losing sessions logs users out. Which persistence mode?",
@@ -689,10 +689,10 @@
           ],
           "correct": 1,
           "explanation": "Sessions are authoritative data — losing them has user impact. AOF with appendfsync everysec (or always for max durability) minimizes data loss. RDB alone could lose minutes of sessions. Alternatively, use a replicated Redis setup for HA.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"now Redis stores session data — losing sessions logs users out\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Read this as a scenario about \"key-Value Stores\". Solve this as chained reasoning where stage two must respect stage one assumptions. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -720,7 +720,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "AOF files grow large (log of all operations), recovery is slower (replay vs. load snapshot), and writes incur I/O. All commands are supported. AOF rewriting compacts the file but adds processing. Trade-off: durability vs. performance.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"disadvantages of Redis AOF persistence\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -748,7 +748,7 @@
       ],
       "correct": 0,
       "explanation": "Redis replication streams changes from a primary to one or more replicas. Replicas serve reads, distributing load. If the primary fails, a replica can be promoted. Replication is asynchronous by default — replicas may lag slightly.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"redis replication\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -776,7 +776,7 @@
       ],
       "correct": 1,
       "explanation": "Sentinel monitors Redis primary and replicas. If the primary fails, Sentinel orchestrates failover: promotes a replica to primary, reconfigures others. Clients ask Sentinel for the current primary. It provides high availability without manual intervention.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"redis Sentinel\" in view, the correct answer separates faster. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -804,7 +804,7 @@
       ],
       "correct": 1,
       "explanation": "Redis Cluster shards data across multiple nodes. Keys are assigned to hash slots (0-16383), distributed among nodes. Each node handles a subset of slots. This enables horizontal scaling — more nodes = more memory and throughput.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"redis Cluster\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 0 and 16383 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -834,7 +834,7 @@
           ],
           "correct": 1,
           "explanation": "Redis is in-memory — if data exceeds available RAM, bad things happen. The OOM killer might terminate Redis. Even before that, performance degrades as the OS swaps. Always have headroom; monitor memory usage; set maxmemory.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"your Redis instance has 64GB of data but your server has 64GB RAM, leaving little for\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 64GB in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "You set maxmemory 60gb. What happens when Redis reaches this limit?",
@@ -846,10 +846,10 @@
           ],
           "correct": 2,
           "explanation": "The maxmemory-policy determines behavior: noeviction (writes fail), allkeys-lru (evict least-recently-used), volatile-lru (evict LRU among keys with TTL), etc. For caches, LRU eviction is typical. For authoritative data, noeviction prevents silent data loss.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you set maxmemory 60gb\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 60gb in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The key clue in this question is \"key-Value Stores\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -877,7 +877,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Redis supports: noeviction (error on full), allkeys-lru (LRU eviction from all keys), volatile-lru (LRU among keys with expire), volatile-ttl (shortest TTL first), and random variants. 'random-delete' isn't a real policy name.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"common Redis eviction policies\", then pressure-test the result against the options. Treat every option as a separate true/false test under the same constraints. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -905,7 +905,7 @@
       ],
       "correct": 1,
       "explanation": "MULTI starts a transaction; subsequent commands are queued. EXEC executes them atomically — no other client's commands interleave. Useful for read-modify-write patterns. Note: Redis transactions don't roll back on error; they're not like SQL transactions.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"redis MULTI/EXEC\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -933,7 +933,7 @@
       ],
       "correct": 1,
       "explanation": "WATCH provides optimistic locking: WATCH mykey, then MULTI/GET mykey/...modify.../EXEC. If another client changed mykey between WATCH and EXEC, EXEC returns null and nothing executes. Your code retries. This prevents lost updates.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"wATCH in Redis transactions\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -963,7 +963,7 @@
           ],
           "correct": 0,
           "explanation": "SET with NX (only if not exists) and EX (expiry in seconds) is atomic. If the key exists, SET fails — another process has the lock. The TTL ensures locks don't persist forever if the holder crashes. This is the basic Redis lock pattern.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"you need to implement a distributed lock: only one process can hold the lock\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "The lock holder crashes without releasing the lock. What happens?",
@@ -975,10 +975,10 @@
           ],
           "correct": 1,
           "explanation": "The TTL is a safety net: if the holder crashes, the key expires and others can acquire the lock. Choose TTL carefully: too short and the lock might expire during normal work; too long and recovery is slow. The holder should renew the lock if work takes longer.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"lock holder crashes without releasing the lock\". Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "This prompt is really about \"key-Value Stores\". Solve this as chained reasoning where stage two must respect stage one assumptions. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1006,7 +1006,7 @@
       ],
       "correct": 1,
       "explanation": "Redlock is an algorithm for distributed locks using N independent Redis instances. You acquire the lock on a majority (N/2+1) of instances. This provides fault tolerance — if some Redis instances fail, the lock still works. More complex than single-instance locks.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"redlock\" as your starting point, then verify tradeoffs carefully. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 2 and 1 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1034,7 +1034,7 @@
       ],
       "correct": 1,
       "explanation": "Memcached is a simple in-memory key-value cache. Unlike Redis, it only stores strings (no data structures), has no persistence, and no replication. It's extremely fast and simple — sometimes that's all you need. Easy to shard with consistent hashing.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"memcached\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1062,7 +1062,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All correct: Memcached is simpler (strings only, no persistence, no replication) but often faster for pure caching due to lower overhead. Redis is more feature-rich. Use Memcached for simple caching; Redis when you need data structures or persistence.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"memcached differ from Redis\". Treat every option as a separate true/false test under the same constraints. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1090,7 +1090,7 @@
       ],
       "correct": 1,
       "explanation": "Choose Memcached for simple caching: store/retrieve string values, nothing else. Its simplicity means less overhead and sometimes better raw performance. If you need data structures, persistence, or pub/sub, Redis is the better choice.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"you choose Memcached over Redis\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1118,7 +1118,7 @@
       ],
       "correct": 1,
       "explanation": "DynamoDB is AWS's managed NoSQL database. It's primarily key-value (partition key + optional sort key) but supports document-like items with nested attributes. Fully managed: no servers, automatic scaling, built-in replication. Pay per request or provisioned capacity.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"amazon DynamoDB\". Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1146,7 +1146,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "DynamoDB is fully managed, provides consistent single-digit ms latency, and scales automatically (on-demand mode) or via provisioned capacity. It doesn't support SQL — you query by key or use scans with filters. No JOINs.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"key features of DynamoDB\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Little's law",
@@ -1174,7 +1174,7 @@
       ],
       "correct": 1,
       "explanation": "The partition key is the primary key (or part of it). DynamoDB hashes it to determine the storage partition. All items with the same partition key live together. Choosing a good partition key (high cardinality, even distribution) is critical for performance.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"a partition key in DynamoDB\" in view, the correct answer separates faster. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1202,7 +1202,7 @@
       ],
       "correct": 1,
       "explanation": "The sort key is optional. With a sort key, the primary key is composite: (partition_key, sort_key). Items with the same partition key are stored sorted by sort key. This enables range queries: all orders for user X between dates A and B.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"a sort key in DynamoDB\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1232,7 +1232,7 @@
           ],
           "correct": 1,
           "explanation": "Partition key = user_id groups all orders by user. Sort key = created_at enables range queries: 'all orders for user X after date Y'. You can also get orders in chronological order. This matches common access patterns.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"you're storing orders in DynamoDB\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         },
         {
           "question": "Now you also need to query orders by order_id directly (e.g., order details page). How?",
@@ -1244,10 +1244,10 @@
           ],
           "correct": 1,
           "explanation": "A GSI creates an alternate 'view' with a different key. GSI partition key = order_id lets you query directly by order ID. DynamoDB automatically keeps the GSI in sync. You pay for GSI storage and write throughput.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"now you also need to query orders by order_id directly (e\". Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Read this as a scenario about \"key-Value Stores\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1275,7 +1275,7 @@
       ],
       "correct": 1,
       "explanation": "GSIs let you query by attributes other than the primary key. The GSI has its own partition key (and optional sort key), different from the table. DynamoDB automatically replicates data to the GSI. It's like having multiple access patterns on the same data.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"a Global Secondary Index (GSI) in DynamoDB\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1303,7 +1303,7 @@
       ],
       "correct": 1,
       "explanation": "LSIs share the table's partition key but have a different sort key. This lets you query the same partition by different sort attributes. LSIs must be created at table creation time and share the partition's 10GB limit. GSIs are more flexible.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"a Local Secondary Index (LSI) in DynamoDB\", then pressure-test the result against the options. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 10GB should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1331,7 +1331,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "GSIs are more flexible: different partition key, create anytime, separate capacity. LSIs are limited: same partition key, create at table creation, share capacity. LSIs aren't free — they consume storage and table capacity. GSIs are generally preferred.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"differences between GSI and LSI in DynamoDB\" in view, the correct answer separates faster. Validate each option independently; do not select statements that are only partially true. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1359,7 +1359,7 @@
       ],
       "correct": 1,
       "explanation": "Single-table design puts all entities (users, orders, products) in one table with prefixed keys: PK='USER#123', PK='ORDER#456'. This enables efficient queries across entity types with GSIs and reduces the number of tables to manage. It's a DynamoDB best practice for complex apps.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"'single-table design' in DynamoDB\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. If values like 123 and 456 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1385,7 +1385,7 @@
           ],
           "correct": 0,
           "explanation": "With PK='USER#123', you can query all items for that user (user record + their orders) and filter by SK prefix. To get an order by order_id alone, you need a GSI on order_id. The design supports 'get user and their orders' efficiently.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"in single-table design, you have users and orders\". Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 123 and 456 should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "You need to query all orders across all users by created_at range. How?",
@@ -1397,10 +1397,10 @@
           ],
           "correct": 1,
           "explanation": "Add a GSI: GSI_PK='ORDER' (all orders share this), GSI_SK=created_at. Now you can query all orders by date range. Single-table design often uses GSIs with 'type' partitions to enable cross-entity queries while keeping the main table optimized.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"you need to query all orders across all users by created_at range\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Use \"key-Value Stores\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1428,7 +1428,7 @@
       ],
       "correct": 1,
       "explanation": "Two modes: On-demand (pay per request, auto-scales) or Provisioned (set read/write capacity units, pay for reserved capacity). On-demand is simpler but can be expensive at high volumes. Provisioned is cheaper for predictable workloads. Storage is billed separately.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"dynamoDB's pricing model\". Discard storage decisions that optimize one dimension while violating another core requirement. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1456,7 +1456,7 @@
       ],
       "correct": 1,
       "explanation": "If one partition key is queried/written much more than others, that partition becomes 'hot' and may exceed its throughput allocation, causing throttling. Even with auto-scaling, single-partition limits apply. Design keys to spread load evenly.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"a 'hot partition' in DynamoDB\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1484,7 +1484,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "High cardinality spreads data across partitions. Write sharding (appending random suffixes) spreads writes. Distributing load is the goal. Using date as partition key creates hot partitions — today's date gets all traffic. Add randomness or user_id to date keys.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"you avoid hot partitions in DynamoDB\". Validate each option independently; do not select statements that are only partially true. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1512,7 +1512,7 @@
       ],
       "correct": 2,
       "explanation": "DynamoDB defaults to eventually consistent reads (faster, half the capacity cost) but offers strongly consistent reads (guaranteed latest data, full capacity cost). Choose based on need: eventual for non-critical reads, strong when you need the latest data.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Start from \"consistency levels does DynamoDB support for reads\", then pressure-test the result against the options. Prefer the option that preserves correctness guarantees for the stated consistency boundary. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1542,7 +1542,7 @@
           ],
           "correct": 1,
           "explanation": "Eventual consistency means replicas may not have the update yet. The read might hit a replica that hasn't received the write. Usually consistency is achieved within milliseconds, but there's a window where stale data is returned.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "If you keep \"user updates their profile, then immediately reads it\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "How do you ensure the user sees their own update immediately?",
@@ -1554,10 +1554,10 @@
           ],
           "correct": 3,
           "explanation": "Strongly consistent read guarantees the latest data. Alternatively, cache the update locally after write and display from cache — avoids the read entirely. For read-your-writes consistency, either approach works. Strong reads cost more but are simpler.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you ensure the user sees their own update immediately\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The key clue in this question is \"key-Value Stores\". Do not reset assumptions between stages; carry forward prior constraints directly. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1585,7 +1585,7 @@
       ],
       "correct": 1,
       "explanation": "DynamoDB Streams records item-level changes (insert, update, delete) in near-real-time. You can trigger Lambda functions on changes, replicate to other systems, or maintain materialized views. It's DynamoDB's change data capture mechanism.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Read this as a scenario about \"dynamoDB Streams\". Discard storage decisions that optimize one dimension while violating another core requirement. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1613,7 +1613,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Streams enable: Lambda triggers (process changes as they happen), replication (sync to other systems), materialized views (update aggregates on change). You can't run SQL on streams directly — you'd process events in Lambda or consume with Kinesis.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The decision turns on \"you do with DynamoDB Streams\". Validate each option independently; do not select statements that are only partially true. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1641,7 +1641,7 @@
       ],
       "correct": 1,
       "explanation": "DynamoDB supports ACID transactions since 2018. TransactWriteItems atomically writes up to 100 items; TransactGetItems reads up to 100 items consistently. Transactions cost 2x capacity units. Useful when you need all-or-nothing across items.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"dynamoDB's transaction support\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Keep quantities like 2018 and 100 in aligned units before selecting an answer. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Little's law",
@@ -1669,7 +1669,7 @@
       ],
       "correct": 1,
       "explanation": "etcd is a distributed, strongly consistent key-value store. It uses Raft for consensus. Primary use: configuration, service discovery, leader election. Kubernetes uses etcd to store cluster state. It's not for high-throughput app data — it's for coordination.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Use \"etcd\" as your starting point, then verify tradeoffs carefully. Discard choices that violate required invariants during concurrent or failed states. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1697,7 +1697,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "etcd is for coordination: Kubernetes state, config, service discovery, distributed locking. It's strongly consistent (Raft) but not designed for high throughput. For sessions, use Redis or DynamoDB. etcd handles small, critical data.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"etcd commonly used for\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1725,7 +1725,7 @@
       ],
       "correct": 1,
       "explanation": "etcd uses Raft consensus for strong consistency — all nodes agree before acknowledging writes. It's slower but safe for coordination. Redis uses async replication — faster but can lose recent writes on failover. Different tools for different jobs.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"the difference between etcd and Redis\" in view, the correct answer separates faster. Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1753,7 +1753,7 @@
       ],
       "correct": 1,
       "explanation": "Two patterns: (1) Fixed window: INCR key, check if > limit, SET expiry on first INCR. (2) Sliding window: sorted set with timestamps, ZREMRANGEBYSCORE old entries, ZCARD to count recent. Redis's atomic operations make rate limiting efficient.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"a common pattern for rate limiting using Redis\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 1 and 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1783,7 +1783,7 @@
           ],
           "correct": 0,
           "explanation": "Fixed window approach: INCR user:123:minute:202312011430 (key includes minute). INCR returns the new count. If it's the first request (count=1), EXPIRE 60 to auto-delete. If count > 100, reject. Key expires after the minute, resetting the window.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"implement a simple rate limiter: 100 requests per minute per user\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 100 and 123 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "The fixed window approach has an edge case: 100 requests at 11:59:59 and 100 at 12:00:01 both pass (200 in 2 seconds). How to fix?",
@@ -1795,10 +1795,10 @@
           ],
           "correct": 1,
           "explanation": "Sliding window: ZADD user:123:requests <timestamp> <unique_id>, ZREMRANGEBYSCORE to remove entries > 60 seconds ago, ZCARD to count. This smooths the window — no edge case. More complex but accurate. Some implementations combine fixed + sliding.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "This prompt is really about \"fixed window approach has an edge case: 100 requests at 11:59:59 and 100 at 12:00:01\". Do not reset assumptions between stages; carry forward prior constraints directly. Storage decisions should align durability expectations with access and cost behavior. If values like 100 and 11 appear, convert them into one unit basis before comparison. Common pitfall: underestimating replication and retention overhead."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The key clue in this question is \"key-Value Stores\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1826,7 +1826,7 @@
       ],
       "correct": 1,
       "explanation": "Cache-aside: read from cache → on miss, read from DB, write to cache, return. Data is loaded into cache lazily (only when requested). This is the most common caching pattern. Trade-off: first request for each key is slow (cache miss).",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"cache-aside (lazy loading) pattern\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1854,7 +1854,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Cache-aside only caches accessed data (efficient memory use), tolerates cache failure (falls back to DB), and is simple. The cache is NOT always in sync — updates to DB don't automatically update cache. You must invalidate/update cache on writes.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"advantages of the cache-aside pattern\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1882,7 +1882,7 @@
       ],
       "correct": 1,
       "explanation": "Write-through: on write, update both cache and database synchronously. Cache always reflects the database. Advantage: cache is always consistent. Disadvantage: every write hits both systems (slower writes), and you cache data that may never be read.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"write-through caching\" in view, the correct answer separates faster. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1910,7 +1910,7 @@
       ],
       "correct": 1,
       "explanation": "Write-behind: write to cache, acknowledge immediately, queue database write for async processing. Advantages: fast writes, can batch database writes. Disadvantages: data loss risk if cache fails before database write, complexity. Used for high-write-throughput scenarios.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"write-behind (write-back) caching\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1940,7 +1940,7 @@
           ],
           "correct": 1,
           "explanation": "Cache-aside doesn't automatically invalidate on database updates. The cache has stale data. Readers get old profile until: TTL expires, someone explicitly invalidates the cache key, or a cache miss triggers reload.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"you're using cache-aside\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How do you handle this staleness?",
@@ -1952,10 +1952,10 @@
           ],
           "correct": 3,
           "explanation": "Options: (1) Accept staleness if seconds/minutes of old data is OK. (2) Invalidate cache on write — next read repopulates. (3) Update cache on write (write-through). (4) Use short TTLs. Choose based on consistency needs and complexity tolerance.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you handle this staleness\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The key clue in this question is \"key-Value Stores\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1983,7 +1983,7 @@
       ],
       "correct": 1,
       "explanation": "When a popular cache key expires, many concurrent requests see a cache miss and all hit the database simultaneously to repopulate. This can overload the database. Solutions: lock during refresh (only one request fetches), preemptive refresh, staggered TTLs.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"cache stampede (thundering herd)\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2011,7 +2011,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Lock prevents duplicate fetches. Proactive refresh updates before expiration (cron or on access when near expiry). Probabilistic early expiration has random chance of refresh before TTL, spreading load. Never expiring avoids stampede but causes staleness.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"you prevent cache stampede\". Validate each option independently; do not select statements that are only partially true. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2039,7 +2039,7 @@
       ],
       "correct": 1,
       "explanation": "Hit ratio = cache hits / (hits + misses). A 95% hit ratio means 95% of requests are served from cache, only 5% hit the database. Higher is better — more traffic offloaded from the database. Monitor this to ensure caching is effective.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"a cache hit ratio\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 95 and 5 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2062,7 +2062,7 @@
       "items": ["95%", "50%", "99%", "80%"],
       "correctOrder": [2, 0, 3, 1],
       "explanation": "99% is excellent (most requests cached). 95% is very good. 80% is decent. 50% means half your requests hit the database — caching is barely helping. Low ratios suggest wrong data being cached, TTL too short, or insufficient cache size.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"rank these cache hit ratios from best to worst for a typical caching use case:\" as your starting point, then verify tradeoffs carefully. Place obvious extremes first, then sort the middle by pairwise comparison. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 99 and 95 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2090,7 +2090,7 @@
       ],
       "correct": 1,
       "explanation": "TTL is how long a cached item is considered valid. After TTL expires, the item is evicted (or treated as stale). Short TTL = fresher data but more cache misses. Long TTL = stale data risk but fewer misses. Choose based on data update frequency and staleness tolerance.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"tTL (Time To Live) in caching\". Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2120,7 +2120,7 @@
           ],
           "correct": 0,
           "explanation": "For rarely-changing data, longer TTL (24 hours, or even days) could work, reducing cache misses. 1-hour TTL causes unnecessary refreshes for data that changes monthly. Increase TTL and invalidate on update for best of both worlds.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"you cache user profiles with a 1-hour TTL\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 1 and 24 hours in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "You switch to a 24-hour TTL and invalidate on update. What happens when a user updates their profile?",
@@ -2132,10 +2132,10 @@
           ],
           "correct": 1,
           "explanation": "On update, invalidate (delete) the cache key. The next read finds no cache entry, fetches fresh data from DB, and caches it. This gives you long TTL benefits (fewer misses) with immediate consistency on updates.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"you switch to a 24-hour TTL and invalidate on update\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 24 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Read this as a scenario about \"key-Value Stores\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2163,7 +2163,7 @@
       ],
       "correct": 1,
       "explanation": "Consistent hashing maps keys to positions on a ring. Nodes own ring segments. When a node is added/removed, only keys in its segment are remapped — most keys stay put. This is crucial for scaling cache clusters without invalidating everything.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"consistent hashing\". Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2193,7 +2193,7 @@
           ],
           "correct": 1,
           "explanation": "With modulo hashing, key 5 goes to node 5%4=1 but now 5%5=0. Roughly 80% of keys remap to different nodes, causing cache misses. This is why modulo hashing is bad for elastic clusters.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you have a 4-node Memcached cluster\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 4 and 5 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How does consistent hashing improve this?",
@@ -2205,10 +2205,10 @@
           ],
           "correct": 1,
           "explanation": "With consistent hashing, adding node 5 only moves keys from adjacent nodes to node 5 — roughly 1/N of keys. Other keys stay on their nodes. Much better cache hit ratio during scaling. Most cache clients support consistent hashing.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"consistent hashing improve this\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 5 and 1 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Start from \"key-Value Stores\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2236,7 +2236,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Key-value stores excel at: sessions (simple get/set by session ID), caching (fast lookups), leaderboards (Redis sorted sets). Complex reporting with JOINs needs a relational database or data warehouse — key-value stores don't support JOINs.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"common use cases for key-value stores\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2264,7 +2264,7 @@
       ],
       "correct": 1,
       "explanation": "SETNX (SET if Not eXists) atomically sets a key only if it doesn't exist. Returns 1 if set, 0 if key existed. Useful for distributed locks, deduplication. Modern Redis uses SET with NX option: SET key value NX EX seconds.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"redis SETNX\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 1 and 0 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2292,7 +2292,7 @@
       ],
       "correct": 0,
       "explanation": "INCR atomically increments a key's value by 1 (INCRBY for arbitrary amounts). If the key doesn't exist, it's created with value 0 then incremented. Perfect for counters: rate limiting, view counts, unique ID generation.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"redis INCR\" in view, the correct answer separates faster. Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 1 and 0 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2322,7 +2322,7 @@
           ],
           "correct": 1,
           "explanation": "Read-modify-write is not atomic. Two requests read count=100, both compute 101, both write 101. One view is lost. At high concurrency, many views are lost. This is the lost update problem.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Start from \"you need to count page views\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Keep quantities like 1 and 100 in aligned units before selecting an answer. Common pitfall: underestimating replication and retention overhead."
         },
         {
           "question": "How does Redis INCR solve this?",
@@ -2334,10 +2334,10 @@
           ],
           "correct": 1,
           "explanation": "INCR is a single atomic operation. Redis increments the value internally without a separate read-modify-write. No race condition. Both requests INCR → values become 101, 102. Perfect for counters.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"redis INCR solve this\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 101 and 102 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "This prompt is really about \"key-Value Stores\". Do not reset assumptions between stages; carry forward prior constraints directly. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2365,7 +2365,7 @@
       ],
       "correct": 1,
       "explanation": "Redis executes Lua scripts atomically — the entire script runs without other commands interleaving. Use for complex operations that can't be done with a single command: conditional updates, multi-key operations. EVAL runs scripts; EVALSHA uses cached scripts.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"redis LUA scripting\" as your starting point, then verify tradeoffs carefully. Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2393,7 +2393,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Lua scripts are for complex atomic operations: multi-key updates, conditional logic, custom data structures. Simple GET/SET doesn't need Lua — standard commands suffice. Lua adds overhead, so use only when atomicity across multiple operations is needed.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"you use Redis Lua scripts\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2421,7 +2421,7 @@
       ],
       "correct": 1,
       "explanation": "Basic Redis operations are O(1): GET, SET, SADD, SISMEMBER use hash table lookups. Some operations are O(N) or O(log N): KEYS (O(N), avoid in production), ZRANK (O(log N) in sorted sets). Check complexity in docs for each command.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"the time complexity of Redis operations like GET, SET, SADD\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 1 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2449,7 +2449,7 @@
       ],
       "correct": 1,
       "explanation": "KEYS pattern scans every key, taking O(N) time. Redis is single-threaded, so KEYS blocks all other operations. On a large dataset, this can freeze Redis for seconds. Use SCAN instead — it iterates incrementally without blocking.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"you avoid the KEYS command in production Redis\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2477,7 +2477,7 @@
       ],
       "correct": 1,
       "explanation": "SCAN iterates over keys incrementally: each call returns some keys and a cursor for the next batch. It doesn't block Redis — O(1) per call. Use SCAN instead of KEYS for production. There's also SSCAN, HSCAN, ZSCAN for sets, hashes, sorted sets.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"sCAN in Redis\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. If values like 1 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2507,7 +2507,7 @@
           ],
           "correct": 1,
           "explanation": "Use SCAN with a pattern, then DEL each batch. SCAN doesn't block Redis; you delete incrementally. For very high volumes, consider UNLINK (async delete) instead of DEL. Some Redis versions support SCAN + DELETE patterns natively.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"you need to delete all keys matching 'session:*'\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "What is UNLINK in Redis?",
@@ -2519,10 +2519,10 @@
           ],
           "correct": 1,
           "explanation": "UNLINK is like DEL but async: it removes the key immediately but frees memory in a background thread. For large values (big lists, sets), DEL can block Redis briefly. UNLINK avoids this. Use UNLINK for large value deletions.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"uNLINK in Redis\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Use \"key-Value Stores\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2550,7 +2550,7 @@
       ],
       "correct": 1,
       "explanation": "Pipelining batches commands: send 100 commands at once, then read 100 responses. This eliminates network round-trip latency per command. Instead of 100 round trips, you have 1. Huge performance gain for batch operations.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"redis pipelining\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 100 and 1 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2578,7 +2578,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "If you need data structures (lists, sorted sets) or persistence, choose Redis — Memcached doesn't have them. If you only need simple string caching and want minimal complexity, Memcached is fine. Raw performance is similar; it's features that differ most.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"rank these from most to least important when choosing between Redis and Memcached:\". Order by relative scale and bottleneck effect, then validate neighboring items. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2606,7 +2606,7 @@
       ],
       "correct": 1,
       "explanation": "ElastiCache is AWS's managed caching service. You can run Redis or Memcached. AWS handles provisioning, patching, scaling, and replication. Easier to operate than self-managed Redis. Available in node types from small to memory-optimized.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"amazon ElastiCache\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2634,7 +2634,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Size for: memory (data + overhead must fit), throughput (more traffic may need replicas or cluster shards), persistence (RDB/AOF need disk I/O and memory during snapshots). Redis doesn't have tables — it's key-value.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"factors should you consider when sizing a Redis cluster\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2662,7 +2662,7 @@
       ],
       "correct": 1,
       "explanation": "Redis replication is asynchronous: replicas connect to the primary and receive a stream of write commands. There's replication lag — replicas may be behind. For HA, use Sentinel for failover. Sync replication is possible with WAIT command for critical operations.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"redis handle replication\", then pressure-test the result against the options. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2692,7 +2692,7 @@
           ],
           "correct": 1,
           "explanation": "Redis Cluster shards data across nodes. With 6 nodes (3 primaries, 3 replicas for HA), each primary holds ~33GB. Data is partitioned by hash slot. Redis Cluster provides both horizontal scaling and high availability.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The key clue in this question is \"you have 100GB of data for Redis\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Numbers such as 100GB and 20GB should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "In Redis Cluster, you have keys user:123 and user:456. Are they guaranteed to be on the same node?",
@@ -2704,10 +2704,10 @@
           ],
           "correct": 1,
           "explanation": "Redis Cluster hashes the entire key to determine the slot. Different keys (even with same prefix) hash to potentially different slots. To force co-location, use hash tags: {user}:123 and {user}:456 hash only 'user', landing on the same slot/node.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"in Redis Cluster, you have keys user:123 and user:456\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. If values like 123 and 456 appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "If you keep \"key-Value Stores\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2735,7 +2735,7 @@
       ],
       "correct": 1,
       "explanation": "Hash tags: keys containing {tag} hash only the tag portion. {user:123}:orders and {user:123}:profile both hash 'user:123', landing on the same slot. This enables multi-key operations (MGET, transactions) which require same-slot keys in Redis Cluster.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"hash tags in Redis Cluster\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2763,7 +2763,7 @@
       ],
       "correct": 1,
       "explanation": "Redis Cluster doesn't support cross-slot multi-key operations. MGET key1 key2 fails if they're in different slots. Solutions: use hash tags to co-locate related keys, or handle in your client with multiple single-key commands.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"happens if you try MGET on keys in different slots in Redis Cluster\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2791,7 +2791,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Cluster limitations: multi-key ops must be same slot, Lua scripts can't access multiple slots (error), clients need cluster-aware configuration. Strings are fully supported — the limitations are about cross-slot operations, not data types.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"limitations of Redis Cluster\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2819,7 +2819,7 @@
       ],
       "correct": 1,
       "explanation": "RedisJSON (part of Redis Stack) adds native JSON support. Store JSON documents, query with JSONPath, update nested fields atomically. More efficient than serializing JSON to strings when you need partial reads/updates. Available as a Redis module.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"redis JSON\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2847,7 +2847,7 @@
       ],
       "correct": 1,
       "explanation": "RediSearch adds full-text search, secondary indexes, and aggregation to Redis. Query hashes/JSON by any field, not just key. Useful when you need search capabilities on Redis data. Part of Redis Stack.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"redis Search\" in view, the correct answer separates faster. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2877,7 +2877,7 @@
           ],
           "correct": 1,
           "explanation": "Basic Redis is key-value: you can get a hash by key, but can't search 'all hashes where city field = X'. You'd need to maintain a secondary index manually (a set of keys per city) or use RediSearch module.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you store user data in Redis hashes\". Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How would you implement this secondary index manually?",
@@ -2889,10 +2889,10 @@
           ],
           "correct": 1,
           "explanation": "Manual secondary index: set city:NYC contains all user IDs in NYC. When adding user in NYC, SADD city:NYC user:123. When user moves, SREM old city, SADD new city. To query, SMEMBERS city:NYC gives all users. You maintain the index on writes.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"you implement this secondary index manually\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Start from \"key-Value Stores\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2920,7 +2920,7 @@
       ],
       "correct": 1,
       "explanation": "Redis is single-threaded for command execution. Commands run one at a time — no need for locks, and each command is atomic. This simplifies Redis but means long commands (KEYS, large SORT) block everything. Recent Redis offloads I/O to threads but still processes commands serially.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"the Redis single-threaded execution model\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2948,7 +2948,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Single-threaded means: natural atomicity (no races), blocking on slow commands (avoid KEYS), no locking needed. Redis handles hundreds of thousands of requests per second — single-threaded doesn't mean slow, it means sequential processing.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"implications of Redis's single-threaded execution\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2976,7 +2976,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Redis has the most features (data structures, streams, modules). DynamoDB has indexes, transactions, streams. etcd has strong consistency and watches but fewer features. Memcached is intentionally minimal — just caching.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"rank these key-value stores from most feature-rich to most minimal:\". Build the rank from biggest differences first, then refine with adjacent checks. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3004,7 +3004,7 @@
       ],
       "correct": 1,
       "explanation": "In-memory stores like Redis deliver sub-millisecond latency — data is in RAM, no disk I/O. PostgreSQL can be fast with indexes but typically 1-10ms. MongoDB varies. S3 is for blob storage, not low-latency key-value. For speed, memory is key.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"you need sub-millisecond latency for a high-traffic API\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 1 and 10ms in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -3034,7 +3034,7 @@
           ],
           "correct": 1,
           "explanation": "Redis: in-memory (very fast, bounded by RAM, you manage scaling). DynamoDB: fully managed (auto-scales storage and throughput, pay per use). Redis has richer data structures; DynamoDB has built-in HA and less operational burden.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"your team debates Redis vs\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "For a startup with unpredictable traffic and minimal ops capacity, which would you lean toward?",
@@ -3046,10 +3046,10 @@
           ],
           "correct": 1,
           "explanation": "With unpredictable traffic and minimal ops, managed services win. DynamoDB on-demand scales automatically. ElastiCache Redis is also managed. Self-managed Redis requires capacity planning and monitoring. Reduce ops burden when you're small.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"for a startup with unpredictable traffic and minimal ops capacity, which would you lean\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Use \"key-Value Stores\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -3077,7 +3077,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Key-value stores excel when: access is by key (not complex filters), speed matters, data fits the model (sessions, caches, feature flags). If you need JOINs, flexible queries, or strong relational integrity, use a relational database instead.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"a key-value store the right choice\". Validate each option independently; do not select statements that are only partially true. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",

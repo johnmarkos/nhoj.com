@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Queue age and depth track backlog directly; CPU can stay low while work waits.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"worker fleet drains an SQS-like queue\". Eliminate options that ignore delivery semantics or backpressure behavior. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 35 and 10s appear, convert them into one unit basis before comparison. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -45,7 +45,7 @@
       ],
       "correct": 0,
       "explanation": "Hysteresis plus cooldown reduces rapid add/remove cycles from noisy metrics.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"your API scales on 1-minute CPU average and oscillates every 3 minutes after traffic\" as your starting point, then verify tradeoffs carefully. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 1 and 3 minutes in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -73,7 +73,7 @@
       ],
       "correct": 2,
       "explanation": "When warmup is slow and demand is predictable, pre-scaling avoids lag.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"batch service has 4-minute instance warmup\". Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 4 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Little's law",
@@ -101,7 +101,7 @@
       ],
       "correct": 2,
       "explanation": "Tail latency captures user impact; combine with concurrency/load context for safer scaling decisions.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"request/response API target is p95 < 250ms\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 250ms and 500ms in aligned units before selecting an answer. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -129,7 +129,7 @@
       ],
       "correct": 0,
       "explanation": "Scale-in must respect in-flight work via draining or lifecycle hooks to avoid dropped work.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"scale-in frequently removes nodes that still handle long-running jobs, causing retries\". Eliminate options that fail under peak load or saturation conditions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -157,7 +157,7 @@
       ],
       "correct": 0,
       "explanation": "Equal request counts can hide very different compute cost; policy needs saturation signals too.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"service scales on RPS only\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -185,7 +185,7 @@
       ],
       "correct": 3,
       "explanation": "Autoscaling works when trigger metrics represent the true bottleneck for that workload.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Start from \"your team wants one metric for all services\", then pressure-test the result against the options. Eliminate options that fail under peak load or saturation conditions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -213,7 +213,7 @@
       ],
       "correct": 2,
       "explanation": "A hard cap prevents runaway producer pressure when downstream cannot absorb extra throughput.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"stream processor scales on lag\" in view, the correct answer separates faster. Prioritize the option that best protects the reliability objective under the stated failure conditions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -241,7 +241,7 @@
       ],
       "correct": 1,
       "explanation": "Warm capacity reduces cold-start latency penalties during sudden scale events.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"service with JVM cold starts experiences 2x p99 for first 90s after scale-out\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 2x and 90s should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Little's law",
@@ -269,7 +269,7 @@
       ],
       "correct": 3,
       "explanation": "Fleet averages mask hotspots; shard-aware metrics or max/percentile signals expose imbalance.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"scale policy uses average CPU across 200 pods\". Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 200 in aligned units before selecting an answer. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -297,7 +297,7 @@
       ],
       "correct": 3,
       "explanation": "Scheduled floor handles known peak; reactive policy covers variance.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"async thumbnail service sees daily predictable peak at 09:00 local time\" as your starting point, then verify tradeoffs carefully. Eliminate options that ignore delivery semantics or backpressure behavior. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 09 and 00 appear, convert them into one unit basis before comparison. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -325,7 +325,7 @@
       ],
       "correct": 1,
       "explanation": "Too-low targets overprovision. Increase target based on SLO and saturation tests.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"cPU target tracking is set at 30%, causing excessive cost with no latency gain\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 30 in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -353,7 +353,7 @@
       ],
       "correct": 1,
       "explanation": "Stabilization on scale-in avoids removing capacity during short dips.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"scale-in cooldown is 0s\" in view, the correct answer separates faster. Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 0s in aligned units before selecting an answer. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -381,7 +381,7 @@
       ],
       "correct": 0,
       "explanation": "Tenant-aware signals plus admission guardrails prevent one tenant from consuming all elastic capacity.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"multi-tenant API has bursty premium tenants\", then pressure-test the result against the options. Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -409,7 +409,7 @@
       ],
       "correct": 2,
       "explanation": "Rate-limited scale-out avoids shock-loading dependencies and control plane.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"scale-out adds 50 pods at once, overloading dependency auth service\". Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. Capacity reasoning should separate average and peak demand, then map both to saturation limits. If values like 50 appear, convert them into one unit basis before comparison. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -437,7 +437,7 @@
       ],
       "correct": 2,
       "explanation": "For strict latency SLOs, keeping a non-zero warm baseline is often required.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"latency-sensitive API has min replicas=0 overnight and p95 breaches at first morning\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 0 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -465,7 +465,7 @@
       ],
       "correct": 1,
       "explanation": "Combining backlog and completion avoids blindly scaling from amplified retries alone.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"you need an autoscaling metric least vulnerable to retry storms\". Prioritize the option that best protects the reliability objective under the stated failure conditions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -493,7 +493,7 @@
       ],
       "correct": 0,
       "explanation": "Elasticity requires explicit scale-in logic with safe stabilization.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"service scales out well but never scales in, keeping peak cost all day\". Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -521,7 +521,7 @@
       ],
       "correct": 3,
       "explanation": "Control loops fail with stale telemetry; faster signals improve responsiveness and stability.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"metric delay is 2 minutes\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 2 minutes and 20 seconds appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Little's law",
@@ -549,7 +549,7 @@
       ],
       "correct": 1,
       "explanation": "IO-bound workloads often need queue/latency signals rather than CPU.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"policy keys only on CPU for IO-bound workers\". Eliminate options that ignore delivery semantics or backpressure behavior. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 40 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -577,7 +577,7 @@
       ],
       "correct": 1,
       "explanation": "Known traffic events justify temporary pre-scale baselines.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"autoscaler removes capacity during low traffic despite a major event starting in 10\", then pressure-test the result against the options. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 10 minutes in aligned units before selecting an answer. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -605,7 +605,7 @@
       ],
       "correct": 3,
       "explanation": "Tail latency captures congestion and user pain earlier than median.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"team proposes scaling on p50 latency because it is stable\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Percentile",
@@ -629,7 +629,7 @@
       ],
       "correct": 3,
       "explanation": "When signals diverge, use bottleneck diagnosis and SLO impact to choose policy weighting.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"horizontal Pod Autoscaler uses CPU and custom queue metric\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -657,7 +657,7 @@
       ],
       "correct": 2,
       "explanation": "Sampling must match workload timescale; otherwise bursts are missed.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"work arrives in bursts every 30 seconds\" as your starting point, then verify tradeoffs carefully. Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 30 seconds and 60 seconds in aligned units before selecting an answer. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -685,7 +685,7 @@
       ],
       "correct": 0,
       "explanation": "Low-volume canaries need tuned thresholds/minimums to avoid noisy oscillation.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"canary uses same autoscaling policy as stable, but canary traffic is only 5%\". Discard plans that assume linear scaling despite shared bottlenecks. A strong compute answer links throughput targets to concurrency and scaling triggers. If values like 5 appear, convert them into one unit basis before comparison. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -713,7 +713,7 @@
       ],
       "correct": 0,
       "explanation": "Conservative scale-in limits availability risk from transient metric drops.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"policy is safer for scale-in under uncertain demand\" in view, the correct answer separates faster. Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -741,7 +741,7 @@
       ],
       "correct": 3,
       "explanation": "Bounds control spend and availability; alerts reveal when cap conflicts with SLO.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"workload has strict cost cap and strict latency SLO\". Prioritize the option that best protects the reliability objective under the stated failure conditions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -769,7 +769,7 @@
       ],
       "correct": 2,
       "explanation": "Pod throttling shows actual container saturation; host CPU can hide cgroup limits.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"autoscaler scales on host CPU, but each pod has CPU limit throttling\". Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -797,7 +797,7 @@
       ],
       "correct": 0,
       "explanation": "Compute scaling alone fails if downstream dependencies are bottlenecked.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"queue consumer scales aggressively, but backlog still grows because each message now\", then pressure-test the result against the options. Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 3 in aligned units before selecting an answer. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -825,7 +825,7 @@
       ],
       "correct": 0,
       "explanation": "Uncoordinated noisy triggers produce conflicting decisions and oscillation.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"anti-pattern most commonly causes autoscaling instability\". Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -853,7 +853,7 @@
       ],
       "correct": 2,
       "explanation": "Predictive policies depend on consistent seasonality and reliable history.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"service has 20-minute daily analytics spikes\" in view, the correct answer separates faster. Eliminate options that fail under peak load or saturation conditions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. If values like 20 appear, convert them into one unit basis before comparison. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -881,7 +881,7 @@
       ],
       "correct": 2,
       "explanation": "Action pacing respects provider limits and avoids control-plane failures.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"if scaling action API has rate limits, which autoscaling behavior is safest\". Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -909,7 +909,7 @@
       ],
       "correct": 1,
       "explanation": "Broken readiness distorts capacity and causes churn; fix health semantics first.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"kubernetes deployment restarts pods during scale events due to failing readiness checks\" as your starting point, then verify tradeoffs carefully. Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -937,7 +937,7 @@
       ],
       "correct": 0,
       "explanation": "Longer scale-in cooldown avoids premature contraction after brief demand dips.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"statement about cooldowns is correct\". Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -965,7 +965,7 @@
       ],
       "correct": 2,
       "explanation": "Per-worker averages can hide total load growth; include absolute backlog and age.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"autoscaler target is based on average queue depth per worker\". Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -995,7 +995,7 @@
           ],
           "correct": 0,
           "explanation": "Checkout API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"checkout API currently uses cpu target 55% with zero scale-in stabilization\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 55 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1007,10 +1007,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Add separate up/down thresholds and 10-minute scale-in stabilization.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"after confirming diagnosis, which change is the strongest next step\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Numbers such as 10 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Start from \"autoscaling Signals & Policies\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1040,7 +1040,7 @@
           ],
           "correct": 3,
           "explanation": "Image render workers: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"image render workers currently uses scaling on request rate only\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1052,10 +1052,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Switch to queue age + backlog per worker.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"after confirming diagnosis, which change is the strongest next step\". Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The key clue in this question is \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1085,7 +1085,7 @@
           ],
           "correct": 2,
           "explanation": "Notification fanout: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The core signal here is \"notification fanout currently uses predictive scaling enabled from sparse data\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1097,10 +1097,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Blend scheduled floor with reactive queue policy.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"after confirming diagnosis, which change is the strongest next step\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The core signal here is \"autoscaling Signals & Policies\". Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1130,7 +1130,7 @@
           ],
           "correct": 1,
           "explanation": "Fraud scoring: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The key clue in this question is \"fraud scoring currently uses scale-out step adds 40 pods instantly\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 40 in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1142,10 +1142,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Cap step size and add action pacing.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Read this as a scenario about \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: using weak consistency for strict invariants."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "If you keep \"autoscaling Signals & Policies\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1175,7 +1175,7 @@
           ],
           "correct": 0,
           "explanation": "Video transcode: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"video transcode currently uses scale-in terminates busy workers\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1187,10 +1187,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use lifecycle draining with lease handoff.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The core signal here is \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The decision turns on \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1220,7 +1220,7 @@
           ],
           "correct": 3,
           "explanation": "Search API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Read this as a scenario about \"search API currently uses policy uses p50 latency only\". Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1232,10 +1232,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Scale on p95/p99 with request concurrency checks.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The key clue in this question is \"after confirming diagnosis, which change is the strongest next step\". Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Read this as a scenario about \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1265,7 +1265,7 @@
           ],
           "correct": 2,
           "explanation": "Webhooks delivery: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"webhooks delivery currently uses 1-minute metrics window\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Keep quantities like 1 and 30 in aligned units before selecting an answer. Common pitfall: sizing to average and failing at peak."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1277,10 +1277,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Increase sampling frequency and smooth with EMA.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "This prompt is really about \"after confirming diagnosis, which change is the strongest next step\". Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The key clue in this question is \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1310,7 +1310,7 @@
           ],
           "correct": 1,
           "explanation": "Session API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "This prompt is really about \"session API currently uses min replicas set to zero\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1322,10 +1322,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Set non-zero warm floor by timezone.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"after confirming diagnosis, which change is the strongest next step\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Start from \"autoscaling Signals & Policies\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1355,7 +1355,7 @@
           ],
           "correct": 0,
           "explanation": "ETL consumer: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"eTL consumer currently uses queue depth target with no max\". Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1367,10 +1367,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Set max replicas and downstream-aware backpressure.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Read this as a scenario about \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "If you keep \"autoscaling Signals & Policies\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1400,7 +1400,7 @@
           ],
           "correct": 3,
           "explanation": "Payments risk engine: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The core signal here is \"payments risk engine currently uses all tenants share one metric\". Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1412,10 +1412,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use weighted tenant queues and admission quotas.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Use \"after confirming diagnosis, which change is the strongest next step\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The core signal here is \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1445,7 +1445,7 @@
           ],
           "correct": 2,
           "explanation": "Catalog indexer: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The decision turns on \"catalog indexer currently uses CPU signal from host nodes\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1457,10 +1457,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use pod throttling metric and queue lag.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"after confirming diagnosis, which change is the strongest next step\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Use \"autoscaling Signals & Policies\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1490,7 +1490,7 @@
           ],
           "correct": 1,
           "explanation": "Ads bidder: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"ads bidder currently uses cooldown 0s for scale-in/out\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 0s should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1502,10 +1502,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use fast scale-out + slower scale-in cooldown.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The decision turns on \"after confirming diagnosis, which change is the strongest next step\". Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "This prompt is really about \"autoscaling Signals & Policies\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1535,7 +1535,7 @@
           ],
           "correct": 0,
           "explanation": "Realtime chat gateway: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Use \"realtime chat gateway currently uses autoscaling tied to connection count only\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Show present and projected demand side by side so scaling deadlines are visible early. Common pitfall: postponing scaling work until after constraint breach."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1547,10 +1547,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Add send-queue lag and event-loop saturation signals.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The decision turns on \"autoscaling Signals & Policies\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1580,7 +1580,7 @@
           ],
           "correct": 3,
           "explanation": "Audit log pipeline: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly."
+          "detailedExplanation": "Read this as a scenario about \"audit log pipeline currently uses scheduled floor absent before monthly close\". Do not reset assumptions between stages; carry forward prior constraints directly. Show present and projected demand side by side so scaling deadlines are visible early. Common pitfall: forecasting volume without resource thresholds."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1592,10 +1592,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Add calendar-based pre-scaling window.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The key clue in this question is \"after confirming diagnosis, which change is the strongest next step\". Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Read this as a scenario about \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1625,7 +1625,7 @@
           ],
           "correct": 2,
           "explanation": "ML inference API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"mL inference API currently uses model warmup 3 minutes\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 3 minutes should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1637,10 +1637,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Maintain warm pool and predictive bump.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"after confirming diagnosis, which change is the strongest next step\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Start from \"autoscaling Signals & Policies\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1670,7 +1670,7 @@
           ],
           "correct": 1,
           "explanation": "IoT ingest: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "If you keep \"ioT ingest currently uses policy scales by average shard lag\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1682,10 +1682,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use max shard lag percentile and rebalance.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "This prompt is really about \"after confirming diagnosis, which change is the strongest next step\". Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The key clue in this question is \"autoscaling Signals & Policies\". Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1715,7 +1715,7 @@
           ],
           "correct": 0,
           "explanation": "Recommendation API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Read this as a scenario about \"recommendation API currently uses max replicas too low from old traffic\". Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1727,10 +1727,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Raise cap with capacity test and alert on cap saturation.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The key clue in this question is \"after confirming diagnosis, which change is the strongest next step\". Solve this as chained reasoning where stage two must respect stage one assumptions. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: misreading quorum behavior during failures."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Read this as a scenario about \"autoscaling Signals & Policies\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1760,7 +1760,7 @@
           ],
           "correct": 3,
           "explanation": "Billing worker: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"billing worker currently uses scale trigger from retries included in input rate\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1772,10 +1772,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Scale on accepted work + queue age, not raw retries.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The decision turns on \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -1805,7 +1805,7 @@
           ],
           "correct": 2,
           "explanation": "OCR batch: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Start from \"oCR batch currently uses action API rate-limited\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1817,10 +1817,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Batch scaling actions and backoff on control-plane errors.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The decision turns on \"after confirming diagnosis, which change is the strongest next step\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "This prompt is really about \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1850,7 +1850,7 @@
           ],
           "correct": 1,
           "explanation": "Map tile service: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"map tile service currently uses startup probe too strict\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1862,10 +1862,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Tune startup/readiness before autoscaler tuning.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Start from \"after confirming diagnosis, which change is the strongest next step\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Use \"autoscaling Signals & Policies\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -1895,7 +1895,7 @@
           ],
           "correct": 0,
           "explanation": "Email sender: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The core signal here is \"email sender currently uses scale-in based on single low datapoint\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1907,10 +1907,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Require sustained low utilization window.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Use \"after confirming diagnosis, which change is the strongest next step\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The core signal here is \"autoscaling Signals & Policies\". Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1940,7 +1940,7 @@
           ],
           "correct": 3,
           "explanation": "Compliance scanner: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "The key clue in this question is \"compliance scanner currently uses single metric from delayed warehouse\". Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Keep quantities like 5 minutes in aligned units before selecting an answer. Common pitfall: sizing to average and failing at peak."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1952,10 +1952,10 @@
           ],
           "correct": 2,
           "explanation": "Apply the change that directly addresses the measured failure mode: Use near-real-time queue telemetry.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "If you keep \"autoscaling Signals & Policies\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -1985,7 +1985,7 @@
           ],
           "correct": 2,
           "explanation": "Order enrichment: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "This prompt is really about \"order enrichment currently uses policy uses backlog per pod\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -1997,10 +1997,10 @@
           ],
           "correct": 1,
           "explanation": "Apply the change that directly addresses the measured failure mode: Include absolute backlog and oldest item age.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"after confirming diagnosis, which change is the strongest next step\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Start from \"autoscaling Signals & Policies\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2030,7 +2030,7 @@
           ],
           "correct": 1,
           "explanation": "Feature extraction service: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "If you keep \"feature extraction service currently uses no canary on new autoscaling policy\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -2042,10 +2042,10 @@
           ],
           "correct": 0,
           "explanation": "Apply the change that directly addresses the measured failure mode: Canary policy on subset before full deployment.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "This prompt is really about \"after confirming diagnosis, which change is the strongest next step\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "The key clue in this question is \"autoscaling Signals & Policies\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2075,7 +2075,7 @@
           ],
           "correct": 0,
           "explanation": "Push notification API: the symptom points to a control-loop mismatch between signal, policy shape, and workload behavior.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"push notification API currently uses no distinction between scale causes\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "After confirming diagnosis, which change is the strongest next step?",
@@ -2087,10 +2087,10 @@
           ],
           "correct": 3,
           "explanation": "Apply the change that directly addresses the measured failure mode: Emit policy decision logs and reason codes for each action.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers."
+          "detailedExplanation": "Start from \"after confirming diagnosis, which change is the strongest next step\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Translate workload into per-node limits and peak demand so scaling thresholds and headroom decisions are explicit.",
+      "detailedExplanation": "Use \"autoscaling Signals & Policies\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2118,7 +2118,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Hysteresis, stabilization, and bounded actions reduce oscillation.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"controls usually improve autoscaling stability? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2146,7 +2146,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Backlog age/depth and completion dynamics capture true demand pressure.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"good scale-out signals for queue consumers include which? (Select all that apply)\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2174,7 +2174,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Predictive control needs seasonality and reliable history, with reactive fallback.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"adding predictive autoscaling, what prerequisites matter? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2202,7 +2202,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Thrash usually comes from overreactive policies and noisy signals.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"common causes of autoscaling thrash? (Select all that apply)\". Treat every option as a separate true/false test under the same constraints. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2230,7 +2230,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Scale-in should preserve in-flight correctness and availability.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"for safe scale-in, which practices are strong? (Select all that apply)\", then pressure-test the result against the options. Treat every option as a separate true/false test under the same constraints. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2258,7 +2258,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Floors/caps and traceability are key guardrails.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"autoscaling guardrails should typically include which? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2286,7 +2286,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "These patterns show non-CPU bottlenecks or hidden contention.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"signals that CPU-only scaling is insufficient include which? (Select all that apply)\". Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2314,7 +2314,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Policy changes should be rolled out like code changes with guardrails.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"strong rollout practices for new autoscaling policies? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2342,7 +2342,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Tenant-aware control prevents noisy-neighbor starvation.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"for multi-tenant services, which scaling approaches help fairness? (Select all that\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2370,7 +2370,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Known demand and warmup delay make proactive floor increases valuable.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"reasons justify scheduled pre-scaling? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Little's law",
@@ -2398,7 +2398,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "You need timely, granular telemetry and decision traceability.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"useful observability for autoscaling decisions includes which? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2426,7 +2426,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Cooldowns should align with control-loop dynamics and workload behavior.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Start from \"factors should influence cooldown tuning? (Select all that apply)\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2454,7 +2454,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Healthy loops protect SLO and recover cost after demand normalization.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"outcomes indicate healthy autoscaling behavior? (Select all that apply)\". Treat every option as a separate true/false test under the same constraints. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2482,7 +2482,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Policies should follow real backlog pressure and downstream limits.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"scaling queue workers, which anti-patterns should be avoided? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2510,7 +2510,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Warm baseline avoids cold-start penalties on critical paths.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "If you keep \"valid reasons to keep a non-zero min replica count? (Select all that apply)\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2538,7 +2538,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Upstream elasticity should respect downstream capacity to avoid cascading failures.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"for dependency-aware autoscaling, which strategies are useful? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2566,7 +2566,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Over-conservative targets and missing scale-in inflate spend.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"autoscaling policy errors often produce hidden cost waste? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2590,7 +2590,7 @@
       "unit": "workers",
       "tolerance": 0,
       "explanation": "18,000 / 150 = 120 workers.",
-      "detailedExplanation": "Normalize units before calculating, and keep order-of-magnitude checks explicit throughout. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"queue receives 18,000 jobs/min\". Keep every transformation in one unit system and check order of magnitude at the end. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 18,000 and 150 in aligned units before selecting an answer. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2614,7 +2614,7 @@
       "unit": "instances",
       "tolerance": 0.02,
       "explanation": "Capacity must rise 1.5x, so 40 * 1.5 = 60 instances.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"service runs 40 instances at 60% CPU\". Normalize units before computing so conversion mistakes do not propagate. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. If values like 40 and 60 appear, convert them into one unit basis before comparison. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -2638,7 +2638,7 @@
       "unit": "minutes",
       "tolerance": 0,
       "explanation": "90,000 / 3,000 = 30 minutes.",
-      "detailedExplanation": "Convert to base units first, then track powers of ten so arithmetic mistakes are easier to catch. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"current backlog is 90,000 messages\" in view, the correct answer separates faster. Keep every transformation in one unit system and check order of magnitude at the end. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 90,000 and 3,000 in aligned units before selecting an answer. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2662,7 +2662,7 @@
       "unit": "periods",
       "tolerance": 0,
       "explanation": "8 minutes is 480 seconds; 480 / 30 = 16 periods.",
-      "detailedExplanation": "Make the units explicit at every step, then validate the resulting magnitude against known anchors. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"your autoscaler checks every 30s\". Keep every transformation in one unit system and check order of magnitude at the end. A strong compute answer links throughput targets to concurrency and scaling triggers. Keep quantities like 30s and 8 minutes in aligned units before selecting an answer. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2686,7 +2686,7 @@
       "unit": "instances",
       "tolerance": 0.02,
       "explanation": "Extra demand is 4,800 rps; 4,800 / 500 = 9.6, round to 10.",
-      "detailedExplanation": "Reduce the problem to base units, compute, and sanity-check the output scale before finalizing. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"traffic baseline is 12k rps\" as your starting point, then verify tradeoffs carefully. Normalize units before computing so conversion mistakes do not propagate. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. If values like 12k and 40 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2710,7 +2710,7 @@
       "unit": "pods",
       "tolerance": 0,
       "explanation": "24 + (6 * 7) = 66 pods.",
-      "detailedExplanation": "Start with unit normalization, then verify that the final magnitude passes a quick sanity check. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"scale-out action adds 6 pods every minute\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Numbers such as 6 and 24 should be normalized first so downstream reasoning stays consistent. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2734,7 +2734,7 @@
       "unit": "replicas",
       "tolerance": 0,
       "explanation": "Requested 84 exceeds cap, so applied size is 80.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The decision turns on \"max replicas is 80\". Normalize units before computing so conversion mistakes do not propagate. Consistency decisions should be explicit about which conflicts are acceptable and why. If values like 80 and 56 appear, convert them into one unit basis before comparison. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "Little's law",
@@ -2758,7 +2758,7 @@
       "unit": "pod-seconds",
       "tolerance": 0,
       "explanation": "24 * 90 = 2,160 pod-seconds of warmup.",
-      "detailedExplanation": "Normalize units before calculating, and keep order-of-magnitude checks explicit throughout. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"each new pod needs 90s warmup before full traffic\". Normalize units before computing so conversion mistakes do not propagate. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 90s and 24 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Kubernetes Horizontal Pod Autoscaling",
@@ -2778,7 +2778,7 @@
       "unit": "%",
       "tolerance": 0.5,
       "explanation": "(210-120)/120 = 0.75, so 75% over target.",
-      "detailedExplanation": "Do the conversion step first and maintain unit labels to prevent silent math errors. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"at peak, queue age SLO is <= 120s\". Normalize units before computing so conversion mistakes do not propagate. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 120s and 210s appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2802,7 +2802,7 @@
       "unit": "rps",
       "tolerance": 0.03,
       "explanation": "Required capacity = 52,000 / 0.7 = 74,285.71 rps.",
-      "detailedExplanation": "Use base-unit arithmetic plus a magnitude check to keep the estimate robust under time pressure. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Start from \"policy keeps 30% headroom\", then pressure-test the result against the options. Keep every transformation in one unit system and check order of magnitude at the end. A strong compute answer links throughput targets to concurrency and scaling triggers. Keep quantities like 30 and 52,000 rps in aligned units before selecting an answer. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2826,7 +2826,7 @@
       "unit": "instances",
       "tolerance": 0,
       "explanation": "Need 20 active instances for 18,000 rps; with N+1, provision 21.",
-      "detailedExplanation": "Convert to base units first, then track powers of ten so arithmetic mistakes are easier to catch. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"per-instance throughput is 900 rps at target\" in view, the correct answer separates faster. Keep every transformation in one unit system and check order of magnitude at the end. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Keep quantities like 900 rps and 18,000 rps in aligned units before selecting an answer. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Little's law",
@@ -2850,7 +2850,7 @@
       "unit": "USD",
       "tolerance": 0,
       "explanation": "Savings 14*10 = 140; net = 140 - 420 = -280 (a loss).",
-      "detailedExplanation": "Make the units explicit at every step, then validate the resulting magnitude against known anchors. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"scale-to-zero saves $14/hour overnight for 10 hours, but causes morning incident\". Normalize units before computing so conversion mistakes do not propagate. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 14 and 10 hours appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2878,7 +2878,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Start with correct signal, add safety, roll out safely, then iterate.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"order a robust autoscaling implementation sequence\". Order by relative scale and bottleneck effect, then validate neighboring items. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2906,7 +2906,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Drain before termination to preserve correctness.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"order scale-in safety steps for worker fleets\" as your starting point, then verify tradeoffs carefully. Build the rank from biggest differences first, then refine with adjacent checks. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2934,7 +2934,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Backlog age is the closest indicator of user-visible queue delay.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"order metrics from least to most direct for queue consumer saturation\". Build the rank from biggest differences first, then refine with adjacent checks. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2962,7 +2962,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Automation and tighter triggers improve response speed.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"order autoscaling response speed from slowest to fastest\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2990,7 +2990,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Maturity increases with better signals and operational safeguards.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Start from \"order policy maturity from weakest to strongest\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -3018,7 +3018,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Unchecked amplification increases cascade risk.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"order by increasing risk of cascading failure\". Build the rank from biggest differences first, then refine with adjacent checks. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -3046,7 +3046,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Add proactive controls as predictability and warmup costs increase.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Read this as a scenario about \"order by best practice for handling predictable peaks\". Place obvious extremes first, then sort the middle by pairwise comparison. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Little's law",
@@ -3074,7 +3074,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Diagnose first, then tune and validate safely.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. A good sanity check compares against anchor numbers and names which assumption must change if the result looks implausible.",
+      "detailedExplanation": "The decision turns on \"order troubleshooting flow for autoscaling thrash\". Build the rank from biggest differences first, then refine with adjacent checks. A harsh sanity check should identify which assumption is most likely wrong. Common pitfall: skipping anchor checks against known scale.",
       "references": [
         {
           "title": "Little's law",
@@ -3102,7 +3102,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Dynamic policy generally yields highest elasticity.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "This prompt is really about \"order capacity controls from most cost-flexible to least\". Order by relative scale and bottleneck effect, then validate neighboring items. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -3130,7 +3130,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Higher granularity reveals localized bottlenecks and skew.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"order from lowest to highest metric granularity for hotspot detection\" as your starting point, then verify tradeoffs carefully. Build the rank from biggest differences first, then refine with adjacent checks. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -3158,7 +3158,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Observe first, then progressively enable control authority.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The core signal here is \"order rollout steps for a new autoscaling metric\". Build the rank from biggest differences first, then refine with adjacent checks. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",

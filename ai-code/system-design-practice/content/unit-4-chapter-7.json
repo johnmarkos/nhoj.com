@@ -14,7 +14,7 @@
       ],
       "correct": 1,
       "explanation": "The main challenge is maintaining data consistency when the same data lives in multiple stores. Changes in PostgreSQL must be synced to Elasticsearch, introducing lag and potential inconsistencies.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Start from \"your e-commerce platform stores product catalog in PostgreSQL and product search in\", then pressure-test the result against the options. Eliminate approaches that hand-wave conflict resolution or quorum behavior. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "CAP theorem",
@@ -42,7 +42,7 @@
       ],
       "correct": 2,
       "explanation": "Cache invalidation should happen on writes to maintain consistency. TTL provides eventual consistency but can serve stale data. Active invalidation on writes ensures readers get current data (cache-aside pattern).",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"you use Redis as a cache in front of PostgreSQL\". Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -70,7 +70,7 @@
       ],
       "correct": 2,
       "explanation": "Change Data Capture (CDC) streams changes from PostgreSQL to Cassandra via events. Two-phase commit across different database types is impractical. Application-level dual writes risk partial failures. CDC provides reliable, eventually consistent replication.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Read this as a scenario about \"your system uses PostgreSQL for transactions and Cassandra for time-series data\". Eliminate options that ignore durability, retention, or access-pattern constraints. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -98,7 +98,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All help with consistency: CDC streams changes between stores, Sagas coordinate multi-store transactions with compensations, Outbox ensures atomic event publishing with writes, and distributed locks prevent concurrent modifications across systems.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"patterns help maintain consistency in polyglot persistence architectures\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -126,7 +126,7 @@
       ],
       "correct": 1,
       "explanation": "An orchestration service (or saga) coordinates deletions across the three stores. Triggers can't cascade across different databases. Distributed transactions across heterogeneous stores are impractical. Client coordination is unreliable.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "This prompt is really about \"you're designing a social media platform\". Prefer the option that preserves correctness guarantees for the stated consistency boundary. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -154,7 +154,7 @@
       ],
       "correctOrder": [2, 0, 1, 3],
       "explanation": "First the user writes to PostgreSQL. Debezium reads the write-ahead log (WAL), produces events to Kafka, a consumer processes those events, and finally updates Elasticsearch.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"order the steps in a CDC-based sync from PostgreSQL to Elasticsearch:\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -182,7 +182,7 @@
       ],
       "correct": 1,
       "explanation": "This is read-after-write inconsistency due to replication lag. The write completed in PostgreSQL but hasn't propagated to Elasticsearch yet. This is expected in eventually consistent CQRS systems.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"your CQRS system writes to PostgreSQL (command side) and reads from Elasticsearch\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -210,7 +210,7 @@
       ],
       "correct": 1,
       "explanation": "Pass the write version to the query. If the query store hasn't reached that version, either wait briefly or fall back to the command store for that request. Always reading from command defeats CQRS benefits.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"you solve the read-your-writes problem in a CQRS system\". Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -238,7 +238,7 @@
       ],
       "correct": 2,
       "explanation": "Batch exports to columnar formats like Parquet are efficient for analytics. Real-time CDC for analytics is overkill and expensive. Athena can't query MongoDB directly. Parquet enables efficient analytical queries.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Start from \"you use MongoDB for operational data and S3 + Athena for analytics\", then pressure-test the result against the options. Discard storage decisions that optimize one dimension while violating another core requirement. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -266,7 +266,7 @@
       ],
       "correct": 2,
       "explanation": "Login reads PostgreSQL for credential verification, then creates/updates a session in Redis. S3 isn't involved in authentication—it stores file uploads, not login data.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"your hybrid architecture uses Redis for sessions, PostgreSQL for user data, and S3 for\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -294,7 +294,7 @@
       ],
       "correct": 2,
       "explanation": "Data lakes excel at storing diverse data (structured, semi-structured, unstructured) cost-effectively. Data warehouses typically have higher storage costs and prefer structured data. Lakes trade query latency for flexibility and cost.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"what's the main advantage of using a data lake architecture with S3 + Spark over\" in view, the correct answer separates faster. Eliminate options that ignore durability, retention, or access-pattern constraints. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -322,7 +322,7 @@
       ],
       "correct": 2,
       "explanation": "The serving layer merges precomputed batch views with real-time speed layer updates to answer queries. Batch processing happens in the batch layer; stream processing in the speed layer.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"you're implementing a Lambda architecture with Kafka, Spark batch, and Spark Streaming\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -350,7 +350,7 @@
       ],
       "correct": 1,
       "explanation": "Kappa architecture eliminates the batch layer, treating all data as streams. Historical reprocessing replays events through the stream processor. This simplifies the architecture by having a single code path.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load.",
+      "detailedExplanation": "Use \"compared to Lambda architecture, what does Kappa architecture eliminate\" as your starting point, then verify tradeoffs carefully. Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -378,7 +378,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Different access patterns (OLTP vs OLAP, graph queries vs full-text search), regulatory requirements, and independent scaling are valid reasons. Team preference alone isn't sufficient justification for the complexity of polyglot persistence.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Read this as a scenario about \"valid reasons to use multiple databases in a single application\". Treat every option as a separate true/false test under the same constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -406,7 +406,7 @@
       ],
       "correct": 1,
       "explanation": "A CDC connector (like Debezium) tails the outbox table and publishes events to Kafka. This decouples event publishing from the transaction. Polling from application code works but CDC is more efficient and reliable.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"your system writes to PostgreSQL with an outbox table\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -434,7 +434,7 @@
       ],
       "correct": 1,
       "explanation": "Redis supports rich data structures (lists, sets, sorted sets, hashes, streams) beyond simple key-value. Both support distributed caching and have similar performance for basic operations. Redis is more feature-rich.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"you're choosing between Redis and Memcached as a caching layer in front of your database\", then pressure-test the result against the options. Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -462,7 +462,7 @@
       ],
       "correct": 1,
       "explanation": "Replicate the user metadata to ClickHouse so analytical queries stay in one system. Cross-database joins don't exist. PostgreSQL isn't optimized for analytics. Application-level joins are inefficient for large datasets.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The key clue in this question is \"your application uses PostgreSQL for transactions and ClickHouse for analytics\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -492,7 +492,7 @@
           ],
           "correct": 1,
           "explanation": "CDC (Change Data Capture) captures changes from PostgreSQL and processes them into the materialized view in Elasticsearch. This provides near real-time updates without coupling the systems.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "The core signal here is \"you need to maintain a materialized view in Elasticsearch that's derived from\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements."
         },
         {
           "question": "Your CDC pipeline uses Kafka. The Elasticsearch consumer crashes and restarts. How does it know where to resume?",
@@ -504,10 +504,10 @@
           ],
           "correct": 1,
           "explanation": "Kafka tracks consumer offsets—each consumer group's position in each partition. On restart, the consumer resumes from its last committed offset, ensuring no events are missed or reprocessed (assuming at-least-once semantics).",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"your CDC pipeline uses Kafka\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The core signal here is \"hybrid Architectures\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -535,7 +535,7 @@
       ],
       "correct": 1,
       "explanation": "The staging/landing zone holds raw data in its original form before any transformation. This preserves the original data for reprocessing and auditing. Transformed data moves to curated zones.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"what's the purpose of a 'staging' or 'landing' zone in a data lake architecture\" in view, the correct answer separates faster. Prefer the choice that fits durability and cost requirements for the workload shape. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -563,7 +563,7 @@
       ],
       "correct": 1,
       "explanation": "Issue parallel requests to both stores since they're independent reads. This overlaps latency. Caching adds another layer of complexity. Replication duplicates data across systems. Parallel reads are the simplest optimization.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"you use DynamoDB for user sessions and Aurora PostgreSQL for user profiles\" in view, the correct answer separates faster. Eliminate options that ignore durability, retention, or access-pattern constraints. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -591,7 +591,7 @@
       ],
       "correct": 2,
       "explanation": "The outbox pattern writes the event to an outbox table in the same database transaction as the data change. A separate process (CDC or polling) publishes events from the outbox to Kafka. This ensures atomicity.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"your system uses an event-driven architecture with Kafka\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -619,7 +619,7 @@
       ],
       "correct": 1,
       "explanation": "Services should own their data and expose it through APIs. Direct database access couples services and bypasses business logic. API calls maintain service boundaries and encapsulation.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"in a microservices architecture with polyglot persistence, Service A uses PostgreSQL\" as your starting point, then verify tradeoffs carefully. Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -642,7 +642,7 @@
       "options": ["Debezium", "AWS DMS", "Kafka Connect", "Redis Streams"],
       "correctIndices": [0, 1, 2],
       "explanation": "Debezium, AWS DMS, and Kafka Connect with appropriate connectors all support CDC from relational databases. Redis Streams is a message queue, not a CDC tool—it doesn't capture database changes.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"tools are commonly used for CDC (Change Data Capture) from relational databases\". Validate each option independently; do not select statements that are only partially true. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -670,7 +670,7 @@
       ],
       "correct": 1,
       "explanation": "Write-through caching writes to the primary store (PostgreSQL) first, then updates the cache (Redis). This ensures the cache always reflects the database. Write-behind (option A) risks data loss; invalidation is cache-aside.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"you're implementing write-through caching with Redis and PostgreSQL\". Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -698,7 +698,7 @@
       ],
       "correct": 1,
       "explanation": "Lakehouse formats like Delta Lake add ACID transactions, schema enforcement, and time travel on top of object storage. Plain data lakes lack these guarantees, making updates and consistency harder.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Read this as a scenario about \"your analytics system uses a data lakehouse (Delta Lake on S3)\". Discard choices that violate required invariants during concurrent or failed states. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -726,7 +726,7 @@
       ],
       "correct": 1,
       "explanation": "Time-series systems typically use age-based policies: data older than X days moves to the cold tier. This is predictable and matches access patterns—recent data is queried more often. Query frequency can enhance but age is primary.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The key clue in this question is \"you have a hot tier (SSD-backed) and cold tier (S3) for time-series data\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -754,7 +754,7 @@
       ],
       "correctOrder": [1, 3, 2, 0],
       "explanation": "From fastest to cheapest: Hot (SSD) → Warm (S3 Infrequent Access) → Cold (S3 Standard) → Archive (Glacier). Hot is fastest but most expensive; Glacier is cheapest but has retrieval delays.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Start from \"order the tiers in a typical data warehouse tiered storage from fastest to cheapest:\", then pressure-test the result against the options. Order by relative scale and bottleneck effect, then validate neighboring items. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -782,7 +782,7 @@
       ],
       "correct": 2,
       "explanation": "With TTL-based caching and no active invalidation, the stale data remains until the TTL expires. The cache was set at minute 0, expires at minute 5, so the next read after minute 5 fetches fresh data. That's up to minute 7 (5-minute TTL from minute 2 write doesn't apply—TTL was set at cache time).",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"your system caches database query results in Redis with a 5-minute TTL\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 5 and 2 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -810,7 +810,7 @@
       ],
       "correct": 2,
       "explanation": "Elasticsearch with prefix/edge-ngram queries provides fast autocomplete. PostgreSQL LIKE isn't optimized for prefix matching at scale. Redis sorted sets work for simple cases but lack full-text relevance. Elasticsearch is purpose-built for search.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"you're building a search-as-you-type feature\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 100ms appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -838,7 +838,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are challenges: long analytical queries compete with transactions for CPU/memory/IO, OLTP wants B-tree indexes while OLAP prefers columnar storage, locks from analytical scans can block writes, and normalized schemas hurt analytical queries while denormalized schemas hurt transactions.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"challenges when running both OLTP and OLAP workloads on the same database\". Validate each option independently; do not select statements that are only partially true. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -866,7 +866,7 @@
       ],
       "correct": 1,
       "explanation": "The Saga pattern coordinates across stores: decrement inventory in Redis, create order in PostgreSQL, and if either fails, execute compensating actions (restore inventory, delete order). XA across Redis and PostgreSQL isn't practical.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"your e-commerce site uses PostgreSQL for orders and Redis for inventory counts\" as your starting point, then verify tradeoffs carefully. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -894,7 +894,7 @@
       ],
       "correct": 1,
       "explanation": "Sagas use compensating transactions to undo previous steps. If payment fails, a compensation releases the reserved inventory. There's no automatic rollback—each step's compensation must be explicitly defined and executed.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"saga for order creation fails at the payment step\". Prefer the choice that fits durability and cost requirements for the workload shape. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -924,7 +924,7 @@
           ],
           "correct": 1,
           "explanation": "Database per service is the microservices pattern where each service owns its data in a dedicated database. This enables independent scaling, technology choice, and deployment.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "The key clue in this question is \"you're migrating from a monolithic PostgreSQL database to microservices with separate\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: underestimating replication and retention overhead."
         },
         {
           "question": "During migration, some queries need data from both the old monolith and new services. What helps?",
@@ -936,10 +936,10 @@
           ],
           "correct": 1,
           "explanation": "API composition aggregates data from multiple services at the API layer. Alternatively, replicate needed data using events. Distributed joins across different databases aren't supported. This is a transitional complexity of migration.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"during migration, some queries need data from both the old monolith and new services\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "If you keep \"hybrid Architectures\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -967,7 +967,7 @@
       ],
       "correct": 0,
       "explanation": "Without outbox, the database write and Kafka publish are separate operations. The publish might succeed before the commit, and if the commit fails, the event was already sent. Or the write succeeds but publish fails, losing the event.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"your system writes to PostgreSQL and publishes events to Kafka\", then pressure-test the result against the options. Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -995,7 +995,7 @@
       ],
       "correct": 1,
       "explanation": "Periodic sync means Elasticsearch lags behind PostgreSQL between sync intervals. Users might search for a product that was just updated but see old data. CDC provides near real-time sync to minimize this window.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The key clue in this question is \"you use Elasticsearch for product search and PostgreSQL for product data\". Discard storage decisions that optimize one dimension while violating another core requirement. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1023,7 +1023,7 @@
       ],
       "correct": 2,
       "explanation": "Conflict resolution strategies include: last-write-wins (data loss risk), merge rules (for compatible changes), or prompting the user to choose. The right approach depends on the data semantics. Generic LWW can lose important changes.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Read this as a scenario about \"your mobile app stores data in SQLite locally and syncs to a cloud database\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1051,7 +1051,7 @@
       ],
       "correct": 1,
       "explanation": "Trino is a federated query engine—it runs SQL across different data sources (S3, databases, data warehouses) without moving data. It doesn't provide ACID (that's lakehouse formats) or replace ETL for transformation.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The decision turns on \"what's the main benefit of using a query engine like Trino (Presto) with a data lake\". Eliminate options that ignore durability, retention, or access-pattern constraints. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1079,7 +1079,7 @@
       ],
       "correct": 2,
       "explanation": "CDC-based streaming ETL continuously replicates changes to Redshift, enabling near real-time analytics. Hourly ETL still has lag. PostgreSQL isn't optimized for analytical queries. Caching doesn't solve the data freshness problem.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"you run PostgreSQL for OLTP and Redshift for OLAP\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1107,7 +1107,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Eventual consistency, sagas, and API composition all manage consistency while maintaining service autonomy. Shared databases defeat the purpose of database-per-service and create coupling between services.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"strategies help manage data consistency across multiple databases in a microservices\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1135,7 +1135,7 @@
       ],
       "correct": 2,
       "explanation": "Falling back to database queries (though slower and less feature-rich) provides degraded service. Returning empty results or queueing provides no immediate value. Stale cached results are limited to previously-searched terms.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Use \"your search service uses Elasticsearch\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1163,7 +1163,7 @@
       ],
       "correct": 1,
       "explanation": "Write-behind (write-back) caches writes and asynchronously syncs to the database. If the cache fails before syncing, data is lost. Write-through immediately writes to both, avoiding data loss but with higher write latency.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"you use a write-behind cache\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1191,7 +1191,7 @@
       ],
       "correct": 1,
       "explanation": "Flink is a stream processor that transforms and aggregates events—computing metrics like order counts in real-time windows. PostgreSQL is the source, Kafka transports, Flink processes, Redis serves the computed results.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"your real-time analytics dashboard shows order counts\" in view, the correct answer separates faster. Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1219,7 +1219,7 @@
       ],
       "correctOrder": [2, 3, 1, 0],
       "explanation": "CDC captures changes → Message queue (Kafka) transports events → Stream processor (Flink/Spark) aggregates → Dashboard reads from serving store (Redis/Druid). This is the typical streaming analytics pipeline.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"order the data flow for real-time analytics on database changes:\". Order by relative scale and bottleneck effect, then validate neighboring items. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1247,7 +1247,7 @@
       ],
       "correct": 1,
       "explanation": "Multi-master allows writes to any cluster, so the same row might be updated in both regions simultaneously. Conflict resolution is needed—last-write-wins, custom merge, or conflict detection with manual resolution.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "The key clue in this question is \"you're implementing multi-master replication between two PostgreSQL clusters in\". Eliminate approaches that hand-wave conflict resolution or quorum behavior. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1275,7 +1275,7 @@
       ],
       "correct": 1,
       "explanation": "The gateway should invalidate cached responses affected by the write. Waiting for TTL expiry serves stale data. Updating cache requires knowing the response format. Clearing everything is overly aggressive. Targeted invalidation balances correctness and performance.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"your API gateway caches responses in Redis\", then pressure-test the result against the options. Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1305,7 +1305,7 @@
           ],
           "correct": 1,
           "explanation": "Cache-aside with invalidation: write to the database, invalidate the cache. The next read populates the cache. This avoids the overhead of updating cache on every write while maintaining consistency.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Use \"your application uses PostgreSQL for persistence and Redis for caching\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "With cache-aside, a race condition can occur. Read happens between write and invalidation. What's the result?",
@@ -1317,10 +1317,10 @@
           ],
           "correct": 1,
           "explanation": "If a read occurs after the database write but before cache invalidation, it might repopulate the cache with old data from a concurrent read. This stale entry persists until TTL or another invalidation. This is a known limitation of cache-aside.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"with cache-aside, a race condition can occur\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The decision turns on \"hybrid Architectures\". Solve this as chained reasoning where stage two must respect stage one assumptions. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1348,7 +1348,7 @@
       ],
       "correct": 1,
       "explanation": "Event sourcing stores all state changes as events. To rebuild a materialized view, replay all events from the beginning (or from a snapshot if available). This is a key benefit of event sourcing—views are derived and reproducible.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"you use event sourcing where events are in Kafka and materialized views are in\". Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1376,7 +1376,7 @@
       ],
       "correct": 1,
       "explanation": "Documentation of which data belongs in which store, why, and how they're synced reduces cognitive load. Consolidating to one store loses the benefits of polyglot persistence. Undocumented freedom leads to inconsistency.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"your company uses PostgreSQL, MongoDB, and Elasticsearch\" as your starting point, then verify tradeoffs carefully. Prefer the choice that fits durability and cost requirements for the workload shape. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Little's law",
@@ -1404,7 +1404,7 @@
       ],
       "correct": 1,
       "explanation": "Data mesh treats data as a product—each domain owns and serves its data through defined APIs or data contracts, rather than dumping to a central warehouse. This decentralizes ownership while maintaining discoverability.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"data mesh architecture advocates for decentralized data ownership\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1432,7 +1432,7 @@
       ],
       "correct": 1,
       "explanation": "Trino (Presto) is a federated query engine that can query multiple data sources and join across them. Cassandra doesn't support joins. Cross-database SQL doesn't exist. Stored procedures can't span different database systems.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"you need to run complex joins across data in PostgreSQL and Cassandra\". Discard modeling choices that look clean but perform poorly for the target queries. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1456,7 +1456,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Valid reasons: latency requirements current store can't meet, fundamentally different access patterns (graph vs relational), and cost savings. Learning a new technology isn't sufficient justification for operational complexity.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"factors should influence your decision to add a specialized database to your\". Treat every option as a separate true/false test under the same constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1484,7 +1484,7 @@
       ],
       "correct": 1,
       "explanation": "A unified feature computation pipeline writes to both stores, ensuring training and serving use identical feature values. This prevents training-serving skew. Different pipelines for each store can drift.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"your feature store uses Redis for online serving and S3/Parquet for offline training\", then pressure-test the result against the options. Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1512,7 +1512,7 @@
       ],
       "correct": 1,
       "explanation": "Without version checking, the older update can overwrite newer data if it arrives later (out of order). Solutions include using version numbers (reject updates with older versions) or timestamps for conflict resolution.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"your CDC pipeline from PostgreSQL to Elasticsearch occasionally produces out-of-order\". Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1540,7 +1540,7 @@
       ],
       "correct": 1,
       "explanation": "Include a version or timestamp with each event. The consumer checks if the incoming version is newer than the current version before applying. This handles out-of-order delivery gracefully. Strict ordering is often impractical.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"you prevent stale writes from overwriting newer data in a CDC pipeline\". Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1568,7 +1568,7 @@
       ],
       "correct": 2,
       "explanation": "API composition aggregates data from multiple backend sources into a unified API response. The GraphQL layer resolves fields from different stores and composes the response. This is distinct from CQRS (separate read/write models).",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "If you keep \"your GraphQL API aggregates data from PostgreSQL (users), MongoDB (posts), and Redis\" in view, the correct answer separates faster. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1596,7 +1596,7 @@
       ],
       "correct": 1,
       "explanation": "The federation gateway routes parts of a query to the appropriate subgraph services and merges their responses. Each subgraph owns its portion of the schema and data. The gateway orchestrates composition.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"in a GraphQL federation architecture, what's the role of the gateway\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1626,7 +1626,7 @@
           ],
           "correct": 1,
           "explanation": "Consumer lag means the materialized view falls behind real-time. Events aren't lost (Kafka retains them), but queries against PostgreSQL see stale data. The gap between event time and view reflects the lag.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The decision turns on \"your system stores events in Kafka and maintains a materialized view in PostgreSQL\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "How do you monitor and address consumer lag?",
@@ -1638,10 +1638,10 @@
           ],
           "correct": 1,
           "explanation": "Monitor consumer lag (events behind) via Kafka metrics. Address by scaling consumer instances (parallel processing), optimizing consumer code, or batching writes. Lag indicates processing can't keep up with production.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"you monitor and address consumer lag\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Use \"hybrid Architectures\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1669,7 +1669,7 @@
       ],
       "correct": 1,
       "explanation": "Cart data moves to PostgreSQL as an order on checkout. Before checkout, carts are ephemeral (Redis is fast, eventual loss is acceptable). On checkout, the order must be durably stored in PostgreSQL. This is a common hybrid pattern.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"you're implementing a shopping cart\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1697,7 +1697,7 @@
       ],
       "correct": 1,
       "explanation": "Kafka retains events based on retention policy (typically days). When the Elasticsearch consumer comes back, it resumes from its last committed offset, processing queued events. No data is lost (assuming retention > downtime).",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"your message queue (Kafka) sits between PostgreSQL CDC and Elasticsearch consumers\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1725,7 +1725,7 @@
       ],
       "correct": 1,
       "explanation": "If Redis sessions are region-local without cross-region replication, a user routed to a different region won't have their session. Solutions: global session store, session data in cookie, or sticky routing to origin region.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"you're designing a globally distributed system\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1753,7 +1753,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Global Redis replication, JWT cookies (stateless sessions), and sticky routing all ensure session availability across regions. Separate stores without sync means sessions don't follow users—they'd be logged out on region change.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"approaches help with cross-region session consistency\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1781,7 +1781,7 @@
       ],
       "correct": 2,
       "explanation": "A federated query engine (Trino) can join across both sources in place, minimizing data movement. Importing into either database duplicates data and adds latency. Federation pushes computation to the data where possible.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"your hybrid architecture uses PostgreSQL and Snowflake\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1805,7 +1805,7 @@
       ],
       "correct": 1,
       "explanation": "Strangler fig gradually replaces the old system by routing functionality to new services piece by piece. The old system continues running, handling unmigrated parts. Over time, the new services 'strangle' the monolith until it's decommissioned.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Start from \"you're migrating a monolithic MySQL database to microservices\", then pressure-test the result against the options. Discard storage decisions that optimize one dimension while violating another core requirement. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1833,7 +1833,7 @@
       ],
       "correct": 2,
       "explanation": "CDC syncs data between old and new systems during migration. The primary can be either system depending on migration phase. Dual writes risk inconsistency. Eventually, the old system is decommissioned and sync stops.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"during strangler fig migration, both old MySQL and new PostgreSQL service have user data\" in view, the correct answer separates faster. Prefer the choice that fits durability and cost requirements for the workload shape. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1861,7 +1861,7 @@
       ],
       "correctOrder": [2, 1, 3, 0],
       "explanation": "Build new service → Run both with sync (test, validate) → Route traffic to new service (incremental) → Decommission old database. This minimizes risk through incremental cutover.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. A good sanity check compares against anchor numbers and names which assumption must change if the result looks implausible.",
+      "detailedExplanation": "The core signal here is \"order the phases of a typical strangler fig database migration:\". Build the rank from biggest differences first, then refine with adjacent checks. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1889,7 +1889,7 @@
       ],
       "correct": 2,
       "explanation": "Airflow (or similar orchestrators like Dagster, Prefect) schedules and coordinates ETL jobs, managing dependencies, retries, and monitoring. Manual scheduling doesn't scale. Database triggers can't coordinate across different sources.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Use \"your data warehouse (Redshift) receives data from PostgreSQL (OLTP), MongoDB (product\" as your starting point, then verify tradeoffs carefully. Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1917,7 +1917,7 @@
       ],
       "correct": 2,
       "explanation": "Federated query engines (Trino) or partitioned views that span both hot (PostgreSQL) and cold (S3) tiers enable seamless querying. PostgreSQL foreign data wrappers can also mount S3 data. Importing defeats the purpose of archiving.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"you have hot data in PostgreSQL and archive data in S3\". Discard storage decisions that optimize one dimension while violating another core requirement. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -1945,7 +1945,7 @@
       ],
       "correct": 1,
       "explanation": "Update frequency depends on business needs. A real-time game needs sub-second updates (event-driven). A weekly leaderboard needs daily updates. Match sync frequency to how stale data affects user experience.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"your leaderboard uses Redis sorted sets for rankings\". Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1973,7 +1973,7 @@
       ],
       "correct": 2,
       "explanation": "For full rebuilds, query PostgreSQL directly—it's the source of truth. Kafka has retention limits and replaying all history might be slow or impossible. ES backups work if available. CDC only captures changes, not full state.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"your architecture has: PostgreSQL (source of truth) → Kafka (event bus) → Elasticsearch\". Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2001,7 +2001,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Separating workloads: prevents analytical queries from impacting OLTP, allows format optimization (row vs columnar), and enables independent scaling. Schema management actually becomes more complex with multiple systems to sync.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"benefits of separating analytical workloads from operational databases\", then pressure-test the result against the options. Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2025,7 +2025,7 @@
       ],
       "correct": 1,
       "explanation": "Cache-aside on miss: check cache (miss) → query database → return to caller → populate cache for future reads. The application is responsible for cache population, not the cache system.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"you use a cache-aside pattern\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2053,7 +2053,7 @@
       ],
       "correct": 1,
       "explanation": "In read-through, the cache system itself loads from the database on miss—the application always reads from the cache. In cache-aside, the application manages both cache and database reads. Read-through provides a simpler API.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"read-through caching differs from cache-aside how\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2083,7 +2083,7 @@
           ],
           "correct": 2,
           "explanation": "Persistent preferences (email settings, do-not-disturb) belong in PostgreSQL. Ephemeral, frequently-updated state (unread count, badge numbers) benefits from Redis speed. History should be in PostgreSQL for durability.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"you're building a notification system\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "A notification is marked as read. How do both stores get updated?",
@@ -2095,10 +2095,10 @@
           ],
           "correct": 2,
           "explanation": "Update both: PostgreSQL for durable record, Redis for real-time badge count. Dual writes in the same request ensure consistency. CDC adds latency for a real-time feature. Redis-only loses the read state on cache eviction.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The core signal here is \"notification is marked as read\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "The decision turns on \"hybrid Architectures\". Do not reset assumptions between stages; carry forward prior constraints directly. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2126,7 +2126,7 @@
       ],
       "correct": 1,
       "explanation": "Set up logical replication from a PostgreSQL read replica to BigQuery. This offloads the CDC overhead from the primary. Full scans impact performance. Triggers add write latency. Sync replication adds latency to every transaction.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"your billing system writes invoices to PostgreSQL\". Discard choices that violate required invariants during concurrent or failed states. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2154,7 +2154,7 @@
       ],
       "correct": 1,
       "explanation": "PostgreSQL has built-in full-text search (tsvector, tsquery, GIN indexes). Start here—it avoids the complexity of syncing a separate system. Only add Elasticsearch when PostgreSQL's features are insufficient for your needs.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Use \"you want to add full-text search to your PostgreSQL-backed application\" as your starting point, then verify tradeoffs carefully. Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2182,7 +2182,7 @@
       ],
       "correct": 1,
       "explanation": "Elasticsearch excels at complex relevance scoring, faceted search, autocomplete, fuzzy matching, and aggregations. If you need these features and PostgreSQL's FTS can't deliver, Elasticsearch is justified. Size alone isn't the factor.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"postgreSQL full-text search become insufficient, justifying Elasticsearch\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2210,7 +2210,7 @@
       ],
       "correct": 1,
       "explanation": "A streaming/real-time computation path (Flink, Spark Streaming) generates fresh features from live events. Batch provides historical features; streaming provides real-time. Many systems need both paths (feature stores often call this 'online' vs 'offline').",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"your ML feature store computes features in a nightly batch job\" in view, the correct answer separates faster. Eliminate options that ignore durability, retention, or access-pattern constraints. Capacity answers are more defensible when growth and replication are modeled explicitly. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2238,7 +2238,7 @@
       ],
       "correct": 1,
       "explanation": "ML training queries can be heavy—run them on a replica or export data to a training environment (S3 + Spark, BigQuery). This prevents ML workloads from impacting production OLTP performance.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Start from \"your operational database is PostgreSQL\", then pressure-test the result against the options. Discard choices that violate required invariants during concurrent or failed states. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2266,7 +2266,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are valid strategies with tradeoffs: queuing accepts writes without completing them, rejecting is explicit about unavailability, failover maintains availability, local buffering works for eventual consistency. Choice depends on requirements.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The key clue in this question is \"valid strategies for handling database writes during system maintenance\". Validate each option independently; do not select statements that are only partially true. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2294,7 +2294,7 @@
       ],
       "correct": 2,
       "explanation": "S3 with multi-region replication survives data center outages by design—data exists in other regions. PostgreSQL recovery depends on backup location. Redis in-memory data may be lost between snapshots. S3 is the most durable by design.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"your hybrid architecture includes PostgreSQL, Redis, and S3\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2322,7 +2322,7 @@
       ],
       "correct": 1,
       "explanation": "Saga pattern is the practical approach for transactions spanning different database technologies. XA/2PC requires support from both databases and is complex and slow. MongoDB's transactions only work within MongoDB.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Start from \"you're implementing a distributed transaction across PostgreSQL and MongoDB\", then pressure-test the result against the options. Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2351,7 +2351,7 @@
       ],
       "correctOrder": [1, 4, 2, 0, 3],
       "explanation": "Book flight → Book hotel → Payment fails → Compensate hotel (reverse order) → Compensate flight. Compensations run in reverse order of the original steps to maintain consistency.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "The decision turns on \"order the saga steps for a travel booking (flight, hotel, payment) where payment fails:\". Build the rank from biggest differences first, then refine with adjacent checks. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2379,7 +2379,7 @@
       ],
       "correct": 1,
       "explanation": "Saga orchestrators persist their state. On restart, the orchestrator reads the saga's last state (flight booked, awaiting hotel) and resumes from there. This requires durable storage of saga state—without it, recovery is problematic.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Read this as a scenario about \"your saga orchestrator crashes after booking a flight but before booking the hotel\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2407,7 +2407,7 @@
       ],
       "correct": 2,
       "explanation": "Application-level coordination (saga) handles cross-database operations. Neither PostgreSQL nor DynamoDB can manage transactions in the other. The application orchestrates: reserve inventory → create order → confirm or compensate.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "Use \"you use PostgreSQL for orders and DynamoDB for inventory\" as your starting point, then verify tradeoffs carefully. Prefer the option that preserves correctness guarantees for the stated consistency boundary. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2435,7 +2435,7 @@
       ],
       "correct": 1,
       "explanation": "Lambda architecture combines batch layer (historical accuracy from warehouse) with speed layer (real-time from Kafka). Queries merge both views. This handles the trade-off between real-time freshness and historical completeness.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"your analytics dashboard needs to combine real-time data (last hour from Kafka) with\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2465,7 +2465,7 @@
           ],
           "correct": 1,
           "explanation": "A data warehouse or customer data platform (CDP) aggregates data from multiple sources into a unified view. This avoids querying multiple systems in real-time and provides consistent analytics.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "The key clue in this question is \"your company is building a customer 360 view combining data from CRM (Salesforce),\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Keep quantities like 360 in aligned units before selecting an answer. Common pitfall: ignoring durability/recovery requirements."
         },
         {
           "question": "What pattern keeps the customer 360 view up-to-date as source systems change?",
@@ -2477,10 +2477,10 @@
           ],
           "correct": 1,
           "explanation": "CDC or scheduled ETL pipelines keep the view synchronized. CDC provides near real-time updates; scheduled ETL is simpler but has lag. Push from sources requires modifying each source system.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "Read this as a scenario about \"pattern keeps the customer 360 view up-to-date as source systems change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity answers are more defensible when growth and replication are modeled explicitly. Numbers such as 360 should be normalized first so downstream reasoning stays consistent. Common pitfall: underestimating replication and retention overhead."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "If you keep \"hybrid Architectures\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2508,7 +2508,7 @@
       ],
       "correct": 2,
       "explanation": "CDC streams relevant changes from PostgreSQL to the graph database. This decouples the systems—the application writes to PostgreSQL as before, and changes flow to the graph DB asynchronously. Dual writes risk inconsistency.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"your application uses PostgreSQL\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2536,7 +2536,7 @@
       ],
       "correct": 3,
       "explanation": "Both can work. PostgreSQL FDW is simpler for small-scale queries and keeps the PostgreSQL interface. Athena excels at large-scale S3 queries with federated access to other sources. Choose based on query patterns and data volume.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The key clue in this question is \"you have hot PostgreSQL data and cold Parquet files in S3\". Eliminate options that ignore durability, retention, or access-pattern constraints. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2564,7 +2564,7 @@
       ],
       "correct": 1,
       "explanation": "Active cache invalidation purges specific URLs when underlying data changes. Waiting for TTL serves stale prices. Not caching hurts performance. The application triggers CDN purge after database update (via API or event).",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"your e-commerce site caches product pages in a CDN\", then pressure-test the result against the options. Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2592,7 +2592,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are common caching layers: browser (HTTP cache headers), CDN (edge servers), application (Redis/Memcached), and database (query/buffer cache). Each layer reduces load on layers behind it.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"caching layers might exist in a typical web application architecture\". Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2620,7 +2620,7 @@
       ],
       "correct": 1,
       "explanation": "A data catalog tracks what data exists where (lineage, ownership, classification). For audits, the catalog identifies relevant services and their data. This maintains microservice autonomy while enabling cross-cutting concerns.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "If you keep \"your microservice architecture has 10 services, each with its own database\" in view, the correct answer separates faster. Prefer the choice that fits durability and cost requirements for the workload shape. Capacity answers are more defensible when growth and replication are modeled explicitly. Keep quantities like 10 in aligned units before selecting an answer. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2648,7 +2648,7 @@
       ],
       "correct": 3,
       "explanation": "Depends on requirements. If deleted items should be searchable (admin view, restore), update with flag. If deleted means 'gone from search', remove the document. The CDC pipeline should propagate whichever action matches your business logic.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "This prompt is really about \"you're implementing soft delete across PostgreSQL and Elasticsearch\". Discard storage decisions that optimize one dimension while violating another core requirement. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: choosing tier by cost only and missing access constraints.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2676,7 +2676,7 @@
       ],
       "correct": 1,
       "explanation": "Elasticsearch indexes have a refresh interval (default 1 second) before new documents are searchable. Combined with CDC lag, recently published content may take seconds to appear. Check index refresh settings and CDC consumer lag.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"your search uses Elasticsearch\" as your starting point, then verify tradeoffs carefully. Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 1 second appear, convert them into one unit basis before comparison. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2704,7 +2704,7 @@
       ],
       "correct": 1,
       "explanation": "Integration tests with real database instances (via Docker/Testcontainers) verify actual behavior across all stores. Mocking hides integration issues. Unit tests don't catch cross-system problems. Production testing is risky.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"your system uses PostgreSQL, Redis, and Elasticsearch\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2732,7 +2732,7 @@
       ],
       "correct": 2,
       "explanation": "Transactional outbox writes the event to an outbox table in the same PostgreSQL transaction. A separate process reliably publishes from the outbox to Kafka with retries. This ensures the event is never lost if the DB write succeeded.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"your pipeline writes data to PostgreSQL and then publishes to Kafka\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2762,7 +2762,7 @@
           ],
           "correct": 1,
           "explanation": "Redis provides fast, atomic decrement operations for real-time inventory. PostgreSQL stores the durable audit trail of all inventory changes. This combines Redis speed with PostgreSQL durability and queryability.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you're building a real-time inventory system\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "Redis shows 5 items in stock. PostgreSQL audit log shows 10 sold, 15 restocked. How do you reconcile if they disagree?",
@@ -2774,10 +2774,10 @@
           ],
           "correct": 1,
           "explanation": "PostgreSQL's immutable audit log is the source of truth. Recalculate inventory from the complete event history. Redis may have missed an event or had a bug. The audit log is authoritative for reconciliation.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"redis shows 5 items in stock\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 5 and 10 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Storage estimates are most useful when split into raw data, replication factor, metadata/index overhead, and retention horizon.",
+      "detailedExplanation": "Start from \"hybrid Architectures\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Separate raw data, redundancy overhead, and retention horizon when reasoning about storage choices. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2805,7 +2805,7 @@
       ],
       "correct": 1,
       "explanation": "Consolidation reduces operational complexity. Modern databases often handle multiple workloads adequately (PostgreSQL for OLTP + search + JSON). Only keep specialized stores where they provide clear value over consolidation.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The key clue in this question is \"your architecture has grown to include 5 different databases\". Eliminate options that ignore durability, retention, or access-pattern constraints. Storage decisions should align durability expectations with access and cost behavior. If values like 5 appear, convert them into one unit basis before comparison. Common pitfall: ignoring durability/recovery requirements.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2833,7 +2833,7 @@
       ],
       "correct": 1,
       "explanation": "A specialized TSDB (InfluxDB, TimescaleDB, QuestDB) is warranted when you need extreme ingestion rates, specific features (downsampling, retention), or scale beyond TimescaleDB. Otherwise, sticking with PostgreSQL reduces complexity.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "The core signal here is \"you're evaluating whether to add a specialized time-series database or use PostgreSQL\". Prefer the choice that fits durability and cost requirements for the workload shape. Storage decisions should align durability expectations with access and cost behavior. Common pitfall: underestimating replication and retention overhead.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2861,7 +2861,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are critical: CDC lag indicates sync freshness, consistency checks catch drift, individual health ensures each system works, and cross-store query patterns reveal where composition is complex or slow.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "If you keep \"you monitor in a polyglot persistence architecture\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -2889,7 +2889,7 @@
       ],
       "correct": 1,
       "explanation": "Understand the specific workload requirements. Cassandra excels at high write throughput across partitions. If the workload can be served by existing stores (MongoDB, PostgreSQL), adding Cassandra increases complexity without benefit.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"your data platform team supports PostgreSQL, MongoDB, Redis, Elasticsearch, and Kafka\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",

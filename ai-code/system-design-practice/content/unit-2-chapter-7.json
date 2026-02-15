@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Schema migrations are versioned scripts that modify the database structure. They're applied in order (v001, v002, ...) and tracked so you know which migrations have been applied. Tools: Flyway, Liquibase, Rails migrations, Alembic.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"a 'schema migration'\" in view, the correct answer separates faster. Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -41,7 +41,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Write → test on production-like data (catch data-dependent failures) → apply to production → verify. Never skip testing against realistic data — migrations that work on empty dev databases can fail on real data.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"rank these migration steps in the correct order:\". Order by relative scale and bottleneck effect, then validate neighboring items. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -65,7 +65,7 @@
       ],
       "correct": 1,
       "explanation": "Backward compatible schema changes don't break existing code. During rolling deployments, old and new application versions run simultaneously. If the schema change breaks old code, you get errors during the rollout.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"'backward compatible' mean for schema changes\" as your starting point, then verify tradeoffs carefully. Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -89,7 +89,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "Adding nullable columns: old code ignores them. Adding tables: old code doesn't reference them. Renaming breaks old code's column references. Dropping a column breaks old code that reads it.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"schema changes are backward compatible (safe during rolling deployment)\". Treat every option as a separate true/false test under the same constraints. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -115,7 +115,7 @@
           ],
           "correct": 1,
           "explanation": "Multi-step expand-and-contract: add the new column, double-write during transition, migrate reads to the new column, then drop the old one. Each step is backward compatible. A direct rename breaks old code instantly.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"you need to rename column 'name' to 'display_name' on the Users table\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "This multi-step approach is called?",
@@ -127,10 +127,10 @@
           ],
           "correct": 1,
           "explanation": "Expand and contract: 'expand' the schema (add the new column alongside the old), transition code, then 'contract' (remove the old column). Each step is independently safe and deployable.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The core signal here is \"this multi-step approach is called\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The decision turns on \"schema Evolution\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -154,7 +154,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Add column → backfill existing data → deploy code that uses new column (with fallback) → once all code reads new column, drop old column. Each step is a separate, safe deployment.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"rank the steps of an expand-and-contract column rename (name → display_name) in correct\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -182,7 +182,7 @@
       ],
       "correct": 1,
       "explanation": "Before PostgreSQL 11, ADD COLUMN with a non-null DEFAULT rewrote every row. On a 100M row table, this could take hours with the table locked. PostgreSQL 11+ stores the default in the catalog instead — instant ADD COLUMN.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"aLTER TABLE\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 11 and 100M should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -206,7 +206,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "Changing data types requires converting every row's value — table rewrite. Adding NOT NULL + DEFAULT (pre-PG11) rewrites all rows. Adding a nullable column is metadata-only (instant). Index creation doesn't rewrite the table (it reads it).",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"aLTER TABLE operations typically require a table rewrite (slow, locking)\". Validate each option independently; do not select statements that are only partially true. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -230,7 +230,7 @@
       ],
       "correct": 1,
       "explanation": "Regular CREATE INDEX holds a lock that blocks writes for the duration. CONCURRENTLY builds the index in multiple passes without blocking writes. It takes longer but doesn't cause downtime. Essential for production.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"cREATE INDEX CONCURRENTLY do in PostgreSQL\" in view, the correct answer separates faster. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -260,7 +260,7 @@
           ],
           "correct": 1,
           "explanation": "CREATE INDEX CONCURRENTLY: builds the index without blocking writes. Takes longer (two table passes instead of one) but zero downtime. This is the standard approach for production index creation.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "If you keep \"you need to add an index to a 500M row table in production\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. Numbers such as 500M and 30 minutes should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "CREATE INDEX CONCURRENTLY can fail partway through. What happens?",
@@ -272,10 +272,10 @@
           ],
           "correct": 1,
           "explanation": "If CONCURRENTLY fails (e.g., unique constraint violation, out of disk space), the index is marked INVALID. It exists but isn't used by the query planner. You must DROP INDEX and retry.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"cREATE INDEX CONCURRENTLY can fail partway through\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The key clue in this question is \"schema Evolution\". Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -299,7 +299,7 @@
       ],
       "correct": 1,
       "explanation": "Zero-downtime migrations change the schema while the application stays live. This requires backward-compatible changes, online DDL operations (no long locks), and careful sequencing of schema + code changes.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"a 'zero-downtime migration'\", then pressure-test the result against the options. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -327,7 +327,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Add nullable (instant, no lock) → deploy code that writes to it (new rows get values) → backfill old rows → add NOT NULL constraint (now safe — all rows have values). Each step is safe independently.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"for a zero-downtime column addition with NOT NULL constraint, rank these steps in order:\". Order by relative scale and bottleneck effect, then validate neighboring items. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -355,7 +355,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "MySQL 8.0 supports online DDL for many operations: ADD COLUMN, ADD INDEX (INPLACE), and increasing VARCHAR length (within limits). Changing column type fundamentally (INT to VARCHAR) requires a table copy.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"'online DDL' operations in MySQL 8\". Validate each option independently; do not select statements that are only partially true. Schema and index choices should follow access patterns and write/read amplification constraints. If values like 8.0 appear, convert them into one unit basis before comparison. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -379,7 +379,7 @@
       ],
       "correct": 1,
       "explanation": "A rollback applies the reverse migration (DROP what was ADDed, re-ADD what was DROPped). Needed when a migration causes application errors or performance issues. Not all migrations are easily reversible (e.g., data-destructive changes).",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"a 'migration rollback' and when is it needed\" as your starting point, then verify tradeoffs carefully. Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -405,7 +405,7 @@
           ],
           "correct": 1,
           "explanation": "You can ADD COLUMN middle_name back, but all the data that was in it is gone. Dropping a column is a data-destructive operation. This is why careful teams mark columns as 'deprecated' before dropping them.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"migration drops the 'middle_name' column from the Users table\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "What's the safer approach for removing a column?",
@@ -417,10 +417,10 @@
           ],
           "correct": 1,
           "explanation": "Stop using the column in code first. Wait until you're confident it's not needed. Export/backup the data. Then drop. The waiting period gives you time to catch unexpected dependencies before the data is gone.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"what's the safer approach for removing a column\". Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -444,7 +444,7 @@
       ],
       "correct": 1,
       "explanation": "Migration tools (Flyway, Alembic, etc.) store applied migration IDs in a table (e.g., flyway_schema_history). This lets the tool know which migrations are pending and prevents re-applying already-applied changes.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"'schema versioning' in the context of migration tools\" in view, the correct answer separates faster. Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -468,7 +468,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Migration tools provide: versioned ordering, tracking applied migrations, and some can auto-generate migrations from model changes (Alembic autogenerate, Rails). Automatic rollback isn't guaranteed — many DDL operations aren't transactional.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"features of modern migration tools (Flyway, Alembic, Rails Migrations)\". Validate each option independently; do not select statements that are only partially true. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -492,7 +492,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Sequential: just ordering. Date: when it was created. Timestamp: precise creation time (avoids collisions when multiple developers create migrations on the same day). Semantic version: ties to release version.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"rank these migration file naming conventions by what they encode, from LEAST to MOST\". Build the rank from biggest differences first, then refine with adjacent checks. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -520,7 +520,7 @@
       ],
       "correct": 1,
       "explanation": "Version collision: two different V005 scripts. Sequential numbering is prone to this. Timestamp-based naming (20240115143022) virtually eliminates collisions. Some tools (Flyway) detect and reject duplicate versions.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"two developers on different branches both create migration V005\", then pressure-test the result against the options. Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 20240115143022 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -550,7 +550,7 @@
           ],
           "correct": 1,
           "explanation": "Batch the update: UPDATE orders SET status_code = status WHERE status_code IS NULL AND id BETWEEN ? AND ? LIMIT 10000. Small transactions, minimal lock duration, and pauses between batches to avoid overwhelming the database.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"migration needs to update 50M rows: UPDATE orders SET status_code = status WHERE\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. If values like 50M and 45 minutes appear, convert them into one unit basis before comparison. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "Why is batching safer than a single large UPDATE?",
@@ -562,10 +562,10 @@
           ],
           "correct": 1,
           "explanation": "Small transactions: short locks (milliseconds not minutes). Bounded log usage: won't fill up WAL or transaction log. Stoppable: if issues arise, stop after the current batch — already-updated rows keep their values.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"batching safer than a single large UPDATE\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -585,7 +585,7 @@
       "unit": "seconds",
       "tolerance": 0.1,
       "explanation": "10,000,000 / 5,000 = 2,000 batches. 2,000 × 100ms = 200,000ms = 200 seconds (~3.3 minutes). Plus actual query execution time per batch. Much better than a single 45-minute locked transaction.",
-      "detailedExplanation": "Reduce the problem to base units, compute, and sanity-check the output scale before finalizing. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"backfill migration updates 10M rows in batches of 5,000, with a 100ms sleep between\" as your starting point, then verify tradeoffs carefully. Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Choose data shape based on workload paths, not on normalization dogma alone. Numbers such as 10M and 5,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -609,7 +609,7 @@
       ],
       "correct": 1,
       "explanation": "gh-ost (GitHub Online Schema Tool): creates a 'ghost' table with the new schema, streams changes via binlog, copies data in the background, and atomically renames tables. Zero-downtime schema changes for MySQL without metadata locks.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"a 'ghost table' migration pattern (used by tools like gh-ost)\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -637,7 +637,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "gh-ost, pt-online-schema-change, and MySQL Online DDL all perform schema changes without blocking writes. pg_repack is a PostgreSQL tool, not MySQL.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"tools help perform online schema changes in MySQL\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -661,7 +661,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Add nullable column: metadata-only, instant. Add index concurrently: no locks but takes time. Change type: table rewrite, potential long lock. Drop table: permanent data loss, no recovery without backup.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"rank these schema changes from SAFEST (least risk of downtime) to MOST DANGEROUS:\", then pressure-test the result against the options. Place obvious extremes first, then sort the middle by pairwise comparison. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -691,7 +691,7 @@
           ],
           "correct": 1,
           "explanation": "Expand-and-contract avoids the table rewrite. Add id_new BIGINT, dual-write to both, backfill old rows, swap application reads to id_new, then drop old column. Each step is non-blocking.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "If you keep \"you need to change a column from INT to BIGINT on a 200M row table because values are\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Tie the decision to concrete operational outcomes, not abstract reliability language. If values like 200M and 2.1 appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "What's the trickiest part of this migration?",
@@ -703,10 +703,10 @@
           ],
           "correct": 1,
           "explanation": "The dual-write period is complex: inserts write both columns, updates must propagate, and the backfill must not overwrite concurrently-written values. Usually solved with triggers or application-level double-writes.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "This prompt is really about \"what's the trickiest part of this migration\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The key clue in this question is \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -730,7 +730,7 @@
       ],
       "correct": 1,
       "explanation": "Schema drift occurs when someone applies manual DDL changes (hotfixes, console patches) outside the migration tool. The tool's state says the schema is at V10, but extra columns or indexes exist. This causes deployment failures and confusion.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"'schema drift'\". Reject options that conflict with the primary access pattern or index strategy. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -754,7 +754,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Prevention: all changes via migrations (no manual DDL). Detection: automated comparison tools. Access control: restrict production DDL to the migration tool. Restricting to one developer doesn't help if they still make manual changes.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"you prevent and detect schema drift\". Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -778,7 +778,7 @@
       ],
       "correct": 1,
       "explanation": "Feature flags let you deploy code that reads from the new schema structure, but flag it off initially. Gradually enable it for a percentage of users. If issues arise, flip the flag — no schema rollback needed. The schema stays unchanged; code behavior changes.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"a 'feature flag' approach to schema evolution\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -804,7 +804,7 @@
           ],
           "correct": 1,
           "explanation": "Add new columns alongside the old one (expand). Parse the existing TEXT field to populate them (backfill). Update the app to read/write the new structured columns. Eventually drop the old TEXT column (contract).",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The decision turns on \"legacy system stores addresses as a single 'address' TEXT column\". Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "During the transition, where should the application read address data from?",
@@ -816,10 +816,10 @@
           ],
           "correct": 1,
           "explanation": "Dual-read: prefer new columns, fall back to old column. This handles the transition period where some rows are backfilled and others aren't. Once backfill is complete, remove the fallback and drop the old column.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"during the transition, where should the application read address data from\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"schema Evolution\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -843,7 +843,7 @@
       ],
       "correct": 1,
       "explanation": "Dark launch: write to both old and new schema paths. Reads still use the old path. Compare results to validate the new schema handles real data correctly. Once confident, switch reads to the new path. Low risk — the old path is always available.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"the 'dark launch' pattern in schema evolution\" in view, the correct answer separates faster. Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -867,7 +867,7 @@
       ],
       "correctOrder": [0, 1, 3, 2],
       "explanation": "Dark launch: validate before switching, lowest risk. Expand-and-contract: gradual, backward compatible. Blue-green DB: full swap with fallback. Direct ALTER: immediate, no safety net, highest risk.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"rank these schema evolution strategies from MOST CONSERVATIVE (lowest risk) to MOST\". Place obvious extremes first, then sort the middle by pairwise comparison. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -895,7 +895,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "New column needing values: backfill from existing data or a default. Split column: parse and populate new columns. NOT NULL constraint: all existing NULLs must be filled first. Empty table: nothing to backfill.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"schema changes require data backfill\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -921,17 +921,17 @@
           ],
           "correct": 1,
           "explanation": "During transition: new code reads from both tables (or a JOIN). Old code still reads from the original User table (which still has all columns). The old columns are only removed after all code is updated.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"migration splits the Users table: User(id, name, email, bio, avatar_url,\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "What's the correct order? (A) Create UserProfile table. (B) Backfill UserProfile from User. (C) Deploy code reading from UserProfile. (D) Drop bio/avatar/preferences from User.",
           "options": ["A, B, C, D", "C, A, B, D", "A, C, B, D", "D, A, B, C"],
           "correct": 0,
           "explanation": "Create table → backfill data → deploy code that reads from new table → drop old columns. Each step depends on the previous one. Dropping columns before migrating reads would break the application.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"what's the correct order? (A) Create UserProfile table\". Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -955,7 +955,7 @@
       ],
       "correct": 1,
       "explanation": "Idempotent migrations use guards: CREATE TABLE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, etc. If accidentally re-run (e.g., migration state is lost), they complete successfully without errors or double-applying changes.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"'idempotent migration'\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -983,7 +983,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All use conditional guards: IF NOT EXISTS / IF EXISTS prevents errors on re-run. ON CONFLICT DO NOTHING prevents duplicate inserts. These make migrations safe to re-run without checking state.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"sQL constructs make migrations idempotent\". Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1011,7 +1011,7 @@
       ],
       "correct": 1,
       "explanation": "Forward-only: don't write DOWN migrations. If something goes wrong, write a new UP migration that fixes the issue. Rationale: rollbacks are rarely tested, often fail, and some changes (data deletion) can't be rolled back anyway.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"'forward-only migration'\". Discard modeling choices that look clean but perform poorly for the target queries. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1037,7 +1037,7 @@
           ],
           "correct": 1,
           "explanation": "Fix forward: deploy a new migration that corrects the constraint (ALTER TABLE ... DROP CONSTRAINT, or ALTER CONSTRAINT). No rollback needed — a new forward migration resolves the issue. This is why forward-only is pragmatic.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "This prompt is really about \"team deploys a migration that adds a column with a CHECK constraint\". Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. If values like 5 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "Why is fix-forward often safer than rollback?",
@@ -1049,10 +1049,10 @@
           ],
           "correct": 1,
           "explanation": "Rollback scripts assume the database state hasn't changed since the migration. But new data has been written, constraints may have been enforced, and destructive changes (drops, deletes) can't be undone. Fix-forward operates on the current state.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"fix-forward often safer than rollback\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Start from \"schema Evolution\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1076,7 +1076,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Code revert: fastest if schema is backward compatible — deploy old code, schema stays. Fix-forward: write and deploy a new migration. Rollback script: apply the reverse migration. Backup restore: slowest, nuclear option — hours of downtime and data loss.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"rank these approaches to handling a broken production migration from FASTEST to MOST\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1104,7 +1104,7 @@
       ],
       "correct": 1,
       "explanation": "Schema-on-write (SQL): data must conform to the schema when inserted. Schema-on-read (MongoDB, data lakes): data is stored without enforcement; the application interprets structure when reading. Schema evolution is easier with schema-on-read but harder to enforce consistency.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost.",
+      "detailedExplanation": "The core signal here is \"'schema-on-read' vs 'schema-on-write'\". Prefer the option that preserves correctness guarantees for the stated consistency boundary. Pick based on invariants and acceptable anomalies, then justify latency/availability tradeoffs. Common pitfall: ignoring conflict resolution behavior.",
       "references": [
         {
           "title": "CAP theorem",
@@ -1132,7 +1132,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Schema-on-read: no ALTER TABLE, old/new formats coexist, instant 'migration.' But application code must handle all historical formats — the complexity shifts from the database to the application. Option C is a disadvantage, not an advantage.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"advantages of schema-on-read for schema evolution\". Treat every option as a separate true/false test under the same constraints. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1156,7 +1156,7 @@
       ],
       "correct": 1,
       "explanation": "In document DBs, schema evolution is lazy: new writes use the new format. Old documents keep the old format. The app handles both. Optionally backfill old documents, but it's not required — dual-format reads handle the transition.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"in a document database (MongoDB), how do you 'migrate' from schema V1 (name as a\". Discard modeling choices that look clean but perform poorly for the target queries. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1182,7 +1182,7 @@
           ],
           "correct": 1,
           "explanation": "The app checks the type of the name field. String → split to get first/last. Object → use directly. This is the cost of schema-on-read: the application must handle format heterogeneity.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "This prompt is really about \"mongoDB's 'lazy migration' pattern: old documents have {name: 'John Doe'}, new\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "Optionally, when reading an old-format document, the app can update it to the new format (lazy backfill). What's the benefit?",
@@ -1194,10 +1194,10 @@
           ],
           "correct": 1,
           "explanation": "Lazy migration: each read of an old document converts it. High-traffic documents migrate quickly (read often = converted soon). Low-traffic documents migrate eventually. No batch job needed — migration happens naturally with usage.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"optionally, when reading an old-format document, the app can update it to the new\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Start from \"schema Evolution\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1221,7 +1221,7 @@
       ],
       "correct": 1,
       "explanation": "In event sourcing, events are the source of truth and are immutable. V1 events stay as V1 forever. New events use V2 schema. The application must 'upcast' old event formats when replaying. Schema evolution means evolving event format versions.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"'event sourcing' schema evolution\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1249,7 +1249,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Raw JSON: no schema at all. JSON Schema: validation but manual compatibility management. Protobuf: field numbers enable adding/removing fields safely. Avro + Schema Registry: automated backward/forward compatibility verification.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"rank these data serialization formats from WEAKEST to STRONGEST schema evolution\". Build the rank from biggest differences first, then refine with adjacent checks. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1273,7 +1273,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Protobuf identifies fields by number, not name. Adding fields: old code ignores new numbers. Removing: new code ignores old numbers. Renaming: field numbers unchanged, no effect on serialization. Changing type breaks binary compatibility.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"in Protocol Buffers, which schema changes are backward compatible\" in view, the correct answer separates faster. Validate each option independently; do not select statements that are only partially true. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1297,7 +1297,7 @@
       ],
       "correct": 1,
       "explanation": "Schema Registry stores versioned schemas and enforces compatibility (backward, forward, full). When a producer registers a new schema version, the registry checks compatibility against previous versions and rejects breaking changes.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"a 'schema registry' (e\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1327,7 +1327,7 @@
           ],
           "correct": 0,
           "explanation": "Backward compatible: NEW code (consumers) can read OLD data (messages). This means adding optional fields and removing required fields is OK. Consumers with the latest schema can process all historical messages.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"'backward compatible' mean for a schema in a schema registry\". Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "What does 'forward compatible' mean?",
@@ -1339,10 +1339,10 @@
           ],
           "correct": 1,
           "explanation": "Forward compatible: OLD consumers can read NEW messages (they ignore unknown fields). This means you can deploy the producer (new schema) before updating consumers. Add optional fields, don't remove fields old code uses.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"'forward compatible' mean\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"schema Evolution\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1366,7 +1366,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "None: anything goes. Backward: only consumers must handle old data. Forward: only producers can add fields (consumers must ignore unknowns). Full: both constraints — only safe changes (adding optional fields) allowed.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"rank these compatibility levels from LEAST RESTRICTIVE to MOST RESTRICTIVE:\". Order by relative scale and bottleneck effect, then validate neighboring items. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1390,7 +1390,7 @@
       ],
       "correct": 1,
       "explanation": "New consumers need to read ALL messages (V1 through V5). This requires backward compatibility — each new schema version must be able to decode data from all previous versions. The schema registry enforces this.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The decision turns on \"kafka topic has messages in Avro format\". Discard options that weaken contract clarity or compatibility over time. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1418,7 +1418,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Distributed schema evolution means: services deploy independently (mixed versions). Caches hold old-format data. Queues have mixed-version messages. The whole point is to avoid simultaneous updates (option D) — that's the problem you're solving.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Use \"challenges of schema evolution in distributed systems\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1446,7 +1446,7 @@
       ],
       "correct": 1,
       "explanation": "API versioning decouples external contracts from internal schema. The v1 API returns {name: 'John'}, v2 returns {first: 'John', last: 'Doe'}. The schema can evolve freely; each API version maps to the current schema through an adapter layer.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"'API versioning' and how does it relate to schema evolution\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1476,7 +1476,7 @@
           ],
           "correct": 1,
           "explanation": "The v1 serializer/adapter maps the new schema to the old response format. The database schema evolves independently. Multiple API versions can coexist, each mapping to the current schema differently.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"aPI returns user\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes."
         },
         {
           "question": "When can the v1 API be retired?",
@@ -1488,10 +1488,10 @@
           ],
           "correct": 1,
           "explanation": "Deprecation lifecycle: announce v1 deprecation → provide migration guides → monitor v1 usage → set a sunset date → retire when usage drops to zero (or accept breaking the remaining stragglers).",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Read this as a scenario about \"the v1 API be retired\". Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "If you keep \"schema Evolution\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1515,7 +1515,7 @@
       ],
       "correct": 1,
       "explanation": "Strangler fig: new features use the new database. Old features gradually migrate over. An adapter/proxy routes queries to old or new system based on the data. Over time, the new system handles everything and the old one is turned off.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"the 'strangler fig' pattern for legacy database migration\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1539,7 +1539,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Build new + sync → new features on new system → migrate old features one by one → decommission old system. Each phase is incremental and reversible. No big-bang cutover.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"rank the phases of a strangler fig database migration in order:\". Place obvious extremes first, then sort the middle by pairwise comparison. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1563,7 +1563,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "Big bang risks: extended downtime (hours), partial failure = inconsistency, hard to rollback (old system may be out of sync), and can't test incrementally with production traffic. Incremental migration (strangler fig) avoids all of these.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"risks of 'big bang' database migrations (switch everything at once)\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1593,7 +1593,7 @@
           ],
           "correct": 1,
           "explanation": "Dual-write: both databases receive writes. Migrate features one at a time (20 queries → PostgreSQL). Validate each batch reads correctly from the new database. This takes longer but is dramatically safer.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"company is migrating from MySQL to PostgreSQL\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 200 and 20 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "During dual-write, which database is the source of truth?",
@@ -1605,10 +1605,10 @@
           ],
           "correct": 1,
           "explanation": "The old database is the source of truth throughout the migration. If the new database has issues, the old one is authoritative. Only after all reads are verified on the new database do you switch the source of truth.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"during dual-write, which database is the source of truth\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The decision turns on \"schema Evolution\". Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1632,7 +1632,7 @@
       ],
       "correct": 1,
       "explanation": "Declarative schema: define what the schema should look like. The tool (e.g., Atlas, Skeema, Terraform for DBs) computes the migration needed to get from current state to desired state. Contrast with imperative migrations (sequential scripts).",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"'schema-as-code' (also called 'declarative schema management')\". Reject options that conflict with the primary access pattern or index strategy. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1656,7 +1656,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "Declarative schemas are readable (one file = current schema) and auto-generate diffs. You still need migration tracking (to know what's applied). Human review is still essential — auto-generated diffs can produce dangerous operations.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"advantages of declarative schema management over sequential migration scripts\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1676,7 +1676,7 @@
       "unit": "files",
       "tolerance": 0.1,
       "explanation": "5 years × 52 weeks × 2 migrations/week = 520 migration files. Understanding the current schema requires mentally replaying all 520. This is a practical argument for declarative schema management.",
-      "detailedExplanation": "Start with unit normalization, then verify that the final magnitude passes a quick sanity check. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"project has been running for 5 years with sequential migrations\". Keep every transformation in one unit system and check order of magnitude at the end. Choose data shape based on workload paths, not on normalization dogma alone. Keep quantities like 5 and 2 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1700,7 +1700,7 @@
       ],
       "correct": 1,
       "explanation": "Data contracts define: what fields exist, their types, which are required, acceptable values. Producers must conform when writing. Consumers can depend on the contract when reading. Schema evolution follows the contract's compatibility rules.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"'data contract' in the context of schema evolution\", then pressure-test the result against the options. Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1730,7 +1730,7 @@
           ],
           "correct": 1,
           "explanation": "A schema registry with backward compatibility enforcement would have rejected Producer A's breaking change before it reached production. The contract ensures producers can't make incompatible changes unilaterally.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"analytics pipeline consumes data from 10 producer services\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 10 should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "What process should Producer A follow to remove the field?",
@@ -1742,10 +1742,10 @@
           ],
           "correct": 1,
           "explanation": "Deprecation lifecycle: announce → consumers migrate away → mark optional (schema change) → verify no consumers read it → remove. This is the safe, contract-respecting process for removing fields.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"process should Producer A follow to remove the field\". Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The key clue in this question is \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1769,7 +1769,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Single app/DB: change both together. Shared DB: coordinate across services. Own DBs: each service evolves independently, but cross-service data sync is needed. Event-driven + schema registry: full distributed schema evolution.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"rank these schema evolution complexity levels from SIMPLEST to MOST COMPLEX:\". Order by relative scale and bottleneck effect, then validate neighboring items. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1797,7 +1797,7 @@
       ],
       "correct": 1,
       "explanation": "Seeding: inserting initial data that the application needs to function — roles (admin, user), country codes, default settings. Often done in migration scripts alongside schema changes. Different from backfill (transforming existing data).",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"'database seeding' mean in the context of schema evolution\". Discard modeling choices that look clean but perform poorly for the target queries. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1821,7 +1821,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are real risks. Seeds should be idempotent (INSERT ... ON CONFLICT DO NOTHING). Environment-specific data shouldn't be in migrations. Rollbacks don't undo INSERTs (unless wrapped in a transaction). Keep seeds separate from schema DDL when possible.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"risks of mixing data seeding with schema migrations\". Treat every option as a separate true/false test under the same constraints. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1851,7 +1851,7 @@
           ],
           "correct": 0,
           "explanation": "Drop the old CHECK constraint, add a new one with the additional value. In PostgreSQL: ALTER TABLE users DROP CONSTRAINT users_status_check, ADD CONSTRAINT users_status_check CHECK (status IN ('active', 'inactive', 'suspended')).",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"migration adds an 'enum' column: status VARCHAR CHECK (status IN ('active', 'inactive'))\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "Why do some teams prefer a separate status lookup table over CHECK constraints for enums?",
@@ -1863,10 +1863,10 @@
           ],
           "correct": 1,
           "explanation": "A Statuses lookup table: adding 'suspended' is INSERT INTO statuses (name) VALUES ('suspended'). No DDL change, no migration, no deployment. CHECK constraints require schema changes for each new value. The tradeoff: joins vs simpler schema.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"some teams prefer a separate status lookup table over CHECK constraints for enums\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"schema Evolution\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1890,7 +1890,7 @@
       ],
       "correct": 1,
       "explanation": "Transactional migrations: BEGIN → DDL statements → COMMIT (or ROLLBACK on failure). PostgreSQL supports transactional DDL. MySQL does NOT — each DDL statement auto-commits. If a MySQL migration fails partway, you have a partially applied state.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"a 'transactional migration'\". Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1909,7 +1909,7 @@
       "options": ["PostgreSQL", "MySQL/InnoDB", "SQLite", "SQL Server"],
       "correctIndices": [0, 2, 3],
       "explanation": "PostgreSQL, SQLite, and SQL Server support transactional DDL — DDL statements can be rolled back. MySQL auto-commits each DDL statement (implicit COMMIT), making transactional DDL impossible.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"databases support transactional DDL (wrapping CREATE/ALTER/DROP in a transaction)\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1935,7 +1935,7 @@
           ],
           "correct": 1,
           "explanation": "MySQL auto-commits each DDL. Statement 1 is permanently applied. Statement 2 failed. Statement 3 never ran. You're stuck in an intermediate state. This is why MySQL schema changes need careful ordering and idempotent scripts.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"mySQL migration has 3 DDL statements\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 3 and 2 appear, convert them into one unit basis before comparison. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "How do you recover from a partially-applied MySQL migration?",
@@ -1947,10 +1947,10 @@
           ],
           "correct": 1,
           "explanation": "Manually assess: complete the remaining statements (if safe) or revert the applied ones. Update the migration tracking table to reflect the actual state. This is tedious — idempotent migrations prevent the 're-run failure' problem.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"you recover from a partially-applied MySQL migration\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Start from \"schema Evolution\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1974,7 +1974,7 @@
       ],
       "correct": 1,
       "explanation": "Migration tools (Flyway, Alembic) acquire an advisory lock before running migrations. If two app instances start simultaneously, only one gets the lock and runs migrations. The other waits. Prevents duplicate or conflicting migrations.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"the 'advisory lock' pattern in migration tools\". Discard modeling choices that look clean but perform poorly for the target queries. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -1994,7 +1994,7 @@
       "unit": "replicas",
       "tolerance": "exact",
       "explanation": "All 5 replicas check for pending migrations, all 5 see the same pending migration, all 5 try to run it. With an advisory lock, only 1 runs it; the others wait and find no pending migrations.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"deployment has 5 application replicas, each running migration checks at startup\". Keep every transformation in one unit system and check order of magnitude at the end. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 5 and 1 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2018,7 +2018,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Empty DB: finds syntax errors only. Small dataset: finds basic logic errors. Production copy: finds data-dependent issues. Production-scale staging: finds performance issues (lock duration, backfill time). Each level catches different failures.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"rank these migration testing strategies from LEAST REALISTIC to MOST REALISTIC:\". Place obvious extremes first, then sort the middle by pairwise comparison. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2044,7 +2044,7 @@
           ],
           "correct": 1,
           "explanation": "Dev data has no duplicates. Production has users who registered with the same email (perhaps allowed by old code). Adding UNIQUE fails because duplicates exist. Always test migrations against production-like data.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"migration adds a UNIQUE constraint to an email column\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. If values like 10 and 5M appear, convert them into one unit basis before comparison. Common pitfall: schema optimized for entities instead of queries."
         },
         {
           "question": "How do you safely add a UNIQUE constraint when duplicates exist?",
@@ -2056,10 +2056,10 @@
           ],
           "correct": 1,
           "explanation": "Step 1: Find duplicates (SELECT email, COUNT(*) ... HAVING COUNT(*) > 1). Step 2: Resolve them (merge, deactivate, or assign unique emails). Step 3: Verify no duplicates remain. Step 4: Add UNIQUE constraint. The constraint must be earned.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "This prompt is really about \"you safely add a UNIQUE constraint when duplicates exist\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The key clue in this question is \"schema Evolution\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2083,7 +2083,7 @@
       ],
       "correct": 1,
       "explanation": "Schema linters (squawk, strong_migrations, sqlfluff) analyze migrations for: operations that lock tables, missing CONCURRENTLY on index creation, adding NOT NULL without a default, etc. They catch dangerous operations before they reach production.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"'schema linting'\", then pressure-test the result against the options. Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2107,7 +2107,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Schema linters catch DDL-level risks: lock-causing operations, non-concurrent index creation, destructive changes. They can't catch business logic errors — that's application-level testing.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"issues can schema linting catch in CI\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2131,7 +2131,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Version control: bare minimum. Production-like testing: catches data-dependent issues. CI linting: automated safety checks. Canary deployment + monitoring: detects issues in production with minimal blast radius.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"rank these migration safety practices from BASIC (minimum) to ADVANCED:\". Build the rank from biggest differences first, then refine with adjacent checks. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2161,7 +2161,7 @@
           ],
           "correct": 1,
           "explanation": "Sharding is one of the most complex schema evolutions. It changes: data distribution (move rows to correct shards), application logic (route by shard key), query patterns (no cross-shard joins), and operational complexity (4x the databases).",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"team needs to shard a monolithic Users table across 4 database servers by user_id\". Solve this as chained reasoning where stage two must respect stage one assumptions. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Numbers such as 4 and 4x should be normalized first so downstream reasoning stays consistent. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "How do you migrate data from a single database to 4 shards without downtime?",
@@ -2173,10 +2173,10 @@
           ],
           "correct": 1,
           "explanation": "Dual-write: every write goes to the monolith AND the correct shard. Backfill existing data to shards. Gradually redirect reads to shards (shard by shard or feature by feature). Once all reads use shards, stop writing to the monolith.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Start from \"you migrate data from a single database to 4 shards without downtime\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 4 appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Use \"schema Evolution\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2200,7 +2200,7 @@
       ],
       "correct": 1,
       "explanation": "Canary migration: apply to one shard or partition first. Monitor query performance, error rates, application behavior. If issues arise, only one shard is affected. If clean, roll out to the rest. Reduces blast radius.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"a 'canary migration'\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2228,7 +2228,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All four: latency changes indicate plan regression. Error rates catch incompatible code. Lock waits indicate blocking DDL. Disk usage catches unexpected table rewrites or index bloat.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"you monitor after applying a schema migration\". Treat every option as a separate true/false test under the same constraints. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2256,7 +2256,7 @@
       ],
       "correct": 1,
       "explanation": "Blue-green: two full databases. Migrate 'green' while 'blue' serves traffic. Switch when ready. Rollback = switch back to 'blue'. Challenge: keeping both databases in sync during the transition period.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"the 'blue-green deployment' approach to database migrations\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2282,7 +2282,7 @@
           ],
           "correct": 1,
           "explanation": "During switchover, both databases may receive writes. These must be synchronized to prevent data loss or divergence. Change Data Capture or dual-write patterns help, but it's operationally complex.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"blue-green database deployment: 'blue' is live, 'green' has the new schema\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "Why is blue-green less common for databases than for application deployments?",
@@ -2294,10 +2294,10 @@
           ],
           "correct": 1,
           "explanation": "Applications are (mostly) stateless — blue-green is easy, just route traffic. Databases are stateful — duplicating the full dataset, keeping both in sync during schema changes, and handling writes to both is extremely complex and expensive.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"blue-green less common for databases than for application deployments\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The core signal here is \"schema Evolution\". Do not reset assumptions between stages; carry forward prior constraints directly. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2321,7 +2321,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Add nullable column: instant (metadata only). Add with default (PG 11+): instant (stored in catalog). Create index concurrently: minutes (scans table twice but no lock). Alter type: rewrite entire table — potentially hours.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"rank these schema change types from FASTEST to SLOWEST on a 100M row PostgreSQL table:\" in view, the correct answer separates faster. Order by relative scale and bottleneck effect, then validate neighboring items. Choose data shape based on workload paths, not on normalization dogma alone. If values like 100M and 11 appear, convert them into one unit basis before comparison. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2345,7 +2345,7 @@
       ],
       "correct": 1,
       "explanation": "If migration V005 is modified after some databases applied the original, those databases have a different schema than databases applying the modified V005. This creates silent schema drift. New changes should be new migration files.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "This prompt is really about \"migration scripts be immutable (never modified after applied)\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2369,7 +2369,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Background jobs: decouple data migration from schema change. Batched updates: controlled resource usage. Online tools: handle large table changes. Single huge transaction: locks resources for the entire duration — dangerous.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"valid strategies for handling long-running data migrations in production\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2395,7 +2395,7 @@
           ],
           "correct": 1,
           "explanation": "ORM migration generators produce ALTER COLUMN TYPE. Increasing VARCHAR length is generally safe (metadata change in most databases). Decreasing length would be risky — could truncate existing data.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Read this as a scenario about \"team uses a ORM (like Django or Rails) that auto-generates migrations from model changes\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Keep quantities like 50 and 200 in aligned units before selecting an answer. Common pitfall: indexing that over-amplifies writes."
         },
         {
           "question": "Why should auto-generated migrations be reviewed before applying?",
@@ -2407,10 +2407,10 @@
           ],
           "correct": 1,
           "explanation": "Auto-generated migrations are correct SQL but may not be production-safe. They don't add CONCURRENTLY for index creation, may generate table rewrites for type changes, or produce unnecessary operations. Human review ensures safety.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The key clue in this question is \"auto-generated migrations be reviewed before applying\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Read this as a scenario about \"schema Evolution\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2430,7 +2430,7 @@
       "unit": "seconds",
       "tolerance": 0.1,
       "explanation": "500 GB = 500,000 MB. At 500 MB/sec, rewrite takes 500,000/500 = 1,000 seconds ≈ 17 minutes. With overhead (WAL writes, index rebuilds), expect 2-3x longer. During this time, the table may be locked.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The decision turns on \"500GB table needs a column type change (table rewrite) at a disk write speed of\". Normalize units before computing so conversion mistakes do not propagate. Schema and index choices should follow access patterns and write/read amplification constraints. If values like 500GB and 500MB appear, convert them into one unit basis before comparison. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2458,7 +2458,7 @@
       ],
       "correct": 1,
       "explanation": "Schema archaeology: when joining a legacy project, understanding why the schema is the way it is. Why is this column VARCHAR(37)? Why does this table exist? Migration history, commit messages, and documentation provide clues.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"'schema archaeology' and when is it needed\", then pressure-test the result against the options. Reject options that conflict with the primary access pattern or index strategy. Schema and index choices should follow access patterns and write/read amplification constraints. Numbers such as 37 should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2482,7 +2482,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Descriptive names: quick understanding. Comments: explain the reasoning. Changelogs: high-level decision history. All reduce schema archaeology effort for future developers.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"practices help future developers understand schema evolution decisions\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2506,7 +2506,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Stop writing NULLs first (code change). Then backfill existing NULLs. Verify none remain. Only then add the constraint. If you add NOT NULL first, writes without the column fail and existing NULLs cause the ALTER to fail.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"rank the phases of safely adding a NOT NULL constraint to an existing column with NULLs:\". Build the rank from biggest differences first, then refine with adjacent checks. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2532,7 +2532,7 @@
           ],
           "correct": 0,
           "explanation": "NOT VALID: the constraint is enforced on new writes immediately, but existing rows aren't checked. This is fast (no full table scan). You validate existing rows separately with VALIDATE CONSTRAINT.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The key clue in this question is \"postgreSQL 12+ supports adding NOT NULL constraints with NOT VALID\". Do not reset assumptions between stages; carry forward prior constraints directly. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Numbers such as 12 should be normalized first so downstream reasoning stays consistent. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "What is the benefit of the two-step (ADD CONSTRAINT NOT VALID → VALIDATE CONSTRAINT) approach?",
@@ -2544,10 +2544,10 @@
           ],
           "correct": 1,
           "explanation": "Step 1 (NOT VALID): instant, lightweight lock. Step 2 (VALIDATE): scans the table but uses a weaker lock that doesn't block INSERT/UPDATE/DELETE. Total: zero downtime. Without NOT VALID, adding the constraint locks the table during the full scan.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Read this as a scenario about \"the benefit of the two-step (ADD CONSTRAINT NOT VALID → VALIDATE CONSTRAINT) approach\". Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Numbers such as 1 and 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "If you keep \"schema Evolution\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2571,7 +2571,7 @@
       ],
       "correct": 1,
       "explanation": "Soft delete: rows aren't physically removed, just flagged. Schema impact: all queries need WHERE deleted_at IS NULL. Column changes must consider 'deleted' rows too. UNIQUE constraints need to exclude soft-deleted rows (partial indexes).",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"'soft delete' and how does it affect schema evolution\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2595,7 +2595,7 @@
       ],
       "correctIndices": [0, 1, 2, 3],
       "explanation": "All are real implications. UNIQUE must be partial (WHERE deleted_at IS NULL). Tables bloat (need periodic purging). FK references to deleted rows create orphans. Every query needs the filter (use default scopes in ORMs).",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Start from \"schema implications does soft delete have\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2621,7 +2621,7 @@
           ],
           "correct": 1,
           "explanation": "The UNIQUE constraint applies to ALL rows, including soft-deleted ones. User A's row still exists with email 'a@b.com'. User B's INSERT violates the constraint. The database doesn't know about soft delete semantics.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Use \"table has a UNIQUE constraint on (email)\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "How do you fix this?",
@@ -2633,10 +2633,10 @@
           ],
           "correct": 1,
           "explanation": "A partial unique index enforces uniqueness only among non-deleted rows. Soft-deleted rows are excluded from the uniqueness check. User B can register with the same email as a soft-deleted user.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The core signal here is \"you fix this\". Solve this as chained reasoning where stage two must respect stage one assumptions. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "The decision turns on \"schema Evolution\". Do not reset assumptions between stages; carry forward prior constraints directly. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2660,7 +2660,7 @@
       ],
       "correct": 1,
       "explanation": "Migration B (add foreign key to Users) depends on Migration A (create Users table). In branching workflows, dependencies can create conflicts. Some tools support explicit dependency declarations instead of linear ordering.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"a 'migration dependency graph'\". Discard modeling choices that look clean but perform poorly for the target queries. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2684,7 +2684,7 @@
       ],
       "correctOrder": [0, 1, 3, 2],
       "explanation": "View aliasing: safest, old name still works. Dual-write: safe, gradual transition. Synonym: DB-level alias, limited support. Direct rename: instant but breaks all code referencing the old name simultaneously.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Use \"rank the safety of these approaches for renaming a table from SAFEST to RISKIEST:\" as your starting point, then verify tradeoffs carefully. Order by relative scale and bottleneck effect, then validate neighboring items. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2710,7 +2710,7 @@
           ],
           "correct": 1,
           "explanation": "Create the target table, migrate data, deploy code incrementally, and use views for backward compatibility. Old code referencing Accounts or Profiles sees views that map to Users. Drop views when all code is updated.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "Start from \"migration needs to merge two tables: Accounts and Profiles (1:1 relationship) into a\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. If values like 1 appear, convert them into one unit basis before comparison. Common pitfall: unbounded cardinality in joins or fan-out."
         },
         {
           "question": "What's the trickiest part of merging two tables?",
@@ -2722,10 +2722,10 @@
           ],
           "correct": 1,
           "explanation": "During transition, writes may target old tables (via views or old code) or the new table (new code). All write paths must keep data consistent. This usually requires either triggers on views or application-level dual-write logic.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "The decision turns on \"what's the trickiest part of merging two tables\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "This prompt is really about \"schema Evolution\". Solve this as chained reasoning where stage two must respect stage one assumptions. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: indexing that over-amplifies writes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2749,7 +2749,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Mature process: versioned scripts, production-like testing, automated linting. Direct DDL in production consoles bypasses all safety nets — a sign of an immature or emergency-driven process.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"signs that a schema evolution process is mature\" in view, the correct answer separates faster. Validate each option independently; do not select statements that are only partially true. Choose data shape based on workload paths, not on normalization dogma alone. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2769,7 +2769,7 @@
       "unit": "minutes",
       "tolerance": "exact",
       "explanation": "10 deployments × 3 minutes = 30 minutes/day. This is the overhead of automated safety. Most of these deployments have no migrations (the check is fast), but the pipeline runs regardless to verify.",
-      "detailedExplanation": "Make the units explicit at every step, then validate the resulting magnitude against known anchors. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The core signal here is \"team performs schema migrations via a CI/CD pipeline\". Keep every transformation in one unit system and check order of magnitude at the end. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Keep quantities like 3 minutes and 10 in aligned units before selecting an answer. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2793,7 +2793,7 @@
       ],
       "correct": 1,
       "explanation": "Each migration transitions: Schema V1 → Schema V2 → ... Each intermediate state must be valid (application can run). No migration should leave the schema in a state where the application breaks. Every step is a safe state transition.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"'database state machine' thinking for schema evolution\". Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2819,7 +2819,7 @@
           ],
           "correct": 0,
           "explanation": "Backward compatibility: V6 schema works with both V5 code (old replicas) and V6 code (new replicas). During rolling deployment, both versions run simultaneously. The schema must not break either version.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"application needs to support both Schema V5 (current) and V6 (new) simultaneously\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "After all replicas are on V6 code, is the old V5 compatibility still needed?",
@@ -2831,10 +2831,10 @@
           ],
           "correct": 1,
           "explanation": "You only need N and N-1 compatibility (current and previous). Once V5 code is fully gone, V7 can drop V5-specific compatibility (remove deprecated columns, etc.). You don't need to support all historical versions forever.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead."
+          "detailedExplanation": "If you keep \"after all replicas are on V6 code, is the old V5 compatibility still needed\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Choose data shape based on workload paths, not on normalization dogma alone. Keep quantities like 1 in aligned units before selecting an answer. Common pitfall: unbounded cardinality in joins or fan-out."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Modeling choices should tie directly to query paths, write amplification, and index/storage overhead to make tradeoffs measurable.",
+      "detailedExplanation": "Start from \"schema Evolution\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Schema and index choices should follow access patterns and write/read amplification constraints. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2858,7 +2858,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Direct DDL: extremely common, especially in early startups. Skipping production-scale testing: common (dev data is always small). Missing backward compat: common in non-continuous deployment shops. Modifying applied migrations: less common (tools often checksum-verify).",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "If you keep \"rank these schema evolution anti-patterns from MOST COMMON to LEAST COMMON:\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Common pitfall: unbounded cardinality in joins or fan-out.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",

@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Transactional outbox avoids dual-write inconsistency by writing business state and outbound event in one DB transaction, then reliably relaying to the broker.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"your checkout service must charge cards and publish an OrderPaid event\". Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -45,7 +45,7 @@
       ],
       "correct": 2,
       "explanation": "Idempotency at side-effect boundary prevents duplicate sends across retries and crashes; timeout tuning alone cannot guarantee this.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "The key clue in this question is \"notifications pipeline occasionally sends duplicate emails after worker restarts\". Prioritize the option that best protects the reliability objective under the stated failure conditions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Little's law",
@@ -73,7 +73,7 @@
       ],
       "correct": 0,
       "explanation": "Partitioning by driver_id keeps each driver stream ordered while still parallelizing across drivers.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"ride dispatch stream must preserve per-driver event order while scaling throughput\", then pressure-test the result against the options. Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -101,7 +101,7 @@
       ],
       "correct": 0,
       "explanation": "Visibility must exceed expected processing time (or be extended) to prevent redelivery during active processing.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"you run worker queues where messages often take 30-90 seconds\" in view, the correct answer separates faster. Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Numbers such as 30 and 90 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Little's law",
@@ -129,7 +129,7 @@
       ],
       "correct": 1,
       "explanation": "Kafka log retention plus independent offsets enables backfill and replay for recovering consumers.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"analytics consumer was down for 2 days and needs replay from original events\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 2 days should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -157,7 +157,7 @@
       ],
       "correct": 2,
       "explanation": "Saga compensation explicitly undoes prior side effects when downstream steps fail irrecoverably.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"order workflow has steps: reserve inventory, charge card, create shipment\" as your starting point, then verify tradeoffs carefully. Prioritize the option that best protects the reliability objective under the stated failure conditions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -185,7 +185,7 @@
       ],
       "correct": 3,
       "explanation": "Throughput ceiling is per partition; better key distribution reduces skew and lag hotspots.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"hot partition is causing consumer lag in one tenant while others are healthy\". Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -213,7 +213,7 @@
       ],
       "correct": 0,
       "explanation": "Replay without fixing root compatibility issue just re-poisons the queue.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"dead-letter queue is growing with validation errors caused by old schema producers\". Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -241,7 +241,7 @@
       ],
       "correct": 1,
       "explanation": "Pub/sub fan-out gives independent consumption, retries, and deployment cadence per downstream system.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"you need fan-out of user events to fraud, analytics, recommendations, and email\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -269,7 +269,7 @@
       ],
       "correct": 2,
       "explanation": "Kafka EOS does not cover external side effects; idempotency and dedupe are required at integration boundaries.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"team wants exactly-once across Kafka and an external REST API side effect\", then pressure-test the result against the options. Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -297,7 +297,7 @@
       ],
       "correct": 3,
       "explanation": "Graceful rolling changes reduce group churn and rebalance pauses.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"consumers frequently rebalance during deployments and stall processing\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -325,7 +325,7 @@
       ],
       "correct": 0,
       "explanation": "Outbox requires lifecycle management; processed rows should be compacted/archived safely.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "Read this as a scenario about \"outbox table is growing unbounded and slowing writes\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -349,7 +349,7 @@
       ],
       "correct": 1,
       "explanation": "Micro-batched stream aggregation meets freshness SLO with lower compute overhead than strict per-event updates.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"product asks for real-time dashboard but allows 60-second freshness\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Keep quantities like 60 in aligned units before selecting an answer. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -377,7 +377,7 @@
       ],
       "correct": 2,
       "explanation": "Idempotent sink semantics make redelivery safe while preserving at-least-once reliability.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"queue consumer performs a DB write then ACKs\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -405,7 +405,7 @@
       ],
       "correct": 3,
       "explanation": "Jitter spreads retries over time and prevents thundering herd behavior.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"your retry policy causes synchronized retry storms during regional outage\" as your starting point, then verify tradeoffs carefully. Prioritize the option that best protects the reliability objective under the stated failure conditions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -433,7 +433,7 @@
       ],
       "correct": 0,
       "explanation": "Automated compatibility enforcement prevents producer changes from breaking downstream consumers.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"service emits events where consumers depend on schema evolution over months\". Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -461,7 +461,7 @@
       ],
       "correct": 1,
       "explanation": "Priority with fairness balances urgency and prevents lower classes from permanent starvation.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"payment queue must avoid starvation between high-priority fraud checks and normal tasks\" in view, the correct answer separates faster. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -489,7 +489,7 @@
       ],
       "correct": 2,
       "explanation": "Projection rebuild relies on retained immutable event history with replay.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"team uses event sourcing and needs to rebuild a projection after bug fix\", then pressure-test the result against the options. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -517,7 +517,7 @@
       ],
       "correct": 3,
       "explanation": "Claim-check keeps messages lightweight and shifts large payload handling to blob storage.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"you need to process file uploads asynchronously and avoid placing 50MB payloads\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Keep quantities like 50MB in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -545,7 +545,7 @@
       ],
       "correct": 0,
       "explanation": "Global ordering often forces serialization, which caps scalability.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early.",
+      "detailedExplanation": "Use \"team wants strict global order across all users and also very high throughput\" as your starting point, then verify tradeoffs carefully. Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -573,7 +573,7 @@
       ],
       "correct": 1,
       "explanation": "Correlation IDs enable cross-service traceability for asynchronous hops.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"during incident response, engineers need to trace one business event through producer,\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -601,7 +601,7 @@
       ],
       "correct": 2,
       "explanation": "SQS Standard intentionally prioritizes scale with at-least-once and non-strict ordering characteristics.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "If you keep \"team uses SQS Standard for worker jobs and observes occasional duplicates and\" in view, the correct answer separates faster. Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Little's law",
@@ -629,7 +629,7 @@
       ],
       "correct": 2,
       "explanation": "Retention policy must align with replay and audit windows; otherwise required history disappears.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"consumers of an event stream need to read past 14 days for audits, but current\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 14 days and 24 hours should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -657,7 +657,7 @@
       ],
       "correct": 0,
       "explanation": "Co-partitioned keys are required for efficient and correct distributed stream joins.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Data model choices are strongest when grounded in query paths, write amplification, and index/storage overhead.",
+      "detailedExplanation": "The key clue in this question is \"stream join requires user-profile updates and click events keyed by user_id\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -685,7 +685,7 @@
       ],
       "correct": 1,
       "explanation": "I/O-bound consumers need concurrency tuning and bounded parallelism to raise throughput safely.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"queue depth has grown 10x but consumer CPU is low because each task waits on slow\", then pressure-test the result against the options. Prefer the choice that keeps client behavior explicit while preserving evolvability. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 10x in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -713,7 +713,7 @@
       ],
       "correct": 2,
       "explanation": "Incremental adoption with one flow limits blast radius and validates contracts early.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"team wants to migrate from monolith DB polling to events with minimum risk\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -741,7 +741,7 @@
       ],
       "correct": 3,
       "explanation": "Bounded retries protect healthy traffic and isolate pathological messages for investigation.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"message processing latency SLO is P95 < 2s, but occasional poison messages retry for\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. If values like 2s appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -769,7 +769,7 @@
       ],
       "correct": 0,
       "explanation": "Capacity isolation and quota enforcement prevent one tenant from overwhelming others.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"multi-tenant event platform needs noisy-neighbor isolation\" as your starting point, then verify tradeoffs carefully. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -797,7 +797,7 @@
       ],
       "correct": 1,
       "explanation": "Business exactly-once typically comes from idempotent state transitions over at-least-once transport.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"exactly-once business outcome is required for coupon redemption\". Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -825,7 +825,7 @@
       ],
       "correct": 1,
       "explanation": "Adding optional fields is a standard compatible evolution when consumers tolerate unknown fields.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"event payload now includes optional field `device_type`\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -853,7 +853,7 @@
       ],
       "correct": 3,
       "explanation": "Independent groups preserve isolation and do not steal work from operational consumers.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"data team wants to consume production events in a separate account without affecting\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -881,7 +881,7 @@
       ],
       "correct": 0,
       "explanation": "Stable keys preserve partition order; idempotent producer settings reduce duplicate/reorder effects on retry.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"during failover, producer retries can reorder related events if they are keyed\", then pressure-test the result against the options. Prioritize the option that best protects the reliability objective under the stated failure conditions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -909,7 +909,7 @@
       ],
       "correct": 1,
       "explanation": "Data minimization and tokenization reduce compliance and breach exposure in replayable logs.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"team asks whether to store PII directly in long-retention event logs\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -937,7 +937,7 @@
       ],
       "correct": 2,
       "explanation": "Reducing no-op event volume lowers cost and lag without sacrificing meaningful change propagation.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"cDC pipeline floods downstream with change events from noisy update statements that do\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -965,7 +965,7 @@
       ],
       "correct": 3,
       "explanation": "If visibility expires mid-task, broker redelivers in-flight work, creating duplicate processing.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"queue consumer sometimes takes 15 minutes for batch image processing\" in view, the correct answer separates faster. Eliminate options that ignore delivery semantics or backpressure behavior. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 15 minutes should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -993,7 +993,7 @@
       ],
       "correct": 0,
       "explanation": "Different workloads often need different semantics: replayable logs for audit and queue semantics for work distribution.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"domain emits both command events and audit events\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1023,7 +1023,7 @@
           ],
           "correct": 1,
           "explanation": "Queue buffering plus explicit backpressure keeps upstream stable during spikes.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"flash-sale checkout pipeline: Traffic spikes 20x and order-created events accumulate\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 20x in aligned units before selecting an answer. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "After buffering, backlog recovery is too slow. Which scaling move improves catch-up while preserving per-order-key ordering?",
@@ -1035,10 +1035,10 @@
           ],
           "correct": 1,
           "explanation": "Partition parallelism controls throughput; preserving key choice keeps local ordering guarantees.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"after buffering, backlog recovery is too slow\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Use \"messaging Scenarios\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1068,7 +1068,7 @@
           ],
           "correct": 3,
           "explanation": "State change and event emission are not atomic, so systems diverge.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"payment + fulfillment integration: Payment commit succeeds but fulfillment event\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "Which concrete fix is standard?",
@@ -1080,10 +1080,10 @@
           ],
           "correct": 3,
           "explanation": "Outbox pattern atomically records both business state and pending event.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"concrete fix is standard\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Read this as a scenario about \"messaging Scenarios\". Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1113,7 +1113,7 @@
           ],
           "correct": 1,
           "explanation": "Separate subscriptions allow each channel to fail/recover independently.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"notification fan-out: Email consumer outage should not block push notifications\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "Email provider times out and retries cause duplicates. Which boundary should enforce dedupe?",
@@ -1125,10 +1125,10 @@
           ],
           "correct": 2,
           "explanation": "Side-effect idempotency at the provider call prevents duplicate customer-visible sends.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"email provider times out and retries cause duplicates\". Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The decision turns on \"messaging Scenarios\". Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1153,7 +1153,7 @@
           "options": ["rider_id", "event_type", "zone_id", "driver_id"],
           "correct": 3,
           "explanation": "Driver-scoped ordering requires stable key per driver.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"driver dispatch: Assignments for one driver must stay ordered\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "A few drivers are extremely hot and cause lag. Which redesign helps without breaking order per driver?",
@@ -1165,10 +1165,10 @@
           ],
           "correct": 0,
           "explanation": "Only split order boundaries where domain permits; keep each boundary stable.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"few drivers are extremely hot and cause lag\". Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "If you keep \"messaging Scenarios\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1198,7 +1198,7 @@
           ],
           "correct": 1,
           "explanation": "Replay demands retained history and independent cursors.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "The core signal here is \"fraud pipeline replay: Fraud model bug fixed\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 7 days in aligned units before selecting an answer. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "Reprocessing must not trigger customer notifications again. What guard is necessary?",
@@ -1210,10 +1210,10 @@
           ],
           "correct": 2,
           "explanation": "Replay should be isolated from external side effects unless explicitly intended.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Use \"reprocessing must not trigger customer notifications again\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The core signal here is \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1243,7 +1243,7 @@
           ],
           "correct": 3,
           "explanation": "Root-cause containment comes before replay.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The decision turns on \"dLQ growth incident: DLQ contains schema-deserialization failures after producer deploy\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "After fix, safest replay method?",
@@ -1255,10 +1255,10 @@
           ],
           "correct": 0,
           "explanation": "Controlled replay prevents second incident and exposes latent issues early.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Start from \"after fix, safest replay method\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Use \"messaging Scenarios\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1288,7 +1288,7 @@
           ],
           "correct": 1,
           "explanation": "Compensation restores consistency when saga path aborts.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Consistency choices should be tied to concrete invariants and failure modes, then balanced against latency and availability cost."
+          "detailedExplanation": "Start from \"inventory reservation saga: Reserve inventory succeeds, payment fails permanently\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "What metadata best supports safe compensation?",
@@ -1300,10 +1300,10 @@
           ],
           "correct": 2,
           "explanation": "Explicit saga state and idempotent step execution make retries and rollback safe.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"metadata best supports safe compensation\". Do not reset assumptions between stages; carry forward prior constraints directly. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "This prompt is really about \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1333,7 +1333,7 @@
           ],
           "correct": 3,
           "explanation": "Idempotent producer reduces duplicates from retry/failover scenarios.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"multi-region order events: Producer failover causes occasional duplicates\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "Business still needs exactly-once order fulfillment. What completes the design?",
@@ -1345,10 +1345,10 @@
           ],
           "correct": 0,
           "explanation": "Outcome correctness requires idempotency at the state-change boundary too.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"business still needs exactly-once order fulfillment\". Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The decision turns on \"messaging Scenarios\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1378,7 +1378,7 @@
           ],
           "correct": 1,
           "explanation": "Session windows are activity-gap based.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load."
+          "detailedExplanation": "Read this as a scenario about \"customer activity stream: Need active session windows ending after 30 minutes inactivity\". Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 30 minutes should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "Events can arrive 5 minutes late. What stream-time control is needed?",
@@ -1390,10 +1390,10 @@
           ],
           "correct": 2,
           "explanation": "Watermarks and lateness policy define when windows finalize and how late events are handled.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load."
+          "detailedExplanation": "The key clue in this question is \"events can arrive 5 minutes late\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 5 minutes appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Read this as a scenario about \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1423,7 +1423,7 @@
           ],
           "correct": 3,
           "explanation": "Throughput must match external dependency limits.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "If you keep \"bulk import pipeline: Import workers hit third-party API rate limits and queue backlog\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "Some tasks exceed max attempts repeatedly. Where should they go?",
@@ -1435,10 +1435,10 @@
           ],
           "correct": 0,
           "explanation": "DLQ isolates pathological tasks and preserves main flow health.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"some tasks exceed max attempts repeatedly\". Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The key clue in this question is \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1468,7 +1468,7 @@
           ],
           "correct": 1,
           "explanation": "Durable logs plus offsets support downtime recovery.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "This prompt is really about \"search indexing events: Indexer service down 6 hours\". Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 6 hours in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "Indexer updates same document repeatedly during replay. Best write semantics?",
@@ -1480,10 +1480,10 @@
           ],
           "correct": 2,
           "explanation": "Upsert by deterministic key prevents duplicate state growth during replay.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly."
+          "detailedExplanation": "If you keep \"indexer updates same document repeatedly during replay\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Start from \"messaging Scenarios\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1513,7 +1513,7 @@
           ],
           "correct": 3,
           "explanation": "Ingress quotas and validation isolate bad actors.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load."
+          "detailedExplanation": "The key clue in this question is \"ioT telemetry: Millions of sensors send updates\". Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes."
         },
         {
           "question": "Malformed messages should be retained for diagnostics. Where?",
@@ -1525,10 +1525,10 @@
           ],
           "correct": 0,
           "explanation": "Quarantine streams enable debugging without polluting primary pipelines.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"malformed messages should be retained for diagnostics\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "If you keep \"messaging Scenarios\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1558,7 +1558,7 @@
           ],
           "correct": 1,
           "explanation": "Snapshots reduce replay length while retaining event-sourced correctness.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The core signal here is \"order state projection: Read model rebuilt from events is slow after code fix\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "How do you validate projection correctness after rebuild?",
@@ -1570,10 +1570,10 @@
           ],
           "correct": 2,
           "explanation": "Automated invariants catch subtle drift and replay bugs.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly."
+          "detailedExplanation": "Use \"you validate projection correctness after rebuild\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The core signal here is \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1603,7 +1603,7 @@
           ],
           "correct": 3,
           "explanation": "Header-level correlation is required for end-to-end tracing.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Start from \"cross-service tracing: Incident team cannot correlate a failed order across async hops\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "Which metric best detects hidden queueing delay?",
@@ -1615,10 +1615,10 @@
           ],
           "correct": 0,
           "explanation": "Event age exposes user-visible freshness lag better than queue depth alone.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The decision turns on \"metric best detects hidden queueing delay\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "This prompt is really about \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1648,7 +1648,7 @@
           ],
           "correct": 1,
           "explanation": "Invoice-keyed idempotency ensures duplicate events do not double-charge.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Growth planning should show today vs horizon requirements side by side because compounding makes small percentages material quickly."
+          "detailedExplanation": "The decision turns on \"subscription billing: Monthly charge events occasionally processed twice\". Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "Dispute team needs full replayable history for audits. Where should source-of-truth state come from?",
@@ -1660,10 +1660,10 @@
           ],
           "correct": 2,
           "explanation": "Immutable ledgers support auditability and deterministic recomputation.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"dispute team needs full replayable history for audits\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Use \"messaging Scenarios\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1693,7 +1693,7 @@
           ],
           "correct": 3,
           "explanation": "Event plus periodic state sync balances low latency with eventual repair.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The core signal here is \"feature flag event bus: Clients must get latest flag within seconds, but missing one\". Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "How should conflicts between stale event and newer snapshot be resolved?",
@@ -1705,10 +1705,10 @@
           ],
           "correct": 0,
           "explanation": "Deterministic version ordering prevents stale overwrite anomalies.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"conflicts between stale event and newer snapshot be resolved\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The core signal here is \"messaging Scenarios\". Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1738,7 +1738,7 @@
           ],
           "correct": 1,
           "explanation": "Priority routing meets urgent SLOs while fairness prevents starvation.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"on-call paging pipeline: Pager events are bursty\". Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "Provider outage persists. Which fallback keeps durability?",
@@ -1750,10 +1750,10 @@
           ],
           "correct": 2,
           "explanation": "Circuit breaker + durable buffering protects both provider and message durability.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Read this as a scenario about \"provider outage persists\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "If you keep \"messaging Scenarios\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1783,7 +1783,7 @@
           ],
           "correct": 3,
           "explanation": "Deterministic merge keys enforce idempotent ingestion.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "This prompt is really about \"eTL to warehouse: Warehouse loads require exactly-once row semantics from at-least-once\". Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "Late arriving corrections should adjust prior aggregates. Which model supports this cleanly?",
@@ -1795,10 +1795,10 @@
           ],
           "correct": 0,
           "explanation": "Event-time with update semantics handles late corrections systematically.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "If you keep \"late arriving corrections should adjust prior aggregates\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Start from \"messaging Scenarios\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1828,7 +1828,7 @@
           ],
           "correct": 1,
           "explanation": "device_id key preserves per-device order and parallelizes across devices.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "If you keep \"device command queue: Commands to same device must execute in order\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
         },
         {
           "question": "Offline devices cause long retries and backlog. Which mitigation?",
@@ -1840,10 +1840,10 @@
           ],
           "correct": 2,
           "explanation": "Device-specific backoff and expiry avoid queue pollution by unreachable devices.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "This prompt is really about \"offline devices cause long retries and backlog\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The key clue in this question is \"messaging Scenarios\". Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1873,7 +1873,7 @@
           ],
           "correct": 3,
           "explanation": "Financial workflows need durable auditability and controlled replay.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Storage estimates should separate raw data, replication, and retention horizon so capacity and cost risk are visible early."
+          "detailedExplanation": "Read this as a scenario about \"marketplace payouts: Payout events require strict audit trail and replay years later\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "Regulatory request asks to erase personal data while retaining accounting events. Practical approach?",
@@ -1885,10 +1885,10 @@
           ],
           "correct": 0,
           "explanation": "Separating PII from immutable business facts balances compliance and audit needs.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "The key clue in this question is \"regulatory request asks to erase personal data while retaining accounting events\". Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Read this as a scenario about \"messaging Scenarios\". Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1918,7 +1918,7 @@
           ],
           "correct": 1,
           "explanation": "Claim-check prevents brokers from carrying huge payload bytes.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"video processing jobs: Workers pull 500MB payloads from queue messages, causing broker\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 500MB in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "Some object URIs expire before processing. Which reliability fix?",
@@ -1930,10 +1930,10 @@
           ],
           "correct": 2,
           "explanation": "Access token lifecycle must align with queue latency and retries.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The core signal here is \"some object URIs expire before processing\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "The decision turns on \"messaging Scenarios\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1963,7 +1963,7 @@
           ],
           "correct": 2,
           "explanation": "Idempotency at ingress neutralizes partner retry behavior.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"partner webhook ingestion: Partners retry webhooks aggressively causing duplicates\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "Some partners send out-of-order updates. Which event handling strategy is robust?",
@@ -1975,10 +1975,10 @@
           ],
           "correct": 0,
           "explanation": "Version-aware processing handles reordering safely.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"some partners send out-of-order updates\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "This prompt is really about \"messaging Scenarios\". Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2008,7 +2008,7 @@
           ],
           "correct": 1,
           "explanation": "Append-only immutable controls improve tamper resistance.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load."
+          "detailedExplanation": "The decision turns on \"internal audit stream: Security wants tamper evidence for audit events\". Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "Auditors query by case_id frequently; full scan replay is expensive. What read model helps?",
@@ -2020,10 +2020,10 @@
           ],
           "correct": 2,
           "explanation": "Purpose-built projections enable efficient audit retrieval while preserving canonical log.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput."
+          "detailedExplanation": "Start from \"auditors query by case_id frequently\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. Message systems should be evaluated on delivery semantics, ordering scope, replay behavior, and backpressure handling under failure.",
+      "detailedExplanation": "Use \"messaging Scenarios\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2051,7 +2051,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Event ID tracking, deterministic upserts, and commutative/idempotent operations reduce duplicate harm. ACK-before-side-effect risks loss.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"you are designing idempotent consumers for at-least-once delivery\". Validate each option independently; do not select statements that are only partially true. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2079,7 +2079,7 @@
       ],
       "correctIndices": [1, 2, 3],
       "explanation": "Backoff, jitter, and bounded attempts prevent retry storms and allow DLQ escape for persistent failures.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"resilient retry strategy for transient failures usually includes which elements?\", then pressure-test the result against the options. Validate each option independently; do not select statements that are only partially true. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2107,7 +2107,7 @@
       ],
       "correctIndices": [1, 2, 3],
       "explanation": "Outbox provides atomic intent recording and traceability; relay retries are still required for delivery.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"strong reasons to adopt an outbox pattern? (Select all that apply)\". Treat every option as a separate true/false test under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2135,7 +2135,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Skew symptoms include hot partitions and expensive cross-partition operations.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"signals that a partitioning key is poor in production include which? (Select all that\". Avoid pattern guessing and evaluate each candidate directly against the scenario. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2163,7 +2163,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Rich metadata enables targeted remediation and safe replay.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"to make DLQs operationally useful, include which metadata? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2191,7 +2191,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Compatibility enforcement and tolerant readers help safe evolution; abrupt breaking removals do not.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"for schema evolution in event systems, which practices reduce breakages? (Select all\". Treat every option as a separate true/false test under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2219,7 +2219,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Lag, age, and DLQ trends directly represent message health and freshness.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"useful async observability metrics include which? (Select all that apply)\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2247,7 +2247,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Ordering, replay, and ops model drive platform fit; irrelevant factors should not.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"evaluating broker technology, which dimensions are typically first-class? (Select all\". Treat every option as a separate true/false test under the same constraints. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2275,7 +2275,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Replay should be controlled, observable, and side-effect safe.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"for safe replay of historical events, what controls are commonly needed? (Select all\". Validate each option independently; do not select statements that are only partially true. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2303,7 +2303,7 @@
       ],
       "correctIndices": [1, 2, 3],
       "explanation": "Backpressure is multi-layered; ignoring signals is the opposite of control.",
-      "detailedExplanation": "Check every option on its own merits and reject statements that are only true under hidden assumptions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"backpressure can be applied at which layers? (Select all that apply)\", then pressure-test the result against the options. Avoid pattern guessing and evaluate each candidate directly against the scenario. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2331,7 +2331,7 @@
       ],
       "correctIndices": [1, 2, 3],
       "explanation": "Failures around acknowledgement boundaries and timeouts cause redelivery duplicates.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"common causes of duplicate message effects include which? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2359,7 +2359,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Durable state, timeouts, and compensation are core saga controls.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"robust saga orchestration implementation should include which? (Select all that apply)\" in view, the correct answer separates faster. Avoid pattern guessing and evaluate each candidate directly against the scenario. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2387,7 +2387,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Quota and isolation mechanisms prevent noisy-neighbor incidents.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"practices improve multi-tenant fairness on shared messaging infrastructure? (Select all\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2415,7 +2415,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Queue semantics fit work distribution and workflow controls; long replay is usually log-centric.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"valid reasons to choose queue semantics over log semantics? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Avoid pattern guessing and evaluate each candidate directly against the scenario. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2443,7 +2443,7 @@
       ],
       "correctIndices": [0, 2, 3],
       "explanation": "Security/compliance requires minimization, encryption, and auditable access governance.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"to satisfy compliance in event-driven systems, which are strong controls? (Select all\". Treat every option as a separate true/false test under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2471,7 +2471,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Graceful drain reduces duplicate processing and rebalance churn.",
-      "detailedExplanation": "Assess each option separately and keep answers that hold across the full problem context. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"for graceful consumer shutdown during deploy, what steps are recommended? (Select all\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2495,7 +2495,7 @@
       "unit": "messages",
       "tolerance": 0.02,
       "explanation": "Backlog = rate * duration = 1,200 * 600 = 720,000 messages.",
-      "detailedExplanation": "Use base-unit arithmetic plus a magnitude check to keep the estimate robust under time pressure. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"queue receives 1,200 messages/second for 10 minutes while consumers are down\", then pressure-test the result against the options. Keep every transformation in one unit system and check order of magnitude at the end. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 1,200 and 10 minutes in aligned units before selecting an answer. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2519,7 +2519,7 @@
       "unit": "bytes",
       "tolerance": 0.05,
       "explanation": "720,000 * 4,096 bytes = 2,949,120,000 bytes (~2.75 GiB), excluding replication/overhead.",
-      "detailedExplanation": "Do the conversion step first and maintain unit labels to prevent silent math errors. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"each message averages 4 KB\". Keep every transformation in one unit system and check order of magnitude at the end. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 4 KB and 720,000 in aligned units before selecting an answer. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2543,7 +2543,7 @@
       "unit": "seconds",
       "tolerance": 0.01,
       "explanation": "Drain time = 3,000,000 / 250 = 12,000 seconds (~3.33 hours).",
-      "detailedExplanation": "Make the units explicit at every step, then validate the resulting magnitude against known anchors. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The core signal here is \"consumer handles 250 msg/s\". Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 250 and 3,000 in aligned units before selecting an answer. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2567,7 +2567,7 @@
       "unit": "msg/s",
       "tolerance": 0,
       "explanation": "Growth rate is net difference: 10,000 - 8,000 = 2,000 msg/s.",
-      "detailedExplanation": "Convert to base units first, then track powers of ten so arithmetic mistakes are easier to catch. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"ingress is 10,000 msg/s and one consumer group can process 8,000 msg/s\" in view, the correct answer separates faster. Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 10,000 and 8,000 in aligned units before selecting an answer. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2591,7 +2591,7 @@
       "unit": "messages",
       "tolerance": 0,
       "explanation": "2,000 * 900 seconds = 1,800,000 added messages.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"if backlog grows at 2,000 msg/s, how many messages are added in 15 minutes\". Normalize units before computing so conversion mistakes do not propagate. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 2,000 and 15 minutes appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2615,7 +2615,7 @@
       "unit": "messages",
       "tolerance": 0.01,
       "explanation": "Depth bound ≈ rate * allowed age = 5,000 * 120 = 600,000.",
-      "detailedExplanation": "Normalize units before calculating, and keep order-of-magnitude checks explicit throughout. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"sLO allows max queue age of 120 seconds\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Tie the decision to concrete operational outcomes, not abstract reliability language. Numbers such as 120 seconds and 5,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2639,7 +2639,7 @@
       "unit": "msg/s",
       "tolerance": 0,
       "explanation": "Total capacity approximates sum across partitions: 12 * 1,500 = 18,000 msg/s.",
-      "detailedExplanation": "Do the conversion step first and maintain unit labels to prevent silent math errors. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"topic has 12 partitions and each partition sustains 1,500 msg/s\". Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 12 and 1,500 in aligned units before selecting an answer. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2663,7 +2663,7 @@
       "unit": "seconds",
       "tolerance": 0,
       "explanation": "Delays are 2, 4, 8, 16 seconds for retries 1..4.",
-      "detailedExplanation": "Use base-unit arithmetic plus a magnitude check to keep the estimate robust under time pressure. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"retry policy: initial delay 2s, exponential factor 2, 4 retries total\", then pressure-test the result against the options. Keep every transformation in one unit system and check order of magnitude at the end. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 2s and 2 in aligned units before selecting an answer. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2687,7 +2687,7 @@
       "unit": "msg/s",
       "tolerance": 0.05,
       "explanation": "5 batches/sec * 40 messages = ~200 msg/s.",
-      "detailedExplanation": "Convert to base units first, then track powers of ten so arithmetic mistakes are easier to catch. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "If you keep \"consumer processes 40 messages/batch and takes 200 ms per batch\" in view, the correct answer separates faster. Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 40 and 200 ms in aligned units before selecting an answer. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2711,7 +2711,7 @@
       "unit": "messages",
       "tolerance": 0.01,
       "explanation": "3,600 * (25 * 60) = 5,400,000 messages.",
-      "detailedExplanation": "Make the units explicit at every step, then validate the resulting magnitude against known anchors. Bandwidth planning should normalize units first, then include protocol overhead and peak multipliers to avoid underestimating production load.",
+      "detailedExplanation": "The core signal here is \"outage pauses consumers for 25 minutes at 3,600 msg/s ingress\". Keep every transformation in one unit system and check order of magnitude at the end. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 25 minutes and 3,600 in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2739,7 +2739,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "ACK follows successful side effect; dedupe cleanup happens later to preserve replay safety.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Compute sizing should distinguish average vs peak demand and map both to per-node limits and scaling triggers.",
+      "detailedExplanation": "Use \"order the reliability pipeline for a worker task from earliest to latest\" as your starting point, then verify tradeoffs carefully. Build the rank from biggest differences first, then refine with adjacent checks. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2762,7 +2762,7 @@
       "items": ["Retry #3", "Retry #1", "Retry #4", "Retry #2"],
       "correctOrder": [1, 3, 0, 2],
       "explanation": "Backoff intervals progress as 1s, 2s, 4s, 8s.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "This prompt is really about \"order these retries by increasing wait time under exponential backoff (base 1s)\". Place obvious extremes first, then sort the middle by pairwise comparison. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 1s and 2s in aligned units before selecting an answer. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2790,7 +2790,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Contain first, then diagnose, fix, and replay safely.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The decision turns on \"order incident response steps for DLQ spike handling\". Order by relative scale and bottleneck effect, then validate neighboring items. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2818,7 +2818,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Window assignment precedes watermark-driven closure and late-event handling.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Read this as a scenario about \"order event-time window lifecycle for late-data-aware processing\". Order by relative scale and bottleneck effect, then validate neighboring items. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2846,7 +2846,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Maturity grows from simple queues to resilient patterns to broader event platforms.",
-      "detailedExplanation": "Start with the clear smallest/largest anchors, then place intermediate items by pairwise checks. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Start from \"order architecture evolution from simplest to most complex for async adoption\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2874,7 +2874,7 @@
       ],
       "correctOrder": [1, 2, 3, 0],
       "explanation": "At-most-once drops possible; at-least-once duplicates possible; effectively/exactly-once require stronger controls.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The key clue in this question is \"order by strongest delivery guarantee (weakest to strongest typical semantics)\". Place obvious extremes first, then sort the middle by pairwise comparison. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2902,7 +2902,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Raw queue signals are early indicators; freshness/SLA metrics reflect user impact directly.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"order backlog metrics from most immediate to most user-impact-oriented\". Build the rank from biggest differences first, then refine with adjacent checks. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2930,7 +2930,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Transactional write first, then relay publish, then sent marker update.",
-      "detailedExplanation": "Use relative magnitude to draft the order and confirm it with local adjacency checks. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "The decision turns on \"order these components in an outbox relay flow\". Order by relative scale and bottleneck effect, then validate neighboring items. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2958,7 +2958,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Large payload lives in object storage; message carries reference for downstream fetch.",
-      "detailedExplanation": "Compare relative scale first, then confirm neighboring items pairwise to lock in the order. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"order processing stages in a claim-check workflow\". Place obvious extremes first, then sort the middle by pairwise comparison. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2986,7 +2986,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Measure first, then repartition, then scale consumers, then validate correctness assumptions.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Message design should specify delivery guarantees, ordering scope, and backpressure behavior under failure, not just happy-path throughput.",
+      "detailedExplanation": "Use \"order scalability actions when partition throughput is saturated\" as your starting point, then verify tradeoffs carefully. Place obvious extremes first, then sort the middle by pairwise comparison. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",

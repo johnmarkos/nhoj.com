@@ -17,7 +17,7 @@
       ],
       "correct": 1,
       "explanation": "Cache invalidation is hard because: (1) identifying all affected cache entries when data changes, (2) timing invalidation correctly to avoid stale reads, (3) coordinating across distributed caches. Getting any of these wrong leads to stale data or inconsistency.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"cache invalidation considered one of the 'two hard things in computer science'\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 1 and 2 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -45,7 +45,7 @@
       ],
       "correct": 1,
       "explanation": "Cache invalidation is the process of removing or marking entries as stale when the source data changes. This ensures the cache doesn't serve outdated data. It can be done by deletion, expiration, or versioning.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"'cache invalidation'\" in view, the correct answer separates faster. Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -73,7 +73,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Three main approaches: TTL (automatic expiration after time), event-driven (explicit invalidation when data changes), version-based (change key when data changes). 'Never invalidate' leads to permanently stale data.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"the main approaches to cache invalidation\". Treat every option as a separate true/false test under the same constraints. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -101,7 +101,7 @@
       ],
       "correctOrder": [3, 0, 1, 2],
       "explanation": "Version in URL: instant (new URL = new content). Event-driven: near-instant (on data change). Short TTL: up to 1 min stale. Long TTL: up to 1 hour stale. Versioning and events give best freshness.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"rank these invalidation approaches by freshness guarantee (best to worst):\". Place obvious extremes first, then sort the middle by pairwise comparison. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 1 min and 1 hour in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -129,7 +129,7 @@
       ],
       "correct": 1,
       "explanation": "Event-driven invalidation: when data is updated/deleted, immediately invalidate (delete) the corresponding cache entry. The write operation triggers cache invalidation as a side effect. Provides near-instant freshness.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"'event-driven invalidation'\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -159,7 +159,7 @@
           ],
           "correct": 1,
           "explanation": "Event-driven: profile update triggers cache invalidation. Delete cache key 'user:123:profile'. Next read will fetch fresh data from DB and repopulate cache.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"user updates their profile\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "The profile is also embedded in the user's 'feed' cache. What else needs invalidation?",
@@ -171,10 +171,10 @@
           ],
           "correct": 1,
           "explanation": "If feed embeds profile data, feed is also stale. Must invalidate both 'user:123:profile' AND 'user:123:feed'. This is the 'what to invalidate' challenge — tracking dependencies.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"profile is also embedded in the user's 'feed' cache\". Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -202,7 +202,7 @@
       ],
       "correct": 1,
       "explanation": "Invalidation dependencies: if cache A contains data derived from sources X and Y, changes to X or Y should invalidate A. Tracking these dependencies (especially for computed/aggregated caches) is complex.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"the 'invalidation dependency' problem\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -232,7 +232,7 @@
           ],
           "correct": 1,
           "explanation": "Leaderboard depends on all user scores. User 500's score change means leaderboard is stale. Must invalidate 'leaderboard' cache. This is dependency tracking for aggregates.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"cache 'leaderboard' aggregates scores from 1000 users\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 1000 and 500 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "With 1000 users updating scores frequently, what's the challenge?",
@@ -244,10 +244,10 @@
           ],
           "correct": 1,
           "explanation": "Every user score update invalidates leaderboard. With frequent updates, leaderboard is constantly invalidated — possibly never serving from cache. May need different strategy: periodic refresh, eventual consistency, or micro-batched updates.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"with 1000 users updating scores frequently, what's the challenge\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 1000 appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Use \"cache Invalidation\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -275,7 +275,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Challenges: (1) knowing all cache keys to invalidate (dependencies), (2) timing — invalidation must propagate before reads see stale data, (3) handling failures — what if invalidation call fails? Data stays stale.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"challenges with event-driven invalidation\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 1 and 2 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -303,7 +303,7 @@
       ],
       "correct": 1,
       "explanation": "Cache busting: change the cache key so requests don't match old entries. Common technique: add version or hash to URL (styles.v2.css, app.abc123.js). New URL = new cache entry, old entries ignored.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"'cache busting'\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -333,7 +333,7 @@
           ],
           "correct": 1,
           "explanation": "Cache busting: change URL so it's a 'new' resource. styles.css?v=2 or styles.abc123.css. Old URL stays cached (irrelevant), new URL fetched fresh. Users get fix immediately.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"your CSS file is cached with 1-year TTL\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 1 and 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "What file references this CSS and needs updating?",
@@ -345,10 +345,10 @@
           ],
           "correct": 1,
           "explanation": "HTML must reference the new CSS URL. HTML should have short TTL or no-cache so it always shows current asset URLs. Pattern: long TTL for hashed assets, short TTL for HTML that references them.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"file references this CSS and needs updating\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -376,7 +376,7 @@
       ],
       "correct": 1,
       "explanation": "Content-based cache busting: filename includes hash of content. When content changes, hash changes, filename changes. Automatic cache busting without manual versioning. Build tools (webpack, etc.) do this automatically.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"'content-based cache busting'\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -404,7 +404,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Content hashing: automatic (build tool computes hash), granular (only changed files get new URLs), efficient (unchanged files keep serving from cache). No need to clear caches — old URLs naturally become unused.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"benefits of content-hash cache busting\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -432,7 +432,7 @@
       ],
       "correctOrder": [0, 2, 1, 3],
       "explanation": "Content hash: automatic, precise. Manual version: works but requires manual tracking. Query param: works but some CDNs ignore query strings for caching. No busting: users may see stale indefinitely.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The core signal here is \"rank these cache busting approaches by effectiveness (best to worst):\". Place obvious extremes first, then sort the middle by pairwise comparison. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -462,7 +462,7 @@
           ],
           "correct": 1,
           "explanation": "If CDN ignores query strings, ?v=1.2.3 and ?v=1.2.4 are the same cache key. Cache busting fails. Users get old cached version. Must configure CDN to include query string or use path-based versioning.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The key clue in this question is \"you use ?v=1\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 1.2 and 3 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "How do you fix this?",
@@ -474,10 +474,10 @@
           ],
           "correct": 1,
           "explanation": "Options: (1) Configure CDN to respect query string for this path. (2) Use filename versioning (app.1.2.3.js) which always works. Filename versioning is more reliable across all CDN configurations.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"you fix this\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 1 and 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "If you keep \"cache Invalidation\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -505,7 +505,7 @@
       ],
       "correct": 1,
       "explanation": "Versioned cache keys: include version in key (user:v2:123 instead of user:123). When data schema or format changes, increment version. Old entries are never accessed (natural invalidation), new entries created fresh.",
-      "detailedExplanation": "Frame the problem around the main tradeoff first, then test each option for consistency. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "This prompt is really about \"'versioned cache keys'\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -535,7 +535,7 @@
           ],
           "correct": 1,
           "explanation": "Key versioning: code now reads/writes 'user:v2:123'. Old 'user:v1:123' (or unversioned) entries are never accessed — effectively invalidated. No mass deletion needed; old entries expire via TTL.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"you cache user objects as 'user:123'\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "What happens to old 'user:123' entries in cache?",
@@ -547,10 +547,10 @@
           ],
           "correct": 1,
           "explanation": "Old entries remain until TTL expires (or eviction). They waste memory temporarily but cause no issues since nothing reads them. For large caches, you could proactively delete old version keys.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"happens to old 'user:123' entries in cache\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Use \"cache Invalidation\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -578,7 +578,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Key versioning suits: schema changes, format changes, avoiding mass invalidation. It's overhead for every update — use event-driven invalidation for normal updates, versioning for breaking changes.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"key versioning useful\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -606,7 +606,7 @@
       ],
       "correct": 1,
       "explanation": "Cache tagging: entries are tagged (e.g., 'product:123', 'category:electronics'). To invalidate, specify tag — all entries with that tag are invalidated. Useful for bulk invalidation of related entries.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"'cache tagging' for invalidation\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -636,7 +636,7 @@
           ],
           "correct": 1,
           "explanation": "Tag invalidation: invalidate('category:electronics') deletes all entries tagged with it. No need to know individual product IDs. Efficient bulk invalidation for related entries.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"product pages are tagged with category\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "How is the tag-to-entries mapping typically stored?",
@@ -648,10 +648,10 @@
           ],
           "correct": 1,
           "explanation": "Tag index: maintain mapping tag → [key1, key2, ...]. When invalidating tag, lookup keys and delete them. Can be in Redis SET, separate table, or cache with tag support (Varnish). Extra storage overhead.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"the tag-to-entries mapping typically stored\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -675,7 +675,7 @@
       "unit": "deletions",
       "tolerance": "exact",
       "explanation": "All 1000 tagged entries are deleted. Tag invalidation affects all entries with that tag. Efficient for bulk operations but can be costly if many entries affected.",
-      "detailedExplanation": "Normalize units before calculating, and keep order-of-magnitude checks explicit throughout. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"1000 product pages are tagged 'category:electronics'\". Normalize units before computing so conversion mistakes do not propagate. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 1000 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -703,7 +703,7 @@
       ],
       "correct": 1,
       "explanation": "Cascading invalidation: entry A depends on B. Invalidating B should also invalidate A. Example: invalidating a product should invalidate category pages containing that product. Requires dependency tracking.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"'cascading invalidation'\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -733,7 +733,7 @@
           ],
           "correct": 1,
           "explanation": "Cascade: product 123 changes → invalidate product cache AND all dependent caches (category pages showing this product). The change cascades to all dependent views.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"product 123 is in categories A, B, C\". Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "Category A also appears on the homepage 'featured categories'. What else needs invalidation?",
@@ -745,10 +745,10 @@
           ],
           "correct": 1,
           "explanation": "Cascade continues: product → categories → homepage. If homepage displays category A, and category A contains product 123, homepage is affected. Deep dependency chains are hard to track.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"category A also appears on the homepage 'featured categories'\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Start from \"cache Invalidation\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -776,7 +776,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Cascading challenges: tracking deep dependency chains, performance cost of mass invalidation, over-invalidation (being too aggressive). It's NOT simple — dependency tracking is complex.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"challenges with cascading invalidation\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -804,7 +804,7 @@
       ],
       "correct": 1,
       "explanation": "Pub/sub invalidation: when data changes, publish invalidation event to a channel. All cache clients subscribe and receive event, then invalidate their local copies. Ensures distributed caches stay in sync.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"'pub/sub invalidation'\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -834,7 +834,7 @@
           ],
           "correct": 1,
           "explanation": "Pub/sub: server 1 publishes invalidation event. All subscribed servers (2-10) receive it and delete 'user:123' from their local cache. Distributed invalidation without direct server-to-server communication.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"10 app servers each have local in-process cache\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 10 and 123 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "What if a server misses the pub/sub message?",
@@ -846,10 +846,10 @@
           ],
           "correct": 1,
           "explanation": "Pub/sub is typically at-most-once (messages can be lost). If missed, cache stays stale. TTL provides safety net — even if invalidation fails, data expires eventually. Belt and suspenders: pub/sub + TTL.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"if a server misses the pub/sub message\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Use \"cache Invalidation\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -877,7 +877,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Pub/sub benefits: decoupled (add/remove instances freely), scalable (one publish, N receives), near real-time. Most pub/sub systems don't guarantee delivery (at-most-once), so pair with TTL for safety.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"benefits of pub/sub invalidation\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -905,7 +905,7 @@
       ],
       "correct": 1,
       "explanation": "Write-through invalidation: instead of separate 'write DB then invalidate cache', do both together. Cache is always updated as part of write flow. Ensures cache is never stale after your own writes.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"'write-through invalidation'\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -933,7 +933,7 @@
       ],
       "correctOrder": [3, 1, 2, 0],
       "explanation": "Receive request → Write to DB → Update/invalidate cache → Acknowledge. Both DB and cache operations complete before ack. This ensures consistency but increases latency.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Read this as a scenario about \"for write-through invalidation, order these operations:\". Place obvious extremes first, then sort the middle by pairwise comparison. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -963,7 +963,7 @@
           ],
           "correct": 1,
           "explanation": "Consistency requires both succeed or both fail. Options: retry cache update, roll back DB (if possible), or accept inconsistency with TTL cleanup. True write-through treats this as a failure.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"write-through: you update DB, then update cache\". Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
           "question": "This is similar to what database concept?",
@@ -975,10 +975,10 @@
           ],
           "correct": 1,
           "explanation": "Write-through is effectively a distributed transaction between DB and cache. Both must succeed atomically. This is why it's complex — distributed transactions are hard.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"this is similar to what database concept\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Start from \"cache Invalidation\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1006,7 +1006,7 @@
       ],
       "correct": 1,
       "explanation": "On data change: delete cache entry (invalidate) or update it with new value? Delete is simpler and avoids race conditions. Update gives immediate read-after-write but risks races. Delete is generally preferred.",
-      "detailedExplanation": "A practical approach here is to lock down the dominant constraint before comparing answer choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"'delete vs update' debate in cache invalidation\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1036,7 +1036,7 @@
           ],
           "correct": 1,
           "explanation": "Race condition with update: Thread A reads old value from DB. Thread B writes new value, updates cache. Thread A writes old value to cache. Cache now has stale data. Delete avoids this — worst case is extra cache miss.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"'delete on write' generally preferred over 'update on write'\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "When might 'update on write' be acceptable?",
@@ -1048,10 +1048,10 @@
           ],
           "correct": 1,
           "explanation": "Update if: read-after-write is critical (user must see their change), you handle races (versioning, CAS operations), and you accept the complexity. Many choose delete for simplicity plus short TTL.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"might 'update on write' be acceptable\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Follow the canonical calculation path and check both units and magnitude before finalizing. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Read this as a scenario about \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1079,7 +1079,7 @@
       ],
       "correct": 1,
       "explanation": "CAS: 'set value to X only if current value is Y'. Prevents race condition where stale value overwrites fresh. If value changed (someone else updated), CAS fails, you retry. Atomic conditional update.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"a 'compare-and-set' (CAS) operation for cache updates\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1109,7 +1109,7 @@
           ],
           "correct": 1,
           "explanation": "CAS fails: A expected old_value but found different_value. A must retry — re-read current value, recompute, CAS again. This prevents lost updates from race conditions.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"thread A: CAS(key, old_value, new_value)\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "What should Thread A do after CAS failure?",
@@ -1121,10 +1121,10 @@
           ],
           "correct": 1,
           "explanation": "Retry loop: read current value, compute new value, CAS. If fails, repeat. Eventually succeeds (or give up after N attempts). This is optimistic concurrency control.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"thread A do after CAS failure\". Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1152,7 +1152,7 @@
       ],
       "correct": 1,
       "explanation": "Cache stampede: popular entry is invalidated, many concurrent requests find cache empty, all hit origin simultaneously. Origin is overwhelmed. Same as TTL expiration stampede but triggered by invalidation.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'cache stampede' during invalidation\" as your starting point, then verify tradeoffs carefully. Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1182,7 +1182,7 @@
           ],
           "correct": 1,
           "explanation": "Invalidation creates instant cache miss for all concurrent requests. At 10K/sec, many requests simultaneously see empty cache and fetch from origin. Potential origin overload.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"you invalidate a cache entry serving 10,000 req/sec\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 10,000 and 10K in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "How do you prevent stampede during invalidation?",
@@ -1194,10 +1194,10 @@
           ],
           "correct": 1,
           "explanation": "Request coalescing / singleflight: on cache miss, first request acquires lock and fetches. Concurrent requests wait for that fetch. All get the result from one origin request. 10K requests → 1 origin call.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"you prevent stampede during invalidation\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 10K and 1 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The core signal here is \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1225,7 +1225,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Prevent stampede: coalescing (share fetches), soft invalidation (serve stale while refreshing), locking (serialize fetches). Invalidating more entries would make stampede worse, not better.",
-      "detailedExplanation": "Treat each candidate as a separate true/false check against the same governing requirement. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"techniques prevent stampede on invalidation\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1253,7 +1253,7 @@
       ],
       "correct": 1,
       "explanation": "Soft invalidation: instead of deleting entry, mark it as 'stale'. Continue serving stale data while background process refreshes. Prevents stampede (stale data absorbs traffic). Similar to stale-while-revalidate.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"'soft invalidation'\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1283,7 +1283,7 @@
           ],
           "correct": 1,
           "explanation": "Soft invalidation: entry marked stale. Read returns stale data immediately (no user-visible delay). Background fetch refreshes the entry. User sees stale data; next reader sees fresh.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"you soft-invalidate a cache entry\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "1000 concurrent reads arrive for soft-invalidated entry. How many origin requests?",
@@ -1295,10 +1295,10 @@
           ],
           "correct": 1,
           "explanation": "Soft invalidation + background refresh: first read triggers refresh, all reads serve stale. One origin request total. Stampede prevented. 1000 requests served instantly with stale data.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"1000 concurrent reads arrive for soft-invalidated entry\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 1000 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The key clue in this question is \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1326,7 +1326,7 @@
       ],
       "correctOrder": [0, 2, 3, 1],
       "explanation": "Hard delete: instant miss, stampede. Version-based: miss on new key, stampede possible. TTL with jitter: spread expiration. Soft invalidation: serves stale, minimal stampede. Soft is safest.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "The key clue in this question is \"rank invalidation approaches by potential for stampede (highest risk to lowest):\". Build the rank from biggest differences first, then refine with adjacent checks. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1354,7 +1354,7 @@
       ],
       "correct": 1,
       "explanation": "Write-behind invalidation: don't invalidate synchronously. Queue invalidation events, process async. Reduces write latency but introduces delay before cache is invalidated. Trade-off: speed vs. freshness.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Start from \"'write-behind invalidation'\", then pressure-test the result against the options. Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1384,7 +1384,7 @@
           ],
           "correct": 1,
           "explanation": "Async invalidation: write returns immediately, invalidation happens later (milliseconds to seconds). Brief window where cache is stale. Acceptable for many use cases; problematic if immediate freshness needed.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Use \"synchronous invalidation takes 5ms\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 5ms appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "Async invalidation queue backs up under load. Invalidations are delayed 30 seconds. Impact?",
@@ -1396,10 +1396,10 @@
           ],
           "correct": 1,
           "explanation": "Queue delay = staleness window. 30-second backup means up to 30-second staleness. For high-traffic systems, size queues appropriately and monitor lag. Alert on excessive delay.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"async invalidation queue backs up under load\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 30 seconds and 30 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1427,7 +1427,7 @@
       ],
       "correct": 1,
       "explanation": "Cache coherence: when data changes, all caches reflect it (either updated or invalidated). Without coherence, different caches serve different versions — inconsistent user experience.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"'cache coherence' in distributed systems\". Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1457,7 +1457,7 @@
           ],
           "correct": 1,
           "explanation": "Local caches are independent. Server 1 invalidated; servers 2-5 don't know about the change. Users hitting servers 2-5 see stale data. This is cache incoherence.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"5 servers each have local cache\". Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 5 and 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How do you achieve cache coherence across these servers?",
@@ -1469,10 +1469,10 @@
           ],
           "correct": 1,
           "explanation": "Options: (1) Pub/sub: broadcast invalidations. (2) Shared cache (Redis): single source of truth. (3) Accept eventual consistency: short TTL ensures bounded staleness. Choose based on consistency requirements.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"you achieve cache coherence across these servers\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 1 and 2 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Use \"cache Invalidation\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1500,7 +1500,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Coherence via: shared cache (one source of truth), pub/sub (propagate invalidations), short TTL (bounded staleness). Independent uncoordinated caches are incoherent — different views of data.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"approaches to maintain cache coherence\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1528,7 +1528,7 @@
       ],
       "correct": 1,
       "explanation": "Lazy invalidation: no explicit invalidation logic. Set appropriate TTL, let entries naturally expire. Simple (no invalidation code) but bounded freshness (up to TTL staleness). Works when eventual consistency is acceptable.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"'lazy invalidation'\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1558,7 +1558,7 @@
           ],
           "correct": 1,
           "explanation": "Lazy invalidation: no explicit action on price change. Cache serves old price until TTL expires (up to 5 minutes). Then cache miss, fresh price fetched. Maximum staleness = TTL.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"you choose lazy invalidation with 5-minute TTL\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 5 and 5 minutes should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "For an e-commerce site, is 5-minute price staleness acceptable?",
@@ -1570,10 +1570,10 @@
           ],
           "correct": 1,
           "explanation": "Browsing: slightly stale prices are usually fine (user sees final price at checkout). Checkout: must verify current price before charging. Lazy invalidation for browsing; real-time check for transactions.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"for an e-commerce site, is 5-minute price staleness acceptable\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 5 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The core signal here is \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1601,7 +1601,7 @@
       ],
       "correctOrder": [0, 1, 3, 2],
       "explanation": "TTL-only: no code needed. Event-driven delete: add delete call on write. Pub/sub: messaging infrastructure. Cascading: dependency tracking and propagation logic. Cascading is most complex.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"rank these invalidation strategies by implementation complexity (simplest to most\". Place obvious extremes first, then sort the middle by pairwise comparison. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1629,7 +1629,7 @@
       ],
       "correct": 1,
       "explanation": "Invalidation on write: every DB write includes cache invalidation as part of the operation. Typically implemented via ORM hooks, database triggers, or application middleware. Ensures cache is invalidated for every write.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"'invalidation on write' pattern\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1659,7 +1659,7 @@
           ],
           "correct": 1,
           "explanation": "ORM hooks only fire for ORM operations. Raw SQL bypasses ORM entirely — no hook, no invalidation. Cache becomes stale. Must ensure ALL writes go through invalidation path, or use DB-level triggers.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"you add an ORM after_save hook to invalidate cache\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How can you ensure all writes trigger invalidation, even raw SQL?",
@@ -1671,10 +1671,10 @@
           ],
           "correct": 1,
           "explanation": "Database triggers fire on any write (ORM, raw SQL, migrations, admin tools). They catch all changes. Trade-off: DB-level logic, potential performance impact, harder to debug. Alternative: CDC (change data capture).",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"you ensure all writes trigger invalidation, even raw SQL\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The core signal here is \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1702,7 +1702,7 @@
       ],
       "correct": 1,
       "explanation": "CDC reads database transaction/binlog to detect changes. Every committed change is captured, regardless of how it was made (ORM, raw SQL, etc.). Reliable source for triggering cache invalidation. Tools: Debezium, AWS DMS.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"'Change Data Capture' (CDC) for cache invalidation\" in view, the correct answer separates faster. Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1732,7 +1732,7 @@
           ],
           "correct": 1,
           "explanation": "CDC event shows user 123 changed. Invalidate (or update) cache entry 'user:123'. CDC provides reliable change stream for cache invalidation regardless of how change occurred.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"cDC captures: 'UPDATE users SET name='Bob' WHERE id=123'\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "What's a benefit of CDC over application-level invalidation?",
@@ -1744,10 +1744,10 @@
           ],
           "correct": 1,
           "explanation": "CDC captures every committed change — application code, raw SQL, admin scripts, migrations. No bypass possible. Application-level hooks can miss non-application writes. CDC is comprehensive but requires setup.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"what's a benefit of CDC over application-level invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1775,7 +1775,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "CDC benefits: comprehensive (all changes), decoupled (separate from app), async-friendly (batch process changes). There IS latency (reads logs, processes events) — not zero, but typically milliseconds to seconds.",
-      "detailedExplanation": "Avoid grouped guessing: test every option directly against the system boundary condition. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "Use \"benefits of CDC-based cache invalidation\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1803,7 +1803,7 @@
       ],
       "correct": 1,
       "explanation": "DB triggers: AFTER UPDATE/INSERT/DELETE trigger fires, calls external service or writes to invalidation queue. Catches all changes at DB level. Trade-off: couples cache logic to database, can impact DB performance.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"'database trigger' based invalidation\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1833,7 +1833,7 @@
           ],
           "correct": 1,
           "explanation": "Concerns: (1) Trigger latency on every write. (2) External calls (HTTP, etc.) from triggers are risky — if cache service is down, writes fail. (3) DB-level code is harder to maintain/test.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "Use \"you create: CREATE TRIGGER invalidate_user AFTER UPDATE ON users FOR EACH ROW CALL\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. Keep quantities like 1 and 2 in aligned units before selecting an answer. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "Safer alternative to direct external call in trigger?",
@@ -1845,10 +1845,10 @@
           ],
           "correct": 1,
           "explanation": "Outbox pattern: trigger writes to 'invalidation_queue' table (fast, local). Separate process polls queue and does actual invalidation. Decouples DB write from external calls. DB stays fast; failures are isolated.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"safer alternative to direct external call in trigger\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1876,7 +1876,7 @@
       ],
       "correct": 1,
       "explanation": "Transactional outbox: within the data-change transaction, also write to an 'outbox' table. Commit includes both. Separate process reads outbox and triggers invalidation. Atomic: if write commits, invalidation event is recorded.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"the 'transactional outbox' pattern for invalidation\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1906,7 +1906,7 @@
           ],
           "correct": 1,
           "explanation": "Same transaction = atomic. Both succeed or both fail. If transaction commits, outbox has the event. Invalidation will happen when outbox is processed. No lost invalidations due to partial failure.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"transaction: UPDATE users SET name='Bob' WHERE id=123\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "What processes the outbox?",
@@ -1918,10 +1918,10 @@
           ],
           "correct": 1,
           "explanation": "Outbox processor: worker polls outbox table, takes events, triggers cache invalidation, marks events as processed (or deletes). Can batch, retry failures, run distributed. Decoupled from main transaction.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"processes the outbox\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The key clue in this question is \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1949,7 +1949,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "CDC: captures everything from DB log. Outbox: atomic with transaction. ORM hooks: miss raw SQL. Manual calls: rely on developer remembering. CDC/outbox are most reliable.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"order these by reliability of capturing changes (most reliable to least):\". Order by relative scale and bottleneck effect, then validate neighboring items. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1977,7 +1977,7 @@
       ],
       "correct": 1,
       "explanation": "Invalidation can fail: network issues, cache server down, timeout. Need strategy: retry, queue for later, accept staleness until TTL, alert. Unhandled failure = stale data persists.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"'invalidation failure' handling\" in view, the correct answer separates faster. Prioritize the option that best protects the reliability objective under the stated failure conditions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2007,7 +2007,7 @@
           ],
           "correct": 1,
           "explanation": "Failed invalidation = stale data persists. If user 123's profile changed but cache wasn't invalidated, old profile is served. TTL provides safety net (eventual expiration).",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"you invalidate cache key 'user:123'\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "What's a good strategy for handling this?",
@@ -2019,10 +2019,10 @@
           ],
           "correct": 1,
           "explanation": "Robust handling: (1) Retry with exponential backoff. (2) Queue failed invalidations for later. (3) TTL ensures bounded staleness even if invalidation permanently fails. Don't block writes on cache.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"what's a good strategy for handling this\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "If you keep \"cache Invalidation\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2050,7 +2050,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Handle failures: retry (may succeed), queue (process later), TTL backup (bounded staleness). Failing the original write is usually too aggressive — cache is optimization, shouldn't block core functionality.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"strategies for handling invalidation failures\". Treat every option as a separate true/false test under the same constraints. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2078,7 +2078,7 @@
       ],
       "correct": 1,
       "explanation": "Selective invalidation: precisely invalidate only affected entries. User 123 changes → invalidate only 'user:123', not all users. More complex (need to know dependencies) but efficient. Opposite of 'invalidate everything'.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'selective invalidation'\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2108,7 +2108,7 @@
           ],
           "correct": 1,
           "explanation": "Selective (A): 1 miss, 1 DB query. Blanket (B): 10,000 misses, potential 10,000 DB queries. Selective is much more efficient. Blanket invalidation should be rare (schema changes, etc.).",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"1 product out of 10,000 changes\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 1 and 10,000 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "When might blanket invalidation be appropriate?",
@@ -2120,10 +2120,10 @@
           ],
           "correct": 1,
           "explanation": "Blanket invalidation for: breaking changes (schema incompatibility), corruption recovery, security (ensure fresh auth state). Not for routine changes — too costly. Use selective for normal operations.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"might blanket invalidation be appropriate\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2147,7 +2147,7 @@
       "unit": "requests",
       "tolerance": 0.1,
       "explanation": "Uniform traffic: each entry gets ~1 req/sec. Selective: 1 miss (the invalidated entry). Blanket: 10,000 misses (all entries invalidated, all accessed). Difference: 10,000 − 1 = 9,999 extra origin requests in the first second.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"selective invalidation: 1 entry\". Normalize units before computing so conversion mistakes do not propagate. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 1 and 10,000 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2175,7 +2175,7 @@
       ],
       "correct": 1,
       "explanation": "Coarse-grained: 'invalidate all users' — simple but causes many misses. Fine-grained: 'invalidate user:123' — precise but requires knowing exact keys. Trade-off: simplicity vs. efficiency.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"'coarse-grained vs fine-grained' invalidation\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2203,7 +2203,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Specific field (finest) → User's entries → All users → Entire cache (coarsest). Finer is more efficient; coarser is simpler but more impactful.",
-      "detailedExplanation": "Prioritize ratio-based comparisons and validate each neighboring step to avoid inversion mistakes. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"rank these by granularity (finest to coarsest):\". Build the rank from biggest differences first, then refine with adjacent checks. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2233,7 +2233,7 @@
           ],
           "correct": 1,
           "explanation": "Pattern invalidation: 'user:123:*' matches all entries for user 123. One call invalidates all related entries. Requires cache supporting patterns (Redis SCAN, etc.).",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"you need to invalidate 'user:123:profile', 'user:123:feed', 'user:123:settings' when\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 123 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "Pattern 'user:123:*' is used. Later, you add 'user:123:orders' cache. Does it get invalidated?",
@@ -2245,10 +2245,10 @@
           ],
           "correct": 1,
           "explanation": "Pattern 'user:123:*' matches any key starting with 'user:123:'. New 'user:123:orders' is automatically covered. Pattern-based invalidation is extensible — new keys matching pattern are included.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"pattern 'user:123:*' is used\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 123 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Start from \"cache Invalidation\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2276,7 +2276,7 @@
       ],
       "correct": 1,
       "explanation": "Redis KEYS scans entire keyspace in one blocking operation — can freeze Redis for seconds with millions of keys. SCAN is cursor-based, non-blocking. Always use SCAN in production for pattern matching.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"redis SCAN can find keys matching a pattern\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2304,7 +2304,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Drawbacks: scanning can be slow (many keys), pattern might match unintended keys (user:123 vs user:1234), requires disciplined key naming. Not without issues — use carefully.",
-      "detailedExplanation": "Score each option independently and keep only those that remain valid under the stated constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"drawbacks of pattern-based invalidation\". Treat every option as a separate true/false test under the same constraints. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 123 and 1234 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2334,7 +2334,7 @@
           ],
           "correct": 1,
           "explanation": "Pattern 'user:123*' matches 'user:123', 'user:123:profile', AND 'user:1234', 'user:1234:profile'. Unintended match! User 1234's cache is incorrectly invalidated.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"pattern 'user:123*' used to invalidate user 123\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 123 and 1234 in aligned units before selecting an answer. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How do you fix this?",
@@ -2346,10 +2346,10 @@
           ],
           "correct": 1,
           "explanation": "Key design: use delimiter (colon) consistently. 'user:123:*' matches user 123's keys. 'user:1234:*' matches 1234's. The delimiter prevents prefix collisions.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"you fix this\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Keep quantities like 123 and 1234 in aligned units before selecting an answer. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2377,7 +2377,7 @@
       ],
       "correct": 1,
       "explanation": "Write-around: writes bypass cache entirely (DB only). Cache isn't updated on write. Freshness relies on TTL expiration or explicit invalidation later. Simpler but may serve stale until next miss.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'write-around' related to invalidation\" as your starting point, then verify tradeoffs carefully. Reject options that improve speed but weaken freshness or invalidation correctness. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2407,7 +2407,7 @@
           ],
           "correct": 1,
           "explanation": "Write-around: cache keeps old data until it expires (TTL) or is evicted. Next cache miss fetches fresh from DB. Staleness window = remaining TTL.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"write-around: you update DB, don't touch cache\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "When is write-around appropriate?",
@@ -2419,10 +2419,10 @@
           ],
           "correct": 1,
           "explanation": "Write-around suits: write-heavy data that's not immediately re-read (logs, historical data). Avoids polluting cache. NOT for data where user expects to see their changes immediately.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"write-around appropriate\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "Start from the governing formula, keep units visible, and validate the final magnitude. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The core signal here is \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2450,7 +2450,7 @@
       ],
       "correctOrder": [0, 3, 1, 2],
       "explanation": "Write-through: immediate cache update. Write-behind: async but still updates cache. Write + invalidate: next read is fresh. Write-around: stale until TTL. First two keep cache populated; last two require fetch.",
-      "detailedExplanation": "Rank by dominant bottleneck or magnitude, then validate adjacent transitions for consistency. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "If you keep \"rank these write strategies by immediacy of cache freshness (fastest to slowest):\" in view, the correct answer separates faster. Place obvious extremes first, then sort the middle by pairwise comparison. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2478,7 +2478,7 @@
       ],
       "correct": 1,
       "explanation": "CDN purge: API call to CDN to invalidate content across all edge servers. Needed when content must be updated before TTL. Note: propagation takes time (seconds to minutes) to reach all edges.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Start from \"'CDN cache purge'\", then pressure-test the result against the options. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2508,7 +2508,7 @@
           ],
           "correct": 1,
           "explanation": "CDN purge: central control plane distributes invalidation to all edges. Not instant — network latency, edge processing. Typically seconds, sometimes minutes. During propagation, some edges serve stale.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "If you keep \"cDN has 200 edge servers worldwide\" in view, the correct answer separates faster. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 200 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "During purge propagation, user in Japan gets stale content, user in US gets fresh. Why?",
@@ -2520,10 +2520,10 @@
           ],
           "correct": 1,
           "explanation": "Propagation delay: invalidation reached US edge first. Japan edge hasn't processed it yet. Eventually consistent. For critical content, may need longer window or origin verification.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"during purge propagation, user in Japan gets stale content, user in US gets fresh\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The key clue in this question is \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2551,7 +2551,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "CDN purge considerations: propagation takes time, rate limits exist (can't purge millions of URLs instantly), some CDNs charge (especially high volumes). Plan accordingly; prefer versioned URLs over frequent purging.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"considerations for CDN cache purge\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2575,7 +2575,7 @@
       "unit": "dollars",
       "tolerance": 0.1,
       "explanation": "10,000 - 1,000 free = 9,000 charged. 9,000 × $0.005 = $45. Purge costs can add up. Batch purges (purge by path pattern) or versioned URLs are more economical.",
-      "detailedExplanation": "Anchor the math in base units and check each transformation to avoid compounding conversion errors. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"cDN charges $0\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 0.005 and 1,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2605,7 +2605,7 @@
           ],
           "correct": 1,
           "explanation": "Versioned URLs: new version = new URL = cache miss = fresh fetch. Old URL stays cached (fine, not referenced). No purge request, no propagation delay, no cost. Best practice for static assets.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Start from \"alternative to purging: use versioned URLs (app\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "When must you use purge instead of versioned URLs?",
@@ -2617,10 +2617,10 @@
           ],
           "correct": 1,
           "explanation": "Can't version: SEO/canonical URLs (must be stable), API endpoints (clients use fixed URLs), shared URLs. For these, purge is necessary. Assets with build systems: prefer versioned URLs.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The decision turns on \"must you use purge instead of versioned URLs\". Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2648,7 +2648,7 @@
       ],
       "correct": 1,
       "explanation": "Surrogate keys: tag CDN-cached responses with custom keys (e.g., 'product:123', 'category:electronics'). Invalidate by surrogate key — all tagged responses purged. Supported by Fastly, Varnish, etc.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'surrogate key' in CDN caching\" as your starting point, then verify tradeoffs carefully. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 123 should be normalized first so downstream reasoning stays consistent. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2678,7 +2678,7 @@
           ],
           "correct": 1,
           "explanation": "Purge surrogate key 'product:123'. All cached responses with that tag are invalidated. May include product page, category pages showing this product, search results, etc.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The decision turns on \"you set Surrogate-Key: product:123 product:category:5 on a product page response\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 123 and 5 appear, convert them into one unit basis before comparison. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "Category 5 name changes. Which surrogate key to purge?",
@@ -2690,10 +2690,10 @@
           ],
           "correct": 1,
           "explanation": "Purge 'product:category:5' — all pages tagged with category 5 content. One purge invalidates category page and all product pages in that category. Surrogate keys enable efficient group invalidation.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"category 5 name changes\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Numbers such as 5 should be normalized first so downstream reasoning stays consistent. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Use a formula-first approach with explicit units to avoid hidden conversion mistakes. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Use \"cache Invalidation\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2721,7 +2721,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Benefits: group invalidation, semantic tagging, don't need URL list. NOT available in all CDNs — check provider support (Fastly has strong support; CloudFront has tags but different model).",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"benefits of surrogate keys\". Treat every option as a separate true/false test under the same constraints. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2749,7 +2749,7 @@
       ],
       "correct": 1,
       "explanation": "Instant: invalidation is part of write operation (synchronous, adds latency). Eventual: write completes, invalidation happens async (faster writes, brief staleness window). Choose based on freshness requirements.",
-      "detailedExplanation": "The fastest path is to anchor on the core constraint and eliminate implausible options early. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "If you keep \"'instant invalidation' vs 'eventual invalidation'\" in view, the correct answer separates faster. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2777,7 +2777,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "No invalidation: zero overhead. Async: minimal (queue write). Sync local: adds cache operation. Sync distributed: adds multiple network calls. More immediacy = more write latency.",
-      "detailedExplanation": "Build the ordering from major scale differences first, then refine with adjacent comparisons. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "The core signal here is \"rank these invalidation approaches by latency overhead on writes (lowest to highest):\". Build the rank from biggest differences first, then refine with adjacent checks. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2807,7 +2807,7 @@
           ],
           "correct": 1,
           "explanation": "Each write takes 5ms longer due to synchronous cache invalidation. At 10,000 writes/sec, that's 50 seconds of aggregate thread time per second dedicated to invalidation — a significant capacity cost, but each individual write only adds 5ms.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "If you keep \"sync invalidation adds 5ms to each write\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Numbers such as 5ms and 10,000 should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "To reduce this overhead, what could you do?",
@@ -2819,10 +2819,10 @@
           ],
           "correct": 1,
           "explanation": "Async: writes complete without waiting for invalidation. Invalidation processed from queue separately. Write latency drops, but brief staleness window introduced. Trade-off: speed vs. immediate freshness.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "This prompt is really about \"to reduce this overhead, what could you do\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Use the core equation with explicit unit tracking before committing to an answer. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The key clue in this question is \"cache Invalidation\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2850,7 +2850,7 @@
       ],
       "correct": 1,
       "explanation": "Invalidation storm: event triggers mass invalidation (schema change, config update). Thousands of cache entries invalidated simultaneously → thousands of cache misses → origin overwhelmed. Like thundering herd but triggered by invalidation.",
-      "detailedExplanation": "Treat this as a constraint-filtering problem: find the bottleneck first, then narrow the choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Start from \"'invalidation storms'\", then pressure-test the result against the options. Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2880,7 +2880,7 @@
           ],
           "correct": 1,
           "explanation": "100K entries invalidated = 100K potential misses. If accessed, all hit origin. 50K req/sec hitting cache-miss scenario could overwhelm origin. This is an invalidation storm.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Use \"config change invalidates 100,000 cache entries at once\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Cache design quality is mostly about correctness boundaries, not only hit rate. Keep quantities like 100,000 and 50,000 in aligned units before selecting an answer. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "How do you mitigate invalidation storms?",
@@ -2892,10 +2892,10 @@
           ],
           "correct": 1,
           "explanation": "Mitigate: (1) Stagger invalidations over time. (2) Soft invalidation (serve stale while refreshing). (3) Warm replacement cache before invalidating old. (4) Request coalescing for concurrent misses.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The core signal here is \"you mitigate invalidation storms\". Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2923,7 +2923,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Prevention: gradual (spread over time), soft (serve stale during refresh), coalescing (one origin request per key). Invalidating everything at once IS the storm, not prevention.",
-      "detailedExplanation": "Use independent validation per option to prevent partial truths from slipping into the final set. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"techniques to prevent invalidation storms:\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2951,7 +2951,7 @@
       ],
       "correct": 1,
       "explanation": "Proactive: update cache as part of write (write-through) or pre-warm before invalidating. Reactive: invalidate, let subsequent read repopulate. Proactive avoids cache miss; reactive has miss after invalidation.",
-      "detailedExplanation": "Solve this by pinning the governing ratio first and using it to discard impossible answers. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"'proactive cache refresh' vs 'reactive invalidation'\" as your starting point, then verify tradeoffs carefully. Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -2981,7 +2981,7 @@
           ],
           "correct": 1,
           "explanation": "Proactive: cache is populated during write. Subsequent reads hit cache with fresh value. No miss penalty. Good for read-your-writes scenarios.",
-          "detailedExplanation": "Use the earlier stage as the boundary condition and solve this step under that constraint. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Start from \"proactive refresh: on write, compute new value and update cache\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
         },
         {
           "question": "Drawback of proactive refresh?",
@@ -2993,10 +2993,10 @@
           ],
           "correct": 1,
           "explanation": "Proactive adds to write path: compute cached representation, store it. More latency, more complexity. Also risk of computing value that may never be read. Trade-off: write complexity for read speed.",
-          "detailedExplanation": "Use the result from the previous step as a hard constraint, then evaluate this stage against it. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them."
+          "detailedExplanation": "The decision turns on \"drawback of proactive refresh\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Compute from the primary formula first, then sanity-check the scale of the result. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "This prompt is really about \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3024,7 +3024,7 @@
       ],
       "correctOrder": [3, 0, 1, 2],
       "explanation": "Write-behind: async DB, cache updated immediately (fast writes, fresh reads). Write-through: sync, still good. Delete: causes miss on every like. TTL: very stale for active content. Likes need fast writes AND fresh reads.",
-      "detailedExplanation": "Establish the extremes first and fill the middle with pairwise comparisons. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Read this as a scenario about \"for a social media 'like' count that's frequently read but also frequently updated,\". Build the rank from biggest differences first, then refine with adjacent checks. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3052,7 +3052,7 @@
       ],
       "correct": 1,
       "explanation": "Best-effort: try to invalidate, but if it fails (cache down, timeout), continue anyway. Write succeeds; cache may be stale. TTL provides safety net. Appropriate when cache staleness is tolerable.",
-      "detailedExplanation": "Lead with the key assumption, then remove options that break units, scale, or architecture constraints. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The decision turns on \"'best-effort invalidation'\". Prioritize the option that best protects the reliability objective under the stated failure conditions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3082,7 +3082,7 @@
           ],
           "correct": 1,
           "explanation": "Strict for: security data (stale permissions are dangerous), financial (stale balance causes issues). Worth failing writes to maintain consistency. Most cases: best-effort is fine.",
-          "detailedExplanation": "Treat this as a continuation step: preserve earlier constraints and recheck feasibility. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "This prompt is really about \"strict invalidation: if cache invalidation fails, fail the entire write\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "Best-effort invalidation: write succeeds, invalidation fails. User sees stale data. Impact depends on?",
@@ -3094,10 +3094,10 @@
           ],
           "correct": 1,
           "explanation": "Impact factors: TTL (bounded staleness), criticality (is stale data problematic?), read pattern (will user even read the stale data?). For most content, brief staleness is acceptable.",
-          "detailedExplanation": "Advance from the first-stage output, then verify that this decision still respects the same limits. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "If you keep \"best-effort invalidation: write succeeds, invalidation fails\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "Work through the core math with unit labels attached, then verify scale plausibility. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "Start from \"cache Invalidation\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3125,7 +3125,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Strict for: security (stale permissions = vulnerability), financial (wrong balance = disputes), and generally critical data. Profile photos: staleness is minor inconvenience, not serious. Best-effort is fine there.",
-      "detailedExplanation": "Evaluate each option independently against the constraint instead of looking for a pattern across choices. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The key clue in this question is \"you use strict invalidation (fail write on invalidation failure)\". Validate each option independently; do not select statements that are only partially true. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3153,7 +3153,7 @@
       ],
       "correct": 1,
       "explanation": "Double-delete: delete cache before DB write, write DB, delete cache again after. Handles race where concurrent read might re-cache old value between delete and write. Belt and suspenders approach.",
-      "detailedExplanation": "A reliable method is to name the primary boundary condition, then evaluate options against it. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "The core signal here is \"'double-delete' pattern\". Discard cache tactics that hide consistency bugs under high load. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3183,7 +3183,7 @@
           ],
           "correct": 1,
           "explanation": "Race: A deletes cache. B misses, reads old DB value (before A's write commits), caches it. A writes DB. Now DB has new value, cache has old value. Stale data persists.",
-          "detailedExplanation": "Translate the prior stage outcome into an operational check before selecting the next move. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "The key clue in this question is \"race condition: Thread A deletes cache, writes DB\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "How does double-delete help?",
@@ -3195,10 +3195,10 @@
           ],
           "correct": 1,
           "explanation": "Double-delete: first delete clears cache. DB write completes. Second delete catches any stale re-caches that happened during DB write. Not perfect but reduces race window significantly.",
-          "detailedExplanation": "Carry the prior stage assumptions forward and revalidate units before making the next decision. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee."
+          "detailedExplanation": "Read this as a scenario about \"double-delete help\". Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load."
         }
       ],
-      "detailedExplanation": "Apply the main relationship stepwise and verify unit consistency at each step. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "If you keep \"cache Invalidation\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3226,7 +3226,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Alternatives: CAS ensures old value doesn't overwrite new. Lock serializes (but adds latency). Accept staleness with TTL backup. Increasing TTL doesn't address the race condition — it just makes stale data persist longer.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Translate target percentages into concrete time or request budgets, then test whether incident frequency and recovery speed can actually satisfy them.",
+      "detailedExplanation": "This prompt is really about \"alternatives to double-delete for handling this race\". Validate each option independently; do not select statements that are only partially true. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3254,7 +3254,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Transactional: atomic, strongest. Double-delete: handles some races. Single delete: basic invalidation. TTL only: eventual consistency, weakest. Choose consistency level based on needs.",
-      "detailedExplanation": "Order by relative impact rather than exact values, then verify the sequence one boundary at a time. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "Use \"rank these by consistency guarantee (strongest to weakest):\" as your starting point, then verify tradeoffs carefully. Order by relative scale and bottleneck effect, then validate neighboring items. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3282,7 +3282,7 @@
       ],
       "correct": 1,
       "explanation": "Idempotent invalidation: deleting a key twice is same as once — no error, no extra effect. Important for retries and at-least-once delivery systems. If invalidation might be delivered multiple times, it should be idempotent.",
-      "detailedExplanation": "Start by identifying the limiting factor, then rule out options that violate scale or semantics. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly.",
+      "detailedExplanation": "Read this as a scenario about \"'invalidation idempotency'\". Prefer the choice that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -3312,7 +3312,7 @@
           ],
           "correct": 1,
           "explanation": "Delete is idempotent: deleting already-deleted key has no effect. Safe for at-least-once delivery. No errors, no corruption. Second delete is simply a no-op.",
-          "detailedExplanation": "This stage is best solved by propagating the earlier result and validating edge conditions. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "Use \"invalidation message is delivered twice due to retry\" as your starting point, then verify tradeoffs carefully. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "What if invalidation is 'decrement TTL by 60s'? Is that idempotent?",
@@ -3324,10 +3324,10 @@
           ],
           "correct": 1,
           "explanation": "Decrement is NOT idempotent: first reduces TTL by 60s, second reduces by another 60s. Different outcome on retry. Prefer idempotent operations (delete, set to specific value) for reliability.",
-          "detailedExplanation": "Keep the previous conclusion fixed, then test this stage for consistency and scale. The key API design signal is tradeoff clarity: client ergonomics, backward compatibility, and evolvability should be justified explicitly."
+          "detailedExplanation": "The core signal here is \"if invalidation is 'decrement TTL by 60s'? Is that idempotent\". Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. If values like 60s appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk."
         }
       ],
-      "detailedExplanation": "Anchor on the base formula, preserve unit integrity, and then run a reasonableness check. A strong caching answer specifies key design, invalidation behavior, and the acceptable staleness window, not just a cache hit-rate target.",
+      "detailedExplanation": "The decision turns on \"cache Invalidation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -3355,7 +3355,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Best practices: TTL backup (bounded staleness if invalidation fails), delete over update (simpler), good key design (invalidation-friendly). Sync invalidation isn't always necessary — async with TTL backup often suffices.",
-      "detailedExplanation": "Run a one-by-one validity check and discard options that depend on unstated conditions. Caching answers should define invalidation behavior and staleness boundaries; hit rate alone is not a correctness guarantee.",
+      "detailedExplanation": "This prompt is really about \"best practices for cache invalidation\". Validate each option independently; do not select statements that are only partially true. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
