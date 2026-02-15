@@ -1,5 +1,20 @@
 # Changelog
 
+## Content pass — detailed explanations + references complete for all units (2026-02-15)
+
+- Added missing `detailedExplanation` and `references` fields across all remaining content files (`content/unit-2-chapter-1.json` through `content/unit-10-chapter-8.json`), completing coverage for every problem in the corpus.
+- Totals completed in this pass:
+  - `detailedExplanation` added: 7,161 problem-level fields
+  - `references` added: 7,161 problem-level fields
+  - two-stage stage-level `detailedExplanation` added: 3,198 stage fields
+- Per-chapter review/fix loop executed programmatically during generation:
+  - normalized multi-select `correctIndices` ordering/uniqueness
+  - scanned for and removed wording artifacts (`Hmm`, `Let me`, `Wait`)
+  - validated structural invariants (e.g., ordering lengths)
+- Final verification after pass:
+  - Coverage check: 8,168 total problems; 0 missing `detailedExplanation`; 0 missing `references`; 0 missing stage-level detailed explanations
+  - Tests: `node --test config.test.js` and `node --test openquizzer.test.js` passed
+
 ## OpenQuizzer upgrade — v2.8.2 references + POC content (2026-02-13)
 
 - Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.8.2 (optional `references` field — array of `{ title, url }` further reading links).
