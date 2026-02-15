@@ -16,7 +16,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For tweet publish API, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" outperforms the alternatives because it targets fanout queue saturation during burst posting and preserves safe recovery behavior. It is also the most compatible with The team needs a mitigation that can be canaried in under an hour.",
       "detailedExplanation": "The decision turns on \"tweet publish API\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
@@ -44,7 +44,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, home timeline service fails mainly through celebrity write amplification overwhelming worker pools. The best choice is \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: Recent traffic growth exposed this bottleneck repeatedly.",
       "detailedExplanation": "Start from \"home timeline service\", then pressure-test the result against the options. Discard plans that assume linear scaling despite shared bottlenecks. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -72,7 +72,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Celebrity account fanout path should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\" is strongest because it directly addresses stale timeline cache entries after deletes and improves repeatability under stress. This aligns with the extra condition (Leadership asked for a fix that reduces recurrence, not just MTTR).",
       "detailedExplanation": "The key clue in this question is \"celebrity account fanout path\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -100,7 +100,7 @@
         "Shard follower graph by stable user key and add hot-key replication for skewed accounts."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat follower-graph store as a reliability-control decision, not an averages-only optimization. \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" is correct since it mitigates hot partition in follower graph lookups while keeping containment local. The decision remains valid given: A previous rollback fixed averages but not tail impact.",
       "detailedExplanation": "The core signal here is \"follower-graph store\". Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
@@ -128,7 +128,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For timeline cache layer, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" outperforms the alternatives because it targets read path latency spikes from fragmented data fetches and preserves safe recovery behavior. It is also the most compatible with User trust risk is highest on this path.",
       "detailedExplanation": "If you keep \"timeline cache layer\" in view, the correct answer separates faster. Discard cache tactics that hide consistency bugs under high load. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
@@ -156,7 +156,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, feed backfill worker fails mainly through duplicate fanout jobs causing timeline inconsistencies. The best choice is \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: A shared dependency has uncertain health right now.",
       "detailedExplanation": "This prompt is really about \"feed backfill worker\". Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -184,7 +184,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Content moderation pre-check should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\" is strongest because it directly addresses write/read path coupling causing cascading slowdowns and improves repeatability under stress. This aligns with the extra condition (The change must preserve cost discipline during peak).",
       "detailedExplanation": "Use \"content moderation pre-check\" as your starting point, then verify tradeoffs carefully. Prefer the answer that survives a sanity check against known anchor numbers. A harsh sanity check should identify which assumption is most likely wrong. Common pitfall: accepting implausible outputs because arithmetic is clean.",
       "references": [
         {
@@ -212,7 +212,7 @@
         "Use per-region ordering guarantees with explicit cross-region reconciliation semantics."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat tweet metadata pipeline as a reliability-control decision, not an averages-only optimization. \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" is correct since it mitigates global ordering assumptions broken across regions while keeping containment local. The decision remains valid given: Telemetry shows risk concentrated in one partition class.",
       "detailedExplanation": "Read this as a scenario about \"tweet metadata pipeline\". Eliminate options that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
@@ -240,7 +240,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For cold-start timeline builder, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\" outperforms the alternatives because it targets backfill lag exceeding freshness SLO and preserves safe recovery behavior. It is also the most compatible with The product team accepts graceful degradation, not silent corruption.",
       "detailedExplanation": "The decision turns on \"cold-start timeline builder\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -268,7 +268,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Regional timeline edge cache should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Design delete fanout as priority workflow so visibility guarantees match product policy\" is strongest because it directly addresses delete propagation delays violating product expectations and improves repeatability under stress. This aligns with the extra condition (Current runbooks are missing explicit ownership for this boundary).",
       "detailedExplanation": "Use \"regional timeline edge cache\" as your starting point, then verify tradeoffs carefully. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
@@ -296,7 +296,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat tweet publish API as a reliability-control decision, not an averages-only optimization. \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" is correct since it mitigates fanout queue saturation during burst posting while keeping containment local. The decision remains valid given: A cross-region path recently changed behavior after migration.",
       "detailedExplanation": "This prompt is really about \"tweet publish API\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
@@ -324,7 +324,7 @@
         "Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For home timeline service, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\" outperforms the alternatives because it targets celebrity write amplification overwhelming worker pools and preserves safe recovery behavior. It is also the most compatible with Client retries are already elevated and can amplify mistakes.",
       "detailedExplanation": "If you keep \"home timeline service\" in view, the correct answer separates faster. Eliminate options that fail under peak load or saturation conditions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -352,7 +352,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, celebrity account fanout path fails mainly through stale timeline cache entries after deletes. The best choice is \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: Capacity headroom exists but only in specific pools.",
       "detailedExplanation": "The core signal here is \"celebrity account fanout path\". Reject options that improve speed but weaken freshness or invalidation correctness. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
@@ -380,7 +380,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Follower-graph store should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" is strongest because it directly addresses hot partition in follower graph lookups and improves repeatability under stress. This aligns with the extra condition (A partial failure is masking itself as success in metrics).",
       "detailedExplanation": "The key clue in this question is \"follower-graph store\". Eliminate options that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
@@ -408,7 +408,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat timeline cache layer as a reliability-control decision, not an averages-only optimization. \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" is correct since it mitigates read path latency spikes from fragmented data fetches while keeping containment local. The decision remains valid given: This fix must hold under celebrity or campaign spike conditions.",
       "detailedExplanation": "Start from \"timeline cache layer\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
@@ -436,7 +436,7 @@
         "Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For feed backfill worker, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\" outperforms the alternatives because it targets duplicate fanout jobs causing timeline inconsistencies and preserves safe recovery behavior. It is also the most compatible with SLO burn suggests immediate containment plus follow-up hardening.",
       "detailedExplanation": "The decision turns on \"feed backfill worker\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
@@ -464,7 +464,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, content moderation pre-check fails mainly through write/read path coupling causing cascading slowdowns. The best choice is \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: On-call requested a reversible operational first step.",
       "detailedExplanation": "Read this as a scenario about \"content moderation pre-check\". Discard options that depend on unrealistic assumptions hidden in the estimate. Treat plausibility validation as mandatory, even when the arithmetic is internally consistent. Common pitfall: skipping anchor checks against known scale.",
       "references": [
         {
@@ -492,7 +492,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Tweet metadata pipeline should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" is strongest because it directly addresses global ordering assumptions broken across regions and improves repeatability under stress. This aligns with the extra condition (The system mixes strict and eventual paths with unclear contracts).",
       "detailedExplanation": "Use \"tweet metadata pipeline\" as your starting point, then verify tradeoffs carefully. Eliminate approaches that hand-wave conflict resolution or quorum behavior. Consistency decisions should be explicit about which conflicts are acceptable and why. Common pitfall: using weak consistency for strict invariants.",
       "references": [
         {
@@ -520,7 +520,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat cold-start timeline builder as a reliability-control decision, not an averages-only optimization. \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\" is correct since it mitigates backfill lag exceeding freshness SLO while keeping containment local. The decision remains valid given: A hot-key pattern is likely from real traffic skew.",
       "detailedExplanation": "This prompt is really about \"cold-start timeline builder\". Eliminate answers that do not directly address the failure mode, recovery path, or blast radius. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -548,7 +548,7 @@
         "Design delete fanout as priority workflow so visibility guarantees match product policy."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, regional timeline edge cache fails mainly through delete propagation delays violating product expectations. The best choice is \"Design delete fanout as priority workflow so visibility guarantees match product policy\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: The path must remain mobile-latency friendly under stress.",
       "detailedExplanation": "Start from \"regional timeline edge cache\", then pressure-test the result against the options. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
@@ -576,7 +576,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Tweet publish API should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" is strongest because it directly addresses fanout queue saturation during burst posting and improves repeatability under stress. This aligns with the extra condition (Compliance requires explicit behavior for edge-case failures).",
       "detailedExplanation": "The key clue in this question is \"tweet publish API\". Eliminate designs that create ambiguous API semantics or brittle versioning paths. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
@@ -604,7 +604,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat home timeline service as a reliability-control decision, not an averages-only optimization. \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\" is correct since it mitigates celebrity write amplification overwhelming worker pools while keeping containment local. The decision remains valid given: This boundary has failed during the last two game days.",
       "detailedExplanation": "Read this as a scenario about \"home timeline service\". Eliminate options that fail under peak load or saturation conditions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -632,7 +632,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For celebrity account fanout path, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\" outperforms the alternatives because it targets stale timeline cache entries after deletes and preserves safe recovery behavior. It is also the most compatible with A cache invalidation gap has customer-visible impact.",
       "detailedExplanation": "The decision turns on \"celebrity account fanout path\". Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
@@ -660,7 +660,7 @@
         "Shard follower graph by stable user key and add hot-key replication for skewed accounts."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, follower-graph store fails mainly through hot partition in follower graph lookups. The best choice is \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: Dependency retries currently exceed safe server limits.",
       "detailedExplanation": "This prompt is really about \"follower-graph store\". Prefer the choice that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
@@ -688,7 +688,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Timeline cache layer should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" is strongest because it directly addresses read path latency spikes from fragmented data fetches and improves repeatability under stress. This aligns with the extra condition (The fix should avoid broad architectural rewrites this quarter).",
       "detailedExplanation": "Use \"timeline cache layer\" as your starting point, then verify tradeoffs carefully. Reject options that improve speed but weaken freshness or invalidation correctness. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: hot-key skew causing uneven load.",
       "references": [
         {
@@ -716,7 +716,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat feed backfill worker as a reliability-control decision, not an averages-only optimization. \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\" is correct since it mitigates duplicate fanout jobs causing timeline inconsistencies while keeping containment local. The decision remains valid given: Current metrics hide per-tenant variance that matters.",
       "detailedExplanation": "The core signal here is \"feed backfill worker\". Discard plans that assume linear scaling despite shared bottlenecks. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -744,7 +744,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For content moderation pre-check, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\" outperforms the alternatives because it targets write/read path coupling causing cascading slowdowns and preserves safe recovery behavior. It is also the most compatible with The fallback path is under-tested in production-like load.",
       "detailedExplanation": "If you keep \"content moderation pre-check\" in view, the correct answer separates faster. Eliminate options that fail under peak load or saturation conditions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -772,7 +772,7 @@
         "Use per-region ordering guarantees with explicit cross-region reconciliation semantics."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, tweet metadata pipeline fails mainly through global ordering assumptions broken across regions. The best choice is \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: A control-plane issue is bleeding into data-plane reliability.",
       "detailedExplanation": "Start from \"tweet metadata pipeline\", then pressure-test the result against the options. Prefer the choice that maps cleanly to throughput, concurrency, and scaling limits. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -800,7 +800,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Cold-start timeline builder should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\" is strongest because it directly addresses backfill lag exceeding freshness SLO and improves repeatability under stress. This aligns with the extra condition (The system must preserve critical events over bulk traffic).",
       "detailedExplanation": "The key clue in this question is \"cold-start timeline builder\". Prioritize the option that best protects the reliability objective under the stated failure conditions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -828,7 +828,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For regional timeline edge cache, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Design delete fanout as priority workflow so visibility guarantees match product policy\" outperforms the alternatives because it targets delete propagation delays violating product expectations and preserves safe recovery behavior. It is also the most compatible with Recent deploys changed queue and timeout settings together.",
       "detailedExplanation": "The decision turns on \"regional timeline edge cache\". Prioritize the option that best protects the reliability objective under the stated failure conditions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -856,7 +856,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, tweet publish API fails mainly through fanout queue saturation during burst posting. The best choice is \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: The edge layer is healthy but origin saturation is growing.",
       "detailedExplanation": "Read this as a scenario about \"tweet publish API\". Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
@@ -884,7 +884,7 @@
         "Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs."
       ],
       "correct": 3,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Home timeline service should be solved at the failure boundary named in Twitter/X Timeline Write & Fanout. \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\" is strongest because it directly addresses celebrity write amplification overwhelming worker pools and improves repeatability under stress. This aligns with the extra condition (Operational complexity is rising faster than team onboarding).",
       "detailedExplanation": "The key clue in this question is \"home timeline service\". Eliminate options that fail under peak load or saturation conditions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -912,7 +912,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 0,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "Treat celebrity account fanout path as a reliability-control decision, not an averages-only optimization. \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\" is correct since it mitigates stale timeline cache entries after deletes while keeping containment local. The decision remains valid given: Stakeholders need clear trade-off rationale in the postmortem.",
       "detailedExplanation": "Start from \"celebrity account fanout path\", then pressure-test the result against the options. Prefer the choice that balances hit rate with clear staleness and invalidation behavior. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
@@ -940,7 +940,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 1,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "For follower-graph store, prefer the option that prevents reoccurrence in Twitter/X Timeline Write & Fanout. \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" outperforms the alternatives because it targets hot partition in follower graph lookups and preserves safe recovery behavior. It is also the most compatible with A localized failure is at risk of becoming cross-region.",
       "detailedExplanation": "If you keep \"follower-graph store\" in view, the correct answer separates faster. Reject designs that improve throughput while weakening reliability guarantees. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
@@ -968,7 +968,7 @@
         "Rely on manual intervention as the primary mitigation for repeated incidents."
       ],
       "correct": 2,
-      "explanation": "The strongest choice applies the right control at the right boundary to reduce recurrence and preserve system goals.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, timeline cache layer fails mainly through read path latency spikes from fragmented data fetches. The best choice is \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" because it lowers recurrence without expanding blast radius. It also fits the interview constraint: Recovery sequencing matters as much as immediate containment.",
       "detailedExplanation": "The core signal here is \"timeline cache layer\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -998,7 +998,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around tweet publish API mismatches hot partition in follower graph lookups, creating repeated failures\" best matches Incident review for tweet publish API: signal points to hot partition in follower graph lookups by targeting hot partition in follower graph lookups and lowering repeat risk.",
           "detailedExplanation": "The decision turns on \"incident review for tweet publish API: signal points to hot partition in follower graph\". Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1010,7 +1010,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For \"incident review for tweet publish API: signal points to\", what is the highest-leverage change to make now is a two-step reliability decision. At stage 2, \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "Start from \"after diagnosis, what is the strongest next change\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1043,7 +1043,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for home timeline service: signal points to read path latency spikes from fragmented data fetches, \"The current decomposition around home timeline service mismatches read path latency spikes from fragmented data fetches, creating repeated failures\" is correct because it addresses read path latency spikes from fragmented data fetches and improves controllability.",
           "detailedExplanation": "Start from \"incident review for home timeline service: signal points to read path latency spikes\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1055,7 +1055,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\" best matches Given the diagnosis in \"incident review for home timeline service: signal\", what should change first before wider rollout by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "The decision turns on \"after diagnosis, what is the strongest next change\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1088,7 +1088,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around celebrity account fanout path mismatches duplicate fanout jobs causing timeline inconsistencies, creating repeated failures\". It is the option most directly aligned to duplicate fanout jobs causing timeline inconsistencies while preserving safe follow-on actions.",
           "detailedExplanation": "Use \"incident review for celebrity account fanout path: signal points to duplicate fanout\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1100,7 +1100,7 @@
             "Use per-region ordering guarantees with explicit cross-region reconciliation semantics."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for With diagnosis confirmed in \"incident review for celebrity account fanout path:\", what first move gives the best reliability impact, \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "The core signal here is \"after diagnosis, what is the strongest next change\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -1133,7 +1133,7 @@
             "The current decomposition around follower-graph store mismatches write/read path coupling causing cascading slowdowns, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for follower-graph store: signal points to write/read path coupling causing cascading slowdowns is a two-step reliability decision. At stage 1, \"The current decomposition around follower-graph store mismatches write/read path coupling causing cascading slowdowns, creating repeated failures\" wins because it balances immediate containment with long-term prevention around write/read path coupling causing cascading slowdowns.",
           "detailedExplanation": "Read this as a scenario about \"incident review for follower-graph store: signal points to write/read path coupling\". Do not reset assumptions between stages; carry forward prior constraints directly. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1145,7 +1145,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "The key clue in this question is \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1178,7 +1178,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for timeline cache layer: signal points to global ordering assumptions broken across regions, \"The current decomposition around timeline cache layer mismatches global ordering assumptions broken across regions, creating repeated failures\" is correct because it addresses global ordering assumptions broken across regions and improves controllability.",
           "detailedExplanation": "The core signal here is \"incident review for timeline cache layer: signal points to global ordering assumptions\". Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1190,7 +1190,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Design delete fanout as priority workflow so visibility guarantees match product policy\" best matches With root cause identified for \"incident review for timeline cache layer: signal points\", which immediate adjustment best addresses the risk by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "Use \"after diagnosis, what is the strongest next change\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -1223,7 +1223,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around feed backfill worker mismatches backfill lag exceeding freshness SLO, creating repeated failures\". It is the option most directly aligned to backfill lag exceeding freshness SLO while preserving safe follow-on actions.",
           "detailedExplanation": "The key clue in this question is \"incident review for feed backfill worker: signal points to backfill lag exceeding\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1235,7 +1235,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for After diagnosing \"incident review for feed backfill worker: signal points\", which next change should be prioritized first, \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "Read this as a scenario about \"after diagnosis, what is the strongest next change\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1268,7 +1268,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for content moderation pre-check: signal points to delete propagation delays violating product expectations is a two-step reliability decision. At stage 1, \"The current decomposition around content moderation pre-check mismatches delete propagation delays violating product expectations, creating repeated failures\" wins because it balances immediate containment with long-term prevention around delete propagation delays violating product expectations.",
           "detailedExplanation": "Start from \"incident review for content moderation pre-check: signal points to delete propagation\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1280,7 +1280,7 @@
             "Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "The decision turns on \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1313,7 +1313,7 @@
             "The current decomposition around tweet metadata pipeline mismatches fanout queue saturation during burst posting, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around tweet metadata pipeline mismatches fanout queue saturation during burst posting, creating repeated failures\" best matches Incident review for tweet metadata pipeline: signal points to fanout queue saturation during burst posting by targeting fanout queue saturation during burst posting and lowering repeat risk.",
           "detailedExplanation": "The decision turns on \"incident review for tweet metadata pipeline: signal points to fanout queue saturation\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1325,7 +1325,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For \"incident review for tweet metadata pipeline: signal\", what should change first before wider rollout is a two-step reliability decision. At stage 2, \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "Start from \"after diagnosis, what is the strongest next change\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1358,7 +1358,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for cold-start timeline builder: signal points to celebrity write amplification overwhelming worker pools, \"The current decomposition around cold-start timeline builder mismatches celebrity write amplification overwhelming worker pools, creating repeated failures\" is correct because it addresses celebrity write amplification overwhelming worker pools and improves controllability.",
           "detailedExplanation": "Read this as a scenario about \"incident review for cold-start timeline builder: signal points to celebrity write\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1370,7 +1370,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" best matches Using the diagnosis from \"incident review for cold-start timeline builder: signal\", which next step is strongest under current constraints by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "The key clue in this question is \"after diagnosis, what is the strongest next change\". Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1403,7 +1403,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around regional timeline edge cache mismatches stale timeline cache entries after deletes, creating repeated failures\". It is the option most directly aligned to stale timeline cache entries after deletes while preserving safe follow-on actions.",
           "detailedExplanation": "Use \"incident review for regional timeline edge cache: signal points to stale timeline cache\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1415,7 +1415,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for With diagnosis confirmed in \"incident review for regional timeline edge cache:\", which next change should be prioritized first, \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "The core signal here is \"after diagnosis, what is the strongest next change\". Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1448,7 +1448,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for tweet publish API: signal points to hot partition in follower graph lookups is a two-step reliability decision. At stage 1, \"The current decomposition around tweet publish API mismatches hot partition in follower graph lookups, creating repeated failures\" wins because it balances immediate containment with long-term prevention around hot partition in follower graph lookups.",
           "detailedExplanation": "This prompt is really about \"incident review for tweet publish API: signal points to hot partition in follower graph\". Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1460,7 +1460,7 @@
             "Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "If you keep \"after diagnosis, what is the strongest next change\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -1493,7 +1493,7 @@
             "The current decomposition around home timeline service mismatches read path latency spikes from fragmented data fetches, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around home timeline service mismatches read path latency spikes from fragmented data fetches, creating repeated failures\" best matches Incident review for home timeline service: signal points to read path latency spikes from fragmented data fetches by targeting read path latency spikes from fragmented data fetches and lowering repeat risk.",
           "detailedExplanation": "If you keep \"incident review for home timeline service: signal points to read path latency spikes\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1505,7 +1505,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Now that \"incident review for home timeline service: signal\" is diagnosed, what should change first before wider rollout is a two-step reliability decision. At stage 2, \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "This prompt is really about \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1538,7 +1538,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for celebrity account fanout path: signal points to duplicate fanout jobs causing timeline inconsistencies, \"The current decomposition around celebrity account fanout path mismatches duplicate fanout jobs causing timeline inconsistencies, creating repeated failures\" is correct because it addresses duplicate fanout jobs causing timeline inconsistencies and improves controllability.",
           "detailedExplanation": "The core signal here is \"incident review for celebrity account fanout path: signal points to duplicate fanout\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1550,7 +1550,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" best matches With root cause identified for \"incident review for celebrity account fanout path:\", what should change first before wider rollout by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "Use \"after diagnosis, what is the strongest next change\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1583,7 +1583,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around follower-graph store mismatches write/read path coupling causing cascading slowdowns, creating repeated failures\". It is the option most directly aligned to write/read path coupling causing cascading slowdowns while preserving safe follow-on actions.",
           "detailedExplanation": "The key clue in this question is \"incident review for follower-graph store: signal points to write/read path coupling\". Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1595,7 +1595,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for After diagnosing \"incident review for follower-graph store: signal points\", what is the highest-leverage change to make now, \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "Read this as a scenario about \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -1628,7 +1628,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around timeline cache layer mismatches global ordering assumptions broken across regions, creating repeated failures\" best matches Incident review for timeline cache layer: signal points to global ordering assumptions broken across regions by targeting global ordering assumptions broken across regions and lowering repeat risk.",
           "detailedExplanation": "If you keep \"incident review for timeline cache layer: signal points to global ordering assumptions\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1640,7 +1640,7 @@
             "Design delete fanout as priority workflow so visibility guarantees match product policy."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Now that \"incident review for timeline cache layer: signal points\" is diagnosed, which immediate adjustment best addresses the risk is a two-step reliability decision. At stage 2, \"Design delete fanout as priority workflow so visibility guarantees match product policy\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "This prompt is really about \"after diagnosis, what is the strongest next change\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1673,7 +1673,7 @@
             "The current decomposition around feed backfill worker mismatches backfill lag exceeding freshness SLO, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for feed backfill worker: signal points to backfill lag exceeding freshness SLO, \"The current decomposition around feed backfill worker mismatches backfill lag exceeding freshness SLO, creating repeated failures\" is correct because it addresses backfill lag exceeding freshness SLO and improves controllability.",
           "detailedExplanation": "This prompt is really about \"incident review for feed backfill worker: signal points to backfill lag exceeding\". Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1685,7 +1685,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Split fanout policy by account class and use fanout-on-read for celebrity traffic\" best matches In the \"incident review for feed backfill worker: signal points\" scenario, which next step is strongest under current constraints by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "If you keep \"after diagnosis, what is the strongest next change\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1718,7 +1718,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around content moderation pre-check mismatches delete propagation delays violating product expectations, creating repeated failures\". It is the option most directly aligned to delete propagation delays violating product expectations while preserving safe follow-on actions.",
           "detailedExplanation": "Use \"incident review for content moderation pre-check: signal points to delete propagation\" as your starting point, then verify tradeoffs carefully. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1730,7 +1730,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for With diagnosis confirmed in \"incident review for content moderation pre-check:\", what should change first before wider rollout, \"Precompute timelines for normal accounts while rate-limiting high-amplification fanout jobs\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "The core signal here is \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1763,7 +1763,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for tweet metadata pipeline: signal points to fanout queue saturation during burst posting is a two-step reliability decision. At stage 1, \"The current decomposition around tweet metadata pipeline mismatches fanout queue saturation during burst posting, creating repeated failures\" wins because it balances immediate containment with long-term prevention around fanout queue saturation during burst posting.",
           "detailedExplanation": "Read this as a scenario about \"incident review for tweet metadata pipeline: signal points to fanout queue saturation\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1775,7 +1775,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Use timeline segment caches with bounded staleness and targeted invalidation on deletes\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "The key clue in this question is \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1808,7 +1808,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around cold-start timeline builder mismatches celebrity write amplification overwhelming worker pools, creating repeated failures\" best matches Incident review for cold-start timeline builder: signal points to celebrity write amplification overwhelming worker pools by targeting celebrity write amplification overwhelming worker pools and lowering repeat risk.",
           "detailedExplanation": "The decision turns on \"incident review for cold-start timeline builder: signal points to celebrity write\". Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
@@ -1820,7 +1820,7 @@
             "Shard follower graph by stable user key and add hot-key replication for skewed accounts."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For \"incident review for cold-start timeline builder: signal\", which immediate adjustment best addresses the risk is a two-step reliability decision. At stage 2, \"Shard follower graph by stable user key and add hot-key replication for skewed accounts\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "Start from \"after diagnosis, what is the strongest next change\", then pressure-test the result against the options. Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1853,7 +1853,7 @@
             "The current decomposition around regional timeline edge cache mismatches stale timeline cache entries after deletes, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for regional timeline edge cache: signal points to stale timeline cache entries after deletes, \"The current decomposition around regional timeline edge cache mismatches stale timeline cache entries after deletes, creating repeated failures\" is correct because it addresses stale timeline cache entries after deletes and improves controllability.",
           "detailedExplanation": "Start from \"incident review for regional timeline edge cache: signal points to stale timeline cache\", then pressure-test the result against the options. Do not reset assumptions between stages; carry forward prior constraints directly. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1865,7 +1865,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Assemble home feed with tiered fetch strategy to cap tail latency under partial misses\" best matches Given the diagnosis in \"incident review for regional timeline edge cache:\", which next step is strongest under current constraints by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "The decision turns on \"after diagnosis, what is the strongest next change\". Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks."
         }
       ],
@@ -1898,7 +1898,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "For stage 1 in Twitter/X Timeline Write & Fanout, the best answer is \"The current decomposition around tweet publish API mismatches hot partition in follower graph lookups, creating repeated failures\". It is the option most directly aligned to hot partition in follower graph lookups while preserving safe follow-on actions.",
           "detailedExplanation": "The key clue in this question is \"incident review for tweet publish API: signal points to hot partition in follower graph\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: assuming recovery speed without operational proof."
         },
         {
@@ -1910,7 +1910,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Stage 2 in Twitter/X Timeline Write & Fanout: for After diagnosing \"incident review for tweet publish API: signal points to\", what should change first before wider rollout, \"Enforce idempotent fanout jobs with dedupe keys to avoid duplicate timeline inserts\" is correct because it addresses the incident signal and improves controllability.",
           "detailedExplanation": "Read this as a scenario about \"after diagnosis, what is the strongest next change\". Solve this as chained reasoning where stage two must respect stage one assumptions. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -1943,7 +1943,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 1,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for home timeline service: signal points to read path latency spikes from fragmented data fetches is a two-step reliability decision. At stage 1, \"The current decomposition around home timeline service mismatches read path latency spikes from fragmented data fetches, creating repeated failures\" wins because it balances immediate containment with long-term prevention around read path latency spikes from fragmented data fetches.",
           "detailedExplanation": "The core signal here is \"incident review for home timeline service: signal points to read path latency spikes\". Solve this as chained reasoning where stage two must respect stage one assumptions. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
@@ -1955,7 +1955,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 2,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Decouple publish path from heavy enrichment using async pipelines and strict timeout budgets\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "Use \"after diagnosis, what is the strongest next change\" as your starting point, then verify tradeoffs carefully. Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -1988,7 +1988,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 2,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "In stage 1, prioritize evidence-driven mitigation. \"The current decomposition around celebrity account fanout path mismatches duplicate fanout jobs causing timeline inconsistencies, creating repeated failures\" best matches Incident review for celebrity account fanout path: signal points to duplicate fanout jobs causing timeline inconsistencies by targeting duplicate fanout jobs causing timeline inconsistencies and lowering repeat risk.",
           "detailedExplanation": "If you keep \"incident review for celebrity account fanout path: signal points to duplicate fanout\" in view, the correct answer separates faster. Solve this as chained reasoning where stage two must respect stage one assumptions. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: retry storms during partial failure."
         },
         {
@@ -2000,7 +2000,7 @@
             "Use per-region ordering guarantees with explicit cross-region reconciliation semantics."
           ],
           "correct": 3,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "Now that \"incident review for celebrity account fanout path:\" is diagnosed, what first move gives the best reliability impact is a two-step reliability decision. At stage 2, \"Use per-region ordering guarantees with explicit cross-region reconciliation semantics\" wins because it balances immediate containment with long-term prevention around the detected pattern.",
           "detailedExplanation": "This prompt is really about \"after diagnosis, what is the strongest next change\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -2033,7 +2033,7 @@
             "The current decomposition around follower-graph store mismatches write/read path coupling causing cascading slowdowns, creating repeated failures."
           ],
           "correct": 3,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Stage 1 in Twitter/X Timeline Write & Fanout: for Incident review for follower-graph store: signal points to write/read path coupling causing cascading slowdowns, \"The current decomposition around follower-graph store mismatches write/read path coupling causing cascading slowdowns, creating repeated failures\" is correct because it addresses write/read path coupling causing cascading slowdowns and improves controllability.",
           "detailedExplanation": "This prompt is really about \"incident review for follower-graph store: signal points to write/read path coupling\". Do not reset assumptions between stages; carry forward prior constraints directly. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: retry storms during partial failure."
         },
         {
@@ -2045,7 +2045,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 0,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "In stage 2, prioritize evidence-driven mitigation. \"Track backfill lag as a first-class SLO and throttle non-critical recomputation when saturated\" best matches In the \"incident review for follower-graph store: signal points\" scenario, what should change first before wider rollout by targeting the stated failure path and lowering repeat risk.",
           "detailedExplanation": "If you keep \"after diagnosis, what is the strongest next change\" in view, the correct answer separates faster. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
@@ -2078,7 +2078,7 @@
             "The root cause is unknown, so no targeted diagnosis is possible."
           ],
           "correct": 0,
-          "explanation": "Diagnosis should identify the control/boundary mismatch driving repeated failure under realistic load.",
+          "explanation": "Incident review for timeline cache layer: signal points to global ordering assumptions broken across regions is a two-step reliability decision. At stage 1, \"The current decomposition around timeline cache layer mismatches global ordering assumptions broken across regions, creating repeated failures\" wins because it balances immediate containment with long-term prevention around global ordering assumptions broken across regions.",
           "detailedExplanation": "Start from \"incident review for timeline cache layer: signal points to global ordering assumptions\", then pressure-test the result against the options. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure."
         },
         {
@@ -2090,7 +2090,7 @@
             "Expand traffic first, then analyze incidents afterward."
           ],
           "correct": 1,
-          "explanation": "Choose the smallest high-leverage change that directly closes the observed reliability and design gap.",
+          "explanation": "For stage 2 in Twitter/X Timeline Write & Fanout, the best answer is \"Design delete fanout as priority workflow so visibility guarantees match product policy\". It is the option most directly aligned to the current signal while preserving safe follow-on actions.",
           "detailedExplanation": "The decision turns on \"after diagnosis, what is the strongest next change\". Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak."
         }
       ],
@@ -2121,7 +2121,7 @@
         "Only global averages without segmentation"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "Which signals best identify decomposition boundary mistakes is intentionally multi-dimensional in Twitter/X Timeline Write & Fanout. The correct combination is Per-boundary latency/error telemetry, Fault-domain segmented dashboards, and Dependency saturation by class. Selecting all of them shows tradeoff-aware reliability reasoning.",
       "detailedExplanation": "Use \"signals best identify decomposition boundary mistakes? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -2149,7 +2149,7 @@
         "Idempotency enforcement on retries"
       ],
       "correctIndices": [0, 1, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "This is a composition question for Twitter/X Timeline Write & Fanout: The correct combination is Explicit timeout budgets per hop, Priority-aware admission controls, and Idempotency enforcement on retries. The set works because each element covers a different failure-management gap.",
       "detailedExplanation": "The core signal here is \"controls improve safety on critical write paths? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -2177,7 +2177,7 @@
         "Assume healthy behavior globally without domain-specific evidence"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "For Which practices reduce hot-key or hot-partition impact, the highest-signal answer is a bundle of controls. The correct combination is Queue isolation for heavy producers, Single partition for all traffic classes, and Adaptive sharding for hot entities. That bundle reduces both immediate incident cost and repeat incidence.",
       "detailedExplanation": "If you keep \"practices reduce hot-key or hot-partition impact? (Select all that apply)\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
@@ -2205,7 +2205,7 @@
         "Replay-safe dedupe processing"
       ],
       "correctIndices": [1, 2, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, What improves reliability when mixing sync and async paths needs layered controls, not one silver bullet. The correct combination is Transactional boundaries for critical writes, Async outbox for side effects, and Replay-safe dedupe processing. Together they improve detection, containment, and recovery quality.",
       "detailedExplanation": "Start from \"improves reliability when mixing sync and async paths? (Select all that apply)\", then pressure-test the result against the options. Treat every option as a separate true/false test under the same constraints. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
@@ -2233,7 +2233,7 @@
         "Manual ad hoc response only"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "Which choices usually lower operational risk at scale is intentionally multi-dimensional in Twitter/X Timeline Write & Fanout. The correct combination is Canary rollout with rollback gates, Runbook ownership and abort criteria, and Capacity headroom by priority class. Selecting all of them shows tradeoff-aware reliability reasoning.",
       "detailedExplanation": "The key clue in this question is \"choices usually lower operational risk at scale? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -2261,7 +2261,7 @@
         "Assume healthy behavior globally without domain-specific evidence"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "This is a composition question for Twitter/X Timeline Write & Fanout: The correct combination is Per-endpoint consistency/freshness policy, Explicit fallback behavior matrix, and Implicit behavior based on team memory. The set works because each element covers a different failure-management gap.",
       "detailedExplanation": "Read this as a scenario about \"be explicit in API/service contracts for this design? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
@@ -2289,7 +2289,7 @@
         "Fault-domain segmented dashboards"
       ],
       "correctIndices": [0, 2, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "For Which anti-patterns often cause incident recurrence, the highest-signal answer is a bundle of controls. The correct combination is Dependency saturation by class, Per-boundary latency/error telemetry, and Fault-domain segmented dashboards. That bundle reduces both immediate incident cost and repeat incidence.",
       "detailedExplanation": "The decision turns on \"anti-patterns often cause incident recurrence? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -2317,7 +2317,7 @@
         "Priority-aware admission controls"
       ],
       "correctIndices": [1, 2, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, What increases confidence before broad traffic rollout needs layered controls, not one silver bullet. The correct combination is Idempotency enforcement on retries, Explicit timeout budgets per hop, and Priority-aware admission controls. Together they improve detection, containment, and recovery quality.",
       "detailedExplanation": "This prompt is really about \"increases confidence before broad traffic rollout? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -2345,7 +2345,7 @@
         "Assume healthy behavior globally without domain-specific evidence"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "Which controls protect high-priority traffic during spikes is intentionally multi-dimensional in Twitter/X Timeline Write & Fanout. The correct combination is Adaptive sharding for hot entities, Key-level replication for skewed load, and Queue isolation for heavy producers. Selecting all of them shows tradeoff-aware reliability reasoning.",
       "detailedExplanation": "Use \"controls protect high-priority traffic during spikes? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2373,7 +2373,7 @@
         "Transactional boundaries for critical writes"
       ],
       "correctIndices": [0, 1, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "For Which telemetry dimensions are most actionable for design triage, the highest-signal answer is a bundle of controls. The correct combination is Async outbox for side effects, Replay-safe dedupe processing, and Transactional boundaries for critical writes. That bundle reduces both immediate incident cost and repeat incidence.",
       "detailedExplanation": "If you keep \"telemetry dimensions are most actionable for design triage? (Select all that apply)\" in view, the correct answer separates faster. Treat every option as a separate true/false test under the same constraints. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -2401,7 +2401,7 @@
         "Runbook ownership and abort criteria"
       ],
       "correctIndices": [0, 2, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, Which governance actions improve cross-team reliability ownership needs layered controls, not one silver bullet. The correct combination is Capacity headroom by priority class, Canary rollout with rollback gates, and Runbook ownership and abort criteria. Together they improve detection, containment, and recovery quality.",
       "detailedExplanation": "The core signal here is \"governance actions improve cross-team reliability ownership? (Select all that apply)\". Treat every option as a separate true/false test under the same constraints. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2429,7 +2429,7 @@
         "Assume healthy behavior globally without domain-specific evidence"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "What helps prevent retry amplification cascades is intentionally multi-dimensional in Twitter/X Timeline Write & Fanout. The correct combination is Implicit behavior based on team memory, Contracted degraded-mode semantics, and Per-endpoint consistency/freshness policy. Selecting all of them shows tradeoff-aware reliability reasoning.",
       "detailedExplanation": "Use \"helps prevent retry amplification cascades? (Select all that apply)\" as your starting point, then verify tradeoffs carefully. Validate each option independently; do not select statements that are only partially true. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
@@ -2457,7 +2457,7 @@
         "Only global averages without segmentation"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "This is a composition question for Twitter/X Timeline Write & Fanout: The correct combination is Per-boundary latency/error telemetry, Fault-domain segmented dashboards, and Dependency saturation by class. The set works because each element covers a different failure-management gap.",
       "detailedExplanation": "This prompt is really about \"fallback strategies are strong when dependencies degrade? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -2485,7 +2485,7 @@
         "Idempotency enforcement on retries"
       ],
       "correctIndices": [0, 1, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "For What reduces data-quality regressions in eventual pipelines, the highest-signal answer is a bundle of controls. The correct combination is Explicit timeout budgets per hop, Priority-aware admission controls, and Idempotency enforcement on retries. That bundle reduces both immediate incident cost and repeat incidence.",
       "detailedExplanation": "The decision turns on \"reduces data-quality regressions in eventual pipelines? (Select all that apply)\". Avoid pattern guessing and evaluate each candidate directly against the scenario. Strong answers connect quorum/coordination settings to concrete correctness goals. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
@@ -2513,7 +2513,7 @@
         "Assume healthy behavior globally without domain-specific evidence"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "In Twitter/X Timeline Write & Fanout, Which runbook components improve incident execution quality needs layered controls, not one silver bullet. The correct combination is Queue isolation for heavy producers, Single partition for all traffic classes, and Adaptive sharding for hot entities. Together they improve detection, containment, and recovery quality.",
       "detailedExplanation": "Read this as a scenario about \"runbook components improve incident execution quality? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -2541,7 +2541,7 @@
         "Replay-safe dedupe processing"
       ],
       "correctIndices": [1, 2, 3],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "Which architecture choices improve blast-radius containment is intentionally multi-dimensional in Twitter/X Timeline Write & Fanout. The correct combination is Transactional boundaries for critical writes, Async outbox for side effects, and Replay-safe dedupe processing. Selecting all of them shows tradeoff-aware reliability reasoning.",
       "detailedExplanation": "The key clue in this question is \"architecture choices improve blast-radius containment? (Select all that apply)\". Validate each option independently; do not select statements that are only partially true. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2569,7 +2569,7 @@
         "Manual ad hoc response only"
       ],
       "correctIndices": [0, 1, 2],
-      "explanation": "Correct choices are concrete controls that improve design clarity, reliability outcomes, and operational safety.",
+      "explanation": "This is a composition question for Twitter/X Timeline Write & Fanout: The correct combination is Canary rollout with rollback gates, Runbook ownership and abort criteria, and Capacity headroom by priority class. The set works because each element covers a different failure-management gap.",
       "detailedExplanation": "Start from \"evidence demonstrates a fix worked beyond short-term recovery? (Select all that apply)\", then pressure-test the result against the options. Validate each option independently; do not select statements that are only partially true. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
@@ -2593,7 +2593,7 @@
       "answer": 9720,
       "unit": "requests",
       "tolerance": 0.03,
-      "explanation": "0.0018*5,400,000=9,720.",
+      "explanation": "Use first-pass reliability arithmetic for A critical path handles 5,400,000 requests/day and 0: 9720 requests. Answers within +/-3% show correct directional reasoning for Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "If you keep \"critical path handles 5,400,000 requests/day and 0\" in view, the correct answer separates faster. Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 5,400 and 000 should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
@@ -2617,7 +2617,7 @@
       "answer": 330,
       "unit": "events/min",
       "tolerance": 0,
-      "explanation": "2,530-2,200=330.",
+      "explanation": "For Queue ingest is 2,200 events/min and drain is 2,530 events/min, the computed target in Twitter/X Timeline Write & Fanout is 330 events/min. Responses within +/-0% indicate sound sizing judgment.",
       "detailedExplanation": "The core signal here is \"queue ingest is 2,200 events/min and drain is 2,530 events/min\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 2,200 and 2,530 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
@@ -2641,7 +2641,7 @@
       "answer": 96000,
       "unit": "attempts/sec",
       "tolerance": 0.02,
-      "explanation": "75,000*1.28=96,000.",
+      "explanation": "The operational math for Retries add 0 gives 96000 attempts/sec. In interview pacing, hitting this value within +/-2% is the pass condition.",
       "detailedExplanation": "Read this as a scenario about \"retries add 0\". Keep every transformation in one unit system and check order of magnitude at the end. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 0.28 and 75,000 in aligned units before selecting an answer. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -2665,7 +2665,7 @@
       "answer": 384,
       "unit": "seconds",
       "tolerance": 0,
-      "explanation": "16*24=384.",
+      "explanation": "Use first-pass reliability arithmetic for Failover takes 16s and occurs 24 times/day: 384 seconds. Answers within +/-0% show correct directional reasoning for Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "The decision turns on \"failover takes 16s and occurs 24 times/day\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Numbers such as 16s and 24 should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
@@ -2689,7 +2689,7 @@
       "answer": 30,
       "unit": "%",
       "tolerance": 0.3,
-      "explanation": "(845-650)/650=30%.",
+      "explanation": "For Target p99 is 650ms; observed p99 is 845ms, the computed target in Twitter/X Timeline Write & Fanout is 30 %. Responses within +/-30% indicate sound sizing judgment.",
       "detailedExplanation": "Start from \"target p99 is 650ms\", then pressure-test the result against the options. Keep every transformation in one unit system and check order of magnitude at the end. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 650ms and 845ms in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -2709,7 +2709,7 @@
       "answer": 44200,
       "unit": "requests/min",
       "tolerance": 0.02,
-      "explanation": "0.34*130,000=44,200.",
+      "explanation": "Twitter/X Timeline Write & Fanout expects quick quantitative triage: If 34% of 130,000 req/min are high-priority, how many high-priority req/min evaluates to 44200 requests/min. Any answer within +/-2% is acceptable.",
       "detailedExplanation": "The key clue in this question is \"if 34% of 130,000 req/min are high-priority, how many high-priority req/min\". Keep every transformation in one unit system and check order of magnitude at the end. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Keep quantities like 34 and 130,000 in aligned units before selecting an answer. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -2733,7 +2733,7 @@
       "answer": 78,
       "unit": "%",
       "tolerance": 0.3,
-      "explanation": "(1.0-0.22)/1.0=78%.",
+      "explanation": "The operational math for Error rate drops from 1 gives 78 %. In interview pacing, hitting this value within +/-30% is the pass condition.",
       "detailedExplanation": "The core signal here is \"error rate drops from 1\". Normalize units before computing so conversion mistakes do not propagate. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. If values like 1.0 and 0.22 appear, convert them into one unit basis before comparison. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2757,7 +2757,7 @@
       "answer": 5,
       "unit": "acks",
       "tolerance": 0,
-      "explanation": "Majority of 9 is 5.",
+      "explanation": "Use first-pass reliability arithmetic for A 9-node quorum cluster requires majority writes: 5 acks. Answers within +/-0% show correct directional reasoning for Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "If you keep \"9-node quorum cluster requires majority writes\" in view, the correct answer separates faster. Normalize units before computing so conversion mistakes do not propagate. Strong answers connect quorum/coordination settings to concrete correctness goals. If values like 9 and 5 appear, convert them into one unit basis before comparison. Common pitfall: misreading quorum behavior during failures.",
       "references": [
         {
@@ -2781,7 +2781,7 @@
       "answer": 160,
       "unit": "minutes",
       "tolerance": 0,
-      "explanation": "56,000/350=160.",
+      "explanation": "For Backlog is 56,000 tasks with net drain 350 tasks/min, the computed target in Twitter/X Timeline Write & Fanout is 160 minutes. Responses within +/-0% indicate sound sizing judgment.",
       "detailedExplanation": "This prompt is really about \"backlog is 56,000 tasks with net drain 350 tasks/min\". Normalize units before computing so conversion mistakes do not propagate. Capacity reasoning should separate average and peak demand, then map both to saturation limits. If values like 56,000 and 350 appear, convert them into one unit basis before comparison. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2805,7 +2805,7 @@
       "answer": 83.33,
       "unit": "%",
       "tolerance": 0.3,
-      "explanation": "15/18=83.33%.",
+      "explanation": "Twitter/X Timeline Write & Fanout expects quick quantitative triage: A fleet has 18 zones and 3 are unavailable evaluates to 83.33 %. Any answer within +/-30% is acceptable.",
       "detailedExplanation": "Use \"fleet has 18 zones and 3 are unavailable\" as your starting point, then verify tradeoffs carefully. Normalize units before computing so conversion mistakes do not propagate. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. If values like 18 and 3 appear, convert them into one unit basis before comparison. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -2829,7 +2829,7 @@
       "answer": 34.62,
       "unit": "%",
       "tolerance": 0.3,
-      "explanation": "(52-34)/52=34.62%.",
+      "explanation": "The operational math for MTTR improved from 52 min to 34 min gives 34.62 %. In interview pacing, hitting this value within +/-30% is the pass condition.",
       "detailedExplanation": "Read this as a scenario about \"mTTR improved from 52 min to 34 min\". Keep every transformation in one unit system and check order of magnitude at the end. Map the choice to measurable reliability impact such as error budget burn and recovery behavior. Keep quantities like 52 min and 34 min in aligned units before selecting an answer. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -2853,7 +2853,7 @@
       "answer": 308000,
       "unit": "operations",
       "tolerance": 0.02,
-      "explanation": "0.11*2,800,000=308,000.",
+      "explanation": "Use first-pass reliability arithmetic for If 11% of 2,800,000 daily ops need manual checks, checks/day: 308000 operations. Answers within +/-2% show correct directional reasoning for Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "The decision turns on \"if 11% of 2,800,000 daily ops need manual checks, checks/day\". Write the unit conversion path explicitly, then calculate, then sanity-check magnitude. A strong compute answer links throughput targets to concurrency and scaling triggers. Numbers such as 11 and 2,800 should be normalized first so downstream reasoning stays consistent. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
@@ -2881,7 +2881,7 @@
         "Validate with load/failure drills and refine"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Start with outcomes/invariants, then decompose, control, and validate.",
+      "explanation": "Order these steps by operational dependency, not preference: Identify critical user journey and invariants must happen before Validate with load/failure drills and refine. That ordering matches incident-safe flow in Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "Use \"order a classic-design decomposition workflow\" as your starting point, then verify tradeoffs carefully. Order by relative scale and bottleneck effect, then validate neighboring items. Treat plausibility validation as mandatory, even when the arithmetic is internally consistent. Common pitfall: accepting implausible outputs because arithmetic is clean.",
       "references": [
         {
@@ -2909,7 +2909,7 @@
         "Implicit coupling with no ownership"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Risk rises as boundaries and ownership degrade.",
+      "explanation": "Twitter/X Timeline Write & Fanout emphasizes safe recovery order. Beginning at Explicit boundaries with contracts and finishing at Implicit coupling with no ownership keeps blast radius controlled while restoring service.",
       "detailedExplanation": "This prompt is really about \"order by increasing design risk\". Place obvious extremes first, then sort the middle by pairwise comparison. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -2937,7 +2937,7 @@
         "Run recurrence checks and hardening actions"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Scope, contain, fix, then harden.",
+      "explanation": "For In this twitter/x timeline write & fanout context, order safe incident mitigation steps, the correct ordering runs from Scope blast radius and affected flows to Run recurrence checks and hardening actions. This progression minimizes rework and reduces risk during active incident response.",
       "detailedExplanation": "If you keep \"order safe incident mitigation steps\" in view, the correct answer separates faster. Order by relative scale and bottleneck effect, then validate neighboring items. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -2965,7 +2965,7 @@
         "Jittered retries with retry budgets and telemetry"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Maturity improves with safeguards and observability.",
+      "explanation": "The sequence in Twitter/X Timeline Write & Fanout should start with Fixed immediate retries and end with Jittered retries with retry budgets and telemetry. Considering twitter/x timeline write & fanout, order by increasing retry-control maturity rewards stabilization-first execution before broader tuning.",
       "detailedExplanation": "The core signal here is \"order by increasing retry-control maturity\". Place obvious extremes first, then sort the middle by pairwise comparison. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
@@ -2993,7 +2993,7 @@
         "Policy-driven automated fallback with tests"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Sophistication rises with explicit policy and automation.",
+      "explanation": "Order these steps by operational dependency, not preference: Implicit fallback behavior must happen before Policy-driven automated fallback with tests. That ordering matches incident-safe flow in Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "The key clue in this question is \"order fallback sophistication\". Place obvious extremes first, then sort the middle by pairwise comparison. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -3021,7 +3021,7 @@
         "Staged shift plus failback rehearsal and rollback gates"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Rigor increases with validation and reversible control.",
+      "explanation": "Twitter/X Timeline Write & Fanout emphasizes safe recovery order. Beginning at Host health check only and finishing at Staged shift plus failback rehearsal and rollback gates keeps blast radius controlled while restoring service.",
       "detailedExplanation": "Start from \"order failover validation rigor\", then pressure-test the result against the options. Build the rank from biggest differences first, then refine with adjacent checks. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof.",
       "references": [
         {
@@ -3049,7 +3049,7 @@
         "Cross-region control-plane failure"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Blast radius expands from local failures to regional control issues.",
+      "explanation": "For Rank these from smallest to largest blast radius, the correct ordering runs from Single process failure to Cross-region control-plane failure. This progression minimizes rework and reduces risk during active incident response.",
       "detailedExplanation": "The decision turns on \"order by increasing blast radius\". Build the rank from biggest differences first, then refine with adjacent checks. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -3077,7 +3077,7 @@
         "Replicated durable write plus replay/integrity verification"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Durability confidence grows with replication and verification.",
+      "explanation": "The sequence in Twitter/X Timeline Write & Fanout should start with In-memory only acknowledgment and end with Replicated durable write plus replay/integrity verification. Order data-path durability confidence rewards stabilization-first execution before broader tuning.",
       "detailedExplanation": "Read this as a scenario about \"order data-path durability confidence\". Order by relative scale and bottleneck effect, then validate neighboring items. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
@@ -3105,7 +3105,7 @@
         "Role-based response plus action closure tracking"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Discipline improves with structure and accountability.",
+      "explanation": "Order these steps by operational dependency, not preference: Ad hoc incident response must happen before Role-based response plus action closure tracking. That ordering matches incident-safe flow in Twitter/X Timeline Write & Fanout.",
       "detailedExplanation": "Use \"order by increasing operational discipline\" as your starting point, then verify tradeoffs carefully. Place obvious extremes first, then sort the middle by pairwise comparison. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -3133,7 +3133,7 @@
         "Finalize runbook and ownership updates"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Rollout should progress from limited exposure to institutionalization.",
+      "explanation": "Twitter/X Timeline Write & Fanout emphasizes safe recovery order. Beginning at Canary small cohort and finishing at Finalize runbook and ownership updates keeps blast radius controlled while restoring service.",
       "detailedExplanation": "This prompt is really about \"order rollout safety for major design changes\". Build the rank from biggest differences first, then refine with adjacent checks. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
@@ -3161,7 +3161,7 @@
         "Sustained recovery plus failure-drill pass"
       ],
       "correctOrder": [0, 1, 2, 3],
-      "explanation": "Evidence strength rises with sustained production and drill results.",
+      "explanation": "For Order evidence strength for fix success, the correct ordering runs from Single successful test run to Sustained recovery plus failure-drill pass. This progression minimizes rework and reduces risk during active incident response.",
       "detailedExplanation": "The decision turns on \"order evidence strength for fix success\". Order by relative scale and bottleneck effect, then validate neighboring items. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {

@@ -1,5 +1,24 @@
 # Changelog
 
+## L6 quality pass: explanation rewrites + curated hard set (2026-02-15)
+
+- Implemented review recommendation #2 (focused explanation rewrite pass) for Units 9 and 10:
+  - rewrote explanation text in all 16 files (`content/unit-9-chapter-1.json` through `content/unit-10-chapter-8.json`)
+  - made explanations scenario-aware with explicit risk/constraint grounding instead of repeated generic templates
+  - post-pass explanation uniqueness:
+    - Unit 9: `993 / 1000` unique explanations (up from `27 / 1000`)
+    - Unit 10: `996 / 1000` unique explanations (up from `27 / 1000`)
+- Implemented review recommendation #3 (curated L6 hard set):
+  - added new chapter file `content/unit-12-chapter-9.json`
+  - added chapter to `config.js`: `Curated L6 Hard Set (Ambiguity, Trade-offs, Failure Narratives)`
+  - chapter includes 76 curated mixed problems from advanced units (8-12):
+    - 24 multiple-choice, 24 two-stage, 12 multi-select, 8 ordering, 8 numeric-input
+  - each problem includes `difficulty: "L6"`, lightweight `tags`, and `source` metadata for traceability
+- Updated roadmap state and totals in `ROADMAP.md` to reflect the new chapter and content-quality milestones.
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+
 ## Review hardening pass (2026-02-15)
 
 - Ran a full-project audit for duplicate stems, weak type usage, and obvious low-effort quality defects.

@@ -95,7 +95,7 @@ Uses the nhoj.com design system (see parent `AGENTS.md`):
 9. Reliability (complete — 800 problems, 8 chapters)
 10. Classic Designs Decomposed (complete — 800 problems, 8 chapters)
 11. Security, Privacy & Abuse Resistance (complete — 800 problems, 8 chapters)
-12. Interview Execution & Design Communication (complete — 800 problems, 8 chapters)
+12. Interview Execution & Design Communication (complete — 876 problems, 9 chapters including curated L6 hard set)
 
 Problems live in `content/unit-{N}-chapter-{M}.json`. Five question types are supported:
 
@@ -218,7 +218,7 @@ Insights captured from development:
 
 - Use the author/reviewer dialogue pattern — reviewer critiques, author responds, iterate until consensus
 - Check for: inline styles (use CSS classes), proper error handling, accessibility (ARIA labels, focus management), race conditions (disable buttons during async ops)
-- Review code with scale in mind — what works for 1 chapter may not work for 12 units × 8 chapters
+- Review code with scale in mind — what works for 1 chapter may not work across 12 units and 90+ chapters
 - When adding state fields, audit all functions that read/write state (especially reset functions like `backToMenu()` and `retry()`)
 
 **Content review:**

@@ -260,6 +260,12 @@ export const CONFIG = {
           title: "Mock Interview Scenarios",
           ready: true,
         },
+        {
+          num: 9,
+          title:
+            "Curated L6 Hard Set (Ambiguity, Trade-offs, Failure Narratives)",
+          ready: true,
+        },
       ],
     },
   ],

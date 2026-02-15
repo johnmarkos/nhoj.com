@@ -13,7 +13,7 @@
 - [x] **Unit 9: Reliability** — 8 chapters, 800 problems
 - [x] **Unit 10: Classic Designs Decomposed** — 8 chapters, 800 problems
 - [x] **Unit 11: Security, Privacy & Abuse Resistance** — 8 chapters, 800 problems
-- [x] **Unit 12: Interview Execution & Design Communication** — 8 chapters, 800 problems
+- [x] **Unit 12: Interview Execution & Design Communication** — 9 chapters, 876 problems (includes curated L6 hard set chapter)
 
 ## Now (Feedback & Progress — via OpenQuizzer upgrades)
 
@@ -24,6 +24,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 - [x] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
 - [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
   - Tagging taxonomy: align with the 12 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
+  - Progress: curated L6 hard set chapter is tagged (`tags`) and difficulty-labeled (`difficulty`) across 76 problems.
 
 ### OpenQuizzer v2.8: Session History & Aggregate Dashboard
 
@@ -33,12 +34,12 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 ### OpenQuizzer v2.8.1: Expandable Mini-Lessons
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
-- [x] **Bulk-generate detailed explanations** — Added `detailedExplanation` across all content files (all units/chapters, 9,768 total problems). Two-stage stage-level detailed explanations are also complete.
+- [x] **Bulk-generate detailed explanations** — Added `detailedExplanation` across all content files (all ready units/chapters, 9,844 total problems). Two-stage stage-level detailed explanations are also complete.
 
 ### OpenQuizzer v2.8.2: References (Further Reading Links)
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.2. Engine passes optional `references` (array of `{ title, url }`) through all result events; UI renders as a compact link list inside the "Learn more" toggle. Either `references` or `detailedExplanation` triggers the toggle independently.
-- [x] **Bulk-add references** — Added `references` across all content files (all units/chapters, 9,768 total problems), with chapter/domain-appropriate canonical sources.
+- [x] **Bulk-add references** — Added `references` across all content files (all ready units/chapters, 9,844 total problems), with chapter/domain-appropriate canonical sources.
 
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
@@ -59,14 +60,16 @@ Features that go beyond what OpenQuizzer provides generically.
 ## Later (Curriculum Expansion)
 
 - [x] **Unit 11: Security, Privacy & Abuse Resistance** — Completed (8 chapters, 800 problems) with chapter-level review/fix loops and canonical references.
-- [x] **Unit 12: Interview Execution & Design Communication** — Completed (8 chapters, 800 problems) with chapter-level review/fix loops and canonical references.
+- [x] **Unit 12: Interview Execution & Design Communication** — Completed (9 chapters, 876 problems) with chapter-level review/fix loops and canonical references.
 
 ## Content Quality
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [x] **Expandable mini-lessons** — `detailedExplanation` complete for all units and chapters (9,768 problems).
-- [x] **Further reading links** — `references` complete for all units and chapters (9,768 problems).
+- [x] **Explanation-template rewrite (Units 9/10)** — Rewrote repeated explanation text with scenario-specific, chapter-aware explanations. Uniqueness moved from ~27/1000 to 993/1000 (Unit 9) and 996/1000 (Unit 10).
+- [x] **Curated L6 hard set** — Added a mixed hard-set chapter (76 problems) focused on ambiguity handling, trade-off defense, and failure narratives (`content/unit-12-chapter-9.json`).
+- [x] **Expandable mini-lessons** — `detailedExplanation` complete for all ready units and chapters (9,844 problems).
+- [x] **Further reading links** — `references` complete for all ready units and chapters (9,844 problems).
 
 ## Maybe
 
