@@ -31,12 +31,12 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 ### OpenQuizzer v2.8.1: Expandable Mini-Lessons
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
-- [ ] **Bulk-generate detailed explanations** — Add `detailedExplanation` to ~8,000 problems with 2-4 sentence mini-lessons and optional reference links. Problems without it degrade gracefully (no toggle shown). Progress: Unit 1 Chapters 1-2 done (186 problems). Remaining: ~7,814 problems across 78 chapters.
+- [ ] **Bulk-generate detailed explanations** — Add `detailedExplanation` to ~8,000 problems with 2-4 sentence mini-lessons and optional reference links. Problems without it degrade gracefully (no toggle shown). Progress: Unit 1 complete (all 8 chapters, 1,007 problems). Remaining: ~6,993 problems across 72 chapters.
 
 ### OpenQuizzer v2.8.2: References (Further Reading Links)
 
 - [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.2. Engine passes optional `references` (array of `{ title, url }`) through all result events; UI renders as a compact link list inside the "Learn more" toggle. Either `references` or `detailedExplanation` triggers the toggle independently.
-- [ ] **Bulk-add references** — Add `references` to problems where authoritative further reading exists. Progress: Unit 1 Chapters 1-2 done (186 problems). Remaining: ~7,814 problems across 78 chapters.
+- [ ] **Bulk-add references** — Add `references` to problems where authoritative further reading exists. Progress: Unit 1 complete (all 8 chapters, 1,007 problems). Remaining: ~6,993 problems across 72 chapters.
 
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
@@ -58,8 +58,8 @@ Features that go beyond what OpenQuizzer provides generically.
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
 - [ ] **Difficulty calibration** — Tag problems as L5/L6/L7, filter by level
-- [ ] **Expandable mini-lessons** — Bulk-generate `detailedExplanation` for ~8,000 problems with 2-4 sentence HTML mini-lessons. Engine/UI support shipped in v2.8.1. Unit 1 Chapter 1 complete (50 problems); remaining work across 79 chapters.
-- [ ] **Further reading links** — Add `references` (array of `{ title, url }`) to problems where authoritative sources exist. Engine/UI support shipped in v2.8.2. Unit 1 Chapters 1-2 complete (186 problems); remaining work across 78 chapters.
+- [ ] **Expandable mini-lessons** — Bulk-generate `detailedExplanation` for ~8,000 problems with 2-4 sentence HTML mini-lessons. Engine/UI support shipped in v2.8.1. Unit 1 complete (all 8 chapters, 1,007 problems); remaining work across 72 chapters.
+- [ ] **Further reading links** — Add `references` (array of `{ title, url }`) to problems where authoritative sources exist. Engine/UI support shipped in v2.8.2. Unit 1 complete (all 8 chapters, 1,007 problems); remaining work across 72 chapters.
 
 ## Maybe
 
