@@ -644,16 +644,16 @@
     {
       "id": "sc-hs-023",
       "type": "multiple-choice",
-      "question": "A search indexing pipeline is showing sustained p99 regressions due to time-bucket key with synchronized spikes. Which next step is strongest? A single celebrity key dominates read fanout paths.",
+      "question": "A recommendation fanout service shards by `region_id`; one region now carries 68% of traffic and queue age is rising only on that shard. Which next step is strongest?",
       "options": [
-        "Pin all traffic to the currently fastest worker for cache warmth.",
-        "Ignore partition-level metrics and scale total worker count only.",
-        "Apply split heavy tenants into dedicated partitions to reduce skew while preserving correctness boundaries.",
-        "Increase global retries and keep the same distribution strategy."
+        "Pin the hottest region to one pre-warmed worker for locality.",
+        "Add generic workers and keep current keying unchanged.",
+        "Split dominant regions into finer partition keys (or dedicated shards) while keeping ordering boundaries explicit.",
+        "Increase retry depth so stragglers eventually catch up."
       ],
       "correct": 2,
-      "explanation": "When hotspots drive tail latency, fix key distribution or work assignment first; global scaling alone rarely removes skew. For A search indexing pipeline is showing sustained p99 regressions due to time-bucket key with synchronized spikes, this is the strongest fit in Hotspots, Sharding & Work Distribution.",
-      "detailedExplanation": "The core signal here is \"search indexing pipeline is showing sustained p99 regressions due to time-bucket key\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. Tie the decision to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
+      "explanation": "This is concentrated-key skew. Repartitioning heavy regions is the only option that attacks the placement imbalance directly; scaling or retry changes leave the hot shard as the bottleneck.",
+      "detailedExplanation": "Use the shard-level asymmetry as the primary signal: one shard is overloaded while others are healthy. The strongest answer changes key distribution with explicit correctness boundaries, then verifies recovery via per-shard queue age and p99 convergence. Common pitfall: treating skew as a fleet-wide capacity issue.",
       "references": [
         {
           "title": "Percentile",
@@ -670,16 +670,16 @@
     {
       "id": "sc-hs-024",
       "type": "multiple-choice",
-      "question": "A image processing fleet is showing sustained p99 regressions due to sticky hash ring after node churn. Which next step is strongest? Queue drain rate fell even though worker count increased.",
+      "question": "A media-transcoding queue shows chronic unfairness: small jobs starve behind long-running jobs on a few overloaded workers after rebalance. Which next step is strongest?",
       "options": [
-        "Ignore partition-level metrics and scale total worker count only.",
-        "Apply load-aware work stealing with fairness limits to reduce skew while preserving correctness boundaries.",
-        "Increase global retries and keep the same distribution strategy.",
-        "Pin all traffic to the currently fastest worker for cache warmth."
+        "Scale worker count only and keep current assignment behavior.",
+        "Introduce load-aware work stealing with fairness quotas so overloaded workers can offload safely.",
+        "Increase retry aggressiveness to force faster completion.",
+        "Route all short jobs to the currently fastest worker."
       ],
       "correct": 1,
-      "explanation": "When hotspots drive tail latency, fix key distribution or work assignment first; global scaling alone rarely removes skew. For A image processing fleet is showing sustained p99 regressions due to sticky hash ring after node churn, this is the strongest fit in Hotspots, Sharding & Work Distribution. Keep mitigation tied to the stated constraints.",
-      "detailedExplanation": "The key clue in this question is \"image processing fleet is showing sustained p99 regressions due to sticky hash ring\". Reject choices that sound good generally but do not reduce the concrete reliability risk in this scenario. The strongest answer explains how failure mode, mitigation speed, and blast radius interact. Common pitfall: assuming recovery speed without operational proof.",
+      "explanation": "The issue is work-distribution fairness, not raw capacity. Load-aware work stealing with explicit fairness guardrails reduces starvation and tail latency without collapsing correctness boundaries.",
+      "detailedExplanation": "When long jobs monopolize a subset of workers, prioritize scheduling controls that rebalance active work while protecting ordering/invariant constraints. The right metric check is reduced queue-age skew and improved percentile fairness across workers, not just average throughput. Common pitfall: retries that amplify congestion instead of redistributing work.",
       "references": [
         {
           "title": "Apache Kafka documentation",

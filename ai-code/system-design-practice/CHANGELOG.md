@@ -1,5 +1,19 @@
 # Changelog
 
+## Re-review pass 4: metadata persistence + hotspot rewrite (2026-02-16)
+
+- Synced latest upstream `openquizzer.test.js` (253 tests), including UI wiring checks for weakest-areas metadata persistence helpers.
+- Implemented the new upstream template fix in instance `index.html` while preserving instance-only simulation/skill-grid features:
+  - added `loadProblemMetadata`, `saveProblemMetadata`, and `clearProblemMetadata`
+  - metadata is now persisted after problem loads and restored on app init
+  - metadata cache is cleared with "Clear History"
+- Continued local hotspot de-templating in `content/unit-7-chapter-5.json`:
+  - rewrote additional mirrored near-clone pair (`sc-hs-023`, `sc-hs-024`) with distinct scenario framing and reasoning language
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Re-review fix pass: upstream sync + instance cleanup (2026-02-16)
 
 - Synced OpenQuizzer post-review updates:

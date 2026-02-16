@@ -43,7 +43,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 - [x] **Upgrade engine/UI** — Copied `openquizzer.js`, `openquizzer.test.js`, `index.html`, and optional `content-lint.js` from upstream v2.9. Includes timed mode, resume interrupted sessions, per-problem tracking, proficiency-aware weakest-areas dashboard, and spaced-repetition weighting.
 - [x] No instance-specific work needed — v2.9 features work with existing content out of the box.
-- [x] **Post-review fix sync** — Integrated upstream v2.9 follow-up fixes: clamped proficiency/SR weight domains for future timestamps, two-stage references fallback to problem-level refs, updated content-lint repeated-word detection, and weakest-areas prompt fallback (`question || stage-1 question`) in instance UI.
+- [x] **Post-review fix sync** — Integrated upstream v2.9 follow-up fixes: clamped proficiency/SR weight domains for future timestamps, two-stage references fallback to problem-level refs, updated content-lint repeated-word detection, weakest-areas prompt fallback (`question || stage-1 question`), and localStorage persistence for weakest-areas problem metadata.
 
 ### OpenQuizzer v3.0: File Import/Export
 
@@ -70,7 +70,7 @@ Features that go beyond what OpenQuizzer provides generically.
 - [x] **Lint-driven explanation hardening** — Rewrote repeated explanation templates in Units 11/12 and remaining hotspot chapters in Unit 7, then resolved cross-chapter duplicate stems and suspicious-text flags. Baseline lint status is now clean (`0` warnings).
 - [~] **Level-calibration hardening** — Rewrote definition-style prompts in the review's hotspot chapters (`unit-2-chapter-3`, `unit-3-chapter-1`) into scenario framing while preserving answer keys. Broader cross-corpus calibration remains.
 - [x] **Repeated-word artifact cleanup** — Cleared all repeated-word lint warnings (49 fixes) after enabling the upstream repeated-word check.
-- [~] **Unit 7 Chapter 5 hotspot de-templating** — Reworked flagged near-clone pairs (`sc-hs-021`, `sc-hs-022`) with distinct scenario framing; additional chapter-level diversification remains.
+- [~] **Unit 7 Chapter 5 hotspot de-templating** — Reworked flagged near-clone pairs (`sc-hs-021`, `sc-hs-022`) plus an additional mirrored pair (`sc-hs-023`, `sc-hs-024`) with distinct scenario framing; additional chapter-level diversification remains.
 - [x] **Hard-set skill-grid tag alignment** — Added missing `interview-execution` tag to all `unit-12-chapter-9` curated hard-set items so Unit 12 skill-grid results reflect hard-set practice.
 - [x] **Expandable mini-lessons** — `detailedExplanation` complete for all ready units and chapters (9,844 problems).
 - [x] **Further reading links** — `references` complete for all ready units and chapters (9,844 problems).
