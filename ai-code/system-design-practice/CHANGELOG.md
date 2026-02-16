@@ -1,5 +1,16 @@
 # Changelog
 
+## Level-calibration rewrite pass (2026-02-16)
+
+- Ran a targeted scenario-rewrite pass for definition-style prompts called out in review hotspots:
+  - `content/unit-2-chapter-3.json` (17 question rewrites in Keys & Indexes)
+  - `content/unit-3-chapter-1.json` (10 question rewrites in REST Fundamentals)
+- Goal: preserve answer keys while shifting prompts from pure recall framing toward interview-style scenario framing.
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Interview simulation mode + baseline skill grid (2026-02-16)
 
 - Added interview simulation configuration in `config.js`:
