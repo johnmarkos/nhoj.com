@@ -47,7 +47,7 @@
       ],
       "correct": 1,
       "explanation": "At-most-once: fire and forget. No retry logic, no acknowledgment tracking, no dedup overhead. For high-volume, loss-tolerant workloads like logging or telemetry, the simplicity and throughput gains outweigh the small data loss. The 0.1% gap doesn't affect aggregate analytics or alerting.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer approaches that directly address failure mode, recovery path, and blast radius. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 0.1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer approaches that directly address failure mode, recovery path, and blast radius. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 0.1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -137,7 +137,7 @@
       ],
       "correct": 1,
       "explanation": "Broker-level 'exactly-once' typically means: idempotent producers (dedup at broker), transactional writes (atomic publish to multiple partitions), and consumer offset management within the same transaction. But once the consumer performs external side effects (DB writes, API calls), the consumer must ensure those are idempotent — the broker can't control external systems.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -347,7 +347,7 @@
       ],
       "correct": 1,
       "explanation": "Time-windowed deduplication has a blind spot: duplicates arriving outside the window aren't detected. The original ID was evicted after 1 hour, so the 2-hour-late duplicate looks new. For critical operations, use a persistent dedup store (database) rather than an in-memory cache with a time window.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 1 and 2 hours should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard cache tactics that hide consistency bugs under high load. Cache design quality is mostly about correctness boundaries, not only hit rate. Numbers such as 1 and 2 hours should be normalized first so downstream reasoning stays consistent. Common pitfall: stale data despite high hit rates.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -437,7 +437,7 @@
       ],
       "correct": 1,
       "explanation": "CDC tools (like Debezium) read the database's transaction log, which captures every committed write. Each change is published as an event. This is reliable (log-based, not polling), low-latency, and doesn't require an outbox table. The database's commit = the event's existence, so there's no dual-write problem.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that ignore delivery semantics or backpressure behavior. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -677,7 +677,7 @@
       ],
       "correct": 1,
       "explanation": "With acks=1, the leader acks before replication. If the leader crashes before replication completes, the message exists only on the failed node. When a follower is promoted to leader, it doesn't have the message — it's lost. For critical data, use acks=all to ensure replication before acknowledgment.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -707,7 +707,7 @@
       ],
       "correct": 1,
       "explanation": "If the consumer processes the refund but crashes before recording the ID, the next delivery won't find the ID in the table and will process the refund again (double refund). The refund processing and ID recording must be atomic — ideally in the same database transaction. This ensures the idempotency check is reliable.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -887,7 +887,7 @@
       ],
       "correct": 1,
       "explanation": "Track email intent in the database using a state machine: pending → sent. Before sending, check if this order's email was already recorded. If 'pending' or 'sent,' skip. If not found, insert as 'pending' in the same DB transaction, then send, then mark 'sent.' There's a small window for duplicates (crash after send, before 'sent' update), but this minimizes them to a rare edge case.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1131,7 +1131,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1175,10 +1175,10 @@
           ],
           "correct": 1,
           "explanation": "This is the external side-effect problem: two separate systems (email API, local DB) can't be made atomic. The gap can be shrunk (record 'pending' before sending, update to 'sent' after) but not eliminated without API-side idempotency. For APIs that support idempotency keys, the gap closes because the API itself rejects duplicates.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1210,7 +1210,7 @@
           ],
           "correct": 1,
           "explanation": "With P99 at 55 seconds and timeout at 60 seconds, there's only a 5-second margin for the slowest 1% of messages. Some of those (P99.5, P99.9) likely exceed 60 seconds, causing redeliveries. The timeout should have a comfortable margin above P99.9 — or the consumer should use heartbeat extension for long-running messages.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Numbers such as 60 and 10 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Numbers such as 60 and 10 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "The team sets the visibility timeout to 120 seconds (2x P99). What's the downside of a longer timeout?",
@@ -1257,7 +1257,7 @@
           ],
           "correct": 1,
           "explanation": "The saga runs compensations in reverse order for completed steps. Step 1 succeeded (inventory reserved), so it must be compensated (inventory released). Step 2 failed, so no compensation needed (the charge never went through). Step 3 never started. After compensation, the system is back to a consistent state.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "The compensation for step 1 (release inventory) also fails due to a network error. What happens?",
@@ -1316,10 +1316,10 @@
           ],
           "correct": 1,
           "explanation": "acks=0: the producer sends and immediately moves on. No waiting, maximum throughput. But if the broker crashes before writing the message, or the message is lost in transit, the producer never knows. This is at-most-once at the producer level — acceptable for telemetry where small losses are tolerable.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 0 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 0 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1457,7 +1457,7 @@
           ],
           "correct": 1,
           "explanation": "Sequence-based dedup is not time-limited. The broker stores the latest sequence number per producer. Any out-of-order or duplicate message (sequence ≤ latest) is rejected regardless of when it arrives. This is stronger than time-windowed dedup for long outages or slow retries.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         }
       ],
       "detailedExplanation": "Generalize from delivery Guarantees to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
@@ -1492,7 +1492,7 @@
           ],
           "correct": 1,
           "explanation": "Persistent idempotency stores grow unboundedly unless cleaned up. 500 million rows means every idempotency check scans a massive index. The table needs a retention policy: delete entries older than the maximum possible redelivery window (e.g., 7 days) using a background cleanup job.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Numbers such as 6 and 500 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Numbers such as 6 and 500 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "The team adds a cleanup job that deletes idempotency records older than 24 hours. Under what condition could this cause duplicate processing?",
@@ -1554,7 +1554,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1633,7 +1633,7 @@
           ],
           "correct": 1,
           "explanation": "min.insync.replicas controls the minimum number of replicas that must confirm a write for acks=all. With min.insync.replicas=2, the broker rejects writes when only 1 replica is in sync — preserving durability guarantees at the cost of availability. With min.insync.replicas=1, writes continue but with weaker durability. This is a CAP theorem tradeoff.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Numbers such as 3 and 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Numbers such as 3 and 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "The team sets min.insync.replicas=2 with replication factor 3. During a single-node failure, what happens to producers?",
@@ -1692,10 +1692,10 @@
           ],
           "correct": 1,
           "explanation": "DB-first is safer. A missing event is detectable: a background process can scan the DB for records without corresponding events and republish them. But a phantom event (event without data) causes downstream services to fail when they try to look up the data. Missing events are recoverable; phantom events cause cascading errors.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 0.01 in aligned units before deciding on an implementation approach. Common pitfall: ordering loss during partition or replay changes."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 0.01 in aligned units before deciding on an implementation approach. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1789,7 +1789,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Solve this as chained reasoning where stage two must respect stage one assumptions. Interface decisions should be justified by contract stability and client impact over time. If values like 1 and 2 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1821,7 +1821,7 @@
           ],
           "correct": 1,
           "explanation": "Different data has different reliability requirements. General analytics tolerate small losses (at-most-once is fine). GDPR consent events are legally critical and must never be lost (at-least-once minimum). Separate topics with different delivery configurations let the team optimize each stream for its requirements.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 0.5 in aligned units before deciding on an implementation approach. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 0.5 in aligned units before deciding on an implementation approach. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "For the consent events, the team uses at-least-once delivery. A consent revocation event is delivered twice. The system revokes consent, then revokes again. Is this a problem?",
@@ -1880,7 +1880,7 @@
           ],
           "correct": 1,
           "explanation": "This is why exactly-once within the broker doesn't mean exactly-once for the entire system. The Kafka transaction committed successfully, but the DB write failed. The consumer won't reprocess the message (offset committed), so the DB data is permanently missing unless the team adds recovery logic (e.g., reconciliation, compensation).",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Tie decisions to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Tie decisions to concrete operational outcomes, not abstract reliability language. Common pitfall: assuming recovery speed without operational proof."
         }
       ],
       "detailedExplanation": "Generalize from delivery Guarantees to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
@@ -2007,7 +2007,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "At-most-once: no retries, no duplicates, but messages can be lost. Consumers don't need idempotency because duplicates don't occur. This is the simplest and highest-throughput delivery mode, suitable for loss-tolerant workloads like metrics and logging.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2097,7 +2097,7 @@
       ],
       "correctIndices": [0, 2],
       "explanation": "SET status = 'completed' is idempotent (same result each time). DELETE with a condition is idempotent (deleting non-existent rows is a no-op). INSERT without a unique constraint creates duplicates (not idempotent). count + 1 accumulates with each execution (not idempotent).",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2127,7 +2127,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "The outbox pattern has three parts: an outbox table (stores pending events), a single-DB transaction (atomic write of data + outbox), and a relay (publishes outbox entries to the broker). It explicitly avoids distributed transactions between the DB and broker — that's the whole point. The single-DB transaction replaces the need for a distributed coordinator.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -2333,7 +2333,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Dedup stores grow (need cleanup), add per-message lookup latency, and time-windowed approaches have blind spots. Deduplication does NOT eliminate the need for idempotent operations — it reduces duplicate processing but can't prevent all edge cases (e.g., crash between dedup check and processing). Defense in depth: use both dedup and idempotent operations.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2363,7 +2363,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Sagas provide eventual consistency through compensations. The outbox pattern ensures atomic write + event publish within a single service. Idempotent consumers with at-least-once delivery achieve effectively-exactly-once processing. A shared database is technically possible but defeats the purpose of microservices — it creates tight data coupling.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2509,7 +2509,7 @@
       "unit": "dollars",
       "tolerance": "exact",
       "explanation": "Worst case: crash just before a commit, so up to 2 seconds of messages are uncommitted. Reprocessed messages: 5,000 × 2 = 10,000. API cost: 10,000 × $0.001 = $10 wasted per crash. This quantifies the business cost of the reprocessing window — a useful framing for choosing commit intervals and investing in idempotency.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 5,000 and 2 seconds appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 5,000 and 2 seconds appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2535,7 +2535,7 @@
       "unit": "dollars",
       "tolerance": "exact",
       "explanation": "Duplicates per second: 10,000 × 0.001 = 10. Per minute: 10 × 60 = 600 duplicate messages. Dollar impact: 600 × $10 = $6,000/min in duplicate charges. This illustrates why financial systems require both broker dedup (idempotent producers) and consumer-side idempotency — even a small duplicate rate becomes expensive at scale.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. Interface decisions should be justified by contract stability and client impact over time. If values like 10,000 and 0.1 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. Interface decisions should be justified by contract stability and client impact over time. If values like 10,000 and 0.1 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2743,7 +2743,7 @@
       "unit": "×",
       "tolerance": 0.1,
       "explanation": "Bloom filter: 10M × 10 bits = 100M bits = 12.5 MB. Hash set: 10M × 16 bytes = 160 MB. Ratio: 160 / 12.5 = 12.8 ≈ 13×. The Bloom filter saves ~92% of memory at the cost of a 0.1% false positive rate (some new messages incorrectly flagged as duplicates). For high-throughput dedup where occasional false positives are acceptable, this tradeoff is compelling.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 10 and 16 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 10 and 16 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2824,7 +2824,7 @@
       ],
       "correctOrder": [0, 1, 2],
       "explanation": "At-most-once: send and forget (simplest — no retries, no acks, no dedup). At-least-once: add acknowledgments and retries (moderate). Effectively exactly-once: add idempotent consumers, dedup stores, possibly transactional outbox (most complex). Each level adds infrastructure and application logic.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Build the rank from biggest differences first, then refine with adjacent checks. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Build the rank from biggest differences first, then refine with adjacent checks. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -3028,7 +3028,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "2PC: tightest coupling — both systems are synchronously coordinated and locked during the write path. Direct publish: application explicitly calls the broker (coupled to the broker's availability). Outbox: decoupled via relay — the application only writes to its own DB. CDC: most decoupled — the application has no knowledge of event publishing; events are derived from the database log by an entirely independent process.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -3118,7 +3118,7 @@
       ],
       "correctOrder": [2, 1, 0, 3],
       "explanation": "Every 10 seconds: largest window (at 5,000 msg/s, up to 50,000 messages replayed). Every 1,000 messages: up to 1,000 replayed. Every message: at most 1 replayed. DB-stored offset: zero reprocessing (offset and result are atomic). Smaller windows add I/O overhead but reduce duplicate exposure.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Order by relative scale and bottleneck effect, then validate neighboring items. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 5,000 and 10 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Order by relative scale and bottleneck effect, then validate neighboring items. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 5,000 and 10 seconds should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",

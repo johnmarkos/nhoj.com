@@ -61,7 +61,7 @@
           ],
           "correct": 1,
           "explanation": "Redis is purpose-built for session/cache data: sub-millisecond latency, automatic TTL expiration for abandoned carts, simple key-value model (user_id → cart JSON). Option A works but adds unnecessary operational overhead (schema migrations, vacuuming, backup complexity) for ephemeral data. Option C has terrible performance (S3 is object storage, not a KV store; high latency, eventual consistency). Option D has size limits (cookies ~4KB), security issues (tampering), and sends cart data on every request (bandwidth waste).",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 4KB appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. If values like 4KB appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         }
       ],
       "detailedExplanation": "Generalize from statelessness & Session Strategy to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
@@ -210,7 +210,7 @@
       ],
       "correct": 0,
       "explanation": "Idempotency keys are the industry-standard solution (used by Stripe, AWS, etc.). The client generates a unique key (UUID) and sends it with each request. The server stores this key and the result (order ID). If the same key arrives again (retry), return the original order ID instead of creating a new one. Option B is reactive—it doesn't prevent the duplicate, just reports it. Option C doesn't help—PUT requires the client to provide the order ID, but the problem is the client doesn't have it yet (it's generated server-side). Option D is fragile—two legitimate orders from the same user in the same second would fail, and retries delayed by >1 second would still create duplicates.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Reject approaches that sound good in general but do not reduce concrete reliability risk. Tie decisions to concrete operational outcomes, not abstract reliability language. Numbers such as 1 second should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Reject approaches that sound good in general but do not reduce concrete reliability risk. Tie decisions to concrete operational outcomes, not abstract reliability language. Numbers such as 1 second should be normalized first so downstream reasoning stays consistent. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -257,7 +257,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Treat freshness policy and invalidation paths as first-class constraints. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -420,7 +420,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Do not reset assumptions between stages; carry forward prior constraints directly. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: stale data despite high hit rates."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -450,7 +450,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Start with the session store (0)—if Redis is evicting keys or the database is unavailable, sessions will be lost regardless of deployment strategy. Next (1), check if the app is refreshing TTLs—if sessions expire after 1 hour even during active use, that's a logic bug. Then (2), verify load balancer behavior—ensure it's not sending traffic to dead servers (would cause some requests to fail/timeout). Finally (3), review deployment process—connection draining issues would cause abrupt session loss only during deployments, not intermittent issues during normal operation. This order goes from most fundamental (data store health) to deployment-specific concerns.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Place obvious extremes first, then sort the middle by pairwise comparison. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 0 and 1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Place obvious extremes first, then sort the middle by pairwise comparison. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 0 and 1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -610,7 +610,7 @@
           ],
           "correct": 1,
           "explanation": "Partitioning by time (created_at) is the best approach for time-series data like sessions. Each month gets a partition; when a partition is fully expired (e.g., sessions from January, now March), you DROP the partition. This is instant (vs. DELETE which scans and creates bloat) and reclaims space immediately. Option A (VACUUM FULL) locks the table and rewrites it—too disruptive for a live production table. Option C (nightly DELETE) is okay but still creates bloat and requires VACUUM; it's a bandaid. Option D (Redis) is good for active sessions but doesn't address the historical data problem—if you need to keep expired sessions for audit/compliance, you'd still have the PostgreSQL problem.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Common pitfall: stale data despite high hit rates."
         }
       ],
       "detailedExplanation": "Generalize from statelessness & Session Strategy to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: sizing to average and failing at peak.",
@@ -673,7 +673,7 @@
       ],
       "correct": 0,
       "explanation": "Option A is the standard pattern: store a 'logout_at' or 'min_valid_iat' timestamp per user. On each request, check token.iat > user.logout_at. This requires a database lookup (defeating some JWT statelessness) but is simple and scoped to the user. Option B is a nuclear option—rotating the global signing key invalidates ALL users' tokens, not just one user. Option C defeats the purpose of JWTs (you're storing them all anyway) and doesn't scale (if tokens are long-lived, the table grows unbounded). Option D is the best alternative if you're already using refresh tokens—short-lived access tokens (5 min) + long-lived refresh tokens (30 days). Revoke all refresh tokens for the user, and access tokens expire quickly on their own.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Numbers such as 5 min and 30 days should be normalized first so downstream reasoning stays consistent. Common pitfall: schema optimized for entities instead of queries.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the schema/index decision that minimizes query and write amplification for this workload. Modeling quality is measured by query fit, cardinality behavior, and operational cost. Numbers such as 5 min and 30 days should be normalized first so downstream reasoning stays consistent. Common pitfall: schema optimized for entities instead of queries.",
       "references": [
         {
           "title": "System Design Primer: Back-of-the-envelope estimation",
@@ -791,7 +791,7 @@
           ],
           "correct": 0,
           "explanation": "Classic race condition: Request A checks 'SELECT * WHERE key = X' (no result), starts processing. Request B checks simultaneously (no result), also starts processing. Both insert a row and process the payment. The fix is to use a UNIQUE constraint on the idempotency key column and handle the uniqueness violation error (INSERT ... ON CONFLICT DO NOTHING in PostgreSQL, or catch unique constraint error in MySQL). Option B is misleading—MVCC doesn't cause this; the issue is the lack of a uniqueness constraint. Option C would slow things down but not cause duplicates. Option D is unrelated—TTL doesn't affect concurrent requests.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "The team adds a UNIQUE constraint on the idempotency_key column. Now, when duplicate requests arrive, one succeeds and the other gets a database constraint error. What should the application do when it catches this error?",
@@ -836,7 +836,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Option A is correct—sticky sessions tie user state to specific servers. If that server dies (crash, OOM, hardware failure), all its users are disconnected. With shared state (e.g., Redis-backed), any server can handle the reconnection. Option B is correct—load balancers with sticky sessions often use 'least connections' or similar algorithms, which means new servers stay idle until existing servers are saturated. This delays the benefit of scaling. Option C is WRONG—sticky sessions don't prevent horizontal scaling; they make it less efficient and more complex, but you can still add servers. Option D is correct—during deployments, you must drain connections (stop sending new connections, wait for existing to close) before killing servers, which slows down deployments.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. Cache design quality is mostly about correctness boundaries, not only hit rate. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -918,7 +918,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Most likely (0): Redis eviction due to memory pressure is a very common operational issue (wrong eviction policy, undersized instance). Next (1): RDB persistence failures can cause session loss on restart if you rely on persistence—less common because many deployments use Redis as ephemeral (no persistence) or use AOF (more durable). Next (2): Session ID collisions are rare if using proper UUIDs or crypto-random generators, but could happen with buggy custom implementations. Least likely (3): Cosmic rays causing bit flips in network transit is theoretically possible but extraordinarily rare (TCP checksums, ECC memory catch most), and would cause corruption, not silent session loss.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Treat freshness policy and invalidation paths as first-class constraints. If values like 0 and 1 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Treat freshness policy and invalidation paths as first-class constraints. If values like 0 and 1 appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -978,7 +978,7 @@
       ],
       "correct": 2,
       "explanation": "Refresh token rotation is critical for security (limits blast radius if stolen), but network retries are common. Option C uses idempotent token refresh: cache the newly-issued token pair keyed by the old refresh token for a short window (1-5 seconds). If the same old refresh token arrives again within that window, return the identical response—no new tokens generated, no rejection. This makes refresh idempotent and retry-safe. Option A (reject) degrades UX unnecessarily. Option B (grace period accepting both tokens) increases attack surface if the old token was stolen. Option D (accept old token indefinitely) defeats the purpose of rotation. Production systems (Auth0, Cognito) use short-window caching for idempotent refresh.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that sound good in general but do not reduce concrete reliability risk. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. If values like 15 min and 30 days appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that sound good in general but do not reduce concrete reliability risk. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. If values like 15 min and 30 days appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1010,7 +1010,7 @@
           ],
           "correct": 1,
           "explanation": "The deploy is rolling, so servers restart in waves. If ride state lives in server RAM and the user's next request routes to a different (new) server, that server has no knowledge of the ride. The symptom—fare/location reset—matches lost state. Option A (load balancing algorithm) doesn't cause state loss. Option C (Redis eviction) would only apply if they were using Redis (they aren't, per the scenario). Option D (client caching) wouldn't cause server-side resets.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 20 and 2 minutes appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Treat freshness policy and invalidation paths as first-class constraints. If values like 20 and 2 minutes appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes."
         },
         {
           "question": "The team decides to externalize ride state. They must update location and fare meter every 2 seconds (high write rate) and retrieve the full ride object on every API call. Which storage strategy best balances consistency, performance, and cost?",
@@ -1141,7 +1141,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Correct order: (0) Start dual-writing to Redis while still reading from memory—new sessions populate Redis, no behavior change. (1) Backfill existing sessions from memory to Redis (scrape from running servers or accept gradual migration). (2) Switch reads to Redis-first with memory fallback—validates Redis is working, no user impact if Redis has gaps. (3) Once confident (days/weeks), remove memory logic entirely and read/write only Redis. This is a rolling migration pattern (dual-write, dual-read, cutover). Skipping step 1 risks user logouts (sessions not in Redis). Doing step 3 before step 2 risks downtime if Redis has issues.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Place obvious extremes first, then sort the middle by pairwise comparison. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Numbers such as 0 and 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Place obvious extremes first, then sort the middle by pairwise comparison. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Numbers such as 0 and 1 should be normalized first so downstream reasoning stays consistent. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -1248,7 +1248,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "A, B, C are correct. A (HttpOnly): Prevents XSS attacks from stealing the session cookie via document.cookie. B (Secure): Ensures the cookie is never sent over unencrypted HTTP, preventing MITM interception. C (SameSite): Mitigates CSRF by restricting when the browser sends the cookie in cross-site requests. Strict blocks all cross-site; Lax allows top-level navigation (e.g., clicking a link). D is unnecessary: The session ID is already a cryptographically random UUID (unguessable). Encrypting it adds no security—if an attacker steals the cookie, they can use it regardless of encryption. You sign cookies to prevent tampering, but that's HMAC, not encryption.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1336,7 +1336,7 @@
           ],
           "correct": 1,
           "explanation": "Statelessness means any worker can process any job (good for scaling), but retries are inevitable (network failures, crashes). If the job's side effect is not idempotent (sending an email, charging a card), retries cause duplicates. Option A is false—queues like SQS handle concurrency; workers poll independently. Option C describes a solution (idempotency table), not a challenge. Option D (visibility timeout) is important but not the primary statefulness challenge—it's a queue configuration issue.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Common pitfall: meeting average goals while missing tail-risk."
         },
         {
           "question": "To make the job system safe for retries, the team implements idempotency: each job has a unique job_id, and before performing the side effect, the worker checks if that job_id is in a DynamoDB table. If present, skip the side effect. If not, perform the side effect and write the job_id to DynamoDB. What is a critical implementation requirement to prevent race conditions?",
@@ -1381,7 +1381,7 @@
       ],
       "correct": 2,
       "explanation": "External state store with TTL is the stateless solution. Upload metadata is session-like: ephemeral, scoped to a single operation, and shared across requests. Storing in Redis/DynamoDB allows any server to handle any chunk (horizontal scaling) and survives server restarts. TTL prevents indefinite storage of abandoned uploads. Option A (JWT) is a misuse—JWTs are for authentication, not mutable session data; the client would need to update the JWT after every chunk, which is insecure and error-prone. Option B (memory + sticky sessions) reintroduces statefulness and breaks on server restarts. Option D (client-side tracking) is reasonable for resilience but doesn't help the server manage S3 multipart upload state.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 1 GB and 100 MB should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard options that weaken contract clarity or compatibility over time. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Numbers such as 1 GB and 100 MB should be normalized first so downstream reasoning stays consistent. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1411,7 +1411,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Correct order: (0) Verify signature first—reject malicious/replayed events before any state changes. (1) Check idempotency table—if the event was already processed, return 200 OK immediately (idempotent). (2) Write event ID to the table before performing business logic—this prevents race conditions (two concurrent handlers both pass the check and both process the event). Use a unique constraint or conditional write. (3) Perform business logic last—if it fails, the idempotency record ensures the event won't be re-processed when retried. Doing step 3 before step 2 risks duplicate processing on retry.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Order by relative scale and bottleneck effect, then validate neighboring items. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Keep quantities like 0 and 1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Order by relative scale and bottleneck effect, then validate neighboring items. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. Keep quantities like 0 and 1 in aligned units before deciding on an implementation approach. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1604,7 +1604,7 @@
       ],
       "correct": 1,
       "explanation": "Batch-level idempotency (option A) is fragile: if the batch partially succeeds before a crash, retrying returns the cached result—but what if the client changes the batch slightly? Fine-grained idempotency (per-action keys) is more robust: each action is independently idempotent. On retry, already-processed actions succeed immediately (idempotent), and failed actions are re-attempted. Option A works but is less flexible (client can't modify the batch). Option C (single transaction) is too strict—one failure fails the entire batch, and partial success isn't possible. Option D (payload hash) breaks if the client changes anything.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer approaches that directly address failure mode, recovery path, and blast radius. Tie decisions to concrete operational outcomes, not abstract reliability language. If values like 1000 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer approaches that directly address failure mode, recovery path, and blast radius. Tie decisions to concrete operational outcomes, not abstract reliability language. If values like 1000 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1726,7 +1726,7 @@
           ],
           "correct": 1,
           "explanation": "The client uploads the file to the app server (via HTTP POST with multipart/form-data). The server buffers it in memory or on disk, then writes to S3. If the server restarts mid-upload, the connection drops, the client retries, and the upload starts over—user sees a reset. This is a stateful upload problem. Option A (LB timeout) is plausible but less likely—the question says 'during a deploy,' pointing to server restarts. Option C (S3 rate limits) would cause slowdowns, not resets. Option D (job queue) is irrelevant to the upload phase.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 100 MB and 1 in aligned units before deciding on an implementation approach. Common pitfall: retry storms during partial failure."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong real-world approach explains how failure mode, mitigation speed, and blast radius interact. Keep quantities like 100 MB and 1 in aligned units before deciding on an implementation approach. Common pitfall: retry storms during partial failure."
         },
         {
           "question": "To make uploads resilient to server restarts, the team switches to a multipart/resumable upload pattern. The client uploads the file in 10 MB chunks, and the server writes each chunk directly to S3 as part of an S3 multipart upload. Where should the server store the in-progress upload state (S3 upload ID, uploaded chunk indices)?",
@@ -1827,7 +1827,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "A, B, C are correct. A: Delete the session from Redis so it can't be used again (server-side cleanup). B: Tell the browser to delete the cookie (client-side cleanup). Without this, the browser still sends the cookie on subsequent requests. C: Add the session ID to a short-lived blacklist (TTL = session TTL) to defend against session fixation/replay attacks—if an attacker stole the cookie before logout, the blacklist prevents reuse. D is wrong: Rotating the password hash doesn't invalidate sessions in a stateless architecture (sessions are keyed by session ID, not password hash). To invalidate all sessions across devices, delete all sessions for that user from Redis.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1857,7 +1857,7 @@
       ],
       "correct": 2,
       "explanation": "JWTs have an absolute expiration time (Unix timestamp in the 'exp' claim). If the token expires at 12:00:00 and the request starts at 11:59:58, the token is valid when Service A receives it, but by the time Service C validates it (12:00:01), it's expired. This is expiration skew in distributed systems. Option A is wrong—services should validate JWTs for defense in depth. Option B is a misdiagnosis—15 minutes is standard, and the issue is timing, not TTL. Option D (refresh mid-request) is not standard. Fixes: (1) Add a short grace period (e.g., accept tokens up to 30 seconds past expiration). (2) Use longer TTLs. (3) Refresh the token preemptively if it's close to expiration.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer approaches that balance hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. If values like 10 and 500ms appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer approaches that balance hit rate with clear staleness and invalidation behavior. Treat freshness policy and invalidation paths as first-class constraints. If values like 10 and 500ms appear, convert them into one unit basis before comparison. Common pitfall: invalidation races under concurrent writes.",
       "references": [
         {
           "title": "Redis Documentation",
@@ -1931,7 +1931,7 @@
           ],
           "correct": 1,
           "explanation": "Redis pipelining sends multiple commands in one network round trip and receives all responses together. For two independent reads (session GET + favorites ZRANGE), pipelining reduces latency from 2x RTT to 1x RTT. (A) MULTI/EXEC provides atomicity (both reads see the same snapshot), but that's unnecessary here — session and favorites are independent data. MULTI/EXEC adds overhead (4 commands: MULTI, GET, ZRANGE, EXEC). (C) Lua scripts run atomically on the server but add complexity; for two simple reads, pipelining is simpler. (D) sequential reads waste a full RTT; the session check doesn't need to complete before fetching favorites (they're independent).",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. If values like 1KB and 2x appear, convert them into one unit basis before comparison. Common pitfall: breaking clients during version evolution."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. Interface decisions should be justified by contract stability and client impact over time. If values like 1KB and 2x appear, convert them into one unit basis before comparison. Common pitfall: breaking clients during version evolution."
         }
       ],
       "detailedExplanation": "Generalize from statelessness & Session Strategy to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Sizing decisions are better when headroom and bottleneck behavior are stated explicitly. Common pitfall: assuming linear scaling through shared bottlenecks.",
@@ -1990,7 +1990,7 @@
       "unit": "CPU cores",
       "tolerance": 0.1,
       "explanation": "200,000 req/sec x 0.3ms/req = 60,000ms of CPU time per second. Each core provides 1000ms/sec of compute. 60,000 / 1000 = 60 cores dedicated to JWT validation alone. This illustrates why high-throughput stateless APIs often cache validated tokens in memory or switch from RS256 (asymmetric, ~0.3ms) to HS256 (symmetric, ~0.01ms). At 200K req/sec with HS256, you'd need only 2 cores for validation — a 30x reduction.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 0.3ms and 200,000 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Normalize units before computing so conversion mistakes do not propagate. Good API choices balance client ergonomics, compatibility, and long-term evolvability. If values like 0.3ms and 200,000 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2097,7 +2097,7 @@
       ],
       "correct": 2,
       "explanation": "JWT tokens are most effective. Cold starts cost 800ms regardless of how you warm Lambdas. JWTs eliminate the Redis dependency for authentication, removing network latency and connection setup. (A) pre-warming is unreliable — AWS can evict containers unpredictably, and you pay for wasted invocations. (B) Provisioned Concurrency works but costs 24/7 for idle capacity; JWTs are free and scale to zero. (D) lazy initialization doesn't help — the first request still pays 800ms + Redis connection time. For serverless, stateless auth (JWTs) is architecturally superior: no warm-up, no idle cost, infinite scale.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. If values like 800ms and 24 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Discard options that weaken contract clarity or compatibility over time. Interface decisions should be justified by contract stability and client impact over time. If values like 800ms and 24 appear, convert them into one unit basis before comparison. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2219,7 +2219,7 @@
           ],
           "correct": 1,
           "explanation": "Propagate the same correlation ID (trace ID) through headers (X-Request-ID or X-Trace-ID). All services log the same ID, enabling you to grep logs or query tracing systems (e.g., Jaeger) for a single request's full path. (A) parent-child IDs are used in distributed tracing (span IDs) but you still need a shared trace ID. (C) cache lookup adds latency and couples services to Redis. (D) cookies aren't sent in server-to-server HTTP calls (only browser to server), so this doesn't work for microservice communication.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: breaking clients during version evolution."
         },
         {
           "question": "The team implements correlation ID propagation. Now they want to add distributed tracing with OpenTelemetry. Which additional propagation mechanism is required to support trace sampling decisions across services?",
@@ -2320,7 +2320,7 @@
       ],
       "correctIndices": [0, 1],
       "explanation": "A and B are false positives. A: Mobile users frequently switch networks (WiFi to cellular), changing IPs mid-session — this is legitimate behavior. B: Browser auto-updates change the User-Agent mid-session (e.g., Chrome 120 to 121), breaking the fingerprint. (C) is NOT a false positive — shared IP doesn't change the fingerprint for a single user; it's a limitation (can't distinguish users) but doesn't invalidate sessions. (D) is correct behavior, not a false positive — two devices should have different sessions (different fingerprints). Better fingerprinting uses canvas/WebGL fingerprints, TLS fingerprints, and behavioral signals.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. A strong compute answer links throughput targets to concurrency and scaling triggers. If values like 120 and 121 appear, convert them into one unit basis before comparison. Common pitfall: sizing to average and failing at peak.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. A strong compute answer links throughput targets to concurrency and scaling triggers. If values like 120 and 121 appear, convert them into one unit basis before comparison. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2427,7 +2427,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong compute answer links throughput targets to concurrency and scaling triggers. If values like 1 appear, convert them into one unit basis before comparison. Common pitfall: ignoring queueing effects at high utilization."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Capacity reasoning should separate average and peak demand, then map both to saturation limits. Common pitfall: sizing to average and failing at peak.",
       "references": [
         {
           "title": "Little's law",
@@ -2569,7 +2569,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "Correct order: pass context as params > service account token > session ID > short-lived JWT. Passing user context as job params is cleanest — no session coupling, idempotent, replayable, no auth expiration. Service account token decouples from user sessions but still requires token validation. Session ID couples the job to session lifetime and Redis availability. Short-lived JWT is worst — a 15-min token fails for a 10-min job if the user logged out or the token expires. For long-running jobs, pass data, not credentials.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Place obvious extremes first, then sort the middle by pairwise comparison. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. If values like 10 and 15 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Place obvious extremes first, then sort the middle by pairwise comparison. Map the approach to measurable reliability impact such as error-budget burn and recovery behavior. If values like 10 and 15 appear, convert them into one unit basis before comparison. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -2806,10 +2806,10 @@
           ],
           "correct": 2,
           "explanation": "A scheduled job to scan for stale sagas is the missing mechanism. Sagas can get stuck if the service crashes after writing 'step2_failed' but before triggering compensation. A periodic scanner (every 5-10 minutes) finds stuck sagas and resumes them. (A) saga timeout is useful but requires an active process to enforce it — same problem. (B) DLQ helps with async failures but doesn't solve 'stuck' state in the saga record. (D) versioning prevents corruption but doesn't resume stuck sagas.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Tie decisions to concrete operational outcomes, not abstract reliability language. Keep quantities like 2 and 24 hours in aligned units before deciding on an implementation approach. Common pitfall: retry storms during partial failure."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Tie decisions to concrete operational outcomes, not abstract reliability language. Keep quantities like 2 and 24 hours in aligned units before deciding on an implementation approach. Common pitfall: retry storms during partial failure."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: assuming linear scaling through shared bottlenecks.",
       "references": [
         {
           "title": "Little's law",
@@ -2839,7 +2839,7 @@
       ],
       "correct": 0,
       "explanation": "By default, Redis Cluster continues accepting writes during a partition if each half has enough nodes for its hash slots. This can create split-brain: different writes to the same session on each side. When the partition heals, one side's writes are lost (last-write-wins during resync). (B) Redis Cluster doesn't elect a 'primary partition'; each master independently serves its hash slots. (C) Redis doesn't use CRDTs; reconciliation uses last-write-wins. (D) only true with cluster-require-full-coverage enabled. For critical session data, enable full-coverage mode to sacrifice availability for consistency.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prioritize the approach that best protects reliability objectives under stated failure conditions. Tie decisions to concrete operational outcomes, not abstract reliability language. If values like 3 appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prioritize the approach that best protects reliability objectives under stated failure conditions. Tie decisions to concrete operational outcomes, not abstract reliability language. If values like 3 appear, convert them into one unit basis before comparison. Common pitfall: retry storms during partial failure.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -3006,7 +3006,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 123 in aligned units before deciding on an implementation approach. Common pitfall: invalidation races under concurrent writes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. A strong compute answer links throughput targets to concurrency and scaling triggers. Common pitfall: ignoring queueing effects at high utilization.",
       "references": [
         {
           "title": "Little's law",
@@ -3036,7 +3036,7 @@
       ],
       "correct": 1,
       "explanation": "Dual-token: short session + long remember token is most secure. The session token (7 days, Redis) is ephemeral and fast. The remember token (30 days, PostgreSQL) is randomly generated and stored in a database table (user_id, token_hash, expires_at). If the session expires, the client sends the remember token to create a new session. This allows token revocation (delete from DB) and limits blast radius (stealing a remember token doesn't give immediate access). (A) 30-day sessions are risky. (C) storing password hashes in cookies is catastrophic. (D) localStorage is XSS-vulnerable.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 30 days and 7 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps client behavior explicit while preserving evolvability. Prioritize explicit semantics and upgrade safety, not just short-term convenience. Numbers such as 30 days and 7 should be normalized first so downstream reasoning stays consistent. Common pitfall: interface design coupled too tightly to internal implementation.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",

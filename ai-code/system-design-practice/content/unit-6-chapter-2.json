@@ -192,7 +192,7 @@
       ],
       "correct": 1,
       "explanation": "Subscriber independence: each subscription tracks its own offset/position in the topic. Inventory's backlog has no effect on email or analytics — they continue consuming at full speed. This isolation is a fundamental advantage of pub/sub over designs where consumers share state.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 3 and 100,000 in aligned units before deciding on an implementation approach. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject approaches that ignore delivery semantics or backpressure behavior. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 3 and 100,000 in aligned units before deciding on an implementation approach. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -222,7 +222,7 @@
       ],
       "correct": 1,
       "explanation": "A single topic with partition-by-order-ID ensures all events for order #12345 (Created, Updated, Cancelled) go to the same partition and are delivered in order. With separate topics, cross-topic ordering isn't guaranteed — a subscriber might see OrderCancelled before OrderCreated.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 12345 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. Throughput is only one part; replay behavior and consumer lag handling matter equally. Keep quantities like 12345 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -372,7 +372,7 @@
       ],
       "correct": 1,
       "explanation": "Shared subscriptions combine pub/sub with competing consumers. Across subscriptions (A, B, C), each gets every message (pub/sub fan-out). Within subscription B, the 4 consumers compete — each message goes to one of them (point-to-point within the subscription). This lets B scale horizontally while A and C are unaffected.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 3 and 4 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. Keep quantities like 3 and 4 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -402,7 +402,7 @@
       ],
       "correct": 1,
       "explanation": "Deleting a subscription discards its offset tracking and backlog. A new subscription starts from 'latest' (or 'earliest' if configured), but the original 50M-message gap can't be recovered to the exact prior position. If those messages matter, the team should scale up A's consumers to drain the backlog rather than skip it.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 5 and 50 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject designs that improve throughput while weakening reliability guarantees. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 5 and 50 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -642,7 +642,7 @@
       ],
       "correct": 1,
       "explanation": "Unlike inserts (which can use unique constraints), counter increments are not naturally idempotent — each execution changes state. 10,000 events + 100 duplicate deliveries = 10,100 increments. To fix this, the subscriber must track which events have already been counted (e.g., by storing processed event IDs) before incrementing.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 10,000 and 1 in aligned units before deciding on an implementation approach. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Keep quantities like 10,000 and 1 in aligned units before deciding on an implementation approach. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -732,7 +732,7 @@
       ],
       "correct": 1,
       "explanation": "A single high-volume key creates a hot partition. The consumer assigned to partition 3 handles 80% of all traffic while 5 other consumers split the remaining 20%. Solutions: use a compound key (customer_id + random_suffix) to spread the load across partitions (sacrificing per-message ordering for that customer), or use per-tenant topics.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 6 and 80 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Reject designs that improve throughput while weakening reliability guarantees. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 6 and 80 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -937,7 +937,7 @@
       ],
       "correct": 1,
       "explanation": "A single FIFO topic can't differentiate priorities. Separate topics per priority let the subscriber prioritize: always drain the high-priority topic before processing medium or low. This ensures critical alerts aren't delayed behind a flood of low-priority messages.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Prefer the approach that keeps ordering/acknowledgment behavior predictable under failure. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1022,7 +1022,7 @@
       ],
       "correct": 1,
       "explanation": "Orphaned durable subscriptions continue consuming broker storage — the broker retains messages for a subscription that no consumer will ever read. This backlog grows indefinitely (up to retention limits), wasting disk and potentially triggering storage alerts. Always delete subscriptions when they're no longer needed.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Eliminate designs that create ambiguous API semantics or brittle versioning paths. Interface decisions should be justified by contract stability and client impact over time. Common pitfall: breaking clients during version evolution.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -1145,7 +1145,7 @@
           "options": ["30 minutes", "1 hour", "2 hours", "6 hours"],
           "correct": 2,
           "explanation": "Total consumption = 5 × 500 = 2,500 msg/s. But new messages keep arriving at 1,000 msg/s. Net drain rate = 2,500 - 1,000 = 1,500 msg/s. Time = 10,800,000 / 1,500 = 7,200 seconds = 2 hours.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 5 and 500 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Numbers such as 5 and 500 should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
       "detailedExplanation": "Generalize from pub/Sub & Topics to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
@@ -1180,7 +1180,7 @@
           ],
           "correct": 1,
           "explanation": "Ephemeral subscriptions don't retain messages during disconnection. The 5 minutes of price updates are gone. The dashboard resumes with only new data. For a real-time price display, this is acceptable — stale prices aren't useful.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 5 minutes in aligned units before deciding on an implementation approach. Common pitfall: hot-key skew causing uneven load."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A strong caching answer names staleness limits, invalidation behavior, and keying strategy. Keep quantities like 5 minutes in aligned units before deciding on an implementation approach. Common pitfall: hot-key skew causing uneven load."
         },
         {
           "question": "The compliance team says they need a full audit trail and cannot miss any price updates, even during outages. What subscription type should they use?",
@@ -1222,7 +1222,7 @@
           "options": ["5,000", "50,000", "95,000", "100,000"],
           "correct": 2,
           "explanation": "The email service receives all 100,000 msg/s but only 5% (5,000) are relevant. The other 95% (95,000 msg/s) are received, deserialized, type-checked, and discarded — pure waste.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 100,000 and 5 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 100,000 and 5 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "What feature eliminates this waste?",
@@ -1281,7 +1281,7 @@
           ],
           "correct": 0,
           "explanation": "A smaller number of domain-level topics (e.g., 'users', 'orders', 'payments') with server-side filtering gives the best of both worlds: the analytics service subscribes to a few broad topics (low operational overhead) while the email service applies a filter to receive only the event types it needs (low bandwidth waste).",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
       "detailedExplanation": "Generalize from pub/Sub & Topics to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
@@ -1378,7 +1378,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1422,10 +1422,10 @@
           ],
           "correct": 1,
           "explanation": "In choreography, compensation follows the same event-driven pattern. Service B publishes a failure event, and Service A (the payment service) subscribes to it and triggers reversal. Each service is responsible for its own compensation logic. This keeps the decoupling intact — no direct service-to-service calls.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1457,7 +1457,7 @@
           ],
           "correct": 1,
           "explanation": "Pub/sub replaces direct N-to-M service dependencies with indirect topic-based communication. A service that previously called 5 other services now publishes to 1 topic. The dependency graph becomes much simpler and more maintainable.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 50 and 5 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Solve this as chained reasoning where stage two must respect stage one assumptions. Prioritize explicit semantics and upgrade safety, not just short-term convenience. If values like 50 and 5 appear, convert them into one unit basis before comparison. Common pitfall: interface design coupled too tightly to internal implementation."
         },
         {
           "question": "After the migration, a developer changes Service A's event schema (adding a new required field). 8 subscriber services break because they can't parse the new format. What practice prevents this?",
@@ -1598,7 +1598,7 @@
           ],
           "correct": 1,
           "explanation": "Attribute-based filtering at the broker evaluates each message's attributes against the subscriber's filter expression. Only matching messages are delivered. This reduces the subscriber's processing load to just its tenant's events.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "The team creates 200 subscriber instances, one per tenant, each filtered by tenant_id. The broker evaluates the filter for every subscriber on every message. At 100,000 msg/s with 200 filters, what concern should the team have?",
@@ -1652,7 +1652,7 @@
           ],
           "correct": 1,
           "explanation": "Separate topics eliminate the broker's filter evaluation cost entirely — messages are routed by topic at publish time. Each regional topic can be independently configured (partitions, retention, replication). The tradeoff: more topics to manage operationally, and publishers must route to the correct topic.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
       "detailedExplanation": "Generalize from pub/Sub & Topics to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
@@ -1697,7 +1697,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 10 and 8 should be normalized first so downstream reasoning stays consistent. Common pitfall: consumer lag growth under burst traffic."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -1778,7 +1778,7 @@
           "options": ["100 MB/s", "150 MB/s", "200 MB/s", "500 MB/s"],
           "correct": 2,
           "explanation": "10,000 msg/s × 2 KB × 10 subscribers = 200 MB/s. Outbound bandwidth doubled when subscribers doubled. Fan-out bandwidth scales linearly with subscriber count — a critical factor in broker capacity planning.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 5 and 10 appear, convert them into one unit basis before comparison. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Do not reset assumptions between stages; carry forward prior constraints directly. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 5 and 10 appear, convert them into one unit basis before comparison. Common pitfall: assuming exactly-once without idempotency."
         }
       ],
       "detailedExplanation": "Generalize from pub/Sub & Topics to the underlying invariant and failure mode, then compare approaches by risk reduction, reversibility, and operational cost. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
@@ -1813,7 +1813,7 @@
           ],
           "correct": 1,
           "explanation": "Auto-ack removes the message from the subscription the instant it's delivered. If the consumer crashes before finishing processing, the message is gone — the broker considers it successfully consumed. Auto-ack is only safe for non-critical workloads where occasional message loss is acceptable.",
-          "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
+          "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Keep stage continuity explicit: the first-step outcome is a hard input to the next step. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: consumer lag growth under burst traffic."
         },
         {
           "question": "What acknowledgment mode should be used for critical workloads like payment processing?",
@@ -1954,7 +1954,7 @@
           ],
           "correct": 2,
           "explanation": "When all subscribers must complete, end-to-end latency is determined by the slowest one. Even though A and B finish quickly, the system waits for C. This is a common challenge in regulated systems — one slow subscriber bottlenecks the entire workflow.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 3 and 10ms should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Numbers such as 3 and 10ms should be normalized first so downstream reasoning stays consistent. Common pitfall: assuming exactly-once without idempotency."
         },
         {
           "question": "How can the team reduce the impact of the slow subscriber without removing the completion requirement?",
@@ -2013,10 +2013,10 @@
           ],
           "correct": 1,
           "explanation": "Bidirectional events risk loops: order publishes → inventory reacts → publishes → order reacts → publishes... Correlation IDs are essential to link InventoryReserved back to the original OrderPlaced. Event design must distinguish between triggering events and result events to prevent cascading reactions.",
-          "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
+          "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Solve this as chained reasoning where stage two must respect stage one assumptions. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2063,7 +2063,7 @@
           "detailedExplanation": "For related interview and production incidents, classify the dominant failure mode first, then choose the earliest intervention that materially reduces user-facing risk. Solve this as chained reasoning where stage two must respect stage one assumptions. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 1,000 and 10,000 in aligned units before deciding on an implementation approach. Common pitfall: ordering loss during partition or replay changes."
         }
       ],
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Do not reset assumptions between stages; carry forward prior constraints directly. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2187,7 +2187,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "Pub/sub provides fan-out (all subscribers get every message), publisher decoupling (no changes needed for new subscribers), and identity decoupling (publisher doesn't know subscribers). Latency isn't inherently lower — both patterns have similar delivery latency for a single consumer.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Evaluate each candidate approach independently under the same constraints. A good message-system answer defines guarantees clearly for both producer and consumer paths. Common pitfall: assuming exactly-once without idempotency.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2337,7 +2337,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Fine-grained topics increase management burden, subscription complexity, and cross-topic ordering challenges. Per-topic throughput isn't inherently lower — each topic's throughput is independent. The real cost is operational, not performance.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Validate each proposed control independently and avoid partially true claims that fail under realistic load. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2427,7 +2427,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Backlog count, consumer lag (message age), and delivery-vs-publish rate are core per-subscription health metrics. Growing backlog or lag means the subscriber is falling behind. Total topic count is a global broker metric, not a per-subscription health indicator.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Anchor decisions in explicit constraints, invariants, and observable failure signals rather than intuition. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2487,7 +2487,7 @@
       ],
       "correctIndices": [0, 1, 3],
       "explanation": "A large backlog consumes broker storage, increases that subscriber's processing latency (old messages), and risks data loss if messages age past the retention window. Other subscribers are NOT affected — each subscription's progress is independent.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Evaluate each candidate approach independently under the same constraints. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Evaluate each candidate approach independently under the same constraints. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Amazon S3 FAQs",
@@ -2637,7 +2637,7 @@
       ],
       "correctIndices": [0, 1, 2],
       "explanation": "Partition keys enable per-key ordering, data locality, and load distribution across partitions. They do not affect delivery guarantees — exactly-once requires additional mechanisms (idempotent consumers, transactional processing) regardless of how messages are partitioned.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Validate each proposed control independently and avoid partially true claims that fail under realistic load. Good API choices balance client ergonomics, compatibility, and long-term evolvability. Common pitfall: ambiguous contracts that hide behavior changes.",
       "references": [
         {
           "title": "RFC 9110: HTTP Semantics",
@@ -2719,7 +2719,7 @@
       "unit": "GB",
       "tolerance": 0.1,
       "explanation": "Data per second: 5,000 × 1 KB = 5,000 KB/s. Per day: 5,000 × 86,400 = 432,000,000 KB = 432 GB. Over 7 days: 432 × 7 = 3,024 GB. The new subscriber must process over 3 TB just to catch up — backfill capacity planning matters.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 7 and 5,000 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 7 and 5,000 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2745,7 +2745,7 @@
       "unit": "messages",
       "tolerance": "exact",
       "explanation": "Worst case: the subscriber crashes just before committing, having processed up to 10 seconds of messages since the last commit. 5,000 msg/s × 10 s = 50,000 messages replayed. Smaller commit intervals reduce this window but add I/O overhead.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 10 seconds and 5,000 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. Throughput is only one part; replay behavior and consumer lag handling matter equally. If values like 10 seconds and 5,000 appear, convert them into one unit basis before comparison. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2927,7 +2927,7 @@
       "unit": "TB",
       "tolerance": 0.1,
       "explanation": "Data rate: 10,000 × 500 = 5,000,000 bytes/s = 5 MB/s. Per day: 5 × 86,400 = 432,000 MB = 432 GB. Current (7 days) = 3,024 GB ≈ 3 TB. New (14 days) = 6,048 GB ≈ 6 TB. Additional = 3 TB.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 7 days and 10,000 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Keep every transformation in one unit system and check order of magnitude at the end. The important tradeoffs are delivery semantics, ordering scope, and backpressure under failure. Keep quantities like 7 days and 10,000 in aligned units before deciding on an implementation approach. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -2953,7 +2953,7 @@
       "unit": "CPU-seconds",
       "tolerance": 0.1,
       "explanation": "Evaluations per second: 50,000 msg/s × 200 filters = 10,000,000 evaluations. CPU time: 10,000,000 × 0.01 ms = 10,000,000 × 0.00001 s = 100 CPU-seconds per second. This means 100 CPU cores dedicated solely to filter evaluation — a significant cost at scale.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 50,000 and 200 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Normalize units before computing so conversion mistakes do not propagate. A good message-system answer defines guarantees clearly for both producer and consumer paths. If values like 50,000 and 200 appear, convert them into one unit basis before comparison. Common pitfall: ordering loss during partition or replay changes.",
       "references": [
         {
           "title": "Apache Kafka documentation",
@@ -3099,7 +3099,7 @@
       ],
       "correctOrder": [1, 3, 2, 0],
       "explanation": "Pub/sub: loosest — subscriber only knows the topic name, not the publisher. Point-to-point queue: knows the queue, somewhat coupled to the producer's output channel. Shared database: coupled to the schema and database availability. Direct HTTP: tightest — subscriber must know the publisher's API address, endpoints, and contract.",
-      "detailedExplanation": "In interviews and real systems work, begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Tie decisions to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
+      "detailedExplanation": "Begin by naming the dominant constraint, then pressure-test candidate approaches against reliability, latency, and operability trade-offs. Order by relative scale and bottleneck effect, then validate neighboring items. Tie decisions to concrete operational outcomes, not abstract reliability language. Common pitfall: meeting average goals while missing tail-risk.",
       "references": [
         {
           "title": "Google SRE Book: Service Level Objectives",
@@ -3129,7 +3129,7 @@
       ],
       "correctOrder": [0, 1, 2, 3],
       "explanation": "No filtering: simplest, but subscribers waste resources on irrelevant messages. Separate topics: straightforward routing by topic, but limited flexibility and more topics to manage. Server-side attribute filtering: flexible header-based matching without topic proliferation. Content-based routing: most powerful (can filter on any message content) but requires the broker to parse payloads — highest complexity and CPU cost.",
-      "detailedExplanation": "In interviews and real systems work, anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Place obvious extremes first, then sort the middle by pairwise comparison. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
+      "detailedExplanation": "Anchor on the dominant constraint and evaluate approaches by blast radius, reversibility, and operational cost. Place obvious extremes first, then sort the middle by pairwise comparison. Throughput is only one part; replay behavior and consumer lag handling matter equally. Common pitfall: consumer lag growth under burst traffic.",
       "references": [
         {
           "title": "Apache Kafka documentation",
