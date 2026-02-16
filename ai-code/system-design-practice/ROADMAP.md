@@ -22,9 +22,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 ### OpenQuizzer v2.7: Single-Session Feedback
 
 - [x] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
-- [ ] **Add tags to content** — Tag each problem with 1-2 skill dimensions (e.g., `["estimation", "caching"]`, `["consistency", "replication"]`). This is the big content effort. Can be done incrementally — untagged problems degrade gracefully.
-  - Tagging taxonomy: align with the 12 unit titles plus cross-cutting skills (e.g., "back-of-envelope", "trade-off analysis", "failure modes")
-  - Progress: curated staff-level hard set chapter is tagged (`tags`) and difficulty-labeled (`difficulty`) across 76 problems.
+- [x] **Add tags to content** — Tagged all ready content problems (`9,844 / 9,844`) with baseline 2-tag metadata (unit-level + chapter-level taxonomy). Existing curated hard-set tags were preserved.
 
 ### OpenQuizzer v2.8: Session History & Aggregate Dashboard
 
@@ -65,9 +63,10 @@ Features that go beyond what OpenQuizzer provides generically.
 ## Content Quality
 
 - [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
-- [ ] **Difficulty calibration** — Tag problems as senior/staff/principal, filter by level
+- [~] **Difficulty calibration** — Baseline `difficulty` labels added for all ready problems (`9,844 / 9,844`) using rule-based defaults; manual calibration/tuning remains.
 - [x] **Explanation-template rewrite (Units 9/10)** — Rewrote repeated explanation text with scenario-specific, chapter-aware explanations. Uniqueness moved from ~27/1000 to 993/1000 (Unit 9) and 996/1000 (Unit 10).
 - [x] **Curated staff-level hard set** — Added a mixed hard-set chapter (76 problems) focused on ambiguity handling, trade-off defense, and failure narratives (`content/unit-12-chapter-9.json`).
+- [x] **Lint-driven explanation hardening (Units 11/12)** — Rewrote explanation templates in security/interview units to reduce repeated-template warnings and increase scenario specificity.
 - [x] **Expandable mini-lessons** — `detailedExplanation` complete for all ready units and chapters (9,844 problems).
 - [x] **Further reading links** — `references` complete for all ready units and chapters (9,844 problems).
 

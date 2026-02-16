@@ -41,6 +41,7 @@ No build system. Edit files directly and push to `main` for deployment. Fix forw
 
 - `node --test openquizzer.test.js` — Engine tests (state machine, question types, parsing) and UI wiring contract tests (function definitions, event bindings, DOM references, meta tag verification against CONFIG)
 - `node --test config.test.js` — Config and content validation (syntax, structure, duplicate IDs)
+- `node content-lint.js --json` — Content quality lint (duplicate stems, repeated explanations, suspicious text, and reference validation). Exits non-zero when warnings/errors are present.
 
 **Pre-commit hook:** A git hook in `.git/hooks/pre-commit` runs all three test suites plus Prettier when SDP files are staged. This catches syntax errors, invalid content, and formatting issues before they reach production.
 
@@ -187,6 +188,7 @@ When building new apps or features, always validate:
 1. Correct target directory (ask if unclear)
 2. No syntax errors in config files
 3. Run tests (`node --test config.test.js`) and verify they pass before committing
+4. Run content lint (`node content-lint.js --json`) and triage warning deltas before committing content-heavy changes
 
 ## Commit Attribution
 

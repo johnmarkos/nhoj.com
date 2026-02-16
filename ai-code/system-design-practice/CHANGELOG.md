@@ -1,5 +1,29 @@
 # Changelog
 
+## Metadata rollout + lint-driven hardening (2026-02-16)
+
+- Prioritized post-v2.9 instance work by value/effort and implemented top items first.
+- Added baseline metadata across the full ready corpus:
+  - `tags` added to all previously untagged problems (`9,768` additions; total coverage now `9,844 / 9,844`)
+  - `difficulty` added to all previously unlabeled problems (`9,768` additions; total coverage now `9,844 / 9,844`)
+  - taxonomy approach: unit-level + chapter-level tags; curated hard-set custom tags preserved
+- Ran lint-driven explanation hardening in Units 11/12:
+  - rewrote problem-level and stage-level `explanation` text in:
+    - `content/unit-11-chapter-1.json` through `content/unit-11-chapter-8.json`
+    - `content/unit-12-chapter-1.json` through `content/unit-12-chapter-9.json`
+  - explanation uniqueness after pass:
+    - Unit 11: `1155 / 1200`
+    - Unit 12: `1273 / 1324`
+  - content-lint warning reduction:
+    - total warnings: `218 -> 140`
+    - repeated-explanation warnings: `140 -> 62`
+    - duplicate-stem-cross warnings remain `76` (deferred)
+    - suspicious-text warnings remain `2` (known false-positive candidates around `placeholder` wording)
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json`
+
 ## Timed mode default enabled (2026-02-16)
 
 - Set `CONFIG.timeLimit` to `45` seconds per question in `config.js`.
