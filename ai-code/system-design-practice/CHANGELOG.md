@@ -1,5 +1,16 @@
 # Changelog
 
+## OpenQuizzer linter portability sync (2026-02-16)
+
+- Synced latest OpenQuizzer linter portability update into this instance:
+  - added `content-lint.cjs` copied verbatim from upstream.
+  - replaced local `content-lint.js` implementation with a thin compatibility wrapper that delegates to `content-lint.cjs`, preserving existing instance commands/hooks (`node content-lint.js`).
+- Verification:
+  - `node content-lint.js --json` (clean)
+  - `node content-lint.cjs --json` (clean)
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+
 ## OpenQuizzer linter sync + roadmap cleanup (2026-02-16)
 
 - Synced to the latest OpenQuizzer linter update:
