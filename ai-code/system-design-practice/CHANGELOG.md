@@ -1,5 +1,22 @@
 # Changelog
 
+## Re-review fix pass: upstream sync + instance cleanup (2026-02-16)
+
+- Synced OpenQuizzer post-review updates:
+  - copied upstream `openquizzer.js` (proficiency/SR clamping, two-stage references fallback)
+  - copied upstream `openquizzer.test.js` (new regression tests for future-timestamp clamping and two-stage reference fallback)
+  - copied upstream `content-lint.js` and adapted it for this repo's ESM runtime (`package.json` uses `"type": "module"`)
+- Updated weakest-areas metadata collection in `index.html` to use two-stage fallback prompt text:
+  - `question || stages[0].question || ""`
+- Implemented re-review instance fixes:
+  - added `interview-execution` tag to all curated hard-set items in `content/unit-12-chapter-9.json` (58 additions; now 76/76 aligned)
+  - removed repeated-word artifacts across content files (49 warnings -> 0)
+  - de-templated flagged Unit 7 Chapter 5 near-clone hotspot pair (`sc-hs-021`, `sc-hs-022`) with distinct scenario/explanation framing
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Level-calibration rewrite pass (2026-02-16)
 
 - Ran a targeted scenario-rewrite pass for definition-style prompts called out in review hotspots:
