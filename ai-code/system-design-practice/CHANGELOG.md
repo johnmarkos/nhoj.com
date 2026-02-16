@@ -1,5 +1,21 @@
 # Changelog
 
+## OpenQuizzer upgrade — v2.9 timed mode, resume, tracking, and spaced repetition (2026-02-16)
+
+- Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.9.
+- Customized static `<title>` and `<meta description>` in `index.html` back to instance values for crawler/link-preview correctness.
+- Added `content-lint.js` from upstream for local content QA checks.
+- v2.9 capabilities now available in this instance:
+  - timed mode via optional `CONFIG.timeLimit`
+  - resume interrupted sessions from saved snapshots
+  - per-problem tracking persisted in localStorage
+  - proficiency-aware "Weakest areas" dashboard section
+  - spaced-repetition weighted problem selection for future sessions
+- Validation:
+  - `node --test openquizzer.test.js`
+  - `node --test config.test.js`
+  - `node content-lint.js --json` (0 errors, 218 warnings in existing content)
+
 ## Staff-level quality pass: explanation rewrites + curated hard set (2026-02-15)
 
 - Implemented review recommendation #2 (focused explanation rewrite pass) for Units 9 and 10:

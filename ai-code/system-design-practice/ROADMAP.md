@@ -43,8 +43,8 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 ### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
 
-- [ ] **Upgrade engine/UI** — Copy from upstream after v2.9 ships
-- [ ] No instance-specific work expected — per-problem tracking, Elo proficiency scores, and spaced repetition work with existing content.
+- [x] **Upgrade engine/UI** — Copied `openquizzer.js`, `openquizzer.test.js`, `index.html`, and optional `content-lint.js` from upstream v2.9. Includes timed mode, resume interrupted sessions, per-problem tracking, proficiency-aware weakest-areas dashboard, and spaced-repetition weighting.
+- [x] No instance-specific work needed — v2.9 features work with existing content out of the box.
 
 ### OpenQuizzer v3.0: File Import/Export
 
@@ -55,7 +55,7 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 Features that go beyond what OpenQuizzer provides generically.
 
 - [ ] **Skill grid** — Visual display of Elo scores across all 12 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
-- [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v3.0).
+- [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v2.9).
 
 ## Later (Curriculum Expansion)
 
