@@ -1,5 +1,28 @@
 # Changelog
 
+## OpenQuizzer linter sync + roadmap cleanup (2026-02-16)
+
+- Synced to the latest OpenQuizzer linter update:
+  - copied upstream `content-lint.js` and kept this instance's ESM/runtime compatibility adaptation (`import`/`__dirname` handling and two-stage structural field compatibility).
+  - retained the new upstream templated-phrase chapter-density detection.
+- Confirmed current OpenQuizzer core files were already up to date:
+  - `openquizzer.js` matched upstream.
+  - `openquizzer.test.js` matched upstream.
+- Ran updated lint and fixed all new findings introduced by templated-phrase detection:
+  - resolved 11 chapter-level `templated-phrase` warnings in:
+    - `content/unit-7-chapter-6.json`
+    - `content/unit-7-chapter-7.json`
+    - `content/unit-7-chapter-8.json`
+    - `content/unit-8-chapter-1.json` through `content/unit-8-chapter-8.json`
+  - approach: de-templated repeated explanation openings per flagged chapter (threshold-driven rewrites) and normalized follow-up wording where needed.
+- Roadmap maintenance:
+  - moved completed milestones out of `ROADMAP.md`; roadmap now tracks active/pending work only.
+  - preserved completed-history detail in this changelog.
+- Validation (review/fix/iterate loop):
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (`0` warnings / `0` errors)
+
 ## Re-review pass 7: top-hotspot de-templating + lint guardrail (2026-02-16)
 
 - Implemented the re-review's highest-ROI instance-only hotspot rewrite set:

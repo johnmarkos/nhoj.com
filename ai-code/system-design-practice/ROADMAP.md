@@ -1,89 +1,32 @@
 # System Design Practice Roadmap
 
-## Done
+## Now (Active)
 
-- [x] **Unit 1: Estimation** — 8 chapters, 1,007 problems
-- [x] **Unit 2: Data Modeling** — 8 chapters, 800 problems
-- [x] **Unit 3: API Design** — 8 chapters, 791 problems
-- [x] **Unit 4: Storage Selection** — 8 chapters, 800 problems
-- [x] **Unit 5: Caching** — 8 chapters, 800 problems
-- [x] **Unit 6: Messaging & Async** — 8 chapters, 770 problems
-- [x] **Unit 7: Scaling Compute** — 8 chapters, 800 problems
-- [x] **Unit 8: Consistency & Coordination** — 8 chapters, 800 problems
-- [x] **Unit 9: Reliability** — 8 chapters, 800 problems
-- [x] **Unit 10: Classic Designs Decomposed** — 8 chapters, 800 problems
-- [x] **Unit 11: Security, Privacy & Abuse Resistance** — 8 chapters, 800 problems
-- [x] **Unit 12: Interview Execution & Design Communication** — 9 chapters, 876 problems (includes curated staff-level hard set chapter)
+1. OpenQuizzer v3.0 instance upgrade (when upstream ships)
+   - Sync engine/UI files for file import/export support.
 
-## Now (Feedback & Progress — via OpenQuizzer upgrades)
+2. Content realism calibration
+   - Continue definition-to-scenario rewrites in highest-ratio chapters (notably Unit 7, Unit 4, Unit 5, Unit 9/10, Unit 8/12).
+   - Continue de-templating remaining chapter clusters where long practice sessions still feel repetitive.
 
-Features below come from the OpenQuizzer engine roadmap. This instance gets them by copying the updated engine/UI files. Instance-specific work (content tagging) is called out separately.
+3. Difficulty calibration pass
+   - Refine baseline `difficulty` labels against actual interview-style complexity and ambiguity.
 
-### OpenQuizzer v2.7: Single-Session Feedback
+4. Interview simulation semantics (deferred engine work)
+   - Evaluate strict session-level wall-clock enforcement once OpenQuizzer engine bandwidth is available.
 
-- [x] **Upgrade engine/UI** — Copy openquizzer.js + index.html from upstream after v2.7 ships
-- [x] **Add tags to content** — Tagged all ready content problems (`9,844 / 9,844`) with baseline 2-tag metadata (unit-level + chapter-level taxonomy). Existing curated hard-set tags were preserved.
+## Later
 
-### OpenQuizzer v2.8: Session History & Aggregate Dashboard
+1. Skill-grid refinement
+   - Evolve baseline tag bars toward richer proficiency visualization (e.g., Elo-informed charting).
 
-- [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8. Updated bootstrap test for new DOM elements and globals.
-- [x] No instance-specific work needed — session history with localStorage auto-save, paste-back import/export, and aggregate dashboard (per-unit/tag accuracy) work with existing content out of the box.
+2. Community contributions workflow
+   - Define quality gate and contribution process for external problem submissions.
 
-### OpenQuizzer v2.8.1: Expandable Mini-Lessons
+3. Alternative tracks
+   - Explore frontend system design, ML systems, and data engineering tracks.
 
-- [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.1. Engine now passes optional `detailedExplanation` through all result events; UI shows a "Learn more" toggle when present.
-- [x] **Bulk-generate detailed explanations** — Added `detailedExplanation` across all content files (all ready units/chapters, 9,844 total problems). Two-stage stage-level detailed explanations are also complete.
+## Notes
 
-### OpenQuizzer v2.8.2: References (Further Reading Links)
-
-- [x] **Upgrade engine/UI** — Copied openquizzer.js, openquizzer.test.js, index.html from upstream v2.8.2. Engine passes optional `references` (array of `{ title, url }`) through all result events; UI renders as a compact link list inside the "Learn more" toggle. Either `references` or `detailedExplanation` triggers the toggle independently.
-- [x] **Bulk-add references** — Added `references` across all content files (all ready units/chapters, 9,844 total problems), with chapter/domain-appropriate canonical sources.
-
-### OpenQuizzer v2.9: Per-Problem Tracking & Spaced Repetition
-
-- [x] **Upgrade engine/UI** — Copied `openquizzer.js`, `openquizzer.test.js`, `index.html`, and optional `content-lint.js` from upstream v2.9. Includes timed mode, resume interrupted sessions, per-problem tracking, proficiency-aware weakest-areas dashboard, and spaced-repetition weighting.
-- [x] No instance-specific work needed — v2.9 features work with existing content out of the box.
-- [x] **Post-review fix sync** — Integrated upstream v2.9 follow-up fixes: clamped proficiency/SR weight domains for future timestamps, two-stage references fallback to problem-level refs, updated content-lint repeated-word detection, weakest-areas prompt fallback (`question || stage-1 question`), and localStorage persistence for weakest-areas problem metadata.
-
-### OpenQuizzer v3.0: File Import/Export
-
-- [ ] **Upgrade engine/UI** — Copy from upstream after v3.0 ships
-
-## Later (Instance-Specific Features)
-
-Features that go beyond what OpenQuizzer provides generically.
-
-- [~] **Skill grid** — Baseline dashboard skill-grid shipped using unit-level tag accuracy/proficiency across all 12 dimensions. Future refinement: Elo-based visualization and richer visual formats (radar/heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
-- [x] **Interview simulation mode** — Added a dedicated landing action for timed mixed sessions across all ready units/chapters. Current configuration runs 60-question randomized sessions (45-second timer per question, 45-minute target), with full session tracking/dashboard support.
-
-## Later (Curriculum Expansion)
-
-- [x] **Unit 11: Security, Privacy & Abuse Resistance** — Completed (8 chapters, 800 problems) with chapter-level review/fix loops and canonical references.
-- [x] **Unit 12: Interview Execution & Design Communication** — Completed (9 chapters, 876 problems) with chapter-level review/fix loops and canonical references.
-
-## Content Quality
-
-- [x] **Problem review pass** — Lint-guided hardening completed for current corpus baseline (`node content-lint.js --json` now reports `0` warnings / `0` errors). Future review passes continue as content changes.
-- [~] **Difficulty calibration** — Baseline `difficulty` labels added for all ready problems (`9,844 / 9,844`) using rule-based defaults; manual calibration/tuning remains.
-- [x] **Explanation-template rewrite (Units 9/10)** — Rewrote repeated explanation text with scenario-specific, chapter-aware explanations. Uniqueness moved from ~27/1000 to 993/1000 (Unit 9) and 996/1000 (Unit 10).
-- [x] **Curated staff-level hard set** — Added a mixed hard-set chapter (76 problems) focused on ambiguity handling, trade-off defense, and failure narratives (`content/unit-12-chapter-9.json`).
-- [x] **Lint-driven explanation hardening** — Rewrote repeated explanation templates in Units 11/12 and remaining hotspot chapters in Unit 7, then resolved cross-chapter duplicate stems and suspicious-text flags. Baseline lint status is now clean (`0` warnings).
-- [~] **Level-calibration hardening** — Rewrote definition-style prompts in the review's hotspot chapters (`unit-2-chapter-3`, `unit-3-chapter-1`) into scenario framing while preserving answer keys. Broader cross-corpus calibration remains.
-- [~] **Unit 7/8 hotspot de-templating (top set)** — Rewrote the highest-ROI hotspot cluster (`unit-7-chapter-8`, `unit-8-chapter-1`, `unit-8-chapter-2`, `unit-8-chapter-3`) to remove legacy explanation template phrasing and tighten scenario wording; additional chapter clusters remain.
-- [x] **Template-regression lint guard (hotspot set)** — Added chapter-level `templated-explanation-density` lint checks to prevent reintroduction of the legacy explanation phrase in the rewritten top hotspot chapters.
-- [x] **Repeated-word artifact cleanup** — Cleared all repeated-word lint warnings (49 fixes) after enabling the upstream repeated-word check.
-- [~] **Unit 7 Chapter 5 hotspot de-templating** — Reworked flagged near-clone pairs (`sc-hs-021`, `sc-hs-022`) plus additional mirrored blocks (`sc-hs-023`, `sc-hs-024`, `sc-hs-025` through `sc-hs-035`) with distinct scenario framing and explanation language; additional chapter-level diversification remains.
-- [x] **Hard-set skill-grid tag alignment** — Added missing `interview-execution` tag to all `unit-12-chapter-9` curated hard-set items so Unit 12 skill-grid results reflect hard-set practice.
-- [x] **Expandable mini-lessons** — `detailedExplanation` complete for all ready units and chapters (9,844 problems).
-- [x] **Further reading links** — `references` complete for all ready units and chapters (9,844 problems).
-
-## Maybe
-
-- [ ] **Community contributions** — Accept PRs for new problems with quality guidelines
-- [ ] **Alternative tracks** — Frontend system design, ML system design, data engineering
-
-## Won't Do
-
-- Video explanations — text is faster and more bus-friendly
-- Discussion forums — use GitHub issues
-- Certification or badges — not the point
+- Completed milestones are tracked in `CHANGELOG.md`.
+- Baseline validation currently passes with the latest linter and test suite.
