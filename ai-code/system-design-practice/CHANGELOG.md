@@ -1,5 +1,16 @@
 # Changelog
 
+## Re-review pass 5: hotspot diversification continuation (2026-02-16)
+
+- Continued Unit 7 Chapter 5 hotspot de-templating in `content/unit-7-chapter-5.json`:
+  - rewrote prompts and explanations for `sc-hs-025` through `sc-hs-035` to remove mirrored template language while preserving answer keys/options
+  - removed the remaining exact duplicate explanation groups in that chapter (`11 -> 0`)
+  - cleaned article grammar artifacts in hotspot scenario wording (`A/In a` before vowel-starting service names)
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Re-review pass 4: metadata persistence + hotspot rewrite (2026-02-16)
 
 - Synced latest upstream `openquizzer.test.js` (253 tests), including UI wiring checks for weakest-areas metadata persistence helpers.
