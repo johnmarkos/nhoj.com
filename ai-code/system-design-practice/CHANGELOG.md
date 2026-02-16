@@ -24,6 +24,26 @@
   - `node --test openquizzer.test.js`
   - `node content-lint.js --json`
 
+## Lint closure pass: duplicate stems + remaining explanation hotspots (2026-02-16)
+
+- Continued descending value/effort execution after metadata rollout:
+  - rewrote all cross-file duplicate question stems (exact-match normalized stem check) with chapter-context variants
+  - removed the final suspicious-text hits by replacing placeholder wording in:
+    - `content/unit-4-chapter-2.json` (`doc-084`)
+    - `content/unit-6-chapter-5.json` (`msg-eda-061`)
+  - rewrote remaining repeated-explanation hotspots in:
+    - `content/unit-7-chapter-1.json`
+    - `content/unit-7-chapter-3.json`
+- Lint progression in this session:
+  - start: `218` warnings
+  - after metadata + first explanation hardening: `140` warnings
+  - after duplicate-stem cleanup: `64` warnings
+  - after final hotspot fixes: `0` warnings / `0` errors
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Timed mode default enabled (2026-02-16)
 
 - Set `CONFIG.timeLimit` to `45` seconds per question in `config.js`.

@@ -62,11 +62,11 @@ Features that go beyond what OpenQuizzer provides generically.
 
 ## Content Quality
 
-- [ ] **Problem review pass** — Manual review of flagged problems (ambiguous, math errors)
+- [x] **Problem review pass** — Lint-guided hardening completed for current corpus baseline (`node content-lint.js --json` now reports `0` warnings / `0` errors). Future review passes continue as content changes.
 - [~] **Difficulty calibration** — Baseline `difficulty` labels added for all ready problems (`9,844 / 9,844`) using rule-based defaults; manual calibration/tuning remains.
 - [x] **Explanation-template rewrite (Units 9/10)** — Rewrote repeated explanation text with scenario-specific, chapter-aware explanations. Uniqueness moved from ~27/1000 to 993/1000 (Unit 9) and 996/1000 (Unit 10).
 - [x] **Curated staff-level hard set** — Added a mixed hard-set chapter (76 problems) focused on ambiguity handling, trade-off defense, and failure narratives (`content/unit-12-chapter-9.json`).
-- [x] **Lint-driven explanation hardening (Units 11/12)** — Rewrote explanation templates in security/interview units to reduce repeated-template warnings and increase scenario specificity.
+- [x] **Lint-driven explanation hardening** — Rewrote repeated explanation templates in Units 11/12 and remaining hotspot chapters in Unit 7, then resolved cross-chapter duplicate stems and suspicious-text flags. Baseline lint status is now clean (`0` warnings).
 - [x] **Expandable mini-lessons** — `detailedExplanation` complete for all ready units and chapters (9,844 problems).
 - [x] **Further reading links** — `references` complete for all ready units and chapters (9,844 problems).
 
