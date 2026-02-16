@@ -10,6 +10,10 @@ export const CONFIG = {
   backLink: { href: "../", text: "\u2190 Back to AI Code" },
   showProblemId: true,
   timeLimit: 45,
+  interviewSimulation: {
+    durationMinutes: 45,
+    questions: 60,
+  },
   units: [
     {
       id: 1,

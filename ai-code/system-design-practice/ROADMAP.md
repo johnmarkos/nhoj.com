@@ -52,8 +52,8 @@ Features below come from the OpenQuizzer engine roadmap. This instance gets them
 
 Features that go beyond what OpenQuizzer provides generically.
 
-- [ ] **Skill grid** — Visual display of Elo scores across all 12 dimensions (estimation, data modeling, API design, etc.). The underlying Elo computation comes from OpenQuizzer v2.9; this item is about an instance-specific visualization tailored to the system design domain (e.g., a radar chart or heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
-- [ ] **Interview simulation mode** — Timed 45-minute sessions, random mix across all units. Depends on OpenQuizzer timed mode (v2.9).
+- [~] **Skill grid** — Baseline dashboard skill-grid shipped using unit-level tag accuracy/proficiency across all 12 dimensions. Future refinement: Elo-based visualization and richer visual formats (radar/heatmap). Depends on per-problem tags (v2.7) and per-problem tracking (v2.9).
+- [x] **Interview simulation mode** — Added a dedicated landing action for timed mixed sessions across all ready units/chapters. Current configuration runs 60-question randomized sessions (45-second timer per question, 45-minute target), with full session tracking/dashboard support.
 
 ## Later (Curriculum Expansion)
 

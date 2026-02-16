@@ -1,5 +1,26 @@
 # Changelog
 
+## Interview simulation mode + baseline skill grid (2026-02-16)
+
+- Added interview simulation configuration in `config.js`:
+  - `interviewSimulation.durationMinutes: 45`
+  - `interviewSimulation.questions: 60`
+- Implemented a dedicated landing flow in `index.html`:
+  - new "Interview Simulation" entry card and start action
+  - loads a randomized mixed session across all ready units/chapters
+  - session context is tagged as `Interview Simulation (Mixed)` for resume/history/dashboard visibility
+  - uses existing v2.9 timed mode (`45s/question`) and tracking pipeline
+- Added a baseline skill-grid section in the dashboard:
+  - maps each unit dimension to its top-level tag
+  - renders per-dimension progress bars + score stats from aggregate tag performance
+  - shows all 12 dimensions and explicitly labels missing-history rows as `No data`
+- Refactored repeated problem-metadata collection in `index.html` into a shared helper used by chapter/unit/simulation loaders.
+- Added config validation coverage in `config.test.js` for `interviewSimulation` settings (positive duration/question counts).
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Metadata rollout + lint-driven hardening (2026-02-16)
 
 - Prioritized post-v2.9 instance work by value/effort and implemented top items first.
