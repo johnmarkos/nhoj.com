@@ -1,5 +1,40 @@
 # Changelog
 
+## Re-review pass 7: top-hotspot de-templating + lint guardrail (2026-02-16)
+
+- Implemented the re-review's highest-ROI instance-only hotspot rewrite set:
+  - `content/unit-7-chapter-8.json`
+  - `content/unit-8-chapter-1.json`
+  - `content/unit-8-chapter-2.json`
+  - `content/unit-8-chapter-3.json`
+- Replaced legacy explanation template phrase occurrences in those chapters (`340` rewrites):
+  - `this is the strongest fit in ...` -> diversified scenario-specific alternatives
+- Tightened scenario wording in `unit-7-chapter-8.json`:
+  - `Primary symptom is ...` -> `Observed symptom: ...`
+- Cleaned grammar artifacts in the same hotspot set (e.g., `A ad` / `A inventory` / `A order` / `A API` -> correct articles in question/explanation text).
+- Removed the remaining stage-followup wording artifact across the same hotspot set (`100` rewrites):
+  - `For After confirming diagnosis, ...` -> `For the follow-up change decision, ...`
+- Added a chapter-level lint regression guard in `content-lint.js`:
+  - new `templated-explanation-density` check watches the four rewritten hotspot chapters and warns if the legacy template phrase reappears.
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
+## Re-review pass 6: targeted wording artifact cleanup (2026-02-16)
+
+- Cleared remaining ungrammatical imperative artifacts in `content/unit-7-chapter-5.json`:
+  - `Apply introduce ...` -> `Introduce ...`
+  - `Apply rebalance ...` -> `Rebalance ...`
+  - `Apply split ...` -> `Split ...`
+  - `Apply add ...` -> `Add ...`
+  - `Apply use ...` -> `Use ...`
+  - `Apply route ...` -> `Route ...`
+- Validation:
+  - `node --test config.test.js`
+  - `node --test openquizzer.test.js`
+  - `node content-lint.js --json` (clean)
+
 ## Re-review pass 5: hotspot diversification continuation (2026-02-16)
 
 - Continued Unit 7 Chapter 5 hotspot de-templating in `content/unit-7-chapter-5.json`:

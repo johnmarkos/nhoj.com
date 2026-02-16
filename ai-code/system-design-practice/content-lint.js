@@ -38,6 +38,19 @@ const SUSPICIOUS_PATTERNS = [
   /TBD/,
 ];
 
+/**
+ * Review hotspot guardrail: keep known high-template chapters from regressing
+ * back to the legacy explanation phrase.
+ */
+const WATCHED_TEMPLATE_CHAPTERS = new Set([
+  "unit-7-chapter-8.json",
+  "unit-8-chapter-1.json",
+  "unit-8-chapter-2.json",
+  "unit-8-chapter-3.json",
+]);
+const LEGACY_TEMPLATE_PHRASE = "this is the strongest fit in";
+const LEGACY_TEMPLATE_ALLOWED_HITS = 0;
+
 // ── Issue Collector ────────────────────────────────────────────────────────
 
 /**
@@ -368,6 +381,42 @@ function checkSingleCorrectMultiSelect(problem, file) {
   }
 }
 
+function checkWatchedTemplateDensity(file, problems) {
+  if (!WATCHED_TEMPLATE_CHAPTERS.has(file)) return;
+
+  let totalExplanations = 0;
+  let legacyHits = 0;
+
+  for (const problem of problems) {
+    const explanations = [];
+    if (typeof problem.explanation === "string")
+      explanations.push(problem.explanation);
+    if (Array.isArray(problem.stages)) {
+      for (const stage of problem.stages) {
+        if (typeof stage.explanation === "string")
+          explanations.push(stage.explanation);
+      }
+    }
+
+    totalExplanations += explanations.length;
+    for (const text of explanations) {
+      if (text.toLowerCase().includes(LEGACY_TEMPLATE_PHRASE)) legacyHits++;
+    }
+  }
+
+  if (legacyHits > LEGACY_TEMPLATE_ALLOWED_HITS) {
+    const density =
+      totalExplanations === 0 ? 0 : (legacyHits / totalExplanations) * 100;
+    addIssue(
+      "warning",
+      file,
+      null,
+      "templated-explanation-density",
+      `Legacy template phrase appears ${legacyHits}/${totalExplanations} times (${density.toFixed(1)}%).`,
+    );
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 function loadContentFiles() {
@@ -497,6 +546,9 @@ function runChecks(chapters) {
         explanationCounts.get(exp).push(`${file}:${pid}`);
       }
     }
+
+    // ── Chapter-level hotspot regression guards ──
+    checkWatchedTemplateDensity(file, data.problems);
   }
 
   // ── Cross-chapter duplicate IDs ──
