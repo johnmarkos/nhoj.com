@@ -1,5 +1,10 @@
 # Changelog
 
+## Timed mode default enabled (2026-02-16)
+
+- Set `CONFIG.timeLimit` to `45` seconds per question in `config.js`.
+- Rationale: preserves interview pressure while still allowing a quick read/reason/answer loop on phone-sized sessions.
+
 ## OpenQuizzer upgrade — v2.9 timed mode, resume, tracking, and spaced repetition (2026-02-16)
 
 - Synced `openquizzer.js`, `openquizzer.test.js`, and `index.html` from OpenQuizzer v2.9.

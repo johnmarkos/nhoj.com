@@ -9,6 +9,7 @@ export const CONFIG = {
     "Build fluency in system design reasoning. Phone-friendly problems you can do in 5 minutes.",
   backLink: { href: "../", text: "\u2190 Back to AI Code" },
   showProblemId: true,
+  timeLimit: 45,
   units: [
     {
       id: 1,
