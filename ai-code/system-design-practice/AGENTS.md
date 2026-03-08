@@ -33,7 +33,17 @@ Default autonomy rule: after writing chapter content and running validation test
 
 ## Development
 
-No build system. Edit files directly and push to `main` for deployment. Fix forward if anything breaks.
+No build system. Edit files directly. All changes to `main` go through pull requests (see Branching & Pull Requests below).
+
+## Branching & Pull Requests
+
+All changes to `main` require a pull request. No direct commits to `main`.
+
+- **Branch naming:** `feat/`, `fix/`, `chore/`, `content/` prefixes (e.g., `content/unit-3-chapter-2`)
+- **Before opening a PR:** run `node --test openquizzer.test.js` and the self-review checklist
+- **CI runs on every PR:** checkout → Node 20 → engine tests → content lint
+- **Code review:** the local agent (Claude) performs review. For significant cross-repo or architectural changes, comment `@codex review` if budget allows.
+- **Branch protection** is configured in the GitHub UI (require PRs, require CI status check)
 
 **Local preview:** Content loads via `fetch()`, so you need a local server to test (e.g., `python3 -m http.server`). Opening `index.html` directly via `file://` won't load problems.
 
