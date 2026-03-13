@@ -1700,6 +1700,21 @@ function findExistingItemForImport(item, itemsByLot, itemsByKey) {
   return key && itemsByKey.has(key) ? itemsByKey.get(key) : null;
 }
 
+function itemImportKeysMatch(left, right) {
+  const leftKey = itemImportKey(left);
+  const rightKey = itemImportKey(right);
+  return Boolean(leftKey && rightKey && leftKey === rightKey);
+}
+
+function hasConflictingImportedLot(item, itemsByLot) {
+  const lotKey = normalizeComparable(item.lotNumber);
+  if (!lotKey) {
+    return false;
+  }
+  const existingItem = itemsByLot.get(lotKey);
+  return Boolean(existingItem && !itemImportKeysMatch(existingItem, item));
+}
+
 function mergeImportedItem(existing, imported) {
   existing.lotNumber = mergeImportedText(existing.lotNumber, imported.lotNumber);
   existing.title = imported.title;
@@ -1952,7 +1967,8 @@ function stopLayoutDrag() {
   saveState('Layout updated');
 }
 
-function updateSelectedBlockSetting(setting, value) {
+function updateSelectedBlockSetting(setting, value, options = {}) {
+  const { rerenderInspector = true } = options;
   const block = selectedLayoutBlock();
   if (!block) {
     return;
@@ -1966,7 +1982,9 @@ function updateSelectedBlockSetting(setting, value) {
     block[setting] = value;
   }
   renderLayoutCanvas();
-  renderInspector();
+  if (rerenderInspector) {
+    renderInspector();
+  }
   renderDocumentPreview();
   saveState('Layout updated');
 }
@@ -2101,6 +2119,8 @@ function applyCsvImport() {
   }
 
   const summary = { added: 0, updated: 0, skipped: 0 };
+  let importMessageType = 'success';
+  let importMessageNote = '';
   if (ui.csvImport.type === 'donors') {
     const donorsByKey = new Map(
       state.donors
@@ -2147,6 +2167,7 @@ function applyCsvImport() {
         .map((item) => [itemImportKey(item), item])
         .filter(([key]) => key)
     );
+    const conflictingLots = new Set();
     let nextLot = Number.parseInt(nextLotNumber(), 10) || 1;
     ui.csvImport.rows.forEach((row) => {
       const title = mapping.title !== undefined ? toText(row[mapping.title]).trim() : '';
@@ -2156,13 +2177,14 @@ function applyCsvImport() {
       }
 
       let donorId = '';
+      let pendingDonor = null;
       if (mapping.donor !== undefined) {
         const donorName = toText(row[mapping.donor]).trim();
         if (donorName) {
           let donor = state.donors.find((entry) => [entry.name, entry.business].map(normalizeComparable).includes(normalizeComparable(donorName)));
           if (!donor) {
             donor = { id: generateId(), name: donorName, business: '', email: '', phone: '', address: '', notes: '' };
-            state.donors.push(donor);
+            pendingDonor = donor;
           }
           donorId = donor.id;
         }
@@ -2181,6 +2203,16 @@ function applyCsvImport() {
         buyNow: mapping.buyNow !== undefined ? toMoney(row[mapping.buyNow]) : null,
         status: 'available'
       };
+
+      if (hasConflictingImportedLot(importedItem, itemsByLot)) {
+        conflictingLots.add(importedItem.lotNumber);
+        summary.skipped += 1;
+        return;
+      }
+
+      if (pendingDonor) {
+        state.donors.push(pendingDonor);
+      }
 
       const existingItem = findExistingItemForImport(importedItem, itemsByLot, itemsByKey);
       if (existingItem) {
@@ -2210,6 +2242,10 @@ function applyCsvImport() {
       nextLot += 1;
       summary.added += 1;
     });
+    if (conflictingLots.size) {
+      importMessageType = 'warning';
+      importMessageNote = ` Conflicting lot numbers skipped: ${Array.from(conflictingLots).join(', ')}.`;
+    }
   }
 
   state.categories = uniqueStrings([...state.categories, ...state.items.map((item) => item.category)]);
@@ -2217,7 +2253,7 @@ function applyCsvImport() {
   renderAll();
   const label = ui.csvImport.type === 'donors' ? 'donor' : 'item';
   saveState(`Imported ${summary.added + summary.updated} row(s)`);
-  showBanner('success', `${summary.added + summary.updated} ${label} row(s) processed: ${summary.added} added, ${summary.updated} updated, ${summary.skipped} skipped.`);
+  showBanner(importMessageType, `${summary.added + summary.updated} ${label} row(s) processed: ${summary.added} added, ${summary.updated} updated, ${summary.skipped} skipped.${importMessageNote}`);
 }
 
 function removeDonor(donorId) {
@@ -2422,9 +2458,9 @@ document.getElementById('layoutInspector').addEventListener('input', (event) => 
     return;
   }
   if (event.target.type === 'checkbox') {
-    updateSelectedBlockSetting(field, event.target.checked);
+    updateSelectedBlockSetting(field, event.target.checked, { rerenderInspector: false });
   } else {
-    updateSelectedBlockSetting(field, event.target.value);
+    updateSelectedBlockSetting(field, event.target.value, { rerenderInspector: false });
   }
 });
 document.getElementById('layoutInspector').addEventListener('change', (event) => {
