@@ -694,6 +694,51 @@ function samplePreviewTable(title, subtitle, headers, rows) {
   `;
 }
 
+function csvExampleConfig(type) {
+  if (type === 'donors') {
+    return {
+      title: 'Donor CSV Example',
+      subtitle: 'These are the columns and sample rows the donor importer expects.',
+      headers: ['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes'],
+      rows: SAMPLE_DONOR_ROWS,
+      templateAction: 'download-donor-template',
+      templateLabel: 'Download donor template'
+    };
+  }
+  return {
+    title: 'Item CSV Example',
+    subtitle: 'These are the columns and sample rows the item importer expects.',
+    headers: ['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now'],
+    rows: SAMPLE_ITEM_ROWS,
+    templateAction: 'download-item-template',
+    templateLabel: 'Download item template'
+  };
+}
+
+function renderCsvExampleIntro() {
+  const wrap = document.getElementById('csvExampleWrap');
+  if (!ui.csvImport) {
+    wrap.innerHTML = '';
+    return;
+  }
+  const example = csvExampleConfig(ui.csvImport.type);
+  wrap.innerHTML = `
+    <div class="note-card csv-example-card">
+      <div class="section-head">
+        <div>
+          <h3>Need an example first?</h3>
+          <p>Use the sample auction if you want to explore the whole app, or use the example rows below to match your spreadsheet format.</p>
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
+        <button class="button" type="button" data-onboarding-action="${example.templateAction}">${example.templateLabel}</button>
+      </div>
+      ${samplePreviewTable(example.title, example.subtitle, example.headers, example.rows)}
+    </div>
+  `;
+}
+
 function renderGettingStarted() {
   const empty = !hasData();
   const heroActions = document.getElementById('heroActions');
@@ -1979,6 +2024,7 @@ function openCsvModal(type, trigger = document.activeElement) {
   document.getElementById('csvModalTitle').textContent = type === 'donors' ? 'Import donors CSV' : 'Import items CSV';
   document.getElementById('csvFileInput').value = '';
   document.getElementById('csvStatus').textContent = 'Choose a CSV file to preview. Blank cells keep existing values when a matching record is updated.';
+  renderCsvExampleIntro();
   document.getElementById('csvMappingWrap').innerHTML = '';
   document.getElementById('csvPreviewWrap').innerHTML = '';
   document.getElementById('confirmCsvImportButton').disabled = true;
@@ -1986,6 +2032,7 @@ function openCsvModal(type, trigger = document.activeElement) {
 }
 
 function closeCsvModal() {
+  document.getElementById('csvExampleWrap').innerHTML = '';
   closeModal('csvModal');
 }
 
@@ -2307,6 +2354,9 @@ function clearAllData() {
 
 function handleOnboardingAction(action) {
   if (action === 'load-sample') {
+    if (ui.modal) {
+      closeModal(ui.modal.id);
+    }
     loadSampleAuction();
     return;
   }
@@ -2835,6 +2885,12 @@ document.getElementById('closeCsvModalButton').addEventListener('click', closeCs
 document.getElementById('csvModal').addEventListener('click', (event) => {
   if (event.target.id === 'csvModal') {
     closeCsvModal();
+  }
+});
+document.getElementById('csvExampleWrap').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-onboarding-action]')?.dataset.onboardingAction;
+  if (action) {
+    handleOnboardingAction(action);
   }
 });
 document.getElementById('csvFileInput').addEventListener('change', handleCsvFile);
