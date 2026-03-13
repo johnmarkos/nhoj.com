@@ -22,6 +22,18 @@ const ui = {
   storageError: ''
 };
 
+const SAMPLE_DONOR_ROWS = [
+  ['Nina Lopez', 'Mission Books', 'nina@missionbooks.example', '415-555-0101', '214 Valencia St', 'Can provide logo art if needed'],
+  ['Daniel Wu', 'Bay Ceramics Studio', 'daniel@bayceramics.example', '415-555-0102', '85 14th St', 'Prefers a mailed thank-you letter'],
+  ['Priya Shah', 'Marina Bistro', 'priya@marinabistro.example', '415-555-0103', '500 Chestnut St', 'Gift certificate expires in one year']
+];
+
+const SAMPLE_ITEM_ROWS = [
+  ['101', 'Signed cookbook set', 'Three signed cookbooks from local chefs.', 'Mission Books', 'Books', '80', '25', '5', ''],
+  ['102', 'Private wheel-throwing lesson', 'Two-hour pottery lesson for two people.', 'Bay Ceramics Studio', 'Art', '140', '50', '10', ''],
+  ['103', 'Dinner for four', 'Chef tasting menu with wine pairing.', 'Marina Bistro', 'Dining', '220', '80', '10', '300']
+];
+
 function defaultThankYouBody() {
   return [
     'Dear {DONOR_NAME},',
@@ -36,6 +48,67 @@ function defaultThankYouBody() {
     'With appreciation,',
     '{SIGNER_NAME}'
   ].join('\n');
+}
+
+function createSampleAuctionState() {
+  const base = createDefaultState();
+  const donors = SAMPLE_DONOR_ROWS.map((row) => ({
+    id: generateId(),
+    name: row[0],
+    business: row[1],
+    email: row[2],
+    phone: row[3],
+    address: row[4],
+    notes: row[5]
+  }));
+  const donorByBusiness = new Map(donors.map((donor) => [donor.business, donor]));
+  const items = SAMPLE_ITEM_ROWS.map((row) => ({
+    id: generateId(),
+    lotNumber: row[0],
+    title: row[1],
+    description: row[2],
+    donorId: donorByBusiness.get(row[3]) ? donorByBusiness.get(row[3]).id : '',
+    category: row[4],
+    fmv: toMoney(row[5]),
+    startingBid: toMoney(row[6]),
+    increment: toMoney(row[7]),
+    buyNow: toMoney(row[8]),
+    status: 'available'
+  }));
+  const soldItem = items.find((item) => item.lotNumber === '101');
+  const winners = soldItem ? [{
+    id: generateId(),
+    itemId: soldItem.id,
+    winnerName: 'Alex Kim',
+    paddleNumber: '27',
+    winningBid: 55,
+    isPaid: false
+  }] : [];
+  if (soldItem) {
+    soldItem.status = 'sold';
+  }
+
+  return {
+    ...base,
+    settings: {
+      ...base.settings,
+      orgName: 'Neighborhood Arts Council',
+      eventName: 'Spring Benefit Auction',
+      eventDate: '2026-05-16',
+      bidSheetHeaderText: 'Sample data for exploring the app. Replace with your own event details.',
+      itemListHeaderText: 'Preview how the public-facing item list will look.',
+      thankYouHeaderText: 'Thank You for Supporting Our Auction',
+      thankYouSignature: 'Maya Hernandez, Auction Chair'
+    },
+    donors,
+    items,
+    winners,
+    categories: uniqueStrings(items.map((item) => item.category)),
+    meta: {
+      lastSavedAt: '',
+      lastBackupAt: ''
+    }
+  };
 }
 
 function defaultLayouts() {
@@ -593,6 +666,114 @@ function switchView(view) {
   });
 }
 
+function samplePreviewTable(title, subtitle, headers, rows) {
+  return `
+    <div class="sample-preview-card">
+      <h4>${escapeHtml(title)}</h4>
+      <p class="muted">${escapeHtml(subtitle)}</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderGettingStarted() {
+  const empty = !hasData();
+  const heroActions = document.getElementById('heroActions');
+  const firstRunGuide = document.getElementById('firstRunGuide');
+  const sampleDataGuide = document.getElementById('sampleDataGuide');
+
+  heroActions.innerHTML = empty
+    ? `
+      <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
+      <button class="button" type="button" data-onboarding-action="jump-donors">Start manually</button>
+      <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
+    `
+    : `
+      <button class="button button--primary" type="button" data-onboarding-action="jump-donors">Add donors</button>
+      <button class="button" type="button" data-onboarding-action="jump-items">Add items</button>
+      <button class="button" type="button" data-onboarding-action="jump-documents">Open documents</button>
+    `;
+
+  if (!empty) {
+    firstRunGuide.hidden = true;
+    sampleDataGuide.hidden = true;
+    firstRunGuide.innerHTML = '';
+    sampleDataGuide.innerHTML = '';
+    return;
+  }
+
+  const donorPreview = samplePreviewTable(
+    'Donor CSV Example',
+    'These are the same columns used by the donor CSV template.',
+    ['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes'],
+    SAMPLE_DONOR_ROWS
+  );
+  const itemPreview = samplePreviewTable(
+    'Item CSV Example',
+    'These rows become auction lots inside the app.',
+    ['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now'],
+    SAMPLE_ITEM_ROWS
+  );
+
+  firstRunGuide.hidden = false;
+  firstRunGuide.innerHTML = `
+    <div class="first-run-card">
+      <div class="section-head">
+        <div>
+          <h3>First-Time Setup</h3>
+          <p>If you are just exploring, load a small sample auction first. It adds 3 donors, 3 items, and 1 recorded winner so every section of the app has something to show.</p>
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
+        <button class="button" type="button" data-onboarding-action="jump-donors">Enter your own donors</button>
+        <button class="button" type="button" data-onboarding-action="jump-data">Go to imports and backups</button>
+      </div>
+      <div class="note-list">
+        <div class="note-card">
+          <strong>No background docs required.</strong>
+          <p>You can explore the sample first, then clear it later from the Data tab and start with your real auction.</p>
+        </div>
+        <div class="note-card">
+          <strong>The preview rows below also show the CSV format.</strong>
+          <p>If you already have a spreadsheet, the columns in these examples match the templates you can download from Data.</p>
+        </div>
+      </div>
+      <div class="sample-preview-grid">
+        ${donorPreview}
+        ${itemPreview}
+      </div>
+    </div>
+  `;
+
+  sampleDataGuide.hidden = false;
+  sampleDataGuide.innerHTML = `
+    <div class="first-run-card">
+      <div class="section-head">
+        <div>
+          <h3>Explore Before You Import</h3>
+          <p>Try a sample auction if you want to see donors, lots, documents, and checkout already filled in before using your own spreadsheet.</p>
+        </div>
+      </div>
+      <div class="button-row">
+        <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
+        <button class="button" type="button" data-onboarding-action="download-donor-template">Download donor template</button>
+        <button class="button" type="button" data-onboarding-action="download-item-template">Download item template</button>
+      </div>
+      <div class="muted">The sample data matches the CSV column format shown above on Home and in the downloadable templates.</div>
+    </div>
+  `;
+}
+
 function renderSidebar() {
   document.getElementById('sidebarEventName').textContent =
     state.settings.eventName || state.settings.orgName || 'Event not named yet';
@@ -642,6 +823,7 @@ function renderSidebar() {
 }
 
 function renderOverview(syncInputs = true) {
+  renderGettingStarted();
   document.getElementById('overviewDonorCount').textContent = String(state.donors.length);
   document.getElementById('overviewDonorNote').textContent = state.donors.length
     ? `${state.donors.filter((donor) => donor.email || donor.phone).length} include contact details.`
@@ -2089,6 +2271,19 @@ function printCurrentDocumentSet() {
   window.print();
 }
 
+function loadSampleAuction() {
+  if (hasData() && !window.confirm('Replace the current auction data in this browser with the sample auction?')) {
+    return;
+  }
+  state = createSampleAuctionState();
+  ui.selectedLayoutBlockId = null;
+  ui.activeView = 'overview';
+  ui.storageError = '';
+  renderAll();
+  saveState('Sample data loaded');
+  showBanner('success', 'Sample auction loaded. Explore the app, then clear it later from Data when you are ready for your real event.');
+}
+
 function clearAllData() {
   if (!window.confirm('Clear all auction data from this browser? This cannot be undone.')) {
     return;
@@ -2099,6 +2294,36 @@ function clearAllData() {
   ui.storageError = '';
   renderAll();
   showBanner('success', 'All auction data has been cleared from this browser.');
+}
+
+function handleOnboardingAction(action) {
+  if (action === 'load-sample') {
+    loadSampleAuction();
+    return;
+  }
+  if (action === 'jump-donors') {
+    switchView('donors');
+    return;
+  }
+  if (action === 'jump-items') {
+    switchView('items');
+    return;
+  }
+  if (action === 'jump-documents') {
+    switchView('documents');
+    return;
+  }
+  if (action === 'jump-data') {
+    switchView('data');
+    return;
+  }
+  if (action === 'download-donor-template') {
+    downloadTemplate('donors');
+    return;
+  }
+  if (action === 'download-item-template') {
+    downloadTemplate('items');
+  }
 }
 
 function handleJsonImport(event) {
@@ -2428,6 +2653,15 @@ document.querySelectorAll('.nav-link').forEach((button) => {
 
 document.querySelectorAll('[data-jump-view]').forEach((button) => {
   button.addEventListener('click', () => switchView(button.dataset.jumpView));
+});
+
+['heroActions', 'firstRunGuide', 'sampleDataGuide'].forEach((id) => {
+  document.getElementById(id).addEventListener('click', (event) => {
+    const action = event.target.closest('[data-onboarding-action]')?.dataset.onboardingAction;
+    if (action) {
+      handleOnboardingAction(action);
+    }
+  });
 });
 
 document.getElementById('quickBackupButton').addEventListener('click', exportJson);
