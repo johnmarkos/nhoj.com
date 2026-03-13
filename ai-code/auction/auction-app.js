@@ -68,7 +68,8 @@ function defaultLayouts() {
         blockField('eventDate', 'Date', 'computed.eventDate', { x: 24, y: 24, w: 52, h: 3, showLabel: false, fontSize: 13, align: 'center' }),
         blockField('headerNote', 'Header note', 'settings.itemListHeaderText', { x: 10, y: 29, w: 80, h: 4, showLabel: false, fontSize: 12, align: 'center' }),
         blockTable('itemTable', 'Price list table', 'itemTable', { x: 6, y: 35, w: 88, h: 52 }),
-        blockField('footerNote', 'Footer note', 'settings.itemListFooterText', { x: 10, y: 90, w: 80, h: 3, showLabel: false, fontSize: 12, align: 'center' })
+        blockField('footerNote', 'Footer note', 'settings.itemListFooterText', { x: 10, y: 90, w: 60, h: 3, showLabel: false, fontSize: 12, align: 'left' }),
+        blockField('pageIndicator', 'Page indicator', 'computed.pageIndicator', { x: 72, y: 90, w: 18, h: 3, showLabel: false, fontSize: 12, align: 'right' })
       ]
     },
     thankYou: {
@@ -189,17 +190,46 @@ function normalizeBlock(block) {
   return blockField(block.id || generateId(), toText(block.label) || 'Field', toText(block.source), block);
 }
 
+function cloneBlock(block) {
+  return { ...block };
+}
+
+function isLegacyItemListFooterBlock(block) {
+  return block.id === 'footerNote'
+    && block.x === 10
+    && block.y === 90
+    && block.w === 80
+    && block.h === 3
+    && block.align === 'center';
+}
+
+function mergeLayoutBlocks(defaultBlocks, rawBlocks) {
+  const defaultIds = new Set(defaultBlocks.map((block) => block.id));
+  const rawById = new Map(rawBlocks.map((block) => [block.id, block]));
+  const mergedDefaults = defaultBlocks.map((block) => rawById.get(block.id) || cloneBlock(block));
+  const extraBlocks = rawBlocks.filter((block) => !defaultIds.has(block.id));
+  return [...mergedDefaults, ...extraBlocks];
+}
+
 function normalizeLayouts(rawLayouts) {
   const defaults = defaultLayouts();
   const safeLayouts = {};
 
   Object.keys(defaults).forEach((key) => {
     const rawLayout = rawLayouts && typeof rawLayouts[key] === 'object' ? rawLayouts[key] : null;
+    const rawBlocks = rawLayout && Array.isArray(rawLayout.blocks)
+      ? rawLayout.blocks.map(normalizeBlock).filter(Boolean)
+      : [];
+    const migratedBlocks = key === 'itemList'
+      ? rawBlocks.map((block) => (isLegacyItemListFooterBlock(block)
+        ? cloneBlock(defaults.itemList.blocks.find((defaultBlock) => defaultBlock.id === 'footerNote'))
+        : block))
+      : rawBlocks;
     safeLayouts[key] = {
       name: defaults[key].name,
-      blocks: rawLayout && Array.isArray(rawLayout.blocks)
-        ? rawLayout.blocks.map(normalizeBlock).filter(Boolean)
-        : defaults[key].blocks.map((block) => ({ ...block }))
+      blocks: migratedBlocks.length
+        ? mergeLayoutBlocks(defaults[key].blocks.map(cloneBlock), migratedBlocks)
+        : defaults[key].blocks.map(cloneBlock)
     };
   });
 
@@ -921,10 +951,17 @@ function filteredItemsForDocuments() {
 }
 
 function donorForItem(item) {
-  return state.donors.find((donor) => donor.id === item.donorId) || null;
+  return donorForItemFromLookup(item, donorLookup());
 }
 
-function buildDocumentContexts(documentType, includeAll) {
+function donorForItemFromLookup(item, donorsById) {
+  if (!item || !item.donorId) {
+    return null;
+  }
+  return donorsById.get(item.donorId) || null;
+}
+
+function buildDocumentContexts(documentType, includeAll, donorsById = donorLookup()) {
   if (documentType === 'itemList') {
     const items = filteredItemsForDocuments();
     if (!items.length) {
@@ -936,20 +973,27 @@ function buildDocumentContexts(documentType, includeAll) {
       pages.push({
         items: items.slice(start, start + ITEM_LIST_ROWS_PER_PAGE),
         pageNumber: pages.length + 1,
-        pageCount
+        pageCount,
+        donorsById
       });
     }
     return includeAll ? pages : pages.slice(0, 1);
   }
   if (documentType === 'thankYou') {
     const eligibleItems = filteredItemsForDocuments();
+    const itemsByDonor = new Map();
+    eligibleItems.forEach((item) => {
+      const donorItems = itemsByDonor.get(item.donorId) || [];
+      donorItems.push(item);
+      itemsByDonor.set(item.donorId, donorItems);
+    });
     const donors = state.donors
-      .map((donor) => ({ donor, items: eligibleItems.filter((item) => item.donorId === donor.id) }))
+      .map((donor) => ({ donor, items: itemsByDonor.get(donor.id) || [], donorsById }))
       .filter((entry) => entry.items.length > 0);
     return includeAll ? donors : donors.slice(0, 1);
   }
   const items = filteredItemsForDocuments();
-  const contexts = items.map((item) => ({ item, donor: donorForItem(item) }));
+  const contexts = items.map((item) => ({ item, donor: donorForItemFromLookup(item, donorsById), donorsById }));
   return includeAll ? contexts : contexts.slice(0, 1);
 }
 
@@ -973,7 +1017,7 @@ function documentFieldValue(source, context) {
   }
 
   const item = context.item || null;
-  const donor = context.donor || (item ? donorForItem(item) : null);
+  const donor = context.donor || (item ? donorForItemFromLookup(item, context.donorsById || donorLookup()) : null);
 
   switch (source) {
     case 'item.lotNumber':
@@ -1006,6 +1050,11 @@ function documentFieldValue(source, context) {
       return [state.settings.orgName, state.settings.eventName].filter(Boolean).join(' — ');
     case 'computed.eventDate':
       return formatDate(state.settings.eventDate);
+    case 'computed.pageIndicator':
+      if (!context.pageNumber || !context.pageCount) {
+        return '';
+      }
+      return `Page ${context.pageNumber} of ${context.pageCount}`;
     case 'computed.donorBlock':
       if (!donor) {
         return '';
@@ -1054,7 +1103,7 @@ function selectedLayoutBlock() {
 
 function renderLayoutCanvas() {
   const canvas = document.getElementById('layoutCanvas');
-  const contexts = buildDocumentContexts(ui.selectedDocumentType, false);
+  const contexts = buildDocumentContexts(ui.selectedDocumentType, false, donorLookup());
   const sampleContext = contexts[0] || {};
   const blocks = layoutBlocksForCurrentType();
 
@@ -1158,7 +1207,8 @@ function renderInspector() {
 }
 
 function renderDocumentPreview() {
-  const contexts = buildDocumentContexts(ui.selectedDocumentType, false);
+  const allContexts = buildDocumentContexts(ui.selectedDocumentType, true, donorLookup());
+  const contexts = allContexts.slice(0, 1);
   const wrap = document.getElementById('documentPreview');
   const summary = document.getElementById('documentPreviewSummary');
   if (!contexts.length) {
@@ -1170,13 +1220,12 @@ function renderDocumentPreview() {
   wrap.innerHTML = contexts.map((context) => renderDocumentPage(ui.selectedDocumentType, context, true)).join('');
 
   if (ui.selectedDocumentType === 'bidSheet') {
-    summary.textContent = `${filteredItemsForDocuments().length} bid sheet(s) will print with this layout.`;
+    summary.textContent = `${allContexts.length} bid sheet(s) will print with this layout.`;
   } else if (ui.selectedDocumentType === 'itemList') {
-    const pageCount = buildDocumentContexts('itemList', true).length;
-    summary.textContent = `${filteredItemsForDocuments().length} item row(s) across ${pageCount} page(s) will print in the price list.`;
+    const itemCount = allContexts.reduce((count, context) => count + context.items.length, 0);
+    summary.textContent = `${itemCount} item row(s) across ${allContexts.length} page(s) will print in the price list.`;
   } else {
-    const letterCount = buildDocumentContexts('thankYou', true).length;
-    summary.textContent = `${letterCount} thank-you letter(s) will print with this layout.`;
+    summary.textContent = `${allContexts.length} thank-you letter(s) will print with this layout.`;
   }
 }
 
@@ -1201,7 +1250,7 @@ function renderOutputBlock(block, context, previewMode) {
 
   if (block.kind === 'table') {
     const tableMarkup = block.tableType === 'itemTable'
-      ? renderItemListTable(context.items || [])
+      ? renderItemListTable(context.items || [], context.donorsById || donorLookup())
       : renderBidTable(context.item || null);
     return `<div class="${className}" style="${style}">${tableMarkup}</div>`;
   }
@@ -1238,7 +1287,7 @@ function renderBidTable(item) {
   `;
 }
 
-function renderItemListTable(items) {
+function renderItemListTable(items, donorsById) {
   return `
     <table class="preview-table">
       <thead>
@@ -1256,7 +1305,7 @@ function renderItemListTable(items) {
           <tr>
             <td>${escapeHtml(item.lotNumber)}</td>
             <td>${escapeHtml(item.title)}</td>
-            <td>${escapeHtml(donorLabel(item.donorId) || '—')}</td>
+            <td>${escapeHtml(donorLabel(item.donorId, donorsById) || '—')}</td>
             <td>${escapeHtml(item.category || '—')}</td>
             <td>${escapeHtml(formatCurrency(item.fmv) || '—')}</td>
             <td>${escapeHtml(formatCurrency(item.startingBid) || '—')}</td>
@@ -1300,13 +1349,15 @@ function renderCheckout() {
 function renderCheckoutSearchResults() {
   const query = normalizeComparable(document.getElementById('checkoutSearch').value);
   const wrap = document.getElementById('checkoutSearchResults');
+  const soldItemIds = new Set(state.winners.map((winner) => winner.itemId));
+  const donorsById = donorLookup();
   if (!query) {
     wrap.innerHTML = '<div class="empty-state">Start typing a lot number or title.</div>';
     return;
   }
 
   const matches = state.items.filter((item) => {
-    if (state.winners.some((winner) => winner.itemId === item.id)) {
+    if (soldItemIds.has(item.id)) {
       return false;
     }
     return [item.lotNumber, item.title].map(normalizeComparable).some((value) => value.includes(query));
@@ -1322,7 +1373,7 @@ function renderCheckoutSearchResults() {
       <div class="lot-pill">${escapeHtml(item.lotNumber)}</div>
       <div>
         <strong>${escapeHtml(item.title)}</strong><br>
-        <span class="muted">${escapeHtml(donorLabel(item.donorId) || 'No donor linked')} | Start ${escapeHtml(formatCurrency(item.startingBid) || '—')}</span>
+        <span class="muted">${escapeHtml(donorLabel(item.donorId, donorsById) || 'No donor linked')} | Start ${escapeHtml(formatCurrency(item.startingBid) || '—')}</span>
       </div>
       <button class="button button--primary button--small" type="button" data-record-winner="${escapeHtml(item.id)}">Record winner</button>
     </div>
@@ -1332,6 +1383,7 @@ function renderCheckoutSearchResults() {
 function renderWinnerList() {
   const query = normalizeComparable(document.getElementById('winnerSearch').value);
   const filter = document.getElementById('winnerFilter').value;
+  const itemsById = new Map(state.items.map((item) => [item.id, item]));
   const winners = state.winners.filter((winner) => {
     if (filter === 'paid' && !winner.isPaid) {
       return false;
@@ -1342,13 +1394,13 @@ function renderWinnerList() {
     if (!query) {
       return true;
     }
-    const item = state.items.find((entry) => entry.id === winner.itemId);
+    const item = itemsById.get(winner.itemId);
     return [winner.winnerName, winner.paddleNumber, item ? item.title : '', item ? item.lotNumber : '']
       .map(normalizeComparable)
       .some((value) => value.includes(query));
   }).sort((left, right) => {
-    const leftItem = state.items.find((entry) => entry.id === left.itemId);
-    const rightItem = state.items.find((entry) => entry.id === right.itemId);
+    const leftItem = itemsById.get(left.itemId);
+    const rightItem = itemsById.get(right.itemId);
     return (leftItem ? leftItem.lotNumber : '').localeCompare(rightItem ? rightItem.lotNumber : '', undefined, { numeric: true, sensitivity: 'base' });
   });
 
@@ -1359,7 +1411,7 @@ function renderWinnerList() {
   }
 
   wrap.innerHTML = winners.map((winner) => {
-    const item = state.items.find((entry) => entry.id === winner.itemId);
+    const item = itemsById.get(winner.itemId);
     return `
       <div class="winner-card ${winner.isPaid ? 'paid' : ''}">
         <div class="lot-pill">${escapeHtml(item ? item.lotNumber : '—')}</div>
@@ -1540,21 +1592,25 @@ function generateCsv(headers, rows) {
 
 function exportCsv(type) {
   if (type === 'donors') {
-    const rows = state.donors.map((donor) => [donor.name, donor.business, donor.email, donor.phone, donor.address, donor.notes, countItemsForDonor(donor.id)]);
+    const donorItemCounts = itemCountsByDonor();
+    const rows = state.donors.map((donor) => [donor.name, donor.business, donor.email, donor.phone, donor.address, donor.notes, countItemsForDonor(donor.id, donorItemCounts)]);
     downloadBlob(new Blob([generateCsv(['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes', 'Item Count'], rows)], { type: 'text/csv' }), 'auction-donors.csv');
     return;
   }
   if (type === 'winners') {
+    const itemsById = new Map(state.items.map((item) => [item.id, item]));
     const rows = state.winners.map((winner) => {
-      const item = state.items.find((entry) => entry.id === winner.itemId);
+      const item = itemsById.get(winner.itemId);
       return [item ? item.lotNumber : '', item ? item.title : '', winner.winnerName, winner.paddleNumber, winner.winningBid, winner.isPaid ? 'Yes' : 'No'];
     });
     downloadBlob(new Blob([generateCsv(['Lot Number', 'Item', 'Winner', 'Paddle', 'Winning Bid', 'Paid'], rows)], { type: 'text/csv' }), 'auction-winners.csv');
     return;
   }
+  const donorsById = donorLookup();
+  const winnersByItemId = new Map(state.winners.map((winner) => [winner.itemId, winner]));
   const rows = state.items.map((item) => {
-    const winner = state.winners.find((entry) => entry.itemId === item.id);
-    return [item.lotNumber, item.title, item.description, donorLabel(item.donorId), item.category, item.fmv ?? '', item.startingBid ?? '', item.increment ?? '', item.buyNow ?? '', winner ? winner.winnerName : '', winner ? winner.winningBid : '', winner && winner.isPaid ? 'Yes' : 'No'];
+    const winner = winnersByItemId.get(item.id);
+    return [item.lotNumber, item.title, item.description, donorLabel(item.donorId, donorsById), item.category, item.fmv ?? '', item.startingBid ?? '', item.increment ?? '', item.buyNow ?? '', winner ? winner.winnerName : '', winner ? winner.winningBid : '', winner && winner.isPaid ? 'Yes' : 'No'];
   });
   downloadBlob(new Blob([generateCsv(['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now', 'Winner', 'Winning Bid', 'Paid'], rows)], { type: 'text/csv' }), 'auction-items.csv');
 }
@@ -1731,7 +1787,7 @@ function openCsvModal(type, trigger = document.activeElement) {
   ui.csvImport = { type, headers: [], rows: [], mapping: {} };
   document.getElementById('csvModalTitle').textContent = type === 'donors' ? 'Import donors CSV' : 'Import items CSV';
   document.getElementById('csvFileInput').value = '';
-  document.getElementById('csvStatus').textContent = 'Choose a CSV file to preview.';
+  document.getElementById('csvStatus').textContent = 'Choose a CSV file to preview. Blank cells keep existing values when a matching record is updated.';
   document.getElementById('csvMappingWrap').innerHTML = '';
   document.getElementById('csvPreviewWrap').innerHTML = '';
   document.getElementById('confirmCsvImportButton').disabled = true;
@@ -1813,6 +1869,7 @@ function updateDocumentSettings() {
   state.settings.itemListHeaderText = document.getElementById('itemListHeaderText').value.trim();
   state.settings.itemListFooterText = document.getElementById('itemListFooterText').value.trim();
   state.settings.thankYouHeaderText = document.getElementById('thankYouHeaderText').value.trim();
+  // Preserve intentional blank lines and indentation in the letter template.
   state.settings.thankYouBodyText = document.getElementById('thankYouBodyText').value;
   state.settings.thankYouSignature = document.getElementById('thankYouSignature').value.trim();
   renderDocumentsView(false);
@@ -2023,7 +2080,7 @@ function removeSelectedTextBlock() {
 }
 
 function printCurrentDocumentSet() {
-  const contexts = buildDocumentContexts(ui.selectedDocumentType, true);
+  const contexts = buildDocumentContexts(ui.selectedDocumentType, true, donorLookup());
   if (!contexts.length) {
     showBanner('warning', 'There is no data available for this document type yet.');
     return;
@@ -2087,7 +2144,7 @@ function handleCsvFile(event) {
     ui.csvImport.headers = rows[0];
     ui.csvImport.rows = rows.slice(1);
     ui.csvImport.mapping = detectCsvColumns(ui.csvImport.headers, ui.csvImport.type);
-    document.getElementById('csvStatus').textContent = `${ui.csvImport.rows.length} row(s) ready to review.`;
+    document.getElementById('csvStatus').textContent = `${ui.csvImport.rows.length} row(s) ready to review. Blank cells keep existing values when a matching record is updated.`;
     document.getElementById('confirmCsvImportButton').disabled = false;
     renderCsvMapping();
   };
