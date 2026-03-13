@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Silent Auction Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="auction-app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back-link" href="../index.html">&larr; Back to Tools</a>
+    <div class="topbar-actions">
+      <div class="status-pill" id="saveStatus">Saved in this browser</div>
+      <button class="button button--primary button--small" id="quickBackupButton" type="button">Download backup</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <section class="panel brand-panel">
+        <p class="eyebrow">Auction Organizer</p>
+        <h1>Silent Auction Manager</h1>
+        <p class="lede">Donors, lots, bid sheets, checkout, and layout editing for small nonprofits and community events.</p>
+      </section>
+
+      <nav class="panel nav-panel" aria-label="Auction sections">
+        <button class="nav-link is-active" type="button" data-view="overview">
+          <strong>Home</strong>
+          <span>What is ready and what needs attention</span>
+        </button>
+        <button class="nav-link" type="button" data-view="donors">
+          <strong>Donors</strong>
+          <span>People, businesses, and addresses</span>
+        </button>
+        <button class="nav-link" type="button" data-view="items">
+          <strong>Items</strong>
+          <span>Lots, descriptions, and pricing</span>
+        </button>
+        <button class="nav-link" type="button" data-view="documents">
+          <strong>Documents</strong>
+          <span>Print jobs and layout designer</span>
+        </button>
+        <button class="nav-link" type="button" data-view="checkout">
+          <strong>Checkout</strong>
+          <span>Winners, payments, totals</span>
+        </button>
+        <button class="nav-link" type="button" data-view="data">
+          <strong>Data</strong>
+          <span>Backups, CSV import, exports</span>
+        </button>
+      </nav>
+
+      <section class="panel summary-panel">
+        <strong id="sidebarEventName">Event not named yet</strong>
+        <div id="sidebarEventDate" class="muted">Choose an event date in Home.</div>
+        <div id="sidebarBackup" class="muted">No backup downloaded yet.</div>
+      </section>
+
+      <section class="panel checklist-panel">
+        <strong>Readiness Checklist</strong>
+        <div id="sidebarChecklist" class="checklist"></div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <div id="banner" class="banner" hidden></div>
+
+      <section class="view is-active" id="view-overview">
+        <article class="panel hero-panel">
+          <div>
+            <p class="eyebrow">Start Here</p>
+            <h2>Built for a smart auction creator, not a software specialist.</h2>
+            <p class="lede">Set the event details, add donors and items, tune the printed layouts, then record winners after the event. Everything saves in this browser automatically.</p>
+            <div class="button-row">
+              <button class="button button--primary" type="button" data-jump-view="donors">Add donors</button>
+              <button class="button" type="button" data-jump-view="items">Add items</button>
+              <button class="button" type="button" data-jump-view="documents">Open documents</button>
+            </div>
+          </div>
+          <div class="hero-note">
+            <strong>Joni’s original ask, captured directly</strong>
+            <p>This version is being built around actual layout control: field blocks, titles on or off, custom text blocks, and print templates for bid sheets, price lists, and thank-you letters.</p>
+          </div>
+        </article>
+
+        <section class="stats-grid">
+          <article class="panel stat-card">
+            <div class="stat-label">Donors</div>
+            <div class="stat-value" id="overviewDonorCount">0</div>
+            <div class="stat-note" id="overviewDonorNote">No donor records yet.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Items</div>
+            <div class="stat-value" id="overviewItemCount">0</div>
+            <div class="stat-note" id="overviewItemNote">No auction items yet.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Sold</div>
+            <div class="stat-value" id="overviewSoldCount">0</div>
+            <div class="stat-note" id="overviewSoldNote">No winners recorded yet.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Raised</div>
+            <div class="stat-value" id="overviewRaisedTotal">$0.00</div>
+            <div class="stat-note">Based on recorded winning bids.</div>
+          </article>
+        </section>
+
+        <section class="two-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Event Basics</h3>
+                <p>These values appear in your printed documents.</p>
+              </div>
+            </div>
+            <div class="form-grid">
+              <label class="field">
+                <span>Organization name</span>
+                <input id="orgName" type="text" placeholder="Neighborhood Arts Council">
+              </label>
+              <label class="field">
+                <span>Event name</span>
+                <input id="eventName" type="text" placeholder="Spring Silent Auction 2026">
+              </label>
+              <label class="field">
+                <span>Event date</span>
+                <input id="eventDate" type="date">
+              </label>
+              <label class="field">
+                <span>Logo (optional)</span>
+                <input id="logoUpload" type="file" accept="image/*">
+              </label>
+              <div class="field field--full">
+                <span>Logo preview</span>
+                <div id="logoPreview" class="logo-preview-wrap"></div>
+                <button class="button button--small" id="removeLogoButton" type="button">Remove logo</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Needs Attention</h3>
+                <p>Before printing or checkout, clear these first.</p>
+              </div>
+            </div>
+            <div id="overviewIssues" class="issue-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-donors">
+        <section class="two-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Donor Form</h3>
+                <p>Add a donor or edit an existing record.</p>
+              </div>
+            </div>
+            <form id="donorForm" class="stack">
+              <input id="donorId" type="hidden">
+              <div class="form-grid">
+                <label class="field">
+                  <span>Contact name</span>
+                  <input id="donorName" type="text" maxlength="120" required>
+                </label>
+                <label class="field">
+                  <span>Business or organization</span>
+                  <input id="donorBusiness" type="text" maxlength="120">
+                </label>
+                <label class="field">
+                  <span>Email</span>
+                  <input id="donorEmail" type="email" maxlength="160">
+                </label>
+                <label class="field">
+                  <span>Phone</span>
+                  <input id="donorPhone" type="tel" maxlength="40">
+                </label>
+                <label class="field field--full">
+                  <span>Business address</span>
+                  <input id="donorAddress" type="text" maxlength="220">
+                </label>
+                <label class="field field--full">
+                  <span>Notes</span>
+                  <textarea id="donorNotes" maxlength="800" placeholder="Anything helpful for thank-you notes or follow-up."></textarea>
+                </label>
+              </div>
+              <div class="button-row">
+                <button class="button button--primary" type="submit">Save donor</button>
+                <button class="button" id="clearDonorButton" type="button">Clear form</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Donor List</h3>
+                <p>Search and jump back into editing.</p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <input id="donorSearch" type="search" placeholder="Search donors by name, business, or email">
+              <select id="donorSort">
+                <option value="name">Sort by name</option>
+                <option value="business">Sort by business</option>
+                <option value="items">Sort by item count</option>
+              </select>
+            </div>
+            <div id="donorTableWrap"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-items">
+        <section class="two-up">
+          <div class="stack">
+            <article class="panel section-card">
+              <div class="section-head">
+                <div>
+                  <h3>Item Form</h3>
+                  <p>Each item becomes one lot.</p>
+                </div>
+              </div>
+              <form id="itemForm" class="stack">
+                <input id="itemId" type="hidden">
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Lot number</span>
+                    <input id="itemLotNumber" type="text" maxlength="24" required>
+                  </label>
+                  <label class="field">
+                    <span>Item title</span>
+                    <input id="itemTitle" type="text" maxlength="160" required>
+                  </label>
+                  <label class="field">
+                    <span>Linked donor</span>
+                    <select id="itemDonor"></select>
+                  </label>
+                  <label class="field">
+                    <span>Category</span>
+                    <select id="itemCategory"></select>
+                  </label>
+                  <label class="field field--full">
+                    <span>Description</span>
+                    <textarea id="itemDescription" maxlength="1400" placeholder="This can print on the bid sheet."></textarea>
+                  </label>
+                  <label class="field">
+                    <span>Fair market value</span>
+                    <input id="itemFmv" type="number" min="0" step="0.01">
+                  </label>
+                  <label class="field">
+                    <span>Starting bid</span>
+                    <input id="itemStartingBid" type="number" min="0" step="0.01">
+                  </label>
+                  <label class="field">
+                    <span>Minimum increment</span>
+                    <input id="itemIncrement" type="number" min="0" step="0.01">
+                  </label>
+                  <label class="field">
+                    <span>Buy-now price</span>
+                    <input id="itemBuyNow" type="number" min="0" step="0.01">
+                  </label>
+                </div>
+                <div class="button-row">
+                  <button class="button button--primary" type="submit">Save item</button>
+                  <button class="button" id="clearItemButton" type="button">Clear form</button>
+                  <button class="button" id="renumberLotsButton" type="button">Renumber lots</button>
+                </div>
+              </form>
+            </article>
+
+            <article class="panel section-card">
+              <div class="section-head">
+                <div>
+                  <h3>Categories</h3>
+                  <p>Optional, but useful for print filters.</p>
+                </div>
+              </div>
+              <div class="toolbar">
+                <input id="newCategory" type="text" placeholder="Dining, art, experiences..." maxlength="80">
+                <button class="button" id="addCategoryButton" type="button">Add category</button>
+              </div>
+              <div id="categoryList"></div>
+            </article>
+          </div>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Item List</h3>
+                <p>Review print readiness and linked donors.</p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <input id="itemSearch" type="search" placeholder="Search by lot, title, donor, or category">
+              <select id="itemCategoryFilter"></select>
+              <select id="itemSort">
+                <option value="lot">Sort by lot</option>
+                <option value="title">Sort by title</option>
+                <option value="donor">Sort by donor</option>
+                <option value="value">Sort by value</option>
+              </select>
+            </div>
+            <div id="itemTableWrap"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-documents">
+        <section class="three-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Print Job</h3>
+                <p>Preview one sample page, then print the full document set.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <label class="field">
+                <span>Document type</span>
+                <select id="documentTypeSelect">
+                  <option value="bidSheet">Bid sheets</option>
+                  <option value="itemList">Item and donor price list</option>
+                  <option value="thankYou">Thank-you letters</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Category filter</span>
+                <select id="documentCategoryFilter"></select>
+              </label>
+              <label class="field" id="bidLineCountField">
+                <span>Bid sheet blank lines</span>
+                <input id="bidLineCount" type="number" min="6" max="30">
+              </label>
+              <div class="button-row">
+                <button class="button button--primary" id="refreshPreviewButton" type="button">Refresh preview</button>
+                <button class="button" id="printDocumentButton" type="button">Print full set</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Document Copy</h3>
+                <p>These text values feed the templates and can also be placed on the layout canvas.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <label class="field">
+                <span>Bid sheet header note</span>
+                <input id="bidSheetHeaderText" type="text" maxlength="160">
+              </label>
+              <label class="field">
+                <span>Bid sheet footer note</span>
+                <input id="bidSheetFooterText" type="text" maxlength="160">
+              </label>
+              <label class="field">
+                <span>Price list header note</span>
+                <input id="itemListHeaderText" type="text" maxlength="160">
+              </label>
+              <label class="field">
+                <span>Price list footer note</span>
+                <input id="itemListFooterText" type="text" maxlength="160">
+              </label>
+              <label class="field">
+                <span>Thank-you heading</span>
+                <input id="thankYouHeaderText" type="text" maxlength="160">
+              </label>
+              <label class="field">
+                <span>Thank-you body template</span>
+                <textarea id="thankYouBodyText"></textarea>
+              </label>
+              <label class="field">
+                <span>Thank-you signature</span>
+                <input id="thankYouSignature" type="text" maxlength="120">
+              </label>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Block Inspector</h3>
+                <p>Move blocks on the canvas, then fine-tune them here.</p>
+              </div>
+            </div>
+            <div id="layoutInspector" class="inspector-empty">Select a block on the layout canvas.</div>
+          </article>
+        </section>
+
+        <section class="two-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Layout Designer</h3>
+                <p>Drag blocks to new positions. Add your own text blocks for layout-specific notes.</p>
+              </div>
+              <div class="button-row">
+                <button class="button button--small" id="addTextBlockButton" type="button">Add text block</button>
+                <button class="button button--small" id="resetLayoutButton" type="button">Reset layout</button>
+              </div>
+            </div>
+            <div id="layoutCanvasWrap" class="layout-canvas-wrap">
+              <div id="layoutCanvas" class="layout-canvas" aria-label="Document layout canvas"></div>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Sample Preview</h3>
+                <p id="documentPreviewSummary">This uses the same layout data that printing uses.</p>
+              </div>
+            </div>
+            <div id="documentPreview" class="document-preview"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-checkout">
+        <section class="stats-grid">
+          <article class="panel stat-card">
+            <div class="stat-label">Items Sold</div>
+            <div class="stat-value" id="checkoutSoldCount">0</div>
+            <div class="stat-note">Lots with winners recorded.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Raised</div>
+            <div class="stat-value" id="checkoutRaisedTotal">$0.00</div>
+            <div class="stat-note">Total winning bids.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Paid</div>
+            <div class="stat-value" id="checkoutPaidTotal">$0.00</div>
+            <div class="stat-note">Winners marked as paid.</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="stat-label">Outstanding</div>
+            <div class="stat-value" id="checkoutOutstandingTotal">$0.00</div>
+            <div class="stat-note">Still to collect.</div>
+          </article>
+        </section>
+
+        <section class="two-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Record a Winner</h3>
+                <p>Search by lot number or item title.</p>
+              </div>
+            </div>
+            <label class="field">
+              <span>Search items</span>
+              <input id="checkoutSearch" type="search" placeholder="12, painting, dinner...">
+            </label>
+            <div id="checkoutSearchResults" class="search-results"></div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Winner List</h3>
+                <p>Review payments or make corrections.</p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <input id="winnerSearch" type="search" placeholder="Search by winner, lot, or title">
+              <select id="winnerFilter">
+                <option value="all">All winners</option>
+                <option value="paid">Paid only</option>
+                <option value="unpaid">Unpaid only</option>
+              </select>
+            </div>
+            <div id="winnerList"></div>
+          </article>
+        </section>
+      </section>
+
+      <section class="view" id="view-data">
+        <section class="three-up">
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>Backups</h3>
+                <p>Use these before printing and after checkout.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <button class="button button--primary" id="exportJsonButton" type="button">Download data backup (JSON)</button>
+              <button class="button" id="importJsonButton" type="button">Restore from JSON backup</button>
+              <button class="button" id="exportHtmlButton" type="button">Download HTML archive</button>
+              <input id="jsonImportInput" type="file" accept=".json,.txt" hidden>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>CSV Import</h3>
+                <p>Bring in data from a spreadsheet export.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <button class="button" id="importDonorsCsvButton" type="button">Import donors CSV</button>
+              <button class="button" id="importItemsCsvButton" type="button">Import items CSV</button>
+              <button class="button" id="downloadDonorTemplateButton" type="button">Download donor CSV template</button>
+              <button class="button" id="downloadItemTemplateButton" type="button">Download item CSV template</button>
+            </div>
+          </article>
+
+          <article class="panel section-card">
+            <div class="section-head">
+              <div>
+                <h3>CSV Export</h3>
+                <p>Useful for accounting or committee handoff.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <button class="button" id="exportDonorsCsvButton" type="button">Export donors CSV</button>
+              <button class="button" id="exportItemsCsvButton" type="button">Export items CSV</button>
+              <button class="button" id="exportWinnersCsvButton" type="button">Export winners CSV</button>
+            </div>
+          </article>
+        </section>
+
+        <article class="panel section-card">
+          <div class="section-head">
+            <div>
+              <h3>Plain-English Notes</h3>
+              <p>Useful reminders for whoever is running the auction laptop.</p>
+            </div>
+          </div>
+          <div class="note-list">
+            <div class="note-card">
+              <strong>The JSON file is data, not the app.</strong>
+              <p>To restore it on another computer, open this page there and choose “Restore from JSON backup.”</p>
+            </div>
+            <div class="note-card">
+              <strong>The HTML archive is a readable snapshot with embedded data.</strong>
+              <p>It is useful for handoff or storage, and it now includes buttons to copy or download the JSON backup inside it.</p>
+            </div>
+            <div class="note-card note-card--danger">
+              <strong>Clear all data only after a confirmed backup.</strong>
+              <p>If you clear the browser without a backup, the auction records are gone.</p>
+            </div>
+          </div>
+          <div class="button-row">
+            <button class="button button--danger" id="clearAllDataButton" type="button">Clear all auction data</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="winnerModal" role="dialog" aria-modal="true" aria-labelledby="winnerModalTitle" hidden>
+    <div class="modal__card">
+      <div class="modal__head">
+        <strong id="winnerModalTitle">Record winner</strong>
+        <div id="winnerModalContext" class="muted"></div>
+      </div>
+      <div class="modal__body">
+        <input id="winnerRecordId" type="hidden">
+        <input id="winnerItemId" type="hidden">
+        <div class="form-grid">
+          <label class="field">
+            <span>Winner name</span>
+            <input id="winnerName" type="text" maxlength="140">
+          </label>
+          <label class="field">
+            <span>Paddle number</span>
+            <input id="winnerPaddle" type="text" maxlength="40">
+          </label>
+          <label class="field">
+            <span>Final amount</span>
+            <input id="winnerAmount" type="number" min="0" step="0.01">
+          </label>
+          <label class="field field--checkbox">
+            <input id="winnerPaid" type="checkbox">
+            <span>Mark paid now</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal__foot">
+        <button class="button" id="closeWinnerModalButton" type="button">Cancel</button>
+        <button class="button button--primary" id="saveWinnerButton" type="button">Save winner</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="csvModal" role="dialog" aria-modal="true" aria-labelledby="csvModalTitle" hidden>
+    <div class="modal__card modal__card--wide">
+      <div class="modal__head">
+        <strong id="csvModalTitle">Import CSV</strong>
+        <div class="muted">Review the preview and confirm the detected columns before importing.</div>
+      </div>
+      <div class="modal__body stack">
+        <label class="field">
+          <span>Choose CSV file</span>
+          <input id="csvFileInput" type="file" accept=".csv,.txt">
+        </label>
+        <div id="csvStatus" class="muted"></div>
+        <div id="csvMappingWrap"></div>
+        <div id="csvPreviewWrap"></div>
+      </div>
+      <div class="modal__foot">
+        <button class="button" id="closeCsvModalButton" type="button">Cancel</button>
+        <button class="button button--primary" id="confirmCsvImportButton" type="button" disabled>Import rows</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="printRoot" class="print-root" aria-hidden="true"></div>
+
+  <script src="auction-app.js"></script>
+</body>
+</html>
