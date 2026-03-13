@@ -50,6 +50,15 @@ function defaultThankYouBody() {
   ].join('\n');
 }
 
+function dateInputValueDaysFromNow(days) {
+  const value = new Date();
+  value.setDate(value.getDate() + days);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function createSampleAuctionState() {
   const base = createDefaultState();
   const donors = SAMPLE_DONOR_ROWS.map((row) => ({
@@ -94,7 +103,7 @@ function createSampleAuctionState() {
       ...base.settings,
       orgName: 'Neighborhood Arts Council',
       eventName: 'Spring Benefit Auction',
-      eventDate: '2026-05-16',
+      eventDate: dateInputValueDaysFromNow(60),
       bidSheetHeaderText: 'Sample data for exploring the app. Replace with your own event details.',
       itemListHeaderText: 'Preview how the public-facing item list will look.',
       thankYouHeaderText: 'Thank You for Supporting Our Auction',
