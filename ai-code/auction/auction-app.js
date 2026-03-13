@@ -1,14 +1,25 @@
 const STORAGE_KEY = 'phdc_auction_data';
 const BACKUP_WARNING_DAYS = 7;
+const ITEM_LIST_ROWS_PER_PAGE = 18;
 const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const TIME_FORMAT = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+const MODAL_FOCUS_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(', ');
 
 const ui = {
   activeView: 'overview',
   selectedDocumentType: 'bidSheet',
   selectedLayoutBlockId: null,
   dragState: null,
-  csvImport: null
+  csvImport: null,
+  modal: null,
+  storageError: ''
 };
 
 function defaultThankYouBody() {
@@ -78,8 +89,6 @@ function baseBlock(id, label, kind, options = {}) {
     id,
     label,
     kind,
-    source: options.source || '',
-    text: options.text || '',
     x: clampNumber(options.x, 0, 0, 100),
     y: clampNumber(options.y, 0, 0, 100),
     w: clampNumber(options.w, 20, 4, 100),
@@ -95,11 +104,11 @@ function baseBlock(id, label, kind, options = {}) {
 }
 
 function blockField(id, label, source, options = {}) {
-  return { ...baseBlock(id, label, 'field', { ...options, source }), source };
+  return { ...baseBlock(id, label, 'field', options), source };
 }
 
 function blockText(id, label, text, options = {}) {
-  return { ...baseBlock(id, label, 'text', { ...options, text }), text };
+  return { ...baseBlock(id, label, 'text', options), text };
 }
 
 function blockImage(id, options = {}) {
@@ -277,18 +286,57 @@ function loadState() {
 let state = loadState();
 let saveTimer = null;
 
+function persistState(message, options = {}) {
+  const { skipRender = false } = options;
+  state.meta.lastSavedAt = new Date().toISOString();
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    ui.storageError = '';
+    if (!skipRender) {
+      renderSaveStatus(message || 'Saved');
+      renderSidebar();
+      renderBannerFromState();
+    }
+    return true;
+  } catch (error) {
+    const isQuotaError = error && (
+      error.name === 'QuotaExceededError'
+      || error.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+      || error.code === 22
+      || error.code === 1014
+    );
+    ui.storageError = isQuotaError
+      ? 'Storage full. Download a backup and remove the logo or older data to free space.'
+      : 'This browser could not save the latest change locally.';
+    if (!skipRender) {
+      renderSaveStatus('Save failed');
+      showBanner('error', ui.storageError);
+    }
+    return false;
+  }
+}
+
+function flushPendingSave(message, options = {}) {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  return persistState(message, options);
+}
+
 function saveState(message) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    state.meta.lastSavedAt = new Date().toISOString();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    renderSaveStatus(message || 'Saved');
-    renderSidebar();
-    renderBannerFromState();
+    saveTimer = null;
+    persistState(message);
   }, 140);
 }
 
 function generateId() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
   return `${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-5)}`;
 }
 
@@ -324,8 +372,7 @@ function normalizeComparable(value) {
   return toText(value).trim().toLowerCase();
 }
 
-function donorLabel(donorId) {
-  const donor = state.donors.find((entry) => entry.id === donorId);
+function donorLabelFromRecord(donor) {
   if (!donor) {
     return '';
   }
@@ -335,12 +382,35 @@ function donorLabel(donorId) {
   return donor.business || donor.name;
 }
 
+function donorLookup() {
+  return new Map(state.donors.map((donor) => [donor.id, donor]));
+}
+
+function donorLabel(donorId, donorsById = null) {
+  const donor = donorsById ? donorsById.get(donorId) : state.donors.find((entry) => entry.id === donorId);
+  return donorLabelFromRecord(donor);
+}
+
 function donorAddress(donorId) {
   const donor = state.donors.find((entry) => entry.id === donorId);
   return donor ? donor.address : '';
 }
 
-function countItemsForDonor(donorId) {
+function itemCountsByDonor() {
+  const counts = new Map();
+  state.items.forEach((item) => {
+    if (!item.donorId) {
+      return;
+    }
+    counts.set(item.donorId, (counts.get(item.donorId) || 0) + 1);
+  });
+  return counts;
+}
+
+function countItemsForDonor(donorId, counts = null) {
+  if (counts) {
+    return counts.get(donorId) || 0;
+  }
   return state.items.filter((item) => item.donorId === donorId).length;
 }
 
@@ -380,6 +450,11 @@ function clearBanner() {
 }
 
 function renderBannerFromState() {
+  if (ui.storageError) {
+    showBanner('error', ui.storageError);
+    return;
+  }
+
   const staleBackup = state.meta.lastBackupAt
     ? Math.floor((Date.now() - new Date(state.meta.lastBackupAt).getTime()) / (1000 * 60 * 60 * 24)) >= BACKUP_WARNING_DAYS
     : false;
@@ -395,6 +470,87 @@ function renderBannerFromState() {
   }
 
   clearBanner();
+}
+
+function focusableElements(container) {
+  return Array.from(container.querySelectorAll(MODAL_FOCUS_SELECTOR))
+    .filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true');
+}
+
+function openModal(modalId, initialFocusId, trigger = document.activeElement) {
+  const modal = document.getElementById(modalId);
+  if (!modal) {
+    return;
+  }
+  ui.modal = {
+    id: modalId,
+    returnFocus: trigger instanceof HTMLElement ? trigger : null
+  };
+  modal.hidden = false;
+  const preferred = initialFocusId ? modal.querySelector(`#${initialFocusId}`) : null;
+  const focusTarget = preferred instanceof HTMLElement ? preferred : focusableElements(modal)[0];
+  if (focusTarget) {
+    focusTarget.focus();
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) {
+    return;
+  }
+  modal.hidden = true;
+  if (ui.modal && ui.modal.id === modalId) {
+    const { returnFocus } = ui.modal;
+    ui.modal = null;
+    if (returnFocus && returnFocus.isConnected) {
+      window.requestAnimationFrame(() => returnFocus.focus());
+    }
+  }
+}
+
+function handleModalKeydown(event) {
+  if (!ui.modal) {
+    return;
+  }
+
+  const modal = document.getElementById(ui.modal.id);
+  if (!modal || modal.hidden) {
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeModal(ui.modal.id);
+    return;
+  }
+
+  if (event.key !== 'Tab') {
+    return;
+  }
+
+  const focusables = focusableElements(modal);
+  if (!focusables.length) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (!modal.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+    return;
+  }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function switchView(view) {
@@ -414,6 +570,7 @@ function renderSidebar() {
     state.settings.eventDate ? formatDate(state.settings.eventDate) : 'Choose an event date in Home.';
   document.getElementById('sidebarBackup').textContent =
     state.meta.lastBackupAt ? `Last backup: ${formatDate(state.meta.lastBackupAt.slice(0, 10))}` : 'No backup downloaded yet.';
+  const duplicateLotNumbers = duplicateLots();
 
   const items = [
     {
@@ -432,9 +589,9 @@ function renderSidebar() {
       note: state.items.length ? `${state.items.length} lot(s) saved.` : 'Add items before printing bid sheets.'
     },
     {
-      ok: duplicateLots().length === 0,
+      ok: duplicateLotNumbers.length === 0,
       title: 'Lot numbers are unique',
-      note: duplicateLots().length === 0 ? 'No duplicate lots found.' : `Duplicates found: ${duplicateLots().join(', ')}.`
+      note: duplicateLotNumbers.length === 0 ? 'No duplicate lots found.' : `Duplicates found: ${duplicateLotNumbers.join(', ')}.`
     },
     {
       ok: Boolean(state.meta.lastBackupAt),
@@ -479,6 +636,7 @@ function renderOverview(syncInputs = true) {
 
   const missingDonorCount = state.items.filter((item) => !item.donorId).length;
   const missingPricingCount = state.items.filter((item) => item.startingBid === null || item.increment === null).length;
+  const duplicateLotNumbers = duplicateLots();
   const issues = [];
 
   if (!state.items.length) {
@@ -490,11 +648,11 @@ function renderOverview(syncInputs = true) {
   if (missingPricingCount) {
     issues.push({ type: 'warning', title: `${missingPricingCount} item(s) need pricing`, note: 'Add starting bids and minimum increments before printing bid sheets.' });
   }
-  if (duplicateLots().length) {
-    issues.push({ type: 'error', title: 'Duplicate lot numbers found', note: `Lots ${duplicateLots().join(', ')} appear more than once.` });
+  if (duplicateLotNumbers.length) {
+    issues.push({ type: 'error', title: 'Duplicate lot numbers found', note: `Lots ${duplicateLotNumbers.join(', ')} appear more than once.` });
   }
   if (!issues.length) {
-    issues.push({ type: 'warning', title: 'No major issues found', note: 'Refresh the document preview before printing the final set.' });
+    issues.push({ type: 'success', title: 'No major issues found', note: 'Refresh the document preview before printing the final set.' });
   }
 
   document.getElementById('overviewIssues').innerHTML = issues.map((issue) => `
@@ -519,6 +677,7 @@ function populateDonorAndCategoryOptions() {
   const itemCategorySelect = document.getElementById('itemCategory');
   const itemCategoryFilter = document.getElementById('itemCategoryFilter');
   const documentCategoryFilter = document.getElementById('documentCategoryFilter');
+  const donorsById = donorLookup();
   const donorValue = donorSelect.value;
   const itemCategoryValue = itemCategorySelect.value;
   const filterValue = itemCategoryFilter.value;
@@ -528,8 +687,8 @@ function populateDonorAndCategoryOptions() {
     .concat(
       state.donors
         .slice()
-        .sort((left, right) => donorLabel(left.id).localeCompare(donorLabel(right.id), undefined, { sensitivity: 'base' }))
-        .map((donor) => `<option value="${escapeHtml(donor.id)}">${escapeHtml(donorLabel(donor.id) || donor.name)}</option>`)
+        .sort((left, right) => donorLabel(left.id, donorsById).localeCompare(donorLabel(right.id, donorsById), undefined, { sensitivity: 'base' }))
+        .map((donor) => `<option value="${escapeHtml(donor.id)}">${escapeHtml(donorLabel(donor.id, donorsById) || donor.name)}</option>`)
     )
     .join('');
 
@@ -581,6 +740,7 @@ function renderDonorForm(donor = null) {
 function renderDonorTable() {
   const search = normalizeComparable(document.getElementById('donorSearch').value);
   const sort = document.getElementById('donorSort').value;
+  const donorItemCounts = itemCountsByDonor();
   const donors = state.donors.filter((donor) => {
     if (!search) {
       return true;
@@ -595,7 +755,7 @@ function renderDonorTable() {
       return (left.business || left.name).localeCompare(right.business || right.name, undefined, { sensitivity: 'base' });
     }
     if (sort === 'items') {
-      return countItemsForDonor(right.id) - countItemsForDonor(left.id)
+      return countItemsForDonor(right.id, donorItemCounts) - countItemsForDonor(left.id, donorItemCounts)
         || left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
     }
     return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
@@ -612,7 +772,7 @@ function renderDonorTable() {
       <table>
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Name / Address</th>
             <th>Business</th>
             <th>Contact</th>
             <th>Items</th>
@@ -625,7 +785,7 @@ function renderDonorTable() {
               <td><strong>${escapeHtml(donor.name)}</strong><br><span class="muted">${escapeHtml(donor.address || '')}</span></td>
               <td>${escapeHtml(donor.business || '')}</td>
               <td>${escapeHtml([donor.email, donor.phone].filter(Boolean).join(' | ') || '—')}</td>
-              <td>${countItemsForDonor(donor.id)}</td>
+              <td>${countItemsForDonor(donor.id, donorItemCounts)}</td>
               <td>
                 <div class="button-row">
                   <button class="button button--small" type="button" data-donor-edit="${escapeHtml(donor.id)}">Edit</button>
@@ -664,6 +824,7 @@ function renderItemTable() {
   const search = normalizeComparable(document.getElementById('itemSearch').value);
   const category = document.getElementById('itemCategoryFilter').value;
   const sort = document.getElementById('itemSort').value;
+  const donorsById = donorLookup();
   const items = state.items.filter((item) => {
     if (category && item.category !== category) {
       return false;
@@ -671,7 +832,7 @@ function renderItemTable() {
     if (!search) {
       return true;
     }
-    return [item.lotNumber, item.title, donorLabel(item.donorId), item.category]
+    return [item.lotNumber, item.title, donorLabel(item.donorId, donorsById), item.category]
       .map(normalizeComparable)
       .some((value) => value.includes(search));
   });
@@ -681,7 +842,7 @@ function renderItemTable() {
       return left.title.localeCompare(right.title, undefined, { sensitivity: 'base' });
     }
     if (sort === 'donor') {
-      return donorLabel(left.donorId).localeCompare(donorLabel(right.donorId), undefined, { sensitivity: 'base' });
+      return donorLabel(left.donorId, donorsById).localeCompare(donorLabel(right.donorId, donorsById), undefined, { sensitivity: 'base' });
     }
     if (sort === 'value') {
       return (right.fmv || 0) - (left.fmv || 0);
@@ -719,7 +880,7 @@ function renderItemTable() {
             <tr>
               <td><strong>${escapeHtml(item.lotNumber || '—')}</strong></td>
               <td><strong>${escapeHtml(item.title)}</strong><br><span class="muted">${escapeHtml(item.description ? item.description.slice(0, 90) : 'No description yet.')}</span></td>
-              <td>${escapeHtml(donorLabel(item.donorId) || '—')}</td>
+              <td>${escapeHtml(donorLabel(item.donorId, donorsById) || '—')}</td>
               <td>${item.category ? `<span class="category-chip">${escapeHtml(item.category)}</span>` : '<span class="muted">—</span>'}</td>
               <td>
                 <div>Start: ${escapeHtml(formatCurrency(item.startingBid) || '—')}</div>
@@ -765,11 +926,25 @@ function donorForItem(item) {
 
 function buildDocumentContexts(documentType, includeAll) {
   if (documentType === 'itemList') {
-    return filteredItemsForDocuments().length ? [{ items: filteredItemsForDocuments() }] : [];
+    const items = filteredItemsForDocuments();
+    if (!items.length) {
+      return [];
+    }
+    const pageCount = Math.ceil(items.length / ITEM_LIST_ROWS_PER_PAGE);
+    const pages = [];
+    for (let start = 0; start < items.length; start += ITEM_LIST_ROWS_PER_PAGE) {
+      pages.push({
+        items: items.slice(start, start + ITEM_LIST_ROWS_PER_PAGE),
+        pageNumber: pages.length + 1,
+        pageCount
+      });
+    }
+    return includeAll ? pages : pages.slice(0, 1);
   }
   if (documentType === 'thankYou') {
+    const eligibleItems = filteredItemsForDocuments();
     const donors = state.donors
-      .map((donor) => ({ donor, items: state.items.filter((item) => item.donorId === donor.id) }))
+      .map((donor) => ({ donor, items: eligibleItems.filter((item) => item.donorId === donor.id) }))
       .filter((entry) => entry.items.length > 0);
     return includeAll ? donors : donors.slice(0, 1);
   }
@@ -798,7 +973,7 @@ function documentFieldValue(source, context) {
   }
 
   const item = context.item || null;
-  const donor = context.donor || context.donor || null;
+  const donor = context.donor || (item ? donorForItem(item) : null);
 
   switch (source) {
     case 'item.lotNumber':
@@ -828,7 +1003,7 @@ function documentFieldValue(source, context) {
     case 'settings.thankYouSignature':
       return state.settings.thankYouSignature;
     case 'computed.eventHeading':
-      return [state.settings.orgName, state.settings.eventName].filter(Boolean).join(' — ') || state.settings.eventName || state.settings.orgName;
+      return [state.settings.orgName, state.settings.eventName].filter(Boolean).join(' — ');
     case 'computed.eventDate':
       return formatDate(state.settings.eventDate);
     case 'computed.donorBlock':
@@ -997,7 +1172,8 @@ function renderDocumentPreview() {
   if (ui.selectedDocumentType === 'bidSheet') {
     summary.textContent = `${filteredItemsForDocuments().length} bid sheet(s) will print with this layout.`;
   } else if (ui.selectedDocumentType === 'itemList') {
-    summary.textContent = `${filteredItemsForDocuments().length} item row(s) will print in the price list.`;
+    const pageCount = buildDocumentContexts('itemList', true).length;
+    summary.textContent = `${filteredItemsForDocuments().length} item row(s) across ${pageCount} page(s) will print in the price list.`;
   } else {
     const letterCount = buildDocumentContexts('thankYou', true).length;
     summary.textContent = `${letterCount} thank-you letter(s) will print with this layout.`;
@@ -1093,6 +1269,8 @@ function renderItemListTable(items) {
 
 function renderDocumentsView(syncInputs = true) {
   document.getElementById('documentTypeSelect').value = ui.selectedDocumentType;
+  document.getElementById('bidLineCountField').hidden = ui.selectedDocumentType !== 'bidSheet';
+  document.getElementById('bidLineCount').disabled = ui.selectedDocumentType !== 'bidSheet';
   if (syncInputs) {
     document.getElementById('bidLineCount').value = String(state.settings.bidLineCount);
     document.getElementById('bidSheetHeaderText').value = state.settings.bidSheetHeaderText;
@@ -1199,25 +1377,28 @@ function renderWinnerList() {
   }).join('');
 }
 
-function openWinnerModal(itemId, existingWinner = null) {
+function openWinnerModal(itemId, existingWinner = null, trigger = document.activeElement) {
   const item = state.items.find((entry) => entry.id === itemId);
   if (!item) {
     return;
   }
+  document.getElementById('winnerModalTitle').textContent = existingWinner ? 'Edit winner' : 'Record winner';
+  document.getElementById('winnerRecordId').value = existingWinner ? existingWinner.id : '';
   document.getElementById('winnerItemId').value = item.id;
   document.getElementById('winnerModalContext').textContent = `Lot ${item.lotNumber}: ${item.title}`;
   document.getElementById('winnerName').value = existingWinner ? existingWinner.winnerName : '';
   document.getElementById('winnerPaddle').value = existingWinner ? existingWinner.paddleNumber : '';
   document.getElementById('winnerAmount').value = existingWinner ? String(existingWinner.winningBid) : (item.startingBid !== null ? String(item.startingBid) : '');
   document.getElementById('winnerPaid').checked = existingWinner ? existingWinner.isPaid : false;
-  document.getElementById('winnerModal').hidden = false;
+  openModal('winnerModal', 'winnerName', trigger);
 }
 
 function closeWinnerModal() {
-  document.getElementById('winnerModal').hidden = true;
+  closeModal('winnerModal');
 }
 
 function saveWinner() {
+  const winnerRecordId = document.getElementById('winnerRecordId').value;
   const itemId = document.getElementById('winnerItemId').value;
   const winnerName = document.getElementById('winnerName').value.trim();
   const winningBid = toMoney(document.getElementById('winnerAmount').value);
@@ -1230,15 +1411,21 @@ function saveWinner() {
     return;
   }
 
-  state.winners = state.winners.filter((winner) => winner.itemId !== itemId);
-  state.winners.push({
-    id: generateId(),
+  const winnerRecord = {
+    id: winnerRecordId || generateId(),
     itemId,
     winnerName,
     paddleNumber: document.getElementById('winnerPaddle').value.trim(),
     winningBid,
     isPaid: document.getElementById('winnerPaid').checked
-  });
+  };
+  const existingIndex = state.winners.findIndex((winner) => winner.id === winnerRecord.id || (!winnerRecordId && winner.itemId === itemId));
+  if (existingIndex >= 0) {
+    state.winners[existingIndex] = winnerRecord;
+  } else {
+    state.winners = state.winners.filter((winner) => winner.itemId !== itemId);
+    state.winners.push(winnerRecord);
+  }
 
   const item = state.items.find((entry) => entry.id === itemId);
   if (item) {
@@ -1260,6 +1447,7 @@ function exportJson() {
 }
 
 function exportHtmlArchive() {
+  const embeddedJson = JSON.stringify(state, null, 2);
   const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -1292,8 +1480,38 @@ function exportHtmlArchive() {
     </tbody>
   </table>
   <h2>Embedded Data</h2>
-  <p>This file contains a complete JSON snapshot below.</p>
-  <pre>${escapeHtml(JSON.stringify(state, null, 2))}</pre>
+  <p>This file contains a complete JSON snapshot below. Use the buttons to copy it or download it as a JSON backup.</p>
+  <p>
+    <button id="copyArchiveJson" type="button">Copy JSON snapshot</button>
+    <button id="downloadArchiveJson" type="button">Download JSON backup</button>
+  </p>
+  <pre id="archiveJson">${escapeHtml(embeddedJson)}</pre>
+  <script>
+    const archiveJson = document.getElementById('archiveJson').textContent || '';
+    document.getElementById('copyArchiveJson').addEventListener('click', async () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(archiveJson);
+          alert('JSON snapshot copied to the clipboard.');
+          return;
+        } catch (error) {
+          // Fall back to the download guidance below.
+        }
+      }
+      alert('Clipboard copy is not available in this browser. Use the download button instead.');
+    });
+    document.getElementById('downloadArchiveJson').addEventListener('click', () => {
+      const blob = new Blob([archiveJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'auction-archive-data.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+  </script>
 </body>
 </html>`.trim();
   downloadBlob(new Blob([html], { type: 'text/html' }), `auction-archive-${new Date().toISOString().slice(0, 10)}.html`);
@@ -1343,10 +1561,10 @@ function exportCsv(type) {
 
 function downloadTemplate(type) {
   if (type === 'donors') {
-    downloadBlob(new Blob([generateCsv(['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes'], [['Pat Lee', 'Oak Street Books', 'pat@example.org', '415-555-0147', '123 Main St', 'Prefers email']])], { type: 'text/csv' }), 'donor-template.csv');
+    downloadBlob(new Blob([generateCsv(['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes'], [['Sample Donor', 'Example Bookshop', 'donor@example.org', '415-555-0100', '123 Example St', 'Replace this sample row before importing']])], { type: 'text/csv' }), 'donor-template.csv');
     return;
   }
-  downloadBlob(new Blob([generateCsv(['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now'], [['1', 'Gift Basket', 'Filled with local treats', 'Oak Street Books', 'Gift basket', '150', '40', '10', '']])], { type: 'text/csv' }), 'item-template.csv');
+  downloadBlob(new Blob([generateCsv(['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now'], [['1', 'Sample Gift Basket', 'Replace this sample row before importing', 'Example Bookshop', 'Gift basket', '150', '40', '10', '']])], { type: 'text/csv' }), 'item-template.csv');
 }
 
 function parseCsv(text) {
@@ -1424,7 +1642,77 @@ function detectCsvColumns(headers, type) {
   return mapping;
 }
 
-function openCsvModal(type) {
+function donorImportKey(name, business) {
+  const normalizedName = normalizeComparable(name);
+  if (!normalizedName) {
+    return '';
+  }
+  return `${normalizedName}::${normalizeComparable(business)}`;
+}
+
+function itemImportKey(item) {
+  const normalizedTitle = normalizeComparable(item.title);
+  if (!normalizedTitle) {
+    return '';
+  }
+  return [
+    normalizedTitle,
+    normalizeComparable(item.donorId),
+    normalizeComparable(item.category)
+  ].join('::');
+}
+
+function mergeImportedText(existingValue, importedValue) {
+  return importedValue ? importedValue : existingValue;
+}
+
+function mergeImportedMoney(existingValue, importedValue) {
+  return importedValue !== null ? importedValue : existingValue;
+}
+
+function findExistingDonorForImport(donor, donorsByKey) {
+  const exactKey = donorImportKey(donor.name, donor.business);
+  if (exactKey && donorsByKey.has(exactKey)) {
+    return donorsByKey.get(exactKey);
+  }
+  const nameMatches = state.donors.filter((entry) => normalizeComparable(entry.name) === normalizeComparable(donor.name));
+  if (nameMatches.length === 1) {
+    return nameMatches[0];
+  }
+  return null;
+}
+
+function mergeImportedDonor(existing, imported) {
+  existing.name = imported.name;
+  existing.business = mergeImportedText(existing.business, imported.business);
+  existing.email = mergeImportedText(existing.email, imported.email);
+  existing.phone = mergeImportedText(existing.phone, imported.phone);
+  existing.address = mergeImportedText(existing.address, imported.address);
+  existing.notes = mergeImportedText(existing.notes, imported.notes);
+}
+
+function findExistingItemForImport(item, itemsByLot, itemsByKey) {
+  const lotKey = normalizeComparable(item.lotNumber);
+  if (lotKey && itemsByLot.has(lotKey)) {
+    return itemsByLot.get(lotKey);
+  }
+  const key = itemImportKey(item);
+  return key && itemsByKey.has(key) ? itemsByKey.get(key) : null;
+}
+
+function mergeImportedItem(existing, imported) {
+  existing.lotNumber = mergeImportedText(existing.lotNumber, imported.lotNumber);
+  existing.title = imported.title;
+  existing.description = mergeImportedText(existing.description, imported.description);
+  existing.donorId = mergeImportedText(existing.donorId, imported.donorId);
+  existing.category = mergeImportedText(existing.category, imported.category);
+  existing.fmv = mergeImportedMoney(existing.fmv, imported.fmv);
+  existing.startingBid = mergeImportedMoney(existing.startingBid, imported.startingBid);
+  existing.increment = mergeImportedMoney(existing.increment, imported.increment);
+  existing.buyNow = mergeImportedMoney(existing.buyNow, imported.buyNow);
+}
+
+function openCsvModal(type, trigger = document.activeElement) {
   ui.csvImport = { type, headers: [], rows: [], mapping: {} };
   document.getElementById('csvModalTitle').textContent = type === 'donors' ? 'Import donors CSV' : 'Import items CSV';
   document.getElementById('csvFileInput').value = '';
@@ -1432,11 +1720,11 @@ function openCsvModal(type) {
   document.getElementById('csvMappingWrap').innerHTML = '';
   document.getElementById('csvPreviewWrap').innerHTML = '';
   document.getElementById('confirmCsvImportButton').disabled = true;
-  document.getElementById('csvModal').hidden = false;
+  openModal('csvModal', 'csvFileInput', trigger);
 }
 
 function closeCsvModal() {
-  document.getElementById('csvModal').hidden = true;
+  closeModal('csvModal');
 }
 
 function renderCsvMapping() {
@@ -1733,6 +2021,7 @@ function clearAllData() {
   localStorage.removeItem(STORAGE_KEY);
   state = createDefaultState();
   ui.selectedLayoutBlockId = null;
+  ui.storageError = '';
   renderAll();
   showBanner('success', 'All auction data has been cleared from this browser.');
 }
@@ -1751,6 +2040,7 @@ function handleJsonImport(event) {
       }
       state = imported;
       ui.selectedLayoutBlockId = null;
+      ui.storageError = '';
       renderAll();
       saveState('Backup restored');
       showBanner('success', 'Backup restored successfully.');
@@ -1810,8 +2100,13 @@ function applyCsvImport() {
     return;
   }
 
-  let importedCount = 0;
+  const summary = { added: 0, updated: 0, skipped: 0 };
   if (ui.csvImport.type === 'donors') {
+    const donorsByKey = new Map(
+      state.donors
+        .map((donor) => [donorImportKey(donor.name, donor.business), donor])
+        .filter(([key]) => key)
+    );
     ui.csvImport.rows.forEach((row) => {
       const donor = {
         id: generateId(),
@@ -1823,16 +2118,40 @@ function applyCsvImport() {
         notes: mapping.notes !== undefined ? toText(row[mapping.notes]).trim() : ''
       };
       if (!donor.name) {
+        summary.skipped += 1;
+        return;
+      }
+      const existingDonor = findExistingDonorForImport(donor, donorsByKey);
+      if (existingDonor) {
+        const previousKey = donorImportKey(existingDonor.name, existingDonor.business);
+        mergeImportedDonor(existingDonor, donor);
+        if (previousKey) {
+          donorsByKey.delete(previousKey);
+        }
+        donorsByKey.set(donorImportKey(existingDonor.name, existingDonor.business), existingDonor);
+        summary.updated += 1;
         return;
       }
       state.donors.push(donor);
-      importedCount += 1;
+      donorsByKey.set(donorImportKey(donor.name, donor.business), donor);
+      summary.added += 1;
     });
   } else {
+    const itemsByLot = new Map(
+      state.items
+        .map((item) => [normalizeComparable(item.lotNumber), item])
+        .filter(([key]) => key)
+    );
+    const itemsByKey = new Map(
+      state.items
+        .map((item) => [itemImportKey(item), item])
+        .filter(([key]) => key)
+    );
     let nextLot = Number.parseInt(nextLotNumber(), 10) || 1;
     ui.csvImport.rows.forEach((row) => {
       const title = mapping.title !== undefined ? toText(row[mapping.title]).trim() : '';
       if (!title) {
+        summary.skipped += 1;
         return;
       }
 
@@ -1849,9 +2168,9 @@ function applyCsvImport() {
         }
       }
 
-      state.items.push({
+      const importedItem = {
         id: generateId(),
-        lotNumber: mapping.lotNumber !== undefined ? toText(row[mapping.lotNumber]).trim() || String(nextLot) : String(nextLot),
+        lotNumber: mapping.lotNumber !== undefined ? toText(row[mapping.lotNumber]).trim() : '',
         title,
         description: mapping.description !== undefined ? toText(row[mapping.description]).trim() : '',
         donorId,
@@ -1861,17 +2180,44 @@ function applyCsvImport() {
         increment: mapping.increment !== undefined ? toMoney(row[mapping.increment]) : null,
         buyNow: mapping.buyNow !== undefined ? toMoney(row[mapping.buyNow]) : null,
         status: 'available'
-      });
+      };
+
+      const existingItem = findExistingItemForImport(importedItem, itemsByLot, itemsByKey);
+      if (existingItem) {
+        const previousLotKey = normalizeComparable(existingItem.lotNumber);
+        const previousItemKey = itemImportKey(existingItem);
+        mergeImportedItem(existingItem, importedItem);
+        if (previousLotKey) {
+          itemsByLot.delete(previousLotKey);
+        }
+        if (previousItemKey) {
+          itemsByKey.delete(previousItemKey);
+        }
+        if (normalizeComparable(existingItem.lotNumber)) {
+          itemsByLot.set(normalizeComparable(existingItem.lotNumber), existingItem);
+        }
+        if (itemImportKey(existingItem)) {
+          itemsByKey.set(itemImportKey(existingItem), existingItem);
+        }
+        summary.updated += 1;
+        return;
+      }
+
+      importedItem.lotNumber = importedItem.lotNumber || String(nextLot);
+      state.items.push(importedItem);
+      itemsByLot.set(normalizeComparable(importedItem.lotNumber), importedItem);
+      itemsByKey.set(itemImportKey(importedItem), importedItem);
       nextLot += 1;
-      importedCount += 1;
+      summary.added += 1;
     });
   }
 
   state.categories = uniqueStrings([...state.categories, ...state.items.map((item) => item.category)]);
   closeCsvModal();
   renderAll();
-  saveState(`Imported ${importedCount} row(s)`);
-  showBanner('success', `Imported ${importedCount} ${ui.csvImport.type === 'donors' ? 'donor' : 'item'} row(s).`);
+  const label = ui.csvImport.type === 'donors' ? 'donor' : 'item';
+  saveState(`Imported ${summary.added + summary.updated} row(s)`);
+  showBanner('success', `${summary.added + summary.updated} ${label} row(s) processed: ${summary.added} added, ${summary.updated} updated, ${summary.skipped} skipped.`);
 }
 
 function removeDonor(donorId) {
@@ -2108,7 +2454,7 @@ document.getElementById('winnerFilter').addEventListener('change', renderWinnerL
 document.getElementById('checkoutSearchResults').addEventListener('click', (event) => {
   const itemId = event.target.getAttribute('data-record-winner');
   if (itemId) {
-    openWinnerModal(itemId);
+    openWinnerModal(itemId, null, event.target.closest('button'));
   }
 });
 document.getElementById('winnerList').addEventListener('click', (event) => {
@@ -2118,7 +2464,7 @@ document.getElementById('winnerList').addEventListener('click', (event) => {
   if (editId) {
     const winner = state.winners.find((entry) => entry.id === editId);
     if (winner) {
-      openWinnerModal(winner.itemId, winner);
+      openWinnerModal(winner.itemId, winner, event.target.closest('button'));
     }
   }
   if (toggleId) {
@@ -2140,8 +2486,8 @@ document.getElementById('exportJsonButton').addEventListener('click', exportJson
 document.getElementById('importJsonButton').addEventListener('click', () => document.getElementById('jsonImportInput').click());
 document.getElementById('jsonImportInput').addEventListener('change', handleJsonImport);
 document.getElementById('exportHtmlButton').addEventListener('click', exportHtmlArchive);
-document.getElementById('importDonorsCsvButton').addEventListener('click', () => openCsvModal('donors'));
-document.getElementById('importItemsCsvButton').addEventListener('click', () => openCsvModal('items'));
+document.getElementById('importDonorsCsvButton').addEventListener('click', (event) => openCsvModal('donors', event.currentTarget));
+document.getElementById('importItemsCsvButton').addEventListener('click', (event) => openCsvModal('items', event.currentTarget));
 document.getElementById('downloadDonorTemplateButton').addEventListener('click', () => downloadTemplate('donors'));
 document.getElementById('downloadItemTemplateButton').addEventListener('click', () => downloadTemplate('items'));
 document.getElementById('exportDonorsCsvButton').addEventListener('click', () => exportCsv('donors'));
@@ -2157,5 +2503,11 @@ document.getElementById('csvModal').addEventListener('click', (event) => {
 });
 document.getElementById('csvFileInput').addEventListener('change', handleCsvFile);
 document.getElementById('confirmCsvImportButton').addEventListener('click', applyCsvImport);
+document.addEventListener('keydown', handleModalKeydown);
+window.addEventListener('beforeunload', () => {
+  if (saveTimer) {
+    flushPendingSave('Saved', { skipRender: true });
+  }
+});
 
 renderAll();
