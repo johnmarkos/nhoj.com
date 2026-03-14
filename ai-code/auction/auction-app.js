@@ -410,6 +410,7 @@ function loadState() {
 
 let state = loadState();
 let saveTimer = null;
+let pendingSave = null;
 
 function persistState(message, options = {}) {
   const { skipRender = false, preserveSeedMode = false } = options;
@@ -445,19 +446,24 @@ function persistState(message, options = {}) {
   }
 }
 
-function flushPendingSave(message, options = {}) {
+function flushPendingSave(overrideOptions = {}) {
   if (saveTimer) {
     clearTimeout(saveTimer);
+    const pending = pendingSave;
     saveTimer = null;
+    pendingSave = null;
+    return persistState(pending.message, { ...pending.options, ...overrideOptions });
   }
-  return persistState(message, options);
+  return false;
 }
 
-function saveState(message) {
+function saveState(message, options = {}) {
   clearTimeout(saveTimer);
+  pendingSave = { message, options };
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    persistState(message);
+    pendingSave = null;
+    persistState(message, options);
   }, 140);
 }
 
@@ -2918,7 +2924,7 @@ document.getElementById('confirmCsvImportButton').addEventListener('click', appl
 document.addEventListener('keydown', handleModalKeydown);
 window.addEventListener('beforeunload', () => {
   if (saveTimer) {
-    flushPendingSave('Saved', { skipRender: true });
+    flushPendingSave({ skipRender: true });
   }
 });
 
