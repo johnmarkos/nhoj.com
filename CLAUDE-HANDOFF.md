@@ -1,8 +1,10 @@
 # Auction App Handoff
 
+_Updated: 2026-03-14_
+
 ## Current state
 
-The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages. The critical modal-visibility bug (PR #9) is fixed. A full staff review has been completed and findings are tracked in `ai-code/auction/ROADMAP.md`.
+The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages. PR #9 (modal visibility + sample mode) is merged. PR #10 (coordination files) is merged. PR #11 (P0 fixes) is approved with suggestions and pending merge.
 
 ## Done
 
@@ -10,15 +12,17 @@ The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages
 - Fixed: modals always visible due to CSS `display: grid` overriding `hidden` attribute (PR #9)
 - Fixed: `saveState` dropping `preserveSeedMode` option (PR #9)
 - Fixed: `flushPendingSave` dropping queued save options on `beforeunload` (PR #9)
-- Created `ai-code/auction/CHANGELOG.md`
-- Rewrote `ai-code/auction/ROADMAP.md` with prioritized, dispatchable tasks from the review
+- Created `ai-code/auction/CHANGELOG.md` and `ai-code/auction/ROADMAP.md` (PR #10)
+- Set up `.scratch/` for reviews, task specs, and working notes (PR #10)
+- P0 fixes by Codex: CSV formula injection, pointer capture drag, deferred drag renders, spurious save guard (PR #11)
+- Staff review of PR #11 — approved with suggestions (`.scratch/PR-REVIEW-11-01.md`)
+- Set up `/audit`, `/dispatch`, `/staff-review` commands for multi-agent coordination
 
 ## Next
 
-- Fix P0 items from ROADMAP.md (CSV injection, drag bugs, spurious saves)
-- Fix P1 items (winner modal errors, import dedup, inspector clamping, orphaned items, CSV BOM)
-- Fix P2 items (performance, dead code)
-- All work should be PRs reviewed before merge
+- Merge PR #11 after housekeeping commit
+- Dispatch and fix P1 items (winner modal errors, import dedup, inspector clamping, orphaned items, CSV BOM)
+- Dispatch and fix P2 items (performance, dead code)
 
 ## Decisions
 
@@ -27,6 +31,8 @@ The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages
 - Tasks are written to be self-contained so they can be dispatched to Codex/GPT-5.4
 - Claude Code acts as staff+ reviewer; Codex executes the implementation
 - PRs are reviewed before merge (no self-merging)
+- `HANDOFF.md` is retired — only `CLAUDE-HANDOFF.md` is used for session state
+- Codex writes its handoff to `.scratch/CODEX-HANDOFF-{name}.md`
 
 ## Gotchas
 
@@ -34,4 +40,3 @@ The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages
 - Deployed via GitHub Pages from `main` branch, auto-deploys on push
 - `auction-app.js` is ~2930 lines in a single file (module split is in P3 backlog)
 - The `AGENTS.md` file says "always commit and push without asking" — but the user has explicitly overridden this: PRs should be reviewed before merge
-- Old `HANDOFF.md` in the repo root is stale (from Codex sessions) — this file supersedes it
