@@ -5,6 +5,12 @@ All notable changes to the Silent Auction Manager.
 ## Unreleased
 
 ### Fixed
+- Auction overview now uses the donor lookup map for orphaned-donor checks, and item import reuses the updated composite key instead of recomputing it.
+- Winner validation errors now render inline inside the winner modal instead of behind the overlay.
+- Item CSV re-import now matches existing items by title, donor, and category even when lot numbers change.
+- Layout inspector position and size inputs now clamp blocks so they cannot extend beyond the page bounds.
+- Home overview now warns when items reference donors that no longer exist.
+- CSV exports now include a UTF-8 BOM so accented characters open correctly in Excel.
 - CSV exports now prefix formula-like cell values with a leading single quote to prevent spreadsheet formula injection.
 - Layout-block drags now use pointer capture so releasing the pointer outside the browser window does not leave a block stuck to the cursor.
 - Layout dragging now updates block position directly during pointer movement and defers full canvas, inspector, and preview re-renders until drop for smoother motion.
