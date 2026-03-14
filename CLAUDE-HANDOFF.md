@@ -4,7 +4,7 @@ _Updated: 2026-03-14_
 
 ## Current state
 
-The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages. PR #9 (modal visibility + sample mode) is merged. PR #10 (coordination files) is merged. PR #11 (P0 fixes) is approved with suggestions and pending merge.
+The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages. PR #9 (modal visibility + sample mode) is merged. PR #10 (coordination files) is merged. PR #11 (P0 fixes) is merged. A follow-up branch for the approved PR #11 suggestions is in progress.
 
 ## Done
 
@@ -16,11 +16,13 @@ The auction app at `ai-code/auction/` is functional and deployed on GitHub Pages
 - Set up `.scratch/` for reviews, task specs, and working notes (PR #10)
 - P0 fixes by Codex: CSV formula injection, pointer capture drag, deferred drag renders, spurious save guard (PR #11)
 - Staff review of PR #11 — approved with suggestions (`.scratch/PR-REVIEW-11-01.md`)
+- Merged PR #11 to `main`
+- Follow-up polish for PR #11 suggestions started on `fix/auction-layout-click-polish`
 - Set up `/audit`, `/dispatch`, `/staff-review` commands for multi-agent coordination
 
 ## Next
 
-- Merge PR #11 after housekeeping commit
+- Finish and review the PR #11 follow-up polish branch (`fix/auction-layout-click-polish`)
 - Dispatch and fix P1 items (winner modal errors, import dedup, inspector clamping, orphaned items, CSV BOM)
 - Dispatch and fix P2 items (performance, dead code)
 

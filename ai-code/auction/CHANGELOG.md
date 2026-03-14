@@ -9,6 +9,8 @@ All notable changes to the Silent Auction Manager.
 - Layout-block drags now use pointer capture so releasing the pointer outside the browser window does not leave a block stuck to the cursor.
 - Layout dragging now updates block position directly during pointer movement and defers full canvas, inspector, and preview re-renders until drop for smoother motion.
 - Clicking a layout block without moving it no longer saves a spurious "Layout updated" state.
+- Layout block selection now relies on the drag pointer handlers so a click no longer triggers a duplicate canvas re-render before selection settles.
+- Layout blocks now set `touch-action: none` so touch drags do not also pan or scroll the page.
 
 ## 2026-03-14
 
