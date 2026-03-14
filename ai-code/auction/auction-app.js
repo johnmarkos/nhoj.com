@@ -3,6 +3,7 @@ const BACKUP_WARNING_DAYS = 7;
 const ITEM_LIST_ROWS_PER_PAGE = 18;
 const DATE_FORMAT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const TIME_FORMAT = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+const CURRENCY_FORMAT = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
 const MODAL_FOCUS_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -482,7 +483,7 @@ function formatCurrency(value) {
   if (!Number.isFinite(amount)) {
     return '';
   }
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(amount);
+  return CURRENCY_FORMAT.format(amount);
 }
 
 function formatDate(value) {
@@ -2783,10 +2784,6 @@ document.querySelectorAll('.nav-link').forEach((button) => {
   button.addEventListener('click', () => switchView(button.dataset.view));
 });
 
-document.querySelectorAll('[data-jump-view]').forEach((button) => {
-  button.addEventListener('click', () => switchView(button.dataset.jumpView));
-});
-
 document.getElementById('banner').addEventListener('click', (event) => {
   const action = event.target.closest('[data-onboarding-action]')?.dataset.onboardingAction;
   if (action) {
@@ -2812,10 +2809,10 @@ document.getElementById('removeLogoButton').addEventListener('click', () => {
   saveState('Logo removed');
 });
 
-['orgName', 'eventName', 'eventDate'].forEach((id) => {
+['orgName', 'eventName'].forEach((id) => {
   document.getElementById(id).addEventListener('input', updateEventSettings);
-  document.getElementById(id).addEventListener('change', updateEventSettings);
 });
+document.getElementById('eventDate').addEventListener('change', updateEventSettings);
 document.getElementById('logoUpload').addEventListener('change', handleLogoUpload);
 
 document.getElementById('donorForm').addEventListener('submit', upsertDonor);
@@ -2876,7 +2873,6 @@ document.getElementById('documentCategoryFilter').addEventListener('change', ren
 ['bidLineCount', 'bidSheetHeaderText', 'bidSheetFooterText', 'itemListHeaderText', 'itemListFooterText', 'thankYouHeaderText', 'thankYouBodyText', 'thankYouSignature']
   .forEach((id) => {
     document.getElementById(id).addEventListener('input', updateDocumentSettings);
-    document.getElementById(id).addEventListener('change', updateDocumentSettings);
   });
 document.getElementById('layoutCanvas').addEventListener('pointerdown', startLayoutDrag);
 document.addEventListener('pointermove', handleLayoutDrag);
