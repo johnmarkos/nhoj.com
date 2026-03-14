@@ -2210,22 +2210,14 @@ function upsertItem(event) {
   saveState('Item saved');
 }
 
-function handleLayoutSelection(event) {
-  const blockId = event.target.closest('[data-layout-block]')?.dataset.layoutBlock;
-  if (!blockId) {
-    ui.selectedLayoutBlockId = null;
-    renderLayoutCanvas();
-    renderInspector();
-    return;
-  }
-  ui.selectedLayoutBlockId = blockId;
-  renderLayoutCanvas();
-  renderInspector();
-}
-
 function startLayoutDrag(event) {
   const target = event.target.closest('[data-layout-block]');
   if (!target) {
+    if (ui.selectedLayoutBlockId) {
+      ui.selectedLayoutBlockId = null;
+      renderLayoutCanvas();
+      renderInspector();
+    }
     return;
   }
   const blockId = target.dataset.layoutBlock;
@@ -2849,7 +2841,6 @@ document.getElementById('documentCategoryFilter').addEventListener('change', ren
     document.getElementById(id).addEventListener('input', updateDocumentSettings);
     document.getElementById(id).addEventListener('change', updateDocumentSettings);
   });
-document.getElementById('layoutCanvas').addEventListener('click', handleLayoutSelection);
 document.getElementById('layoutCanvas').addEventListener('pointerdown', startLayoutDrag);
 document.addEventListener('pointermove', handleLayoutDrag);
 document.addEventListener('pointerup', stopLayoutDrag);
