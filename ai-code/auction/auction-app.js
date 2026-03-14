@@ -694,6 +694,11 @@ function samplePreviewTable(title, subtitle, headers, rows) {
   `;
 }
 
+const DEFAULT_HERO_NOTE_HTML = `
+  <strong>Joni’s original ask, captured directly</strong>
+  <p>This version is being built around actual layout control: field blocks, titles on or off, custom text blocks, and print templates for bid sheets, price lists, and thank-you letters.</p>
+`;
+
 function csvExampleConfig(type) {
   if (type === 'donors') {
     return {
@@ -724,17 +729,13 @@ function renderCsvExampleIntro() {
   const example = csvExampleConfig(ui.csvImport.type);
   wrap.innerHTML = `
     <div class="note-card csv-example-card">
-      <div class="section-head">
-        <div>
-          <h3>Need an example first?</h3>
-          <p>Use the sample auction if you want to explore the whole app, or use the example rows below to match your spreadsheet format.</p>
-        </div>
-      </div>
+      <h3>Need an example first?</h3>
+      <p class="muted">Use the sample auction if you want to explore the whole app, or match your spreadsheet to these example rows.</p>
       <div class="button-row">
         <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
         <button class="button" type="button" data-onboarding-action="${example.templateAction}">${example.templateLabel}</button>
       </div>
-      ${samplePreviewTable(example.title, example.subtitle, example.headers, example.rows)}
+      ${samplePreviewTable(example.title, example.subtitle, example.headers, example.rows.slice(0, 2))}
     </div>
   `;
 }
@@ -742,6 +743,7 @@ function renderCsvExampleIntro() {
 function renderGettingStarted() {
   const empty = !hasData();
   const heroActions = document.getElementById('heroActions');
+  const heroNote = document.getElementById('heroNote');
   const firstRunGuide = document.getElementById('firstRunGuide');
   const sampleDataGuide = document.getElementById('sampleDataGuide');
 
@@ -758,12 +760,28 @@ function renderGettingStarted() {
     `;
 
   if (!empty) {
+    heroNote.innerHTML = DEFAULT_HERO_NOTE_HTML;
     firstRunGuide.hidden = true;
     sampleDataGuide.hidden = true;
     firstRunGuide.innerHTML = '';
     sampleDataGuide.innerHTML = '';
     return;
   }
+
+  heroNote.innerHTML = `
+    <strong>Sample rows, right away</strong>
+    <p>If you are arriving cold, these rows show the exact kind of data the app expects before you import anything.</p>
+    <div class="hero-sample-list">
+      <div class="hero-sample-row">
+        <span class="hero-sample-label">Donor example</span>
+        <code>Nina Lopez | Mission Books | nina@missionbooks.example | 415-555-0101</code>
+      </div>
+      <div class="hero-sample-row">
+        <span class="hero-sample-label">Item example</span>
+        <code>101 | Signed cookbook set | Mission Books | Books | 80 | 25</code>
+      </div>
+    </div>
+  `;
 
   const donorPreview = samplePreviewTable(
     'Donor CSV Example',
