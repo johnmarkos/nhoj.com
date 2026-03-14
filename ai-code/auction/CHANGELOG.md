@@ -5,6 +5,7 @@ All notable changes to the Silent Auction Manager.
 ## Unreleased
 
 ### Fixed
+- Auction overview now uses the donor lookup map for orphaned-donor checks, and item import reuses the updated composite key instead of recomputing it.
 - Winner validation errors now render inline inside the winner modal instead of behind the overlay.
 - Item CSV re-import now matches existing items by title, donor, and category even when lot numbers change.
 - Layout inspector position and size inputs now clamp blocks so they cannot extend beyond the page bounds.

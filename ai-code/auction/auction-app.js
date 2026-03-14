@@ -906,7 +906,8 @@ function renderOverview(syncInputs = true) {
 
   const missingDonorCount = state.items.filter((item) => !item.donorId).length;
   const missingPricingCount = state.items.filter((item) => item.startingBid === null || item.increment === null).length;
-  const orphanedDonorCount = state.items.filter((item) => item.donorId && !state.donors.some((donor) => donor.id === item.donorId)).length;
+  const donorsById = donorLookup();
+  const orphanedDonorCount = state.items.filter((item) => item.donorId && !donorsById.has(item.donorId)).length;
   const duplicateLotNumbers = duplicateLots();
   const issues = [];
 
@@ -2640,8 +2641,9 @@ function applyCsvImport() {
         if (normalizeComparable(existingItem.lotNumber)) {
           itemsByLot.set(normalizeComparable(existingItem.lotNumber), existingItem);
         }
-        if (itemImportKey(existingItem, donorsById)) {
-          itemsByKey.set(itemImportKey(existingItem, donorsById), existingItem);
+        const updatedItemKey = itemImportKey(existingItem, donorsById);
+        if (updatedItemKey) {
+          itemsByKey.set(updatedItemKey, existingItem);
         }
         summary.updated += 1;
         return;
