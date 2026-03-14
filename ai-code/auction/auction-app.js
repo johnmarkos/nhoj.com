@@ -1824,7 +1824,10 @@ function downloadBlob(blob, filename) {
 
 function generateCsv(headers, rows) {
   const escape = (value) => {
-    const text = String(value ?? '');
+    let text = String(value ?? '');
+    if (/^[=+\-@]/.test(text)) {
+      text = `'${text}`;
+    }
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   return [headers.map(escape).join(','), ...rows.map((row) => row.map(escape).join(','))].join('\n');
@@ -2235,9 +2238,14 @@ function startLayoutDrag(event) {
     startY: event.clientY,
     startBlockX: block.x,
     startBlockY: block.y,
-    canvasRect
+    canvasRect,
+    pointerId: event.pointerId,
+    pointerTarget: target,
+    blockElement: target
   };
-  renderLayoutCanvas();
+  target.setPointerCapture(event.pointerId);
+  document.querySelector('#layoutCanvas .is-selected')?.classList.remove('is-selected');
+  target.classList.add('is-selected');
   renderInspector();
 }
 
@@ -2245,7 +2253,7 @@ function handleLayoutDrag(event) {
   if (!ui.dragState) {
     return;
   }
-  const block = selectedLayoutBlock();
+  const block = layoutBlocksForCurrentType().find((entry) => entry.id === ui.dragState.blockId);
   if (!block) {
     return;
   }
@@ -2253,17 +2261,34 @@ function handleLayoutDrag(event) {
   const dy = ((event.clientY - ui.dragState.startY) / ui.dragState.canvasRect.height) * 100;
   block.x = clampNumber(ui.dragState.startBlockX + dx, block.x, 0, 100 - block.w);
   block.y = clampNumber(ui.dragState.startBlockY + dy, block.y, 0, 100 - block.h);
-  renderLayoutCanvas();
-  renderInspector();
-  renderDocumentPreview();
+  ui.dragState.blockElement.style.left = `${block.x}%`;
+  ui.dragState.blockElement.style.top = `${block.y}%`;
+  const inspectorX = document.querySelector('[data-inspector="x"]');
+  const inspectorY = document.querySelector('[data-inspector="y"]');
+  if (inspectorX) {
+    inspectorX.value = String(block.x);
+  }
+  if (inspectorY) {
+    inspectorY.value = String(block.y);
+  }
 }
 
-function stopLayoutDrag() {
+function stopLayoutDrag(event) {
   if (!ui.dragState) {
     return;
   }
+  const block = layoutBlocksForCurrentType().find((entry) => entry.id === ui.dragState.blockId);
+  const moved = block && (block.x !== ui.dragState.startBlockX || block.y !== ui.dragState.startBlockY);
+  if (event && event.pointerId === ui.dragState.pointerId && ui.dragState.pointerTarget.hasPointerCapture(event.pointerId)) {
+    ui.dragState.pointerTarget.releasePointerCapture(event.pointerId);
+  }
   ui.dragState = null;
-  saveState('Layout updated');
+  renderLayoutCanvas();
+  renderInspector();
+  if (moved) {
+    renderDocumentPreview();
+    saveState('Layout updated');
+  }
 }
 
 function updateSelectedBlockSetting(setting, value, options = {}) {

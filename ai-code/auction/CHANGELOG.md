@@ -4,7 +4,11 @@ All notable changes to the Silent Auction Manager.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+- CSV exports now prefix formula-like cell values with a leading single quote to prevent spreadsheet formula injection.
+- Layout-block drags now use pointer capture so releasing the pointer outside the browser window does not leave a block stuck to the cursor.
+- Layout dragging now updates block position directly during pointer movement and defers full canvas, inspector, and preview re-renders until drop for smoother motion.
+- Clicking a layout block without moving it no longer saves a spurious "Layout updated" state.
 
 ## 2026-03-14
 
