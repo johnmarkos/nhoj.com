@@ -16,6 +16,10 @@ No build, test, or lint commands. Simply edit HTML/CSS/JS files and push to `mai
 
 Always commit and push changes without asking for confirmation. If something needs to be changed, the user will ask.
 
+### Housekeeping
+
+Basic cleanup tasks are implicitly authorized — no need to ask first. Examples: deleting merged local branches, pruning stale remote refs, removing dead files that are clearly obsolete. If it's routine and low-risk, just do it.
+
 ## Commit Attribution
 
 Commit messages from coding agents should include a line in this format:
