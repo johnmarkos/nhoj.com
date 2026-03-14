@@ -906,6 +906,7 @@ function renderOverview(syncInputs = true) {
 
   const missingDonorCount = state.items.filter((item) => !item.donorId).length;
   const missingPricingCount = state.items.filter((item) => item.startingBid === null || item.increment === null).length;
+  const orphanedDonorCount = state.items.filter((item) => item.donorId && !state.donors.some((donor) => donor.id === item.donorId)).length;
   const duplicateLotNumbers = duplicateLots();
   const issues = [];
 
@@ -917,6 +918,9 @@ function renderOverview(syncInputs = true) {
   }
   if (missingPricingCount) {
     issues.push({ type: 'warning', title: `${missingPricingCount} item(s) need pricing`, note: 'Add starting bids and minimum increments before printing bid sheets.' });
+  }
+  if (orphanedDonorCount) {
+    issues.push({ type: 'error', title: `${orphanedDonorCount} item(s) reference a deleted donor`, note: 'Edit these items to clear or reassign the donor link.' });
   }
   if (duplicateLotNumbers.length) {
     issues.push({ type: 'error', title: 'Duplicate lot numbers found', note: `Lots ${duplicateLotNumbers.join(', ')} appear more than once.` });
@@ -1674,6 +1678,8 @@ function openWinnerModal(itemId, existingWinner = null, trigger = document.activ
   if (!item) {
     return;
   }
+  document.getElementById('winnerModalError').hidden = true;
+  document.getElementById('winnerModalError').textContent = '';
   document.getElementById('winnerModalTitle').textContent = existingWinner ? 'Edit winner' : 'Record winner';
   document.getElementById('winnerRecordId').value = existingWinner ? existingWinner.id : '';
   document.getElementById('winnerItemId').value = item.id;
@@ -1689,17 +1695,23 @@ function closeWinnerModal() {
   closeModal('winnerModal');
 }
 
+function showWinnerModalError(message) {
+  const el = document.getElementById('winnerModalError');
+  el.textContent = message;
+  el.hidden = false;
+}
+
 function saveWinner() {
   const winnerRecordId = document.getElementById('winnerRecordId').value;
   const itemId = document.getElementById('winnerItemId').value;
   const winnerName = document.getElementById('winnerName').value.trim();
   const winningBid = toMoney(document.getElementById('winnerAmount').value);
   if (!winnerName) {
-    showBanner('error', 'Winner name is required.');
+    showWinnerModalError('Winner name is required.');
     return;
   }
   if (winningBid === null || winningBid <= 0) {
-    showBanner('error', 'Final amount must be greater than zero.');
+    showWinnerModalError('Final amount must be greater than zero.');
     return;
   }
 
@@ -1830,7 +1842,7 @@ function generateCsv(headers, rows) {
     }
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  return [headers.map(escape).join(','), ...rows.map((row) => row.map(escape).join(','))].join('\n');
+  return '\uFEFF' + [headers.map(escape).join(','), ...rows.map((row) => row.map(escape).join(','))].join('\n');
 }
 
 function exportCsv(type) {
@@ -1949,14 +1961,18 @@ function donorImportKey(name, business) {
   return `${normalizedName}::${normalizeComparable(business)}`;
 }
 
-function itemImportKey(item) {
+function itemImportKey(item, donorsById) {
   const normalizedTitle = normalizeComparable(item.title);
   if (!normalizedTitle) {
     return '';
   }
+  const donor = donorsById ? donorsById.get(item.donorId) : null;
+  const donorPart = donor
+    ? normalizeComparable(donor.name) + '::' + normalizeComparable(donor.business)
+    : normalizeComparable(item.donorId);
   return [
     normalizedTitle,
-    normalizeComparable(item.donorId),
+    donorPart,
     normalizeComparable(item.category)
   ].join('::');
 }
@@ -1990,28 +2006,28 @@ function mergeImportedDonor(existing, imported) {
   existing.notes = mergeImportedText(existing.notes, imported.notes);
 }
 
-function findExistingItemForImport(item, itemsByLot, itemsByKey) {
+function findExistingItemForImport(item, itemsByLot, itemsByKey, donorsById) {
   const lotKey = normalizeComparable(item.lotNumber);
   if (lotKey && itemsByLot.has(lotKey)) {
     return itemsByLot.get(lotKey);
   }
-  const key = itemImportKey(item);
+  const key = itemImportKey(item, donorsById);
   return key && itemsByKey.has(key) ? itemsByKey.get(key) : null;
 }
 
-function itemImportKeysMatch(left, right) {
-  const leftKey = itemImportKey(left);
-  const rightKey = itemImportKey(right);
+function itemImportKeysMatch(left, right, donorsById) {
+  const leftKey = itemImportKey(left, donorsById);
+  const rightKey = itemImportKey(right, donorsById);
   return Boolean(leftKey && rightKey && leftKey === rightKey);
 }
 
-function hasConflictingImportedLot(item, itemsByLot) {
+function hasConflictingImportedLot(item, itemsByLot, donorsById) {
   const lotKey = normalizeComparable(item.lotNumber);
   if (!lotKey) {
     return false;
   }
   const existingItem = itemsByLot.get(lotKey);
-  return Boolean(existingItem && !itemImportKeysMatch(existingItem, item));
+  return Boolean(existingItem && !itemImportKeysMatch(existingItem, item, donorsById));
 }
 
 function mergeImportedItem(existing, imported) {
@@ -2292,7 +2308,18 @@ function updateSelectedBlockSetting(setting, value, options = {}) {
   if (setting === 'showLabel' || setting === 'visible') {
     block[setting] = value;
   } else if (['x', 'y', 'w', 'h', 'fontSize'].includes(setting)) {
-    const bounds = setting === 'fontSize' ? [8, 48] : setting === 'w' ? [4, 100] : setting === 'h' ? [2, 100] : [0, 100];
+    let bounds;
+    if (setting === 'fontSize') {
+      bounds = [8, 48];
+    } else if (setting === 'x') {
+      bounds = [0, 100 - block.w];
+    } else if (setting === 'y') {
+      bounds = [0, 100 - block.h];
+    } else if (setting === 'w') {
+      bounds = [4, 100 - block.x];
+    } else if (setting === 'h') {
+      bounds = [2, 100 - block.y];
+    }
     block[setting] = clampNumber(value, block[setting], bounds[0], bounds[1]);
   } else {
     block[setting] = value;
@@ -2534,6 +2561,7 @@ function applyCsvImport() {
       summary.added += 1;
     });
   } else {
+    const donorsById = donorLookup();
     const itemsByLot = new Map(
       state.items
         .map((item) => [normalizeComparable(item.lotNumber), item])
@@ -2541,7 +2569,7 @@ function applyCsvImport() {
     );
     const itemsByKey = new Map(
       state.items
-        .map((item) => [itemImportKey(item), item])
+        .map((item) => [itemImportKey(item, donorsById), item])
         .filter(([key]) => key)
     );
     const conflictingLots = new Set();
@@ -2581,7 +2609,14 @@ function applyCsvImport() {
         status: 'available'
       };
 
-      if (hasConflictingImportedLot(importedItem, itemsByLot)) {
+      if (pendingDonor) {
+        donorsById.set(pendingDonor.id, pendingDonor);
+      }
+
+      if (hasConflictingImportedLot(importedItem, itemsByLot, donorsById)) {
+        if (pendingDonor) {
+          donorsById.delete(pendingDonor.id);
+        }
         conflictingLots.add(importedItem.lotNumber);
         summary.skipped += 1;
         return;
@@ -2591,10 +2626,10 @@ function applyCsvImport() {
         state.donors.push(pendingDonor);
       }
 
-      const existingItem = findExistingItemForImport(importedItem, itemsByLot, itemsByKey);
+      const existingItem = findExistingItemForImport(importedItem, itemsByLot, itemsByKey, donorsById);
       if (existingItem) {
         const previousLotKey = normalizeComparable(existingItem.lotNumber);
-        const previousItemKey = itemImportKey(existingItem);
+        const previousItemKey = itemImportKey(existingItem, donorsById);
         mergeImportedItem(existingItem, importedItem);
         if (previousLotKey) {
           itemsByLot.delete(previousLotKey);
@@ -2605,8 +2640,8 @@ function applyCsvImport() {
         if (normalizeComparable(existingItem.lotNumber)) {
           itemsByLot.set(normalizeComparable(existingItem.lotNumber), existingItem);
         }
-        if (itemImportKey(existingItem)) {
-          itemsByKey.set(itemImportKey(existingItem), existingItem);
+        if (itemImportKey(existingItem, donorsById)) {
+          itemsByKey.set(itemImportKey(existingItem, donorsById), existingItem);
         }
         summary.updated += 1;
         return;
@@ -2615,7 +2650,7 @@ function applyCsvImport() {
       importedItem.lotNumber = importedItem.lotNumber || String(nextLot);
       state.items.push(importedItem);
       itemsByLot.set(normalizeComparable(importedItem.lotNumber), importedItem);
-      itemsByKey.set(itemImportKey(importedItem), importedItem);
+      itemsByKey.set(itemImportKey(importedItem, donorsById), importedItem);
       nextLot += 1;
       summary.added += 1;
     });
