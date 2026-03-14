@@ -115,7 +115,8 @@ function createSampleAuctionState() {
     categories: uniqueStrings(items.map((item) => item.category)),
     meta: {
       lastSavedAt: '',
-      lastBackupAt: ''
+      lastBackupAt: '',
+      seedMode: 'sample'
     }
   };
 }
@@ -225,7 +226,8 @@ function createDefaultState() {
     categories: [],
     meta: {
       lastSavedAt: '',
-      lastBackupAt: ''
+      lastBackupAt: '',
+      seedMode: 'blank'
     }
   };
 }
@@ -327,6 +329,16 @@ function normalizeState(raw) {
   const settings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
   const legacyBidSheet = settings.bidSheet && typeof settings.bidSheet === 'object' ? settings.bidSheet : {};
 
+  const donorList = Array.isArray(raw.donors) ? raw.donors : [];
+  const itemList = Array.isArray(raw.items) ? raw.items : [];
+  const winnerList = Array.isArray(raw.winners) ? raw.winners : [];
+  const rawSeedMode = toText(raw.meta && raw.meta.seedMode);
+  const seedMode = rawSeedMode === 'sample'
+    ? 'sample'
+    : rawSeedMode === 'blank'
+      ? 'blank'
+      : (donorList.length || itemList.length || winnerList.length ? 'user' : 'blank');
+
   return {
     settings: {
       orgName: toText(settings.orgName),
@@ -343,7 +355,7 @@ function normalizeState(raw) {
       thankYouSignature: toText(settings.thankYouSignature || (settings.thankYou && settings.thankYou.signatureName)),
       layouts: normalizeLayouts(settings.layouts)
     },
-    donors: Array.isArray(raw.donors) ? raw.donors.map((donor) => ({
+    donors: donorList.map((donor) => ({
       id: toText(donor.id) || generateId(),
       name: toText(donor.name),
       business: toText(donor.business),
@@ -351,8 +363,8 @@ function normalizeState(raw) {
       phone: toText(donor.phone),
       address: toText(donor.address),
       notes: toText(donor.notes)
-    })) : [],
-    items: Array.isArray(raw.items) ? raw.items.map((item) => ({
+    })),
+    items: itemList.map((item) => ({
       id: toText(item.id) || generateId(),
       lotNumber: toText(item.lotNumber),
       title: toText(item.title),
@@ -364,19 +376,20 @@ function normalizeState(raw) {
       increment: toMoney(item.increment),
       buyNow: toMoney(item.buyNow),
       status: toText(item.status) === 'sold' ? 'sold' : 'available'
-    })) : [],
-    winners: Array.isArray(raw.winners) ? raw.winners.map((winner) => ({
+    })),
+    winners: winnerList.map((winner) => ({
       id: toText(winner.id) || generateId(),
       itemId: toText(winner.itemId),
       winnerName: toText(winner.winnerName),
       paddleNumber: toText(winner.paddleNumber),
       winningBid: toMoney(winner.winningBid) || 0,
       isPaid: winner.isPaid === true
-    })) : [],
+    })),
     categories: uniqueStrings(Array.isArray(raw.categories) ? raw.categories : []),
     meta: {
       lastSavedAt: toText(raw.meta && raw.meta.lastSavedAt),
-      lastBackupAt: toText(raw.meta && raw.meta.lastBackupAt)
+      lastBackupAt: toText(raw.meta && raw.meta.lastBackupAt),
+      seedMode
     }
   };
 }
@@ -389,7 +402,7 @@ function uniqueStrings(values) {
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? normalizeState(JSON.parse(saved)) : createDefaultState();
+    return saved ? normalizeState(JSON.parse(saved)) : createSampleAuctionState();
   } catch (error) {
     return createDefaultState();
   }
@@ -399,7 +412,10 @@ let state = loadState();
 let saveTimer = null;
 
 function persistState(message, options = {}) {
-  const { skipRender = false } = options;
+  const { skipRender = false, preserveSeedMode = false } = options;
+  if (!preserveSeedMode && state.meta.seedMode === 'sample') {
+    state.meta.seedMode = 'user';
+  }
   state.meta.lastSavedAt = new Date().toISOString();
 
   try {
@@ -542,28 +558,68 @@ function hasData() {
   return state.donors.length > 0 || state.items.length > 0 || state.winners.length > 0;
 }
 
+function isSampleMode() {
+  return state.meta.seedMode === 'sample';
+}
+
 function renderSaveStatus(message) {
   const savedAt = state.meta.lastSavedAt ? TIME_FORMAT.format(new Date(state.meta.lastSavedAt)) : '';
   document.getElementById('saveStatus').textContent = savedAt ? `${message} at ${savedAt}` : message;
 }
 
-function showBanner(type, message) {
+function showBanner(type, message, actions = []) {
   const banner = document.getElementById('banner');
   banner.hidden = false;
   banner.className = `banner ${type}`;
-  banner.textContent = message;
+  banner.replaceChildren();
+
+  const content = document.createElement('div');
+  content.className = 'banner__content';
+
+  const text = document.createElement('div');
+  text.className = 'banner__message';
+  text.textContent = message;
+  content.append(text);
+
+  if (actions.length) {
+    const row = document.createElement('div');
+    row.className = 'button-row banner__actions';
+    actions.forEach((action) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = action.primary ? 'button button--primary button--small' : 'button button--small';
+      button.dataset.onboardingAction = action.action;
+      button.textContent = action.label;
+      row.append(button);
+    });
+    content.append(row);
+  }
+
+  banner.append(content);
 }
 
 function clearBanner() {
   const banner = document.getElementById('banner');
   banner.hidden = true;
   banner.className = 'banner';
-  banner.textContent = '';
+  banner.replaceChildren();
 }
 
 function renderBannerFromState() {
   if (ui.storageError) {
     showBanner('error', ui.storageError);
+    return;
+  }
+
+  if (isSampleMode()) {
+    showBanner(
+      'success',
+      'You are looking at sample auction data. Explore freely, then start with a blank auction before importing your real event.',
+      [
+        { action: 'start-blank', label: 'Start blank auction', primary: true },
+        { action: 'jump-data', label: 'Open data tools' }
+      ]
+    );
     return;
   }
 
@@ -742,10 +798,12 @@ function renderCsvExampleIntro() {
 
 function renderGettingStarted() {
   const empty = !hasData();
+  const sampleMode = isSampleMode();
   const heroActions = document.getElementById('heroActions');
   const heroNote = document.getElementById('heroNote');
   const firstRunGuide = document.getElementById('firstRunGuide');
   const sampleDataGuide = document.getElementById('sampleDataGuide');
+  document.getElementById('clearAllDataButton').textContent = sampleMode ? 'Remove sample and start blank' : 'Clear all auction data';
 
   heroActions.innerHTML = empty
     ? `
@@ -753,6 +811,12 @@ function renderGettingStarted() {
       <button class="button" type="button" data-onboarding-action="jump-donors">Start manually</button>
       <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
     `
+    : sampleMode
+      ? `
+        <button class="button button--primary" type="button" data-onboarding-action="start-blank">Start blank auction</button>
+        <button class="button" type="button" data-onboarding-action="jump-documents">Explore documents</button>
+        <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
+      `
     : `
       <button class="button button--primary" type="button" data-onboarding-action="jump-donors">Add donors</button>
       <button class="button" type="button" data-onboarding-action="jump-items">Add items</button>
@@ -2346,7 +2410,7 @@ function printCurrentDocumentSet() {
 }
 
 function loadSampleAuction() {
-  if (hasData() && !window.confirm('Replace the current auction data in this browser with the sample auction?')) {
+  if (hasData() && !isSampleMode() && !window.confirm('Replace the current auction data in this browser with the sample auction?')) {
     return;
   }
   state = createSampleAuctionState();
@@ -2354,20 +2418,28 @@ function loadSampleAuction() {
   ui.activeView = 'overview';
   ui.storageError = '';
   renderAll();
-  saveState('Sample data loaded');
+  saveState('Sample data loaded', { preserveSeedMode: true });
   showBanner('success', 'Sample auction loaded. Explore the app, then clear it later from Data when you are ready for your real event.');
 }
 
-function clearAllData() {
-  if (!window.confirm('Clear all auction data from this browser? This cannot be undone.')) {
+function startBlankAuction() {
+  const message = isSampleMode()
+    ? 'Remove the sample auction and start with a blank auction in this browser?'
+    : 'Clear all auction data from this browser and start with a blank auction?';
+  if (hasData() && !window.confirm(message)) {
     return;
   }
-  localStorage.removeItem(STORAGE_KEY);
   state = createDefaultState();
   ui.selectedLayoutBlockId = null;
+  ui.activeView = 'overview';
   ui.storageError = '';
   renderAll();
-  showBanner('success', 'All auction data has been cleared from this browser.');
+  saveState('Blank auction ready', { preserveSeedMode: true });
+  showBanner('success', 'You are now starting with a blank auction.');
+}
+
+function clearAllData() {
+  startBlankAuction();
 }
 
 function handleOnboardingAction(action) {
@@ -2376,6 +2448,13 @@ function handleOnboardingAction(action) {
       closeModal(ui.modal.id);
     }
     loadSampleAuction();
+    return;
+  }
+  if (action === 'start-blank') {
+    if (ui.modal) {
+      closeModal(ui.modal.id);
+    }
+    startBlankAuction();
     return;
   }
   if (action === 'jump-donors') {
@@ -2730,6 +2809,13 @@ document.querySelectorAll('.nav-link').forEach((button) => {
 
 document.querySelectorAll('[data-jump-view]').forEach((button) => {
   button.addEventListener('click', () => switchView(button.dataset.jumpView));
+});
+
+document.getElementById('banner').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-onboarding-action]')?.dataset.onboardingAction;
+  if (action) {
+    handleOnboardingAction(action);
+  }
 });
 
 ['heroActions', 'firstRunGuide', 'sampleDataGuide'].forEach((id) => {
