@@ -750,11 +750,6 @@ function samplePreviewTable(title, subtitle, headers, rows) {
   `;
 }
 
-const DEFAULT_HERO_NOTE_HTML = `
-  <strong>Joni’s original ask, captured directly</strong>
-  <p>This version is being built around actual layout control: field blocks, titles on or off, custom text blocks, and print templates for bid sheets, price lists, and thank-you letters.</p>
-`;
-
 function csvExampleConfig(type) {
   if (type === 'donors') {
     return {
@@ -800,113 +795,34 @@ function renderGettingStarted() {
   const empty = !hasData();
   const sampleMode = isSampleMode();
   const heroActions = document.getElementById('heroActions');
-  const heroNote = document.getElementById('heroNote');
-  const firstRunGuide = document.getElementById('firstRunGuide');
-  const sampleDataGuide = document.getElementById('sampleDataGuide');
+  const overviewIntroText = document.getElementById('overviewIntroText');
   document.getElementById('clearAllDataButton').textContent = sampleMode ? 'Remove sample and start blank' : 'Clear all auction data';
 
-  heroActions.innerHTML = empty
-    ? `
+  if (empty) {
+    overviewIntroText.textContent = 'This auction is blank right now. Load the sample auction or start entering your own donors and items.';
+    heroActions.innerHTML = `
       <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
-      <button class="button" type="button" data-onboarding-action="jump-donors">Start manually</button>
+      <button class="button" type="button" data-onboarding-action="jump-donors">Add donors</button>
       <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
-    `
-    : sampleMode
-      ? `
-        <button class="button button--primary" type="button" data-onboarding-action="start-blank">Start blank auction</button>
-        <button class="button" type="button" data-onboarding-action="jump-documents">Explore documents</button>
-        <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
-      `
-    : `
-      <button class="button button--primary" type="button" data-onboarding-action="jump-donors">Add donors</button>
-      <button class="button" type="button" data-onboarding-action="jump-items">Add items</button>
-      <button class="button" type="button" data-onboarding-action="jump-documents">Open documents</button>
     `;
-
-  if (!empty) {
-    heroNote.innerHTML = DEFAULT_HERO_NOTE_HTML;
-    firstRunGuide.hidden = true;
-    sampleDataGuide.hidden = true;
-    firstRunGuide.innerHTML = '';
-    sampleDataGuide.innerHTML = '';
     return;
   }
 
-  heroNote.innerHTML = `
-    <strong>Sample rows, right away</strong>
-    <p>If you are arriving cold, these rows show the exact kind of data the app expects before you import anything.</p>
-    <div class="hero-sample-list">
-      <div class="hero-sample-row">
-        <span class="hero-sample-label">Donor example</span>
-        <code>Nina Lopez | Mission Books | nina@missionbooks.example | 415-555-0101</code>
-      </div>
-      <div class="hero-sample-row">
-        <span class="hero-sample-label">Item example</span>
-        <code>101 | Signed cookbook set | Mission Books | Books | 80 | 25</code>
-      </div>
-    </div>
-  `;
+  if (sampleMode) {
+    overviewIntroText.textContent = 'This browser is currently showing the sample auction so you can explore the full workflow before using your own event data.';
+    heroActions.innerHTML = `
+      <button class="button button--primary" type="button" data-onboarding-action="start-blank">Start blank auction</button>
+      <button class="button" type="button" data-onboarding-action="jump-documents">Explore documents</button>
+      <button class="button" type="button" data-onboarding-action="jump-data">Open data tools</button>
+    `;
+    return;
+  }
 
-  const donorPreview = samplePreviewTable(
-    'Donor CSV Example',
-    'These are the same columns used by the donor CSV template.',
-    ['Contact Name', 'Business', 'Email', 'Phone', 'Address', 'Notes'],
-    SAMPLE_DONOR_ROWS
-  );
-  const itemPreview = samplePreviewTable(
-    'Item CSV Example',
-    'These rows become auction lots inside the app.',
-    ['Lot Number', 'Title', 'Description', 'Donor', 'Category', 'FMV', 'Starting Bid', 'Minimum Increment', 'Buy Now'],
-    SAMPLE_ITEM_ROWS
-  );
-
-  firstRunGuide.hidden = false;
-  firstRunGuide.innerHTML = `
-    <div class="first-run-card">
-      <div class="section-head">
-        <div>
-          <h3>First-Time Setup</h3>
-          <p>If you are just exploring, load a small sample auction first. It adds 3 donors, 3 items, and 1 recorded winner so every section of the app has something to show.</p>
-        </div>
-      </div>
-      <div class="button-row">
-        <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
-        <button class="button" type="button" data-onboarding-action="jump-donors">Enter your own donors</button>
-        <button class="button" type="button" data-onboarding-action="jump-data">Go to imports and backups</button>
-      </div>
-      <div class="note-list">
-        <div class="note-card">
-          <strong>No background docs required.</strong>
-          <p>You can explore the sample first, then clear it later from the Data tab and start with your real auction.</p>
-        </div>
-        <div class="note-card">
-          <strong>The preview rows below also show the CSV format.</strong>
-          <p>If you already have a spreadsheet, the columns in these examples match the templates you can download from Data.</p>
-        </div>
-      </div>
-      <div class="sample-preview-grid">
-        ${donorPreview}
-        ${itemPreview}
-      </div>
-    </div>
-  `;
-
-  sampleDataGuide.hidden = false;
-  sampleDataGuide.innerHTML = `
-    <div class="first-run-card">
-      <div class="section-head">
-        <div>
-          <h3>Explore Before You Import</h3>
-          <p>Try a sample auction if you want to see donors, lots, documents, and checkout already filled in before using your own spreadsheet.</p>
-        </div>
-      </div>
-      <div class="button-row">
-        <button class="button button--primary" type="button" data-onboarding-action="load-sample">Load sample auction</button>
-        <button class="button" type="button" data-onboarding-action="download-donor-template">Download donor template</button>
-        <button class="button" type="button" data-onboarding-action="download-item-template">Download item template</button>
-      </div>
-      <div class="muted">The sample data matches the CSV column format shown above on Home and in the downloadable templates.</div>
-    </div>
+  overviewIntroText.textContent = 'Everything below is your live auction data for this browser. Update donors, items, layouts, and winners as you work.';
+  heroActions.innerHTML = `
+    <button class="button button--primary" type="button" data-onboarding-action="jump-donors">Add donors</button>
+    <button class="button" type="button" data-onboarding-action="jump-items">Add items</button>
+    <button class="button" type="button" data-onboarding-action="jump-documents">Open documents</button>
   `;
 }
 
@@ -2818,7 +2734,7 @@ document.getElementById('banner').addEventListener('click', (event) => {
   }
 });
 
-['heroActions', 'firstRunGuide', 'sampleDataGuide'].forEach((id) => {
+['heroActions'].forEach((id) => {
   document.getElementById(id).addEventListener('click', (event) => {
     const action = event.target.closest('[data-onboarding-action]')?.dataset.onboardingAction;
     if (action) {
