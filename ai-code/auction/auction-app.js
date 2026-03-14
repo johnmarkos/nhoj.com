@@ -453,11 +453,11 @@ function flushPendingSave(message, options = {}) {
   return persistState(message, options);
 }
 
-function saveState(message) {
+function saveState(message, options = {}) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    persistState(message);
+    persistState(message, options);
   }, 140);
 }
 
