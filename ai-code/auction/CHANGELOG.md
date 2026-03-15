@@ -5,6 +5,8 @@ All notable changes to the Silent Auction Manager.
 ## Unreleased
 
 ### Fixed
+- Event settings and document settings fields no longer trigger duplicate saves on blur after removing redundant `change` listeners where `input` already handles updates.
+- Removed the unused jump-view listener and dead `.print-table` preview styles.
 - Auction overview now uses the donor lookup map for orphaned-donor checks, and item import reuses the updated composite key instead of recomputing it.
 - Winner validation errors now render inline inside the winner modal instead of behind the overlay.
 - Item CSV re-import now matches existing items by title, donor, and category even when lot numbers change.
@@ -17,6 +19,9 @@ All notable changes to the Silent Auction Manager.
 - Clicking a layout block without moving it no longer saves a spurious "Layout updated" state.
 - Layout block selection now relies on the drag pointer handlers so a click no longer triggers a duplicate canvas re-render before selection settles.
 - Layout blocks now set `touch-action: none` so touch drags do not also pan or scroll the page.
+
+### Changed
+- `formatCurrency` now reuses a cached `Intl.NumberFormat` instance instead of constructing a new formatter on every call.
 
 ## 2026-03-14
 
