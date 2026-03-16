@@ -881,7 +881,7 @@ function renderSidebar() {
   `).join('');
 }
 
-function renderOverview(syncInputs = true) {
+function renderOverview(syncInputs = true, donorsById = null) {
   renderGettingStarted();
   document.getElementById('overviewDonorCount').textContent = String(state.donors.length);
   document.getElementById('overviewDonorNote').textContent = state.donors.length
@@ -907,7 +907,7 @@ function renderOverview(syncInputs = true) {
 
   const missingDonorCount = state.items.filter((item) => !item.donorId).length;
   const missingPricingCount = state.items.filter((item) => item.startingBid === null || item.increment === null).length;
-  const donorsById = donorLookup();
+  donorsById = donorsById || donorLookup();
   const orphanedDonorCount = state.items.filter((item) => item.donorId && !donorsById.has(item.donorId)).length;
   const duplicateLotNumbers = duplicateLots();
   const issues = [];
@@ -948,12 +948,12 @@ function renderLogoPreview() {
   }
 }
 
-function populateDonorAndCategoryOptions() {
+function populateDonorAndCategoryOptions(donorsById = null) {
   const donorSelect = document.getElementById('itemDonor');
   const itemCategorySelect = document.getElementById('itemCategory');
   const itemCategoryFilter = document.getElementById('itemCategoryFilter');
   const documentCategoryFilter = document.getElementById('documentCategoryFilter');
-  const donorsById = donorLookup();
+  donorsById = donorsById || donorLookup();
   const donorValue = donorSelect.value;
   const itemCategoryValue = itemCategorySelect.value;
   const filterValue = itemCategoryFilter.value;
@@ -1096,11 +1096,11 @@ function renderItemForm(item = null) {
   document.getElementById('itemBuyNow').value = item && item.buyNow !== null ? String(item.buyNow) : '';
 }
 
-function renderItemTable() {
+function renderItemTable(donorsById = null) {
   const search = normalizeComparable(document.getElementById('itemSearch').value);
   const category = document.getElementById('itemCategoryFilter').value;
   const sort = document.getElementById('itemSort').value;
-  const donorsById = donorLookup();
+  donorsById = donorsById || donorLookup();
   const items = state.items.filter((item) => {
     if (category && item.category !== category) {
       return false;
@@ -1347,9 +1347,10 @@ function selectedLayoutBlock() {
   return layoutBlocksForCurrentType().find((block) => block.id === ui.selectedLayoutBlockId) || null;
 }
 
-function renderLayoutCanvas() {
+function renderLayoutCanvas(donorsById = null) {
   const canvas = document.getElementById('layoutCanvas');
-  const contexts = buildDocumentContexts(ui.selectedDocumentType, false, donorLookup());
+  donorsById = donorsById || donorLookup();
+  const contexts = buildDocumentContexts(ui.selectedDocumentType, false, donorsById);
   const sampleContext = contexts[0] || {};
   const blocks = layoutBlocksForCurrentType();
 
@@ -1452,8 +1453,9 @@ function renderInspector() {
   `;
 }
 
-function renderDocumentPreview() {
-  const allContexts = buildDocumentContexts(ui.selectedDocumentType, true, donorLookup());
+function renderDocumentPreview(donorsById = null) {
+  donorsById = donorsById || donorLookup();
+  const allContexts = buildDocumentContexts(ui.selectedDocumentType, true, donorsById);
   const contexts = allContexts.slice(0, 1);
   const wrap = document.getElementById('documentPreview');
   const summary = document.getElementById('documentPreviewSummary');
@@ -1562,7 +1564,7 @@ function renderItemListTable(items, donorsById) {
   `;
 }
 
-function renderDocumentsView(syncInputs = true) {
+function renderDocumentsView(syncInputs = true, donorsById = null) {
   document.getElementById('documentTypeSelect').value = ui.selectedDocumentType;
   document.getElementById('bidLineCountField').hidden = ui.selectedDocumentType !== 'bidSheet';
   document.getElementById('bidLineCount').disabled = ui.selectedDocumentType !== 'bidSheet';
@@ -1576,27 +1578,29 @@ function renderDocumentsView(syncInputs = true) {
     document.getElementById('thankYouBodyText').value = state.settings.thankYouBodyText;
     document.getElementById('thankYouSignature').value = state.settings.thankYouSignature;
   }
-  renderLayoutCanvas();
+  donorsById = donorsById || donorLookup();
+  renderLayoutCanvas(donorsById);
   renderInspector();
-  renderDocumentPreview();
+  renderDocumentPreview(donorsById);
 }
 
-function renderCheckout() {
+function renderCheckout(donorsById = null) {
   const totalRaised = state.winners.reduce((sum, winner) => sum + winner.winningBid, 0);
   const paid = state.winners.filter((winner) => winner.isPaid).reduce((sum, winner) => sum + winner.winningBid, 0);
   document.getElementById('checkoutSoldCount').textContent = String(state.winners.length);
   document.getElementById('checkoutRaisedTotal').textContent = formatCurrency(totalRaised) || '$0.00';
   document.getElementById('checkoutPaidTotal').textContent = formatCurrency(paid) || '$0.00';
   document.getElementById('checkoutOutstandingTotal').textContent = formatCurrency(totalRaised - paid) || '$0.00';
-  renderCheckoutSearchResults();
+  donorsById = donorsById || donorLookup();
+  renderCheckoutSearchResults(donorsById);
   renderWinnerList();
 }
 
-function renderCheckoutSearchResults() {
+function renderCheckoutSearchResults(donorsById = null) {
   const query = normalizeComparable(document.getElementById('checkoutSearch').value);
   const wrap = document.getElementById('checkoutSearchResults');
   const soldItemIds = new Set(state.winners.map((winner) => winner.itemId));
-  const donorsById = donorLookup();
+  donorsById = donorsById || donorLookup();
   if (!query) {
     wrap.innerHTML = '<div class="empty-state">Start typing a lot number or title.</div>';
     return;
@@ -2766,17 +2770,18 @@ function removeWinner(winnerId) {
 }
 
 function renderAll() {
+  const donorsById = donorLookup();
   renderSaveStatus('Saved');
   renderSidebar();
   renderBannerFromState();
-  renderOverview();
-  populateDonorAndCategoryOptions();
+  renderOverview(true, donorsById);
+  populateDonorAndCategoryOptions(donorsById);
   renderDonorForm();
   renderDonorTable();
   renderItemForm();
-  renderItemTable();
-  renderDocumentsView();
-  renderCheckout();
+  renderItemTable(donorsById);
+  renderDocumentsView(true, donorsById);
+  renderCheckout(donorsById);
   switchView(ui.activeView);
 }
 

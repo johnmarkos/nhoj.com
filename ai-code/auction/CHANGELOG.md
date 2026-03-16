@@ -21,6 +21,7 @@ All notable changes to the Silent Auction Manager.
 - Layout blocks now set `touch-action: none` so touch drags do not also pan or scroll the page.
 
 ### Changed
+- `renderAll` now builds the donor lookup map once per full render cycle and threads it through the overview, item, document, and checkout renderers instead of rebuilding the same map repeatedly.
 - `formatCurrency` now reuses a cached `Intl.NumberFormat` instance instead of constructing a new formatter on every call.
 
 ## 2026-03-14
