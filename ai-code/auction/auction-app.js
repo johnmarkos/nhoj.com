@@ -17,6 +17,7 @@ const ui = {
   activeView: 'overview',
   selectedDocumentType: 'bidSheet',
   selectedLayoutBlockId: null,
+  previewPage: 0,
   dragState: null,
   csvImport: null,
   modal: null,
@@ -1456,24 +1457,37 @@ function renderInspector() {
 function renderDocumentPreview(donorsById = null) {
   donorsById = donorsById || donorLookup();
   const allContexts = buildDocumentContexts(ui.selectedDocumentType, true, donorsById);
-  const contexts = allContexts.slice(0, 1);
+  const pageCount = allContexts.length;
   const wrap = document.getElementById('documentPreview');
+  const nav = document.getElementById('previewNav');
   const summary = document.getElementById('documentPreviewSummary');
-  if (!contexts.length) {
+  if (!pageCount) {
+    ui.previewPage = 0;
+    nav.hidden = true;
     wrap.innerHTML = '<div class="empty-state">No data yet for this document type.</div>';
     summary.textContent = 'This uses the same layout data that printing uses.';
     return;
   }
 
-  wrap.innerHTML = contexts.map((context) => renderDocumentPage(ui.selectedDocumentType, context, true)).join('');
+  ui.previewPage = clampNumber(ui.previewPage, 0, 0, pageCount - 1);
+  wrap.innerHTML = renderDocumentPage(ui.selectedDocumentType, allContexts[ui.previewPage], true);
 
   if (ui.selectedDocumentType === 'bidSheet') {
-    summary.textContent = `${allContexts.length} bid sheet(s) will print with this layout.`;
+    summary.textContent = `${pageCount} bid sheet(s) will print with this layout.`;
   } else if (ui.selectedDocumentType === 'itemList') {
     const itemCount = allContexts.reduce((count, context) => count + context.items.length, 0);
-    summary.textContent = `${itemCount} item row(s) across ${allContexts.length} page(s) will print in the price list.`;
+    summary.textContent = `${itemCount} item row(s) across ${pageCount} page(s) will print in the price list.`;
   } else {
-    summary.textContent = `${allContexts.length} thank-you letter(s) will print with this layout.`;
+    summary.textContent = `${pageCount} thank-you letter(s) will print with this layout.`;
+  }
+
+  if (pageCount > 1) {
+    nav.hidden = false;
+    document.getElementById('previewPageIndicator').textContent = `Page ${ui.previewPage + 1} of ${pageCount}`;
+    document.getElementById('previewPrev').disabled = ui.previewPage === 0;
+    document.getElementById('previewNext').disabled = ui.previewPage === pageCount - 1;
+  } else {
+    nav.hidden = true;
   }
 }
 
@@ -2871,8 +2885,19 @@ document.getElementById('itemTableWrap').addEventListener('click', (event) => {
 
 document.getElementById('documentTypeSelect').addEventListener('change', (event) => {
   ui.selectedDocumentType = event.target.value;
+  ui.previewPage = 0;
   ui.selectedLayoutBlockId = null;
   renderDocumentsView();
+});
+document.getElementById('previewPrev').addEventListener('click', () => {
+  if (ui.previewPage > 0) {
+    ui.previewPage -= 1;
+    renderDocumentPreview();
+  }
+});
+document.getElementById('previewNext').addEventListener('click', () => {
+  ui.previewPage += 1;
+  renderDocumentPreview();
 });
 document.getElementById('documentCategoryFilter').addEventListener('change', renderDocumentsView);
 ['bidLineCount', 'bidSheetHeaderText', 'bidSheetFooterText', 'itemListHeaderText', 'itemListFooterText', 'thankYouHeaderText', 'thankYouBodyText', 'thankYouSignature']

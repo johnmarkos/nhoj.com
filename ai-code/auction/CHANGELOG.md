@@ -4,6 +4,9 @@ All notable changes to the Silent Auction Manager.
 
 ## Unreleased
 
+### Added
+- Document previews now support page-by-page navigation with Prev/Next controls and a live page indicator in the Documents tab.
+
 ### Fixed
 - Event settings and document settings fields no longer trigger duplicate saves on blur after removing redundant `change` listeners where `input` already handles updates.
 - Removed the unused jump-view listener and dead `.print-table` preview styles.
