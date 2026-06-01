@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SF Rat Ballot POC</title>
+  <meta name="description" content="A proof-of-concept rationalist-style ballot guide for the June 2, 2026 San Francisco election.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #0f151d;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-soft: rgba(88, 166, 255, 0.12);
+      --yes: #3fb950;
+      --no: #f85149;
+      --warn: #d29922;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --bg-tertiary: #ffffff;
+        --border: #d0d7de;
+        --text: #1f2328;
+        --text-muted: #656d76;
+        --accent: #0969da;
+        --accent-soft: rgba(9, 105, 218, 0.08);
+        --yes: #1a7f37;
+        --no: #cf222e;
+        --warn: #9a6700;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.58;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .back {
+      display: inline-block;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+      transition: color 0.15s;
+    }
+
+    .back:hover {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .eyebrow {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      color: var(--text);
+      font-size: clamp(1.45rem, 5vw, 2.45rem);
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.15;
+      margin-bottom: 0.8rem;
+    }
+
+    .lede {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 72ch;
+    }
+
+    .notice {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.86rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+    }
+
+    .notice strong {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    .nav {
+      display: grid;
+      gap: 0.5rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 1.75rem;
+    }
+
+    .nav a {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.65rem 0.75rem;
+      text-align: center;
+      transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+    }
+
+    .nav a:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .section {
+      margin: 2rem 0;
+    }
+
+    .section-header {
+      align-items: center;
+      color: var(--text-muted);
+      display: flex;
+      font-size: 0.75rem;
+      font-weight: 700;
+      gap: 0.75rem;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.85rem;
+      text-transform: uppercase;
+    }
+
+    .section-header::after {
+      background: var(--border);
+      content: "";
+      flex: 1;
+      height: 1px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 0.85rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .item-wide {
+      grid-column: 1 / -1;
+    }
+
+    .item-head {
+      align-items: flex-start;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    h2 {
+      color: var(--text);
+      font-size: 0.96rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .meta {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      margin-top: 0.2rem;
+    }
+
+    .pick {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      display: grid;
+      gap: 0.25rem;
+      margin-bottom: 0.75rem;
+      padding: 0.75rem;
+    }
+
+    .pick-label {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pick-name {
+      color: var(--accent);
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .pick-name.yes {
+      color: var(--yes);
+    }
+
+    .pick-name.no {
+      color: var(--no);
+    }
+
+    .confidence {
+      align-items: center;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-muted);
+      display: inline-flex;
+      flex: 0 0 auto;
+      font-size: 0.68rem;
+      font-weight: 700;
+      height: 1.75rem;
+      justify-content: center;
+      padding: 0 0.65rem;
+      white-space: nowrap;
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      margin-bottom: 0.55rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    .note {
+      border-left: 2px solid var(--accent);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-top: 0.7rem;
+      padding-left: 0.75rem;
+    }
+
+    .ranked {
+      display: grid;
+      gap: 0.35rem;
+      list-style: none;
+      margin: 0.1rem 0 0.75rem;
+    }
+
+    .ranked li {
+      align-items: center;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      display: flex;
+      font-size: 0.82rem;
+      gap: 0.6rem;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .ranked span {
+      color: var(--accent);
+      flex: 0 0 2rem;
+      font-weight: 700;
+    }
+
+    details {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+    }
+
+    summary {
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    details p {
+      margin-top: 0.75rem;
+    }
+
+    .sources {
+      list-style: none;
+      margin-top: 0.6rem;
+    }
+
+    .sources li {
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      padding: 0.65rem 0;
+    }
+
+    .sources li:last-child {
+      padding-bottom: 0;
+    }
+
+    .back:focus,
+    .nav a:focus,
+    a:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 1.25rem;
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .item-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .nav {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <a href="../" class="back">&larr; ai-code</a>
+
+    <header>
+      <div class="eyebrow">Proof of concept / June 2, 2026</div>
+      <h1>SF Rat Ballot</h1>
+      <p class="lede">A stylized Bayesian-rationalist ballot guide for San Francisco's June 2, 2026 election: high expected value, state capacity, abundance, institutional competence, clean incentives, and explicit uncertainty.</p>
+    </header>
+
+    <div class="notice">
+      <strong>Not official:</strong> this is not affiliated with Eliezer Yudkowsky, any campaign, or any rationalist organization. It is a POC written in the style of a risk-aware, Bayesian voter. Confidence means "how likely this is the best choice under these priors," not the chance of winning.
+    </div>
+
+    <nav class="nav" aria-label="Ballot sections">
+      <a href="#statewide">Statewide</a>
+      <a href="#local-offices">Local Offices</a>
+      <a href="#districts">District Races</a>
+      <a href="#measures">Measures</a>
+    </nav>
+
+    <details>
+      <summary>Model priors</summary>
+      <p>Prefer boring competence over vibes. Prefer mechanisms that improve incentives over symbolic punishment. Discount claims that require a miracle budget or perfect implementation. Weight housing abundance, institutional reliability, disaster preparedness, and AI/technology governance unusually heavily. Treat low-salience offices as jobs with skill requirements, not personality contests.</p>
+    </details>
+
+    <section class="section" id="statewide">
+      <div class="section-header">Statewide Offices</div>
+      <div class="grid">
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Governor</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">55%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Xavier Becerra</div>
+          </div>
+          <p>The governor is mostly an administrative-capacity job. Becerra has the strongest combination of statewide executive experience, federal agency experience, and plausible top-two viability.</p>
+          <p class="note">If you are voting sincerely rather than strategically, Matt Mahan is the pro-tech/YIMBY alternate. The model still picks Becerra because the top-two primary rewards viable competence.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Lieutenant Governor</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">60%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Michael Tubbs</div>
+          </div>
+          <p>Tubbs has actual executive experience and a record of testing policy with measurable outcomes, especially the Stockton basic-income pilot. For a lower-power office tied to higher education and economic development, that evidence-friendly orientation matters.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Secretary of State</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">75%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Shirley N. Weber</div>
+          </div>
+          <p>Election administration should be boring, accessible, and resilient. Weber is the incumbent and the lower-variance institutional choice; the alternatives lean too much toward fraud panic or protest signaling.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Controller</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">70%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Malia Cohen</div>
+          </div>
+          <p>This office rewards accounting, audit discipline, and transparency more than ideology. Cohen has the incumbent advantage in a technical role where continuity and competent fiscal reporting are valuable.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Treasurer</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">58%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Eleni Kounalakis</div>
+          </div>
+          <p>The treasurer manages finance, debt, and investment systems where operational competence matters. Kounalakis has relevant statewide experience and a pragmatic enough profile for the job.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Attorney General</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">65%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Rob Bonta</div>
+          </div>
+          <p>For AG, the model values rule-of-law competence, capacity to litigate federal-state conflicts, and avoiding culture-war prosecution theatrics. Bonta is the safer institutional pick.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Insurance Commissioner</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">80%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Patrick Wolff</div>
+          </div>
+          <p>This is the cleanest skill-to-office match on the statewide ballot. Insurance regulation is a complex adversarial market-design problem; Wolff's finance, analytics, and risk-modeling background is unusually relevant.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Board of Equalization, District 2</h2>
+              <div class="meta">Voter-nominated / vote for one</div>
+            </div>
+            <div class="confidence">60%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Sally J. Lieber</div>
+          </div>
+          <p>The Board of Equalization is obscure but tax administration is real work. The incumbent is the low-drama continuity choice; if the institution should change, reform the institution rather than gambling on a weaker fit.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Superintendent of Public Instruction</h2>
+              <div class="meta">Nonpartisan / vote for one</div>
+            </div>
+            <div class="confidence">58%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Josh Newman</div>
+          </div>
+          <p>Education policy needs measurable learning outcomes, career pathways, teacher quality, and fewer culture-war feedback loops. Newman is the best fit for a technocratic, outcomes-first vote.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="local-offices">
+      <div class="section-header">Citywide Local Offices</div>
+      <div class="grid">
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Judge of the Superior Court, Seat 16</h2>
+              <div class="meta">Nonpartisan / vote for one</div>
+            </div>
+            <div class="confidence">55%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Phoebe Maffei</div>
+          </div>
+          <p>Judicial elections are low-information and easy to overfit. Maffei looks like the lower-variance choice: broad legal experience, mainstream endorsements, and a public-safety background without obvious ideological overhang.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Member, Board of Education</h2>
+              <div class="meta">Local school board / vote for one</div>
+            </div>
+            <div class="confidence">65%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Phil Kim</div>
+          </div>
+          <p>SFUSD needs operational stability, payroll competence, and classroom-grounded governance. Kim is a former science teacher and current board president, so the expected value of continuity beats another reset.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="districts">
+      <div class="section-header">District-Specific Offices</div>
+      <div class="grid">
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>U.S. Representative, District 11</h2>
+              <div class="meta">Only if CA-11 is on your ballot</div>
+            </div>
+            <div class="confidence">68%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Scott Wiener</div>
+          </div>
+          <p>Wiener has the highest expected federal-policy value: housing abundance, transit, state-capacity instincts, legislative track record, and enough tech literacy to matter. Saikat Chakrabarti has the stronger explicit AI-safety signal, but weaker demonstrated governing leverage.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>U.S. Representative, District 15</h2>
+              <div class="meta">Only if CA-15 is on your ballot</div>
+            </div>
+            <div class="confidence">70%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Kevin Mullin</div>
+          </div>
+          <p>Mullin is the incumbent with committee experience and a credible pro-democracy, pro-governance record. The challenger does not clear the burden of proof for replacing him.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>State Assembly, District 17</h2>
+              <div class="meta">Only if AD-17 is on your ballot</div>
+            </div>
+            <div class="confidence">72%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Matt Haney</div>
+          </div>
+          <p>Haney is the practical continuity pick and has a record of working on housing, labor, and urban governance. In a low-contest primary, there is no strong reason to leave this blank.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>State Assembly, District 19</h2>
+              <div class="meta">Only if AD-19 is on your ballot</div>
+            </div>
+            <div class="confidence">70%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name">Catherine Stefani</div>
+          </div>
+          <p>Stefani is the pragmatic, public-safety-oriented choice with meaningful local and state experience. The model favors that over a low-information protest vote.</p>
+        </article>
+
+        <article class="item item-wide">
+          <div class="item-head">
+            <div>
+              <h2>Board of Supervisors, District 2</h2>
+              <div class="meta">Only if D2 is on your ballot / ranked-choice</div>
+            </div>
+            <div class="confidence">62%</div>
+          </div>
+          <ol class="ranked">
+            <li><span>#1</span> Stephen Sherrill</li>
+            <li><span>#2</span> Lori Brooke</li>
+          </ol>
+          <p>Sherrill is the execution-and-continuity vote: mayoral alignment, public safety, housing pragmatism, and direct incumbency. Brooke is a reasonable fallback if you prioritize neighborhood public-safety organizing, but the model worries more about growth constraints.</p>
+        </article>
+
+        <article class="item item-wide">
+          <div class="item-head">
+            <div>
+              <h2>Board of Supervisors, District 4</h2>
+              <div class="meta">Only if D4 is on your ballot / ranked-choice</div>
+            </div>
+            <div class="confidence">45%</div>
+          </div>
+          <ol class="ranked">
+            <li><span>#1</span> Alan Wong</li>
+            <li><span>#2</span> Natalie Gee</li>
+            <li><span>#3</span> Jeremy Julian Greco</li>
+            <li><span>#4</span> Albert Chow</li>
+            <li><span>#5</span> David E. Lee</li>
+          </ol>
+          <p>This is the weakest call. Wong has the best institutional fit and citywide governing alignment. Gee is a credible policy-and-organizing alternate. Greco gets credit if you heavily weight keeping Sunset Dunes a park, but the model discounts his lower governing leverage.</p>
+          <p class="note">RCV rule: rank only candidates you would accept. If Great Highway/Sunset Dunes dominates your utility function, move Greco higher.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="measures">
+      <div class="section-header">Local Measures</div>
+      <div class="grid">
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Proposition A</h2>
+              <div class="meta">Earthquake Safety and Emergency Response Bond</div>
+            </div>
+            <div class="confidence">72%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name yes">Yes</div>
+          </div>
+          <p>High-tail-risk city resilience is exactly the kind of thing voters underfund. The bond has implementation and debt risks, but emergency water, seismically safe response facilities, and disaster logistics have positive expected value in San Francisco.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Proposition B</h2>
+              <div class="meta">Lifetime term limits for Mayor and Supervisors</div>
+            </div>
+            <div class="confidence">65%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name no">No</div>
+          </div>
+          <p>Term limits are a blunt anti-incumbent heuristic. Lifetime bans reduce voter choice, destroy institutional memory, and shift power toward staff, lobbyists, and interest groups. If someone is bad, beat them.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Proposition C</h2>
+              <div class="meta">Decreases to business taxes</div>
+            </div>
+            <div class="confidence">60%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name yes">Yes</div>
+          </div>
+          <p>Not perfect, but the model likes reducing tax cliffs and making San Francisco less hostile to business formation. It also strategically blocks the worse Prop D regime if C receives more votes.</p>
+        </article>
+
+        <article class="item">
+          <div class="item-head">
+            <div>
+              <h2>Proposition D</h2>
+              <div class="meta">Higher top-executive-pay business tax</div>
+            </div>
+            <div class="confidence">72%</div>
+          </div>
+          <div class="pick">
+            <div class="pick-label">Rat pick</div>
+            <div class="pick-name no">No</div>
+          </div>
+          <p>The revenue need is real, but this mechanism is too punitive, narrow, and relocation-sensitive. Taxing CEO-worker pay ratios is emotionally satisfying and economically weird; the model prefers broader, simpler revenue tools.</p>
+          <p class="note">Because C and D conflict, the model votes Yes on C and No on D.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="sources-heading">
+      <div class="section-header" id="sources-heading">Sources</div>
+      <p>Last checked June 1, 2026. Facts were grounded in the official ballot materials; recommendations are the model's own judgments.</p>
+      <ul class="sources">
+        <li><a href="https://media.api.sf.gov/documents/J26_EN_VIP.pdf">San Francisco Voter Information Pamphlet, June 2, 2026 election</a></li>
+        <li><a href="https://voterguide.sos.ca.gov/candidates/">California Official Voter Information Guide: Candidates</a></li>
+        <li><a href="https://elections.cdn.sos.ca.gov/statewide-elections/2026-primary/cert-list-candidates.pdf">California Secretary of State certified list of candidates</a></li>
+        <li><a href="https://sfelections.org/voterportal/">San Francisco voter portal for district and ballot lookup</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
