@@ -1,5 +1,11 @@
 # Changelog
 
+## Structured Problem Reporting and Two-Stage Partial Credit
+
+- Added structured, no-free-text reporting for every problem. Reports open a prefilled GitHub Issue Form with the problem ID and selected category.
+- Configured report categories for too-easy questions, answer choices that make the correct answer too obvious, ambiguous or incorrect questions, and other issues.
+- Two-stage questions now earn proportional credit for correctly answered parts. When Part 1 is wrong and Part 2 is right, the feedback acknowledges the Part 2 result and awards partial credit.
+
 ## Configurable Timer
 
 - Increased the default timer to 90 seconds per question.
