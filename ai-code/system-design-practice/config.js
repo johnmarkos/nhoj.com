@@ -11,6 +11,16 @@ export const CONFIG = {
   showProblemId: true,
   timeLimit: 90,
   timeLimitOptions: [45, 60, 90],
+  problemReporting: {
+    repository: "johnmarkos/nhoj.com",
+    issueTemplate: "problem-report.yml",
+    categories: [
+      "Too easy",
+      "Answer choices make the correct answer too obvious",
+      "Ambiguous or incorrect",
+      "Other",
+    ],
+  },
   interviewSimulation: {
     durationMinutes: 45,
     questions: 60,
