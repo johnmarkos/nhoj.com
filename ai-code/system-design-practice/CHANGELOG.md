@@ -1,5 +1,11 @@
 # Changelog
 
+## Configurable Timer
+
+- Increased the default timer to 90 seconds per question.
+- Added learner-selectable Off, 45, 60, and 90 second timer options that persist in browser storage.
+- Synced the finalized OpenQuizzer timer semantics: Off and the configured default are always selectable, and malformed stored preferences are ignored.
+
 ## OpenQuizzer linter portability sync (2026-02-16)
 
 - Synced latest OpenQuizzer linter portability update into this instance:
